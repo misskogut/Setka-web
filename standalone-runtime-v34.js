@@ -33,7 +33,6 @@
     if(type==="physio")return null;
     return originalRecord(type,payload,sessionScoped);
   };
-  window.addEventListener("pagehide",()=>{clearTimeout(physioSaveTimer);C.save()});
 
   // Exact pattern usage segments inside measured and after-feedback phases.
   // Keep the active-session object and persisted session row synchronized: core v34
@@ -59,7 +58,7 @@
   }
   function openUsage(state=Setka.getState?.()){
     const s=C.getActiveSession();
-    if(!s||!["measured","after_feedback"].includes(s.phase)||state?.view!=="game")return;
+    if(document.hidden||!s||!["measured","after_feedback"].includes(s.phase)||state?.view!=="game")return;
     closeUsage();
     current={
       patternId:state.patternId||"tentacle-orbit",
@@ -75,6 +74,8 @@
   window.addEventListener("setka:color",()=>setTimeout(restartIfChanged,0));
   window.addEventListener("setka:favorite-saved",()=>{if(current){current.saved=true;C.save()}});
   window.addEventListener("setka:view",e=>{if(e.detail?.view==="library")closeUsage();else if(e.detail?.view==="game")setTimeout(()=>openUsage(Setka.getState?.()),0)});
+  document.addEventListener("visibilitychange",()=>{if(document.hidden)closeUsage();else if(Setka.getState?.()?.view==="game")setTimeout(()=>openUsage(Setka.getState?.()),0)});
+  window.addEventListener("pagehide",()=>{closeUsage();clearTimeout(physioSaveTimer);C.save()});
   window.addEventListener("setka:standalone-event",e=>{
     const ev=e.detail;
     if(ev?.type==="feedback_prompt"||ev?.type==="session_end")closeUsage();
@@ -85,6 +86,10 @@
       const n=C.getData().notes.find(x=>x.id===ev.payload.noteId);
       if(n&&n.phase==="free"){n.phase="standalone";C.save()}
     }
+
+    // Screen overlays (pre-survey, feedback, memory) are globally useful journey events.
+    // Duplicate them into the active session timeline so replay can reconstruct the path.
+    if(ev?.type==="screen"&&C.getActiveSession())originalRecord("session_screen",{title:ev.payload?.title||"",kicker:ev.payload?.kicker||""},true);
   });
 
   // Keep screen transitions represented inside the session replay as well as globally.
