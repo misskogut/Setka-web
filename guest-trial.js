@@ -49,10 +49,9 @@
     timer = 0;
     badge?.remove();
     badge = null;
-    // Keep the prototype itself visible while the research/auth layer boots.
-    // research-v5 owns its own overlays; a failed/stale request must never leave a blank page.
+    try { window.SetkaGuestTrial?.prepareForAuth?.(); } catch (_) {}
     try {
-      await loadScript("research-v5.js?v=3");
+      await loadScript("research-v5.js?v=4");
     } catch (error) {
       console.error("SETKA research load failed", error);
       researchLoaded = false;
