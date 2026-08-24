@@ -49,6 +49,7 @@
     timer = 0;
     badge?.remove();
     badge = null;
+    try { window.SetkaGuestSyncV12?.flush?.(true); } catch (_) {}
     try { window.SetkaGuestTrial?.prepareForAuth?.(); } catch (_) {}
     try {
       await loadScript("research-v5.js?v=4");
@@ -59,22 +60,28 @@
     }
   }
 
+  function openGuestMenu() {
+    document.getElementById("guestMenuButton")?.click();
+  }
+
   function createBadge() {
     const style = document.createElement("style");
     style.textContent = `
-      #setkaGuestTrial{position:fixed;z-index:9000;left:14px;top:calc(env(safe-area-inset-top,0px) + 16px);height:36px;border:1px solid rgba(255,255,255,.26);border-radius:18px;background:rgba(0,0,0,.52);color:#fff;padding:0 12px;display:flex;align-items:center;gap:7px;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue",Arial,sans-serif;font-size:9px;letter-spacing:.08em;backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);cursor:pointer}
+      #setkaGuestTrial{position:fixed;z-index:9000;left:14px;top:calc(env(safe-area-inset-top,0px) + 16px);height:36px;border:1px solid rgba(255,255,255,.26);border-radius:18px;background:rgba(0,0,0,.52);color:#fff;padding:0 7px 0 12px;display:flex;align-items:center;gap:6px;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue",Arial,sans-serif;font-size:9px;letter-spacing:.08em;backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}
       #setkaGuestTrial .guest-time{font-variant-numeric:tabular-nums;color:rgba(255,255,255,.72)}
-      #setkaGuestTrial .guest-id{color:#fff;font-weight:650}
-      @media(max-width:360px){#setkaGuestTrial{left:9px;top:calc(env(safe-area-inset-top,0px) + 10px);padding:0 9px}}
+      #setkaGuestTrial .guest-menu,#setkaGuestTrial .guest-id{border:0;background:transparent;color:#fff;font:inherit;letter-spacing:.08em;height:28px;padding:0 5px;cursor:pointer}
+      #setkaGuestTrial .guest-menu{color:rgba(255,255,255,.78)}#setkaGuestTrial .guest-id{font-weight:700}
+      #guestMenuButton{display:none!important}
+      @media(max-width:360px){#setkaGuestTrial{left:9px;top:calc(env(safe-area-inset-top,0px) + 10px);padding-left:9px;gap:4px}#setkaGuestTrial .guest-menu,#setkaGuestTrial .guest-id{padding:0 3px}}
     `;
     document.head.appendChild(style);
 
-    badge = document.createElement("button");
-    badge.type = "button";
+    badge = document.createElement("div");
     badge.id = "setkaGuestTrial";
-    badge.setAttribute("aria-label", "Пробный доступ. Ввести персональный ID");
-    badge.innerHTML = `<span>ПРОБА</span><span class="guest-time"></span><span>·</span><span class="guest-id">ID</span>`;
-    badge.addEventListener("click", loadResearch);
+    badge.setAttribute("aria-label", "Пробный доступ SETKA");
+    badge.innerHTML = `<span>ПРОБА</span><span class="guest-time"></span><span>·</span><button class="guest-menu" type="button">МЕНЮ</button><span>·</span><button class="guest-id" type="button">ID</button>`;
+    badge.querySelector(".guest-menu").addEventListener("click", openGuestMenu);
+    badge.querySelector(".guest-id").addEventListener("click", loadResearch);
     document.body.appendChild(badge);
   }
 
