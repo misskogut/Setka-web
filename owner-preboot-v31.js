@@ -16,6 +16,7 @@
     localStorage.removeItem("setka-research:access-verified:v27");
     localStorage.removeItem("setka-research:access-verified:v29");
     localStorage.setItem(LEGACY_TRIAL, String(Date.now()));
+    localStorage.setItem("setka-research:guest-trial-clock:v29", JSON.stringify({version:29,usedMs:0,expired:false,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()}));
     localStorage.setItem("setka-research:owner-mode:v31", "1");
   } catch (_) {}
 })();
