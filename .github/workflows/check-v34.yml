@@ -6,6 +6,7 @@ on:
       - 'standalone-runtime-v34.js'
       - 'standalone-methodology-v34.js'
       - 'standalone-advanced-v34.js'
+      - 'standalone-analysis-v34.js'
       - 'standalone-bootstrap-v34.js'
       - 'standalone-v34.html'
       - '.github/workflows/check-v34.yml'
@@ -21,4 +22,5 @@ jobs:
       - run: node --check standalone-runtime-v34.js
       - run: node --check standalone-methodology-v34.js
       - run: node --check standalone-advanced-v34.js
+      - run: node --check standalone-analysis-v34.js
       - run: node --check standalone-bootstrap-v34.js
