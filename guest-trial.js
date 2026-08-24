@@ -51,8 +51,7 @@
     badge = null;
     app.style.visibility = "hidden";
     try {
-      await loadScript("research-extension-shim.js?v=2");
-      await loadScript("research-v4.js?v=2");
+      await loadScript("research-v5.js?v=1");
     } catch (error) {
       console.error("SETKA research load failed", error);
       researchLoaded = false;
