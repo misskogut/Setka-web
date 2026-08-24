@@ -1,0 +1,18 @@
+name: Check SETKA Standalone v34
+on:
+  push:
+    paths:
+      - 'standalone-core-v34.js'
+      - 'standalone-advanced-v34.js'
+      - 'standalone-v34.html'
+      - '.github/workflows/check-v34.yml'
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check standalone-core-v34.js
+      - run: node --check standalone-advanced-v34.js
