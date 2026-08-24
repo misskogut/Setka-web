@@ -5,9 +5,10 @@
   const ARCHIVE_KEY="setka-research:guest-archive:v11";
   const TRIAL_MS=60*60*1000;
   const API="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-guest-v11";
+  const CONVERT_API="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-guest-convert-v12";
   const API_KEY="sb_publishable_1jL-x9_kp6rpfGghpSp_OA_OiXDnvsv";
   const EVENT_BUFFER="setka-research:guest-events:v12";
-  let sending=false,sendTimer=0,lastGesture=0;
+  let sending=false,sendTimer=0,lastGesture=0,convertedMarked=false;
 
   function trialStart(){return Number(localStorage.getItem(TRIAL_KEY))||Date.now()}
   function activeGuest(){return !localStorage.getItem(ACCESS_KEY)&&Date.now()-trialStart()<TRIAL_MS}
@@ -23,6 +24,7 @@
   function schedule(){clearTimeout(sendTimer);sendTimer=setTimeout(()=>flush(false),500)}
   async function flush(keepalive=false){if(sending||!activeGuest())return;const a=archive();if(!a?.archiveId)return;const x=buffer();if(!x.length){try{await heartbeat(keepalive)}catch(_){}return}sending=true;const batch=x.slice(0,120);try{await post("guest-events",{...base(a),items:batch},keepalive);saveBuffer(x.slice(batch.length));await heartbeat(keepalive)}catch(_){}finally{sending=false;if(buffer().length)schedule()}}
   async function idAttempt(){const a=archive();if(!a?.archiveId)return;push("id_attempt",{});try{await post("guest-id-attempt",base(a))}catch(_){}}
+  async function markConverted(){if(convertedMarked||!localStorage.getItem(ACCESS_KEY))return false;const a=archive();const auth=window.SetkaJourneyAuth||window.SetkaJourney?.getAuth?.();if(!a?.archiveId||!auth?.sessionId||!auth?.sessionToken)return false;try{const r=await fetch(CONVERT_API,{method:"POST",headers:{"Content-Type":"application/json","apikey":API_KEY},body:JSON.stringify({action:"convert",archiveId:a.archiveId,sessionId:auth.sessionId,sessionToken:auth.sessionToken})});if(!r.ok)throw new Error("convert_failed");convertedMarked=true;return true}catch(_){return false}}
 
   window.addEventListener("setka:view",e=>push("view",{view:e.detail?.view||null,page:e.detail?.state?.libraryPage||null}));
   window.addEventListener("setka:library-page",e=>{push("library_page",{page:e.detail?.page||null});if(e.detail?.page==="community")loadPublicCommunity()});
@@ -39,5 +41,6 @@
   document.addEventListener("visibilitychange",()=>push(document.hidden?"hidden":"visible",{}));
   window.addEventListener("pagehide",()=>flush(true));
   if(activeGuest()){push("guest_open",{remainingMs:Math.max(0,TRIAL_MS-(Date.now()-trialStart()))});loadPublicCommunity();setTimeout(()=>flush(false),350);setInterval(()=>flush(false),5000);setInterval(loadPublicCommunity,20000)}
-  window.SetkaGuestSyncV12={flush,heartbeat,idAttempt,loadPublicCommunity};
+  setInterval(markConverted,700);
+  window.SetkaGuestSyncV12={flush,heartbeat,idAttempt,loadPublicCommunity,markConverted};
 })();
