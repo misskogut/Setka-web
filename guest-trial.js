@@ -10,6 +10,7 @@
   let researchLoaded = false;
   let timer = 0;
   let badge = null;
+  let bootShield = null;
 
   function loadScript(src) {
     return new Promise((resolve, reject) => {
@@ -42,21 +43,82 @@
     return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   }
 
+  function installBootShield() {
+    bootShield?.remove();
+    bootShield = document.createElement("style");
+    bootShield.id = "setkaResearchBootShield";
+    bootShield.textContent = `#setkaResearchLayer{visibility:hidden!important;pointer-events:none!important}.portal-nav{visibility:hidden!important;pointer-events:none!important}`;
+    document.head.appendChild(bootShield);
+  }
+
+  function releaseBootShield() {
+    bootShield?.remove();
+    bootShield = null;
+  }
+
+  function settleResearchBoot() {
+    const layer = document.getElementById("setkaResearchLayer");
+    const title = layer?.querySelector(".research-title")?.textContent?.trim() || "";
+    if (!layer || !title || title === "Подключаем SETKA") return false;
+
+    releaseBootShield();
+    app.style.visibility = "visible";
+
+    if (title === "Сегодня") {
+      layer.classList.add("hidden");
+      document.querySelector(".portal-nav")?.classList.add("hidden");
+      try { window.SetkaApp?.renderLibrary?.(); } catch (_) {}
+    }
+    return true;
+  }
+
   async function loadResearch() {
     if (researchLoaded) return;
+    if (window.SETKA_SAFE_MODE) {
+      app.style.visibility = "visible";
+      try { window.SetkaApp?.renderLibrary?.(); } catch (_) {}
+      return;
+    }
+
     researchLoaded = true;
     clearInterval(timer);
     timer = 0;
     badge?.remove();
     badge = null;
+
+    app.style.visibility = "visible";
+    try { window.SetkaApp?.renderLibrary?.(); } catch (_) {}
+    installBootShield();
+
     try { window.SetkaGuestSyncV12?.flush?.(true); } catch (_) {}
     try { window.SetkaGuestTrial?.prepareForAuth?.(); } catch (_) {}
+
     try {
-      await loadScript("research-v5.js?v=4");
+      await loadScript("research-v5.js?v=23");
+      let tries = 0;
+      const watcher = setInterval(() => {
+        tries += 1;
+        if (settleResearchBoot() || tries >= 18) {
+          clearInterval(watcher);
+          if (tries >= 18) {
+            const layer = document.getElementById("setkaResearchLayer");
+            const title = layer?.querySelector(".research-title")?.textContent?.trim() || "";
+            if (!title || title === "Подключаем SETKA") {
+              layer?.classList.add("hidden");
+              document.querySelector(".portal-nav")?.classList.add("hidden");
+            }
+            releaseBootShield();
+            app.style.visibility = "visible";
+            try { window.SetkaApp?.renderLibrary?.(); } catch (_) {}
+          }
+        }
+      }, 250);
     } catch (error) {
       console.error("SETKA research load failed", error);
       researchLoaded = false;
+      releaseBootShield();
       app.style.visibility = "visible";
+      try { window.SetkaApp?.renderLibrary?.(); } catch (_) {}
     }
   }
 
@@ -109,11 +171,16 @@
   }
 
   const storedAccess = localStorage.getItem(ACCESS_KEY);
-  if (storedAccess) {
+  if (window.SETKA_SAFE_MODE) {
+    app.style.visibility = "visible";
+    window.SetkaApp?.renderLibrary?.();
+  } else if (storedAccess) {
     loadResearch();
   } else if (remainingMs() > 0) {
     startGuest();
   } else {
     loadResearch();
   }
+
+  window.SetkaGuestBoot = { loadResearch };
 })();
