@@ -66,7 +66,7 @@
   async function refreshCommunity() {
     const d = await call("community-list");
     lastItems = Array.isArray(d.items) ? d.items : [];
-    // community-list intentionally contains the participant's own canonical configs too.
+    // The community deliberately includes the current participant's own saved states.
     window.SetkaApp.setCommunity(lastItems);
     requestAnimationFrame(paintFavoriteCounts);
     return lastItems;
@@ -94,12 +94,21 @@
     }
     syncing = true;
     try {
+      const existing = await refreshCommunity();
+      const communityById = new Map(existing.map(x => [String(x.id), x]));
       const favs = window.SetkaApp.getFavorites?.() || [];
+      let changed = false;
+
       for (const f of favs.slice(0, 120)) {
-        if (f.communityId) continue;
-        try { await publishFavorite(f); } catch (_) {}
+        const linked = f.communityId ? communityById.get(String(f.communityId)) : null;
+        // If the local favorite is already linked and the backend confirms that
+        // this participant saved it, nothing to do. Otherwise restore/publish it.
+        if (linked?.savedByMe) continue;
+        try { await publishFavorite(f); changed = true; } catch (_) {}
       }
-      await refreshCommunity();
+
+      if (changed) await refreshCommunity();
+      else paintFavoriteCounts();
     } catch (_) {
       clearTimeout(retryTimer);
       retryTimer = setTimeout(syncAll, 2200);
@@ -133,7 +142,7 @@
   });
 
   const style = document.createElement("style");
-  style.textContent = `.favorite-tile .favorite-community-count{left:auto;right:7px;top:7px}.favorite-tile .mini-heart{left:7px;right:auto}`;
+  style.textContent = `.favorite-tile .favorite-community-count{z-index:6}.favorite-tile .mini-heart{z-index:5}`;
   document.head.appendChild(style);
 
   new MutationObserver(() => requestAnimationFrame(paintFavoriteCounts)).observe(favoritesPanel, { childList: true, subtree: true });
