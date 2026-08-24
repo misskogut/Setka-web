@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - 'standalone-core-v34.js'
+      - 'standalone-runtime-v34.js'
       - 'standalone-advanced-v34.js'
       - 'standalone-v34.html'
       - '.github/workflows/check-v34.yml'
@@ -15,4 +16,5 @@ jobs:
         with:
           node-version: '22'
       - run: node --check standalone-core-v34.js
+      - run: node --check standalone-runtime-v34.js
       - run: node --check standalone-advanced-v34.js
