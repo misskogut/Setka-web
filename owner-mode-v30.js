@@ -4,6 +4,8 @@
   const ADMIN_KEY = "setka-research:admin-key:v1";
   const OWNER_FLAG = "setka-research:owner-mode:v30";
   const OWNER_ARCHIVE = "setka-research:owner-archive:v30";
+  const OWNER_PREV_ACCESS = "setka-research:owner-prev-access:v30";
+  const ACCESS_KEY = "setka-research:access-code:v1";
   const LEGACY_TRIAL = "setka-research:guest-trial-start:v1";
   const GUEST_ARCHIVE = "setka-research:guest-archive:v11";
   const LIMIT_MS = 60 * 60 * 1000;
@@ -15,6 +17,15 @@
   if (!active) return;
 
   try { localStorage.setItem(OWNER_FLAG, "1"); } catch (_) {}
+
+  // The owner/tester URL is deliberately a guest-style research sandbox. A stale
+  // participant ID from older prototype runs must never hide its navigation or
+  // re-enable the normal trial/auth state machine. Preserve it only as a backup.
+  try {
+    const previous = localStorage.getItem(ACCESS_KEY);
+    if (previous) localStorage.setItem(OWNER_PREV_ACCESS, previous);
+    localStorage.removeItem(ACCESS_KEY);
+  } catch (_) {}
 
   const baseClock = window.SetkaTrialClockV29 || window.SetkaTrialClockV27 || window.SetkaTrialClockV24;
   if (baseClock) {
@@ -66,6 +77,6 @@
 
   const badge = document.createElement("div");
   badge.id = "setkaOwnerBadgeV30";
-  badge.innerHTML = "<i></i><span>ADMIN · ГОСТЬ</span>";
+  badge.innerHTML = "<i></i><span>OWNER · TEST</span>";
   document.body.appendChild(badge);
 })();
