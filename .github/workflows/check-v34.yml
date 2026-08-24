@@ -4,7 +4,9 @@ on:
     paths:
       - 'standalone-core-v34.js'
       - 'standalone-runtime-v34.js'
+      - 'standalone-methodology-v34.js'
       - 'standalone-advanced-v34.js'
+      - 'standalone-bootstrap-v34.js'
       - 'standalone-v34.html'
       - '.github/workflows/check-v34.yml'
 jobs:
@@ -17,4 +19,6 @@ jobs:
           node-version: '22'
       - run: node --check standalone-core-v34.js
       - run: node --check standalone-runtime-v34.js
+      - run: node --check standalone-methodology-v34.js
       - run: node --check standalone-advanced-v34.js
+      - run: node --check standalone-bootstrap-v34.js
