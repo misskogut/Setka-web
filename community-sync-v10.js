@@ -2,6 +2,7 @@
   "use strict";
 
   const API = "https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-research-api";
+  const GUEST_API = "https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-guest-v11";
   const API_KEY = "sb_publishable_1jL-x9_kp6rpfGghpSp_OA_OiXDnvsv";
   const ACTIVE_KEY = "setka-research:active-session:v5";
   const ACCESS_KEY = "setka-research:access-code:v1";
@@ -12,7 +13,6 @@
   let syncing = false;
   let lastItems = [];
   let retryTimer = 0;
-
   const headers = { "Content-Type": "application/json", "apikey": API_KEY };
 
   function getAuth() {
@@ -28,130 +28,106 @@
   async function call(action, payload = {}) {
     const a = auth || getAuth();
     if (!a) throw new Error("no_auth");
-    const r = await fetch(API, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ action, sessionId: a.sessionId, sessionToken: a.sessionToken, ...payload })
-    });
+    const r = await fetch(API, { method: "POST", headers, body: JSON.stringify({ action, sessionId: a.sessionId, sessionToken: a.sessionToken, ...payload }) });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(d.error || `http_${r.status}`);
     return d;
   }
 
-  function communityCountMap(items = lastItems) {
-    const m = new Map();
-    for (const x of items || []) m.set(String(x.id), Math.max(0, Number(x.saveCount) || 0));
-    return m;
+  async function publicCommunity() {
+    const r = await fetch(GUEST_API, { method: "POST", headers, body: JSON.stringify({ action: "public-community" }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || `http_${r.status}`);
+    return d;
+  }
+
+  function countMaps(items = lastItems) {
+    const byId = new Map(), byKey = new Map();
+    for (const x of items || []) {
+      const count = Math.max(0, Number(x.saveCount) || 0);
+      byId.set(String(x.id), count);
+      try { byKey.set(window.SetkaApp.configKey(x.config), count); } catch (_) {}
+    }
+    return { byId, byKey };
   }
 
   function paintFavoriteCounts() {
-    const counts = communityCountMap();
+    const { byId, byKey } = countMaps();
     const favs = window.SetkaApp.getFavorites?.() || [];
-    const byId = new Map(favs.map(f => [String(f.id), f]));
+    const byFavId = new Map(favs.map(f => [String(f.id), f]));
     favoritesPanel.querySelectorAll(".favorite-tile").forEach(tile => {
-      const fav = byId.get(String(tile.dataset.itemId || ""));
+      const fav = byFavId.get(String(tile.dataset.itemId || ""));
       let badge = tile.querySelector(".favorite-community-count");
-      if (!fav?.communityId) { badge?.remove(); return; }
-      const count = counts.get(String(fav.communityId));
-      if (count == null) { badge?.remove(); return; }
-      if (!badge) {
-        badge = document.createElement("span");
-        badge.className = "community-count favorite-community-count";
-        tile.appendChild(badge);
+      if (!fav) { badge?.remove(); return; }
+      let count = fav.communityId ? byId.get(String(fav.communityId)) : undefined;
+      if (count == null) {
+        try { count = byKey.get(window.SetkaApp.configKey(fav.config)); } catch (_) {}
       }
+      if (count == null) { badge?.remove(); return; }
+      if (!badge) { badge = document.createElement("span"); badge.className = "community-count favorite-community-count"; tile.appendChild(badge); }
       badge.textContent = `♥ ${count}`;
     });
   }
 
   async function refreshCommunity() {
-    const d = await call("community-list");
+    const d = getAuth() ? await call("community-list") : await publicCommunity();
     lastItems = Array.isArray(d.items) ? d.items : [];
-    // The community deliberately includes the current participant's own saved states.
     window.SetkaApp.setCommunity(lastItems);
     requestAnimationFrame(paintFavoriteCounts);
     return lastItems;
   }
 
   async function publishFavorite(f) {
-    const d = await call("community-save", {
-      patternId: f.baseId || "tentacle-orbit",
-      patternVersion: f.patternVersion || 1,
-      config: f.config,
-      previewFrame: f.previewFrame,
-      parentConfigId: f.parentCommunityId || null
-    });
+    const d = await call("community-save", { patternId: f.baseId || "tentacle-orbit", patternVersion: f.patternVersion || 1, config: f.config, previewFrame: f.previewFrame, parentConfigId: f.parentCommunityId || null });
     if (d.communityId && f.id) window.SetkaApp.updateFavoriteMeta?.(f.id, { communityId: d.communityId });
     return d;
   }
 
   async function syncAll() {
-    if (syncing || !localStorage.getItem(ACCESS_KEY)) return;
-    auth = getAuth();
-    if (!auth) {
-      clearTimeout(retryTimer);
-      retryTimer = setTimeout(syncAll, 900);
-      return;
-    }
+    if (syncing) return;
     syncing = true;
     try {
+      auth = getAuth();
+      if (!auth) { await refreshCommunity(); return; }
       const existing = await refreshCommunity();
       const communityById = new Map(existing.map(x => [String(x.id), x]));
       const favs = window.SetkaApp.getFavorites?.() || [];
       let changed = false;
-
       for (const f of favs.slice(0, 120)) {
         const linked = f.communityId ? communityById.get(String(f.communityId)) : null;
-        // If the local favorite is already linked and the backend confirms that
-        // this participant saved it, nothing to do. Otherwise restore/publish it.
         if (linked?.savedByMe) continue;
         try { await publishFavorite(f); changed = true; } catch (_) {}
       }
-
-      if (changed) await refreshCommunity();
-      else paintFavoriteCounts();
+      if (changed) await refreshCommunity(); else paintFavoriteCounts();
     } catch (_) {
       clearTimeout(retryTimer);
       retryTimer = setTimeout(syncAll, 2200);
-    } finally {
-      syncing = false;
-    }
+    } finally { syncing = false; }
   }
 
   window.addEventListener("setka:favorite-saved", async e => {
     const fav = e.detail?.favorite;
-    if (!fav || !localStorage.getItem(ACCESS_KEY)) return;
+    if (!fav) return;
     auth = getAuth();
-    if (!auth) { syncAll(); return; }
+    if (!auth) { requestAnimationFrame(paintFavoriteCounts); return; }
     try { await publishFavorite(fav); await refreshCommunity(); } catch (_) {}
   });
 
   window.addEventListener("setka:favorite-removed", async e => {
     const fav = e.detail?.favorite;
-    if (!fav || !localStorage.getItem(ACCESS_KEY)) return;
+    if (!fav) return;
     auth = getAuth();
-    if (!auth) return;
-    try {
-      await call("community-unsave", {
-        communityId: fav.communityId || null,
-        patternId: fav.baseId || "tentacle-orbit",
-        patternVersion: fav.patternVersion || 1,
-        config: fav.config
-      });
-      await refreshCommunity();
-    } catch (_) {}
+    if (!auth) { requestAnimationFrame(paintFavoriteCounts); return; }
+    try { await call("community-unsave", { communityId: fav.communityId || null, patternId: fav.baseId || "tentacle-orbit", patternVersion: fav.patternVersion || 1, config: fav.config }); await refreshCommunity(); } catch (_) {}
   });
 
   const style = document.createElement("style");
   style.textContent = `.favorite-tile .favorite-community-count{z-index:6}.favorite-tile .mini-heart{z-index:5}`;
   document.head.appendChild(style);
-
   new MutationObserver(() => requestAnimationFrame(paintFavoriteCounts)).observe(favoritesPanel, { childList: true, subtree: true });
+  window.addEventListener("setka:library-page", e => { if (e.detail?.page === "community" || e.detail?.page === "favorites") syncAll(); });
 
-  window.addEventListener("setka:library-page", e => {
-    if (e.detail?.page === "community" || e.detail?.page === "favorites") syncAll();
-  });
-
-  setTimeout(syncAll, 700);
-  setInterval(() => { if (localStorage.getItem(ACCESS_KEY)) syncAll(); }, 15000);
+  setTimeout(syncAll, 500);
+  setInterval(syncAll, 15000);
   window.SetkaCommunitySyncV10 = { syncAll, refreshCommunity, paintFavoriteCounts };
 })();
