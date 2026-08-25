@@ -8,8 +8,10 @@ on:
       - 'standalone-advanced-v34.js'
       - 'standalone-analysis-v34.js'
       - 'standalone-bootstrap-v34.js'
+      - 'standalone-controls-v34.js'
       - 'standalone-sync-v34.js'
       - 'standalone-admin-v34.js'
+      - 'standalone-admin-deep-v34.js'
       - 'standalone-admin-v34.html'
       - 'standalone-v34.html'
       - '.github/workflows/check-v34.yml'
@@ -27,5 +29,7 @@ jobs:
       - run: node --check standalone-advanced-v34.js
       - run: node --check standalone-analysis-v34.js
       - run: node --check standalone-bootstrap-v34.js
+      - run: node --check standalone-controls-v34.js
       - run: node --check standalone-sync-v34.js
       - run: node --check standalone-admin-v34.js
+      - run: node --check standalone-admin-deep-v34.js
