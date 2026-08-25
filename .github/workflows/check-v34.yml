@@ -2,6 +2,8 @@ name: Check SETKA Standalone v34
 on:
   push:
     paths:
+      - 'app-v3-multipattern.js'
+      - 'standalone-multipattern-bridge-v34.js'
       - 'standalone-core-v34.js'
       - 'standalone-runtime-v34.js'
       - 'standalone-favorites-repair-v34.js'
@@ -30,6 +32,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - run: node --check app-v3-multipattern.js
+      - run: node --check standalone-multipattern-bridge-v34.js
       - run: node --check standalone-core-v34.js
       - run: node --check standalone-runtime-v34.js
       - run: node --check standalone-favorites-repair-v34.js
