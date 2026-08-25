@@ -1,70 +1,125 @@
 (() => {
   "use strict";
   const C=window.SetkaStandaloneV34,Setka=window.SetkaApp;
-  const libraryButton=document.getElementById("libraryButton");
+  const libraryButton=document.getElementById("libraryButton"),layer=document.getElementById("st34Layer"),game=document.getElementById("gameScreen");
   if(!C||!Setka||!libraryButton)return;
 
-  const KEY="setka-standalone:v34-open-origin";
+  const KEY="setka-standalone:v34-open-origin-v2";
   const clone=v=>v==null?v:JSON.parse(JSON.stringify(v));
-  let origin=null,bypass=false;
+  let origin=null,currentPanel={kind:"library",page:Setka.getState?.()?.libraryPage||"all"},bypass=false;
   try{origin=JSON.parse(sessionStorage.getItem(KEY)||"null")}catch(_){}
 
-  function remember(source={}){
-    let next=null;
-    const type=String(source?.type||"");
-    if(type==="memory"||type==="note")next={kind:"notes",id:source.noteId||source.id||null};
-    else if(type==="favorite")next={kind:"favorites",id:source.id||null};
-    else if(type==="community")next={kind:"community",id:source.id||source.communityId||null};
-    else if(type==="history")next={kind:"session-detail",sessionId:source.sessionId||null,id:source.id||null};
-    else if(type==="personal")next={kind:"insights",id:source.id||null};
-    else if(type==="base")next={kind:"library",page:"all"};
-    else if(type==="exact-link")next={kind:"library",page:"all"};
-    if(!next)return;
-    origin=next;
-    try{sessionStorage.setItem(KEY,JSON.stringify(origin))}catch(_){}
+  function saveOrigin(next){
+    origin=clone(next);
+    try{origin?sessionStorage.setItem(KEY,JSON.stringify(origin)):sessionStorage.removeItem(KEY)}catch(_){}
+  }
+  function clearOrigin(){saveOrigin(null)}
+
+  function routeFromScreen(title,kicker){
+    title=String(title||"");kicker=String(kicker||"");
+    if(title==="Заметки")return{kind:"notes"};
+    if(title==="История сессий")return{kind:"sessions"};
+    if(kicker==="СЕССИЯ")return{kind:"session-detail"};
+    if(title==="Мои наблюдения"||kicker==="ДЛЯ МЕНЯ")return{kind:"insights"};
+    if(title==="Пульс")return{kind:"pulse"};
+    if(title==="Сегодня")return{kind:"today"};
+    if(title==="Я")return{kind:"me"};
+    if(title==="Симптомы"||title==="Состояния")return{kind:"symptoms"};
+    if(title==="Начать сессию"||kicker==="ПЕРЕД СЕССИЕЙ")return{kind:"pre-survey"};
+    if(kicker==="ОЦЕНКА ПОСЛЕ")return{kind:"feedback"};
+    if(kicker==="ГОТОВО")return{kind:"feedback-result"};
+    return{kind:"screen",title,kicker};
+  }
+
+  // One rule for the whole product: gameplay remembers the exact panel that was visible
+  // immediately before it opened. It is a one-step Back, not a guessed destination.
+  const nativeScreen=C.screen.bind(C);
+  C.screen=(title,copy="",kicker="SETKA",back)=>{
+    const body=nativeScreen(title,copy,kicker,back);
+    currentPanel=routeFromScreen(title,kicker);
+    return body;
+  };
+
+  function rememberLibrary(page){
+    currentPanel={kind:"library",page:page||Setka.getState?.()?.libraryPage||"all"};
+  }
+  window.addEventListener("setka:library-page",e=>rememberLibrary(e.detail?.page));
+  window.addEventListener("setka:view",e=>{
+    if(e.detail?.view==="library"&&layer?.classList.contains("hidden"))rememberLibrary(Setka.getState?.()?.libraryPage||"all");
+  });
+
+  function completePanel(panel,source={}){
+    const p=clone(panel)||{kind:"library",page:"all"};
+    if(p.kind==="session-detail"&&!p.sessionId){
+      p.sessionId=source.sessionId||null;
+      if(!p.sessionId&&(source.type==="memory"||source.type==="note")){
+        const n=C.getData?.().notes?.find(x=>String(x.id)===String(source.noteId||source.id||""));
+        p.sessionId=n?.sessionId||null;
+      }
+    }
+    p.scrollTop=Number(layer?.scrollTop)||0;
+    p.windowScroll=Number(window.scrollY)||0;
+    return p;
   }
 
   const nativeOpen=Setka.openConfig.bind(Setka);
   Setka.openConfig=(config,source={})=>{
-    remember(source);
+    saveOrigin(completePanel(currentPanel,source));
     return nativeOpen(config,source);
   };
 
-  function clearOrigin(){origin=null;try{sessionStorage.removeItem(KEY)}catch(_){}}
-
-  function leaveGame(page="all",after=null){
+  function exitGameplay(done){
     bypass=true;
     try{libraryButton.click()}finally{bypass=false}
-    setTimeout(()=>{
-      Setka.setLibraryPage?.(page);
-      C.setNav?.(page==="all"||page==="favorites"||page==="community"?"patterns":"me");
-      if(typeof after==="function")after();
-    },0);
+    requestAnimationFrame(()=>done?.());
+  }
+  function restoreScroll(o){
+    requestAnimationFrame(()=>{
+      if(layer&&!layer.classList.contains("hidden"))layer.scrollTop=Math.max(0,Number(o.scrollTop)||0);
+      else window.scrollTo?.(0,Math.max(0,Number(o.windowScroll)||0));
+    });
+  }
+  function restore(o){
+    const finish=fn=>exitGameplay(()=>{fn?.();restoreScroll(o)});
+    if(o.kind==="notes")return finish(()=>C.showNotes?.());
+    if(o.kind==="sessions")return finish(()=>C.showSessions?.());
+    if(o.kind==="session-detail"&&o.sessionId)return finish(()=>C.showSessionDetail?.(o.sessionId));
+    if(o.kind==="insights")return finish(()=>C.showUserInsights?.());
+    if(o.kind==="pulse")return finish(()=>C.showPhysio?.());
+    if(o.kind==="today")return finish(()=>C.showToday?.());
+    if(o.kind==="me")return finish(()=>C.showMe?.());
+    if(o.kind==="symptoms")return finish(()=>C.showSymptoms?.());
+    if(o.kind==="feedback-result")return finish(()=>C.showFeedbackResult?.());
+    if(o.kind==="feedback")return finish(()=>C.showToday?.());
+    if(o.kind==="pre-survey")return finish(()=>C.preSurvey?.());
+    if(o.kind==="library")return finish(()=>{
+      Setka.setLibraryPage?.(o.page||"all");
+      Setka.renderLibrary?.();
+      C.setNav?.("patterns");
+      currentPanel={kind:"library",page:o.page||"all"};
+    });
+    return finish(()=>C.showMe?.());
   }
 
   libraryButton.addEventListener("click",e=>{
     if(bypass)return;
     e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
-    const o=clone(origin)||{kind:"library",page:"all"};
-    C.recordEvent?.("game_return",{origin:o.kind,page:o.page||null,sessionId:o.sessionId||null},!!C.getActiveSession?.());
-
-    if(o.kind==="notes")return leaveGame("all",()=>C.showNotes?.());
-    if(o.kind==="favorites")return leaveGame("favorites");
-    if(o.kind==="community")return leaveGame("community");
-    if(o.kind==="session-detail"){
-      if(o.sessionId&&typeof C.showSessionDetail==="function")return leaveGame("all",()=>C.showSessionDetail(o.sessionId));
-      return leaveGame("all",()=>C.showSessions?.());
-    }
-    if(o.kind==="insights")return leaveGame("all",()=>C.showUserInsights?.());
-    leaveGame(o.page||"all");
+    const o=clone(origin)||completePanel(currentPanel,{});
+    C.recordEvent?.("game_back",{to:o.kind,page:o.page||null,sessionId:o.sessionId||null},!!C.getActiveSession?.());
+    clearOrigin();
+    restore(o);
   },true);
 
-  // If the user navigates deliberately from the bottom menu, that becomes the new
-  // navigation context. The next gameplay open will set a fresh, more specific origin.
   document.addEventListener("click",e=>{
-    const b=e.target?.closest?.("#st34Nav button[data-p]");if(!b)return;
-    if(!document.getElementById("gameScreen")?.classList.contains("active"))clearOrigin();
+    const b=e.target?.closest?.("#st34Nav button[data-p]");if(!b||game?.classList.contains("active"))return;
+    clearOrigin();
   },false);
 
-  window.SetkaStandaloneNavigationV34={getOrigin:()=>clone(origin),clear:clearOrigin};
+  window.SetkaStandaloneNavigationV34={
+    getOrigin:()=>clone(origin),
+    getCurrentPanel:()=>clone(currentPanel),
+    clear:clearOrigin,
+    markPanel:panel=>{currentPanel=clone(panel)||currentPanel},
+    back:()=>restore(clone(origin)||clone(currentPanel))
+  };
 })();
