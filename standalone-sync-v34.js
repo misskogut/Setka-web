@@ -12,6 +12,7 @@
   const STATUS_KEY="setka-standalone:v34-yulia-last-sync";
   const EVENT_CURSOR_KEY="setka-standalone:v34-last-event-sync";
   const EXPOSURE_CURSOR_KEY="setka-standalone:v35-last-exposure-sync";
+  const VISIT_STARTED_KEY="setka-v35:visit-started";
 
   function makeId(){try{return crypto.randomUUID()}catch(_){return `yulia-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,12)}`}}
   let deviceId="",firstSeen="",eventCursor="",exposureCursor="";
@@ -21,6 +22,7 @@
     eventCursor=localStorage.getItem(EVENT_CURSOR_KEY)||"";
     exposureCursor=localStorage.getItem(EXPOSURE_CURSOR_KEY)||"";
   }catch(_){deviceId=makeId();firstSeen=new Date().toISOString()}
+  function visitStartedAt(){try{let v=sessionStorage.getItem(VISIT_STARTED_KEY);if(!v){v=new Date().toISOString();sessionStorage.setItem(VISIT_STARTED_KEY,v)}return v}catch(_){return new Date().toISOString()}}
 
   let busy=false,lastSignature="",timer=0,lastOkAt=null,lastError=null,lastPolicy=null;
   function favorites(){try{return (window.SetkaApp?.getFavorites?.()||[]).map(f=>({id:f.id,patternId:f.baseId||f.patternId,baseId:f.baseId,config:f.config,createdAt:f.createdAt,sourceType:"favorite"}))}catch(_){return[]}}
@@ -35,7 +37,7 @@
   function lightArchive(d){const {patternExposures:_drop,...rest}=d||{};return{...rest,events:[]}}
   function applyServerPolicy(out){lastPolicy={retentionDays:out.retentionDays||90,sampleHz:out.sampleHz||8,rawCutoffAt:out.rawCutoffAt||null};window.dispatchEvent(new CustomEvent("setka:v34-replay-policy",{detail:lastPolicy}))}
   async function syncSemantic(fav,expDelta,keepalive=false){
-    const r=await fetch(SEMANTIC_API,{method:"POST",headers:{"Content-Type":"application/json","apikey":API_KEY},body:JSON.stringify({action:"sync",channel:CHANNEL,deviceId,favorites:fav,exposuresDelta:expDelta,visit:{id:C.patternExposure?.visitId||null,firstSeenAt:firstSeen,lastSeenAt:new Date().toISOString()}}),keepalive});
+    const r=await fetch(SEMANTIC_API,{method:"POST",headers:{"Content-Type":"application/json","apikey":API_KEY},body:JSON.stringify({action:"sync",channel:CHANNEL,deviceId,favorites:fav,exposuresDelta:expDelta,visit:{id:C.patternExposure?.visitId||null,startedAt:visitStartedAt(),lastSeenAt:new Date().toISOString()}}),keepalive});
     if(!r.ok)throw new Error(`semantic_${r.status}`);
     return r.json().catch(()=>({}));
   }
