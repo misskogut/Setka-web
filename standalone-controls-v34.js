@@ -52,26 +52,41 @@
   document.querySelector('#st34Nav button[data-p="today"]')?.addEventListener("click",()=>setTimeout(injectTodayFinish,0));
   setTimeout(()=>{updateEndButton();injectTodayFinish()},150);
 
-  // Deep interaction telemetry. We keep coordinates normalized so sessions from different
-  // browser sizes can be compared in the admin. Text typed into fields is never copied here.
-  const pointers=new Map();let lastMoveAt=0,lastScrollAt=0;
+  // RAW Replay v34.9: meaningful events are still exact, but high-frequency motion is sampled.
+  // Replay renders at display FPS by interpolation, so storing every browser pointer event is unnecessary.
+  const POINTER_SAMPLE_MS=125; // ~8 Hz raw path, visually reconstructed smoothly in Replay.
+  const POINTER_MIN_DISTANCE_PX=4;
+  const SCROLL_SAMPLE_MS=400;
+  const SCROLL_MIN_DISTANCE_PX=18;
+  const pointers=new Map();let lastMoveAt=0,lastScrollAt=0,lastScrollTop=null;
   const clamp=v=>Math.max(0,Math.min(1,v));
   function point(e){const w=Math.max(1,innerWidth),h=Math.max(1,innerHeight),nx=clamp(e.clientX/w),ny=clamp(e.clientY/h);return{x:Math.round(e.clientX),y:Math.round(e.clientY),nx:Number(nx.toFixed(4)),ny:Number(ny.toFixed(4)),zone:ny<.22?"top":ny>.78?"bottom":nx<.33?"left":nx>.67?"right":"center"}}
   function targetMeta(t){const el=t?.closest?.("button,[role=button],input,textarea,select,.pattern-tile")||t;return{targetId:el?.id||null,targetRole:el?.getAttribute?.("role")||el?.tagName?.toLowerCase?.()||null,targetClass:String(el?.className||"").split(/\s+/).filter(Boolean).slice(0,4).join(" ")||null}}
   function emit(type,payload){C.recordEvent?.(type,payload,!!activeSession())}
   document.addEventListener("pointerdown",e=>{
-    const p=point(e);pointers.set(e.pointerId,{...p,at:performance.now(),pointerType:e.pointerType||"unknown"});
+    const p=point(e);pointers.set(e.pointerId,{...p,lastX:e.clientX,lastY:e.clientY,at:performance.now(),pointerType:e.pointerType||"unknown"});
     emit("screen_pointer_down",{...p,...targetMeta(e.target),pointerType:e.pointerType||"unknown",fingers:pointers.size,view:Setka.getState?.()?.view||null})
   },true);
   document.addEventListener("pointermove",e=>{
-    if(!pointers.has(e.pointerId))return;const now=performance.now();if(now-lastMoveAt<110)return;lastMoveAt=now;
-    const p=point(e),start=pointers.get(e.pointerId),st=Setka.getState?.();
+    if(!pointers.has(e.pointerId))return;
+    const now=performance.now(),start=pointers.get(e.pointerId),moved=Math.hypot(e.clientX-start.lastX,e.clientY-start.lastY);
+    if(now-lastMoveAt<POINTER_SAMPLE_MS||moved<POINTER_MIN_DISTANCE_PX)return;
+    lastMoveAt=now;start.lastX=e.clientX;start.lastY=e.clientY;
+    const p=point(e),st=Setka.getState?.();
     emit("screen_pointer_move",{...p,pointerType:e.pointerType||start.pointerType||"unknown",fingers:pointers.size,dx:Math.round(e.clientX-start.x),dy:Math.round(e.clientY-start.y),view:st?.view||null,libraryPage:st?.libraryPage||null,configKey:st?.configKey||null})
   },true);
   function endPointer(e,type){const start=pointers.get(e.pointerId),p=point(e);if(start){const dist=Math.hypot(e.clientX-start.x,e.clientY-start.y),durationMs=Math.max(0,Math.round(performance.now()-start.at));emit(type,{...p,...targetMeta(e.target),pointerType:e.pointerType||start.pointerType||"unknown",fingers:Math.max(1,pointers.size),distancePx:Math.round(dist),durationMs,view:Setka.getState?.()?.view||null});if(dist<14&&durationMs<700)emit("ui_tap",{...p,...targetMeta(e.target),pointerType:e.pointerType||start.pointerType||"unknown",view:Setka.getState?.()?.view||null})}pointers.delete(e.pointerId)}
   document.addEventListener("pointerup",e=>endPointer(e,"screen_pointer_up"),true);
   document.addEventListener("pointercancel",e=>endPointer(e,"screen_pointer_cancel"),true);
-  document.addEventListener("scroll",e=>{const now=performance.now();if(now-lastScrollAt<240)return;lastScrollAt=now;const el=e.target===document?document.scrollingElement:e.target;if(!el||typeof el.scrollTop!=="number")return;emit("screen_scroll",{scrollTop:Math.round(el.scrollTop),scrollHeight:Math.round(el.scrollHeight||0),clientHeight:Math.round(el.clientHeight||0),view:Setka.getState?.()?.view||null})},true);
+  document.addEventListener("scroll",e=>{
+    const now=performance.now(),el=e.target===document?document.scrollingElement:e.target;
+    if(!el||typeof el.scrollTop!=="number")return;
+    const top=Math.round(el.scrollTop),delta=lastScrollTop==null?Infinity:Math.abs(top-lastScrollTop);
+    if(now-lastScrollAt<SCROLL_SAMPLE_MS&&delta<SCROLL_MIN_DISTANCE_PX)return;
+    lastScrollAt=now;lastScrollTop=top;
+    emit("screen_scroll",{scrollTop:top,scrollHeight:Math.round(el.scrollHeight||0),clientHeight:Math.round(el.clientHeight||0),view:Setka.getState?.()?.view||null})
+  },true);
 
   window.__SETKA_V34_DEEP_TELEMETRY__=true;
+  window.__SETKA_V34_REPLAY_SAMPLE_HZ__=8;
 })();
