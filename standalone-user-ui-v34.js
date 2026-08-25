@@ -25,6 +25,15 @@
     .st34-user-insight h3{font-size:15px;margin:0 0 8px}.st34-user-insight p{font-size:12px;line-height:1.5;color:rgba(255,255,255,.58);margin:0}
     .st34-user-pattern{display:flex;align-items:center;gap:12px}.st34-user-preview{width:72px;height:72px;border-radius:18px;border:1px solid rgba(255,255,255,.14);background:#000;flex:none}
     .st34-user-metric{font-size:11px;color:rgba(255,255,255,.52);line-height:1.5;margin-top:6px}
+    .st34-note-card{border:1px solid rgba(255,255,255,.16);border-radius:24px;background:#090909;padding:17px;margin:12px 0;overflow:hidden}
+    .st34-note-text{font-size:20px;line-height:1.28;color:#fff;margin:0 0 8px}
+    .st34-note-meta{font-size:11px;line-height:1.45;color:rgba(255,255,255,.42);margin-bottom:14px}
+    .st34-note-preview-button{display:block;width:100%;border:0;background:#000;padding:0;border-radius:18px;overflow:hidden;position:relative;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+    .st34-note-preview-button:active{transform:scale(.992)}
+    .st34-note-preview{display:block;width:100%;aspect-ratio:1.42/1;background:#000}
+    .st34-note-preview-label{padding:9px 4px 1px;text-align:center;font-size:9px;letter-spacing:.12em;color:rgba(255,255,255,.32)}
+    .st34-note-open-mark{position:absolute;right:12px;bottom:12px;height:30px;padding:0 11px;border:1px solid rgba(255,255,255,.25);border-radius:15px;background:rgba(0,0,0,.62);display:flex;align-items:center;color:#fff;font-size:10px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+    .st34-note-no-preview{border:1px dashed rgba(255,255,255,.13);border-radius:18px;padding:22px;text-align:center;color:rgba(255,255,255,.3);font-size:11px}
   `;
   document.head.appendChild(style);
 
@@ -49,6 +58,62 @@
   }
   function usableSessions(){return C.getData().sessions.filter(s=>s.startedAt)}
   function current(){return C.getActiveSession()}
+
+  function drawPatternPreview(canvas,config,frame=44){
+    if(!canvas||!config)return;
+    const ctx=canvas.getContext("2d"),w=canvas.width,h=canvas.height;
+    const c={...Setka.DEFAULT_CONFIG,...config};
+    const rad=d=>d*Math.PI/180,mod=(n,m)=>((n%m)+m)%m;
+    ctx.fillStyle="#000";ctx.fillRect(0,0,w,h);ctx.save();ctx.translate(w/2,h/2);
+    const extent=Math.max(40,c.tentacleLength*3+c.baseRadius+c.tentacleLength*c.circleSize/20);
+    const scale=Math.min(.92,(Math.min(w,h)/2-9)/extent);ctx.scale(scale,scale);
+    const shift=Number(frame||44)*c.colorSpeed*.5;
+    for(let i=0;i<360;i+=360/c.numTentacles){
+      const x0=Math.sin(rad(i))*c.baseRadius,y0=Math.cos(rad(i))*c.baseRadius;
+      for(let q=0;q<c.tentacleLength;q+=c.segmentStep){
+        const a=Math.cos(rad(c.tentacleLength-q+Number(frame||44)*c.movementSpeed))*q;
+        const xx=Math.sin(rad(i-a))*q*3,yy=Math.cos(rad(i-a))*q*3,d=(c.tentacleLength-q)*c.circleSize/10;
+        let col="#fff";
+        if(c.colorModeIndex===1)col=`hsl(${mod(i+q*2+shift,360)} 100% 50%)`;
+        if(c.colorModeIndex===2)col=`hsl(${mod(Number(frame||44)+q*2,360)} 100% 50%)`;
+        if(c.colorModeIndex===3)col="hsl(200 100% 50%)";
+        if(c.colorModeIndex===4)col="hsl(330 100% 50%)";
+        if(c.colorModeIndex===5)col=`hsl(${mod(Math.atan2(yy,xx)*180/Math.PI+180+shift,360)} 100% 50%)`;
+        if(c.colorModeIndex===6)col=`hsl(${mod(i+shift,360)} 100% 50%)`;
+        if(c.colorModeIndex===7)col=`hsl(${mod(q*5+shift,360)} 100% 50%)`;
+        if(c.colorModeIndex===8)col=`hsl(${mod(xx+yy+shift,360)} 100% 50%)`;
+        ctx.strokeStyle=col;ctx.lineWidth=c.lineWeight;ctx.beginPath();ctx.arc(x0+xx,y0+yy,Math.max(.075,d/2),0,Math.PI*2);ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
+  function openNoteMoment(n){
+    if(!n?.config)return;
+    C.hideLayer();
+    Setka.openConfig?.(clone(n.config),{type:"memory",id:n.id,communityId:n.communityId||null,noteId:n.id});
+  }
+
+  function renderNoteCard(parent,n,{compact=false}={}){
+    const card=document.createElement("article");card.className="st34-note-card";
+    const context=[];
+    if(n.requestKey)context.push(intentLabel(n.requestKey));
+    if(n.sessionElapsedMs!=null&&n.sessionId)context.push(`${fmt(n.sessionElapsedMs)} от начала`);
+    const head=document.createElement("div");
+    head.innerHTML=`<div class="st34-note-text">${esc(n.text)}</div><div class="st34-note-meta">${dt(n.observedAt)}${context.length?` · ${esc(context.join(" · "))}`:""}</div>`;
+    card.appendChild(head);
+    if(n.config){
+      const open=document.createElement("button");open.type="button";open.className="st34-note-preview-button";open.setAttribute("aria-label","Открыть паттерн в момент заметки");
+      const canvas=document.createElement("canvas");canvas.className="st34-note-preview";canvas.width=720;canvas.height=500;open.appendChild(canvas);
+      const mark=document.createElement("span");mark.className="st34-note-open-mark";mark.textContent="Открыть ↗";open.appendChild(mark);
+      open.onclick=()=>openNoteMoment(n);card.appendChild(open);
+      const label=document.createElement("div");label.className="st34-note-preview-label";label.textContent="ПАТТЕРН В МОМЕНТ ЗАМЕТКИ";card.appendChild(label);
+      requestAnimationFrame(()=>drawPatternPreview(canvas,n.config,n.frame));
+    }else if(!compact){
+      const empty=document.createElement("div");empty.className="st34-note-no-preview";empty.textContent="У этой старой заметки визуальный момент не сохранился";card.appendChild(empty);
+    }
+    parent.appendChild(card);return card;
+  }
 
   function showToday(){
     C.setNav("today");
@@ -83,20 +148,9 @@
 
   function showNotes(){
     C.setNav("me");const d=C.getData();
-    const b=C.screen("Заметки","То, что ты захотела сохранить во время исследования паттернов.","МОЯ ПАМЯТЬ",showMe);
+    const b=C.screen("Заметки","Мысли и визуальные моменты, которые ты захотела сохранить.","МОЯ ПАМЯТЬ",showMe);
     if(!d.notes.length){b.innerHTML='<div class="st-empty">Пока заметок нет.</div>';return}
-    for(const n of d.notes.slice().reverse()){
-      const row=document.createElement("div");row.className="st-note";
-      const context=n.requestKey?` · ${intentLabel(n.requestKey)}`:"";
-      row.innerHTML=`<div>${esc(n.text)}</div><div class="st-note-time">${dt(n.observedAt)}${esc(context)}</div>`;
-      if(n.config){
-        const open=document.createElement("button");open.className="st-secondary";open.style.height="38px";
-        open.textContent="Открыть сохранённый момент ↗";
-        open.onclick=()=>{C.hideLayer();Setka.openConfig?.(clone(n.config),{type:"memory",id:n.id,communityId:n.communityId||null})};
-        row.appendChild(open);
-      }
-      b.appendChild(row);
-    }
+    for(const n of d.notes.slice().reverse())renderNoteCard(b,n);
   }
 
   function showSessions(){
@@ -136,13 +190,13 @@
     const usage=sessionUsage(s);
     if(usage.length){
       const l=document.createElement("div");l.className="st-label";l.textContent="Паттерны этой сессии";b.appendChild(l);
-      usage.slice(0,5).forEach((u,i)=>action(b,i===0?"Самый используемый вариант":"Ещё один вариант",`${fmt(u.ms)}${u.saved?" · сохранён ♥":""}`,()=>{C.hideLayer();Setka.openConfig?.(clone(u.config),{type:"history",id:`${sid}-${i}`})}));
+      usage.slice(0,5).forEach((u,i)=>action(b,i===0?"Самый используемый вариант":"Ещё один вариант",`${fmt(u.ms)}${u.saved?" · сохранён ♥":""}`,()=>{C.hideLayer();Setka.openConfig?.(clone(u.config),{type:"history",id:`${sid}-${i}`,sessionId:sid})}));
     }
 
     const notes=d.notes.filter(n=>n.sessionId===sid);
     if(notes.length){
       const l=document.createElement("div");l.className="st-label";l.textContent="Заметки";b.appendChild(l);
-      for(const n of notes){const c=document.createElement("div");c.className="st-card";c.textContent=n.text;b.appendChild(c)}
+      for(const n of notes)renderNoteCard(b,n,{compact:true});
     }
 
     const p=pulseForSession(sid);
@@ -191,8 +245,6 @@
 
   function showPulse(){
     C.setNav("me");
-    // Capture the original sensor action callbacks, then immediately replace its
-    // developer-oriented screen with a participant-friendly one.
     let connect=null,stop=null;
     if(typeof original.showPhysio==="function"){
       original.showPhysio();
@@ -214,8 +266,6 @@
 
   function resetLocal(){
     if(!confirm("Удалить твою локальную историю SETKA на этом устройстве?"))return;
-    // Reuse the original reset through the existing storage contract rather than
-    // exposing storage keys or research internals to the participant.
     try{localStorage.removeItem("setka-standalone:v34");localStorage.removeItem("setka-standalone:active:v34")}catch(_){}
     location.reload();
   }
@@ -238,6 +288,7 @@
   C.showSessionDetail=showSessionDetail;
   C.showPhysio=showPulse;
   C.showUserInsights=showInsights;
+  C.renderParticipantNoteCard=renderNoteCard;
 
   // Core v34 registered its bottom-nav listener before this module. Intercept only
   // Today / Me in capture phase so those tabs always use the participant-facing views.
