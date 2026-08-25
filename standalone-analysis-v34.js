@@ -13,8 +13,63 @@
   const baseDetail=C.showSessionDetail;
   if(typeof baseDetail==="function")C.showSessionDetail=function(sid){baseDetail(sid);requestAnimationFrame(()=>injectSessionAnalysis(sid))};
 
-  // Personal recommendation score. It uses only measured pattern usage for the main
-  // outcome signal; after-feedback exploration does not inflate pre→post results.
-  function recalcRecommendations(){const d=C.getData(),items=C.publicCommunity||[],active=C.getActiveSession(),currentRequest=active?.requestKey||null,recentRequests=d.sessions.slice(-6).map(s=>s.requestKey).filter(Boolean);const scored=[];for(const item of items){const key=Setka.configKey?.(item.config||Setka.DEFAULT_CONFIG);if(!key)continue;let score=(Number(item.saveCount)||0)*.03,seen=0;for(const s of d.sessions){const uses=(s.usage||[]).filter(u=>u.phase==="measured"&&u.configKey===key);if(!uses.length)continue;seen++;const duration=Math.min(1,uses.reduce((a,u)=>a+Number(u.durationMs||0),0)/180000),delta=Number(s.postState)-Number(s.preState);score+=duration*.6;if(Number.isFinite(delta))score+=Math.max(-1.5,Math.min(1.5,delta))*1.4;if(s.helped===2)score+=1.3;else if(s.helped===1)score+=.55;if(uses.some(u=>u.saved))score+=1.1;if(currentRequest&&s.requestKey===currentRequest)score+=1.6;else if(!currentRequest&&recentRequests.includes(s.requestKey))score+=.25}if(!seen)score+=.12;scored.push([String(item.id),score])}scored.sort((a,b)=>b[1]-a[1]);Setka.setRecommendations?.({community:scored.slice(0,5).map(x=>x[0]),patterns:["tentacle-orbit"]})}
-  window.addEventListener("setka:standalone-event",e=>{if(["session_end","feedback_submit","continuation_start"].includes(e.detail?.type))recalcRecommendations()});window.addEventListener("setka:favorite-saved",recalcRecommendations);window.addEventListener("setka:favorite-removed",recalcRecommendations);setTimeout(recalcRecommendations,900);setInterval(recalcRecommendations,5000);
+  // The glow has one clear meaning for the participant: "worth trying now for the
+  // goal of the active session". No active goal (or "Просто исследую") = no glow.
+  // Main outcome evidence comes only from measured usage before feedback.
+  function scoreConfigForGoal(configKey,goal){
+    const d=C.getData();let score=0,evidence=0;
+    for(const s of d.sessions){
+      if(!s?.completed||s.requestKey!==goal)continue;
+      const uses=(s.usage||[]).filter(u=>u.phase==="measured"&&u.configKey===configKey);
+      if(!uses.length)continue;
+      evidence++;
+      const usedMs=uses.reduce((a,u)=>a+Number(u.durationMs||0),0);
+      const durationWeight=Math.min(1,usedMs/180000);
+      const delta=Number(s.postState)-Number(s.preState);
+      score+=durationWeight*.45;
+      if(Number.isFinite(delta))score+=Math.max(-2,Math.min(2,delta))*1.5;
+      if(s.helped===2)score+=1.7;else if(s.helped===1)score+=.7;else if(s.helped===0)score-=.6;
+      if(uses.some(u=>u.saved))score+=1.0;
+    }
+    return{score,evidence};
+  }
+
+  function recalcRecommendations(){
+    const active=C.getActiveSession();
+    const goal=active?.requestKey||null;
+    if(!goal||goal==="explore"||!["measured","after_feedback","feedback","done_feedback"].includes(active?.phase||"")){
+      Setka.setRecommendations?.({community:[],patterns:[]});
+      return;
+    }
+
+    const candidates=[];
+    const baseKey=Setka.configKey?.(Setka.DEFAULT_CONFIG);
+    if(baseKey){const r=scoreConfigForGoal(baseKey,goal);if(r.evidence>0)candidates.push({kind:"base",id:"tentacle-orbit",...r})}
+    for(const item of C.publicCommunity||[]){
+      const key=Setka.configKey?.(item.config||Setka.DEFAULT_CONFIG);if(!key)continue;
+      const r=scoreConfigForGoal(key,goal);if(r.evidence>0)candidates.push({kind:"community",id:String(item.id),...r});
+    }
+
+    if(!candidates.length){
+      Setka.setRecommendations?.({community:[],patterns:[]});
+      return;
+    }
+
+    candidates.sort((a,b)=>(b.score/Math.max(1,b.evidence))-(a.score/Math.max(1,a.evidence))||b.evidence-a.evidence);
+    const relevantSessionCount=C.getData().sessions.filter(s=>s?.completed&&s.requestKey===goal).length;
+    const limit=relevantSessionCount>=4?3:relevantSessionCount>=2?2:1;
+    const chosen=candidates.filter(x=>x.score>0).slice(0,limit);
+    Setka.setRecommendations?.({
+      community:chosen.filter(x=>x.kind==="community").map(x=>x.id),
+      patterns:chosen.some(x=>x.kind==="base")?["tentacle-orbit"]:[]
+    });
+  }
+
+  window.addEventListener("setka:standalone-event",e=>{
+    if(["session_start","feedback_submit","continuation_start","session_end"].includes(e.detail?.type))setTimeout(recalcRecommendations,0);
+  });
+  window.addEventListener("setka:favorite-saved",recalcRecommendations);
+  window.addEventListener("setka:favorite-removed",recalcRecommendations);
+  setTimeout(recalcRecommendations,900);
+  setInterval(recalcRecommendations,5000);
 })();
