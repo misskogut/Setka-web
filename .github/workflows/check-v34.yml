@@ -14,6 +14,7 @@ on:
       - 'standalone-config-links-v34.js'
       - 'standalone-controls-v34.js'
       - 'standalone-sync-v34.js'
+      - 'standalone-navigation-v34.js'
       - 'standalone-admin-bridge-v34b.js'
       - 'admin-replay-first-v34.js'
       - 'standalone-admin-v34.html'
@@ -39,5 +40,6 @@ jobs:
       - run: node --check standalone-config-links-v34.js
       - run: node --check standalone-controls-v34.js
       - run: node --check standalone-sync-v34.js
+      - run: node --check standalone-navigation-v34.js
       - run: node --check standalone-admin-bridge-v34b.js
       - run: node --check admin-replay-first-v34.js
