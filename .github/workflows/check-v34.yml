@@ -27,6 +27,7 @@ on:
       - 'standalone-admin-activity-v34.js'
       - 'standalone-admin-retention-v34.js'
       - 'standalone-admin-participant-modal-v34.js'
+      - 'standalone-admin-evolution-login-v35.js'
       - 'standalone-admin-evolution-v35.js'
       - 'admin-replay-first-v34.js'
       - 'standalone-admin-v34.html'
@@ -66,5 +67,6 @@ jobs:
       - run: node --check standalone-admin-activity-v34.js
       - run: node --check standalone-admin-retention-v34.js
       - run: node --check standalone-admin-participant-modal-v34.js
+      - run: node --check standalone-admin-evolution-login-v35.js
       - run: node --check standalone-admin-evolution-v35.js
       - run: node --check admin-replay-first-v34.js
