@@ -1,0 +1,32 @@
+name: Check SETKA New Chat v1
+
+on:
+  push:
+    branches: ["feature/new-chat-social-v1"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Check JavaScript syntax
+        run: |
+          node --check standalone-new-chat-social-v2.js
+          node --check standalone-admin-new-chat-social-v1.js
+      - name: Check page references
+        run: |
+          test -f standalone-new-chat-v1.html
+          test -f standalone-admin-new-chat-v1.html
+          grep -q 'standalone-new-chat-social-v2.js' standalone-new-chat-v1.html
+          grep -q 'standalone-admin-new-chat-social-v1.js' standalone-admin-new-chat-v1.html
+          grep -q 'standalone-admin-evolution-v35.js' standalone-admin-new-chat-v1.html
+          ! test -f standalone-new-chat-social-v1.js
+          ! test -f standalone-new-chat-cruise-semantic-v1.js
+          ! test -f standalone-admin-new-chat-v1.js
