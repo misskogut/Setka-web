@@ -10,6 +10,7 @@ on:
       - 'standalone-advanced-v34.js'
       - 'standalone-analysis-v34.js'
       - 'standalone-user-ui-v34.js'
+      - 'standalone-states-v34.js'
       - 'standalone-bootstrap-v34.js'
       - 'standalone-config-links-v34.js'
       - 'standalone-controls-v34.js'
@@ -36,6 +37,7 @@ jobs:
       - run: node --check standalone-advanced-v34.js
       - run: node --check standalone-analysis-v34.js
       - run: node --check standalone-user-ui-v34.js
+      - run: node --check standalone-states-v34.js
       - run: node --check standalone-bootstrap-v34.js
       - run: node --check standalone-config-links-v34.js
       - run: node --check standalone-controls-v34.js
