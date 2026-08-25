@@ -30,21 +30,23 @@
     return normalize(d);
   }
   function exactForSource(config,source={}){
-    let exact=config?normalize(config):normalize(Setka.DEFAULT_CONFIG);
+    const hasExplicit=!!config&&typeof config==="object";
+    let exact=hasExplicit?normalize(config):normalize(Setka.DEFAULT_CONFIG);
     if(source?.type==="favorite"&&source.id){
       const fav=Setka.getFavorites?.().find(x=>String(x.id)===String(source.id));
       if(fav?.config)exact=normalize(fav.config);
     }
-    if(source?.type==="community"&&source.id){
+    // Community tiles created by app-v2 already carry the exact config in their closure.
+    // Never replace that explicit snapshot with a second lookup, because the merged
+    // community array can be reordered/deduplicated independently. Only use a lookup as
+    // a fallback when no explicit config was supplied at all.
+    if(source?.type==="community"&&source.id&&!hasExplicit){
       const item=(C.publicCommunity||[]).find(x=>String(x.id)===String(source.id));
       if(item?.config)exact=normalize(item.config);
     }
     return exact;
   }
 
-  // Critical fix: advanced v34 may fall back to DEFAULT_CONFIG while still carrying the
-  // correct favorite/community source id. Resolve the exact saved snapshot again at the
-  // last possible moment before the gameplay renderer receives it.
   const nativeOpen=Setka.openConfig.bind(Setka);
   Setka.openConfig=(config,source={})=>{
     const exact=exactForSource(config,source);
@@ -67,8 +69,6 @@
   C.buildConfigLink=buildLink;
   C.openExactConfig=(config,source={type:"exact",id:"manual"})=>Setka.openConfig(normalize(config),source);
 
-  // Exact links from the sandbox admin open directly into gameplay, without changing
-  // the saved favorite itself and without starting a measured session automatically.
   const params=new URLSearchParams(location.search),linked=decode(params.get("cfg"));
   if(linked){
     const noteId=params.get("note")||null,src=params.get("src")||"admin-link";
