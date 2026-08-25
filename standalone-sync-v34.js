@@ -4,6 +4,7 @@
   if(!C)return;
 
   const API="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-standalone-v34";
+  const SEMANTIC_API="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-semantic-v35";
   const API_KEY="sb_publishable_1jL-x9_kp6rpfGghpSp_OA_OiXDnvsv";
   const CHANNEL="yulia_lab_v34";
   const DEVICE_KEY="setka-standalone:v34-yulia-device";
@@ -24,10 +25,13 @@
   }catch(_){deviceId=makeId();firstSeen=new Date().toISOString()}
 
   let busy=false,lastSignature="",timer=0,lastOkAt=null,lastError=null,lastPolicy=null;
+  function favorites(){
+    try{return (window.SetkaApp?.getFavorites?.()||[]).map(f=>({id:f.id,patternId:f.baseId||f.patternId,baseId:f.baseId,config:f.config,createdAt:f.createdAt,sourceType:"favorite"}))}catch(_){return[]}
+  }
   function signature(){
-    const d=C.getData(),p=d.physio?.samples||[];
+    const d=C.getData(),p=d.physio?.samples||[],fav=favorites();
     const lastSession=d.sessions?.at?.(-1),lastEvent=d.events?.at?.(-1),lastNote=d.notes?.at?.(-1),lastCheck=d.checkins?.at?.(-1);
-    return [d.sessions?.length||0,lastSession?.id||"",lastSession?.phase||"",lastSession?.measuredActiveMs||0,lastSession?.afterFeedbackActiveMs||0,d.events?.length||0,lastEvent?.id||"",d.notes?.length||0,lastNote?.id||"",d.checkins?.length||0,lastCheck?.id||"",p.length,p.at?.(-1)?.id||"",window.SetkaApp?.getFavorites?.().length||0].join("|");
+    return [d.sessions?.length||0,lastSession?.id||"",lastSession?.phase||"",lastSession?.measuredActiveMs||0,lastSession?.afterFeedbackActiveMs||0,d.events?.length||0,lastEvent?.id||"",d.notes?.length||0,lastNote?.id||"",d.checkins?.length||0,lastCheck?.id||"",p.length,p.at?.(-1)?.id||"",fav.length,fav.map(x=>x.id).join(",")].join("|");
   }
   function viewport(){return{width:innerWidth,height:innerHeight,dpr:devicePixelRatio||1,screenWidth:screen?.width||null,screenHeight:screen?.height||null}}
   function deltaEvents(events){
@@ -45,16 +49,22 @@
     lastPolicy={retentionDays:out.retentionDays||90,sampleHz:out.sampleHz||8,rawCutoffAt:out.rawCutoffAt||null};
     window.dispatchEvent(new CustomEvent("setka:v34-replay-policy",{detail:lastPolicy}));
   }
+  async function syncSemantic(fav,keepalive=false){
+    try{
+      await fetch(SEMANTIC_API,{method:"POST",headers:{"Content-Type":"application/json","apikey":API_KEY},body:JSON.stringify({action:"sync",channel:CHANNEL,deviceId,favorites:fav}),keepalive});
+    }catch(_){/* semantic sync must never block participant use */}
+  }
   async function sync(force=false,keepalive=false){
     if(busy)return false;
     const sig=signature();if(!force&&sig===lastSignature)return true;
     busy=true;lastError=null;
     try{
-      const d=C.getData(),delta=deltaEvents(d.events||[]);
+      const d=C.getData(),delta=deltaEvents(d.events||[]),fav=favorites();
       const body={action:"sync",channel:CHANNEL,deviceId,firstSeenAt:firstSeen,userAgent:navigator.userAgent,viewport:viewport(),archive:lightArchive(d),eventsDelta:delta};
       const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json","apikey":API_KEY},body:JSON.stringify(body),keepalive});
       if(!r.ok)throw new Error(`sync_${r.status}`);
       const out=await r.json();
+      await syncSemantic(fav,keepalive);
       if(delta.length){eventCursor=delta.at(-1)?.id||eventCursor;try{localStorage.setItem(EVENT_CURSOR_KEY,eventCursor)}catch(_){}}
       lastSignature=sig;lastOkAt=out.updatedAt||new Date().toISOString();applyServerPolicy(out);
       try{localStorage.setItem(STATUS_KEY,lastOkAt)}catch(_){}
@@ -66,8 +76,8 @@
   function schedule(ms=900){clearTimeout(timer);timer=setTimeout(()=>sync(false),ms)}
 
   window.addEventListener("setka:standalone-event",()=>schedule(700));
-  window.addEventListener("setka:favorite-saved",()=>schedule(500));
-  window.addEventListener("setka:favorite-removed",()=>schedule(500));
+  window.addEventListener("setka:favorite-saved",()=>schedule(300));
+  window.addEventListener("setka:favorite-removed",()=>schedule(300));
   window.addEventListener("setka:v34-sync-request",()=>sync(true));
   document.addEventListener("visibilitychange",()=>{if(document.hidden)sync(true,true);else schedule(300)});
   window.addEventListener("pagehide",()=>sync(true,true));
