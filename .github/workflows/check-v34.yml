@@ -14,6 +14,7 @@ on:
       - 'standalone-user-ui-v34.js'
       - 'standalone-session-patterns-v34.js'
       - 'standalone-states-v34.js'
+      - 'standalone-state-timeline-v34.js'
       - 'standalone-session-states-v34.js'
       - 'standalone-explore-v34.js'
       - 'standalone-bootstrap-v34.js'
@@ -46,6 +47,7 @@ jobs:
       - run: node --check standalone-user-ui-v34.js
       - run: node --check standalone-session-patterns-v34.js
       - run: node --check standalone-states-v34.js
+      - run: node --check standalone-state-timeline-v34.js
       - run: node --check standalone-session-states-v34.js
       - run: node --check standalone-explore-v34.js
       - run: node --check standalone-bootstrap-v34.js
