@@ -26,6 +26,7 @@ on:
       - 'standalone-admin-participants-v34.js'
       - 'standalone-admin-activity-v34.js'
       - 'standalone-admin-retention-v34.js'
+      - 'standalone-admin-participant-modal-v34.js'
       - 'admin-replay-first-v34.js'
       - 'standalone-admin-v34.html'
       - 'standalone-v34.html'
@@ -62,4 +63,5 @@ jobs:
       - run: node --check standalone-admin-participants-v34.js
       - run: node --check standalone-admin-activity-v34.js
       - run: node --check standalone-admin-retention-v34.js
+      - run: node --check standalone-admin-participant-modal-v34.js
       - run: node --check admin-replay-first-v34.js
