@@ -11,7 +11,6 @@
   const deviceFromSession=id=>{const s=String(id||"");if(!s.startsWith("pv34::"))return null;const p=s.split("::");return p[1]||null};
   const arr=v=>Array.isArray(v)?v:[];
   const n=(v,d=0)=>Number.isFinite(Number(v))?Number(v):d;
-  const clone=v=>v==null?v:JSON.parse(JSON.stringify(v));
   const response=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{"Content-Type":"application/json; charset=utf-8","Access-Control-Allow-Origin":"*"}});
 
   let cache=null,cacheAt=0,loading=null,currentParticipantId=null;
@@ -36,14 +35,19 @@
     })();
     try{return await loading}catch(e){loading=null;throw e}
   }
+  function payloadFor(r,deviceId){return r.byDevice.get(deviceId)?.snapshot?.payload||{}}
+  function activityScore(r,deviceId){
+    const p=payloadFor(r,deviceId);
+    return arr(p.sessions).length+arr(p.events).length+arr(p.notes).length+arr(p.checkins).length+arr(p.physio?.samples).length;
+  }
+  function participantDevices(r){return r.devices.filter(d=>activityScore(r,d.device_id)>0)}
   function meta(r,deviceId){
-    const idx=Math.max(0,r.devices.findIndex(x=>x.device_id===deviceId));
+    const visible=participantDevices(r),idx=Math.max(0,visible.findIndex(x=>x.device_id===deviceId));
     const ordinal=`Участник ${idx+1}`;
     const alias=String(r.aliases.get(deviceId)||"").trim();
     return{deviceId,id:participantId(deviceId),ordinal,alias,display:alias||ordinal,secondary:alias?ordinal:"Без имени"};
   }
   function decorateParticipantRef(r,deviceId){const m=meta(r,deviceId);return{id:m.id,access_code:m.display,label:m.secondary}}
-  function payloadFor(r,deviceId){return r.byDevice.get(deviceId)?.snapshot?.payload||{}}
   function participantRow(r,d){
     const m=meta(r,d.device_id),p=payloadFor(r,d.device_id),sessions=arr(p.sessions),days=new Set(sessions.map(s=>String(s.startedAt||"").slice(0,10)).filter(Boolean));
     return{id:m.id,access_code:m.display,label:m.secondary,active:d.active!==false,bound:true,device_hash:d.device_id,bound_at:d.first_seen_at,created_at:d.first_seen_at,last_seen_at:d.last_seen_at,sessionCount:sessions.length,activeDays:days.size,symptomCount:arr(p.symptoms).filter(x=>x.active!==false).length,inviteCount:arr(p.invites).length,profile:null};
@@ -67,14 +71,14 @@
   }
   function noteRows(r){
     const out=[];
-    for(const d of r.devices){const ref=decorateParticipantRef(r,d.device_id),p=payloadFor(r,d.device_id);for(const x of arr(p.notes))out.push({id:`${d.device_id}::${x.id}`,participant_id:ref.id,session_id:x.sessionId?`pv34::${d.device_id}::${x.sessionId}`:null,note_text:x.text,phase:x.phase==="free"?"standalone":x.phase,observed_at:x.observedAt,local_offset_minutes:x.localOffsetMinutes,session_elapsed_ms:x.sessionElapsedMs,request_key:x.requestKey,pattern_id:x.patternId,pattern_version:x.patternVersion,source_type:x.sourceType,source_id:x.sourceId,community_config_id:null,config_hash:x.configHash,config:x.config||x.state?.config||{},preview_frame:x.frame??x.state?.frame??44,participants:ref})}
+    for(const d of participantDevices(r)){const ref=decorateParticipantRef(r,d.device_id),p=payloadFor(r,d.device_id);for(const x of arr(p.notes))out.push({id:`${d.device_id}::${x.id}`,participant_id:ref.id,session_id:x.sessionId?`pv34::${d.device_id}::${x.sessionId}`:null,note_text:x.text,phase:x.phase==="free"?"standalone":x.phase,observed_at:x.observedAt,local_offset_minutes:x.localOffsetMinutes,session_elapsed_ms:x.sessionElapsedMs,request_key:x.requestKey,pattern_id:x.patternId,pattern_version:x.patternVersion,source_type:x.sourceType,source_id:x.sourceId,community_config_id:null,config_hash:x.configHash,config:x.config||x.state?.config||{},preview_frame:x.frame??x.state?.frame??44,participants:ref})}
     return out.sort((a,b)=>Date.parse(b.observed_at||0)-Date.parse(a.observed_at||0));
   }
   function inviteRows(r){
-    const out=[];for(const d of r.devices){const ref=decorateParticipantRef(r,d.device_id),p=payloadFor(r,d.device_id);for(const x of arr(p.invites))out.push({id:`${d.device_id}::${x.id}`,participant_id:ref.id,code:x.code,created_at:x.createdAt,activated_at:x.activatedAt,status:x.status,participants:ref})}return out;
+    const out=[];for(const d of participantDevices(r)){const ref=decorateParticipantRef(r,d.device_id),p=payloadFor(r,d.device_id);for(const x of arr(p.invites))out.push({id:`${d.device_id}::${x.id}`,participant_id:ref.id,code:x.code,created_at:x.createdAt,activated_at:x.activatedAt,status:x.status,participants:ref})}return out;
   }
   function overviewPatch(r,o){
-    const counts=r.devices.map(d=>arr(payloadFor(r,d.device_id).sessions).length),participants=r.devices.length,returners=counts.filter(x=>x>1).length;
+    const devices=participantDevices(r),counts=devices.map(d=>arr(payloadFor(r,d.device_id).sessions).length),participants=devices.length,returners=counts.filter(x=>x>1).length;
     return{...o,participants,returners};
   }
   async function rename(adminKey,pid,label){
@@ -91,7 +95,7 @@
       try{await rename(adminKey,body.participantId,body.label);return response({ok:true})}catch(e){return response({error:e.message||"rename_failed"},e.status||500)}
     }
     if(action==="admin-participants-v4"){
-      try{const r=await raw(adminKey,true);return response({participants:r.devices.map(d=>participantRow(r,d))})}catch(e){return response({error:e.message||"load_failed"},e.status||500)}
+      try{const r=await raw(adminKey,true),devices=participantDevices(r);return response({participants:devices.map(d=>participantRow(r,d))})}catch(e){return response({error:e.message||"load_failed"},e.status||500)}
     }
     if(action==="admin-participant-symptoms"){
       try{const r=await raw(adminKey),deviceId=deviceFromParticipant(body.participantId);currentParticipantId=body.participantId||null;return response({items:deviceId?participantSymptoms(r,deviceId):[]})}catch(e){return response({error:e.message||"load_failed"},e.status||500)}
