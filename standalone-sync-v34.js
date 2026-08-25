@@ -42,7 +42,9 @@
   async function sync(force=false,keepalive=false){
     if(busy)return false;const sig=signature();if(!force&&sig===lastSignature)return true;busy=true;lastError=null;
     try{
-      C.patternExposure?.flush?.();
+      // Do not close an active gameplay exposure just to sync. It closes only on a
+      // meaningful boundary (config/view/session/visibility/pagehide), preserving one
+      // uninterrupted exposure instead of chopping it into 12-second sync fragments.
       const d=C.getData(),delta=deltaByCursor(d.events||[],eventCursor,"id"),fav=favorites(),exp=exposures(),expDelta=deltaByCursor(exp,exposureCursor,"exposureId");
       const body={action:"sync",channel:CHANNEL,deviceId,firstSeenAt:firstSeen,userAgent:navigator.userAgent,viewport:viewport(),archive:lightArchive(d),eventsDelta:delta};
       const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json","apikey":API_KEY},body:JSON.stringify(body),keepalive});if(!r.ok)throw new Error(`sync_${r.status}`);const out=await r.json();
