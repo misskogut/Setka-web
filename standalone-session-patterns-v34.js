@@ -6,9 +6,9 @@
   const clone=v=>v==null?v:JSON.parse(JSON.stringify(v));
   const esc=C.esc;
   const intentLabel=k=>C.INTENTS.find(x=>x[0]===k)?.[1]||"Сессия";
-  const face=v=>C.FACES.find(x=>x[0]===Number(v))?.[1]||"—";
   const patternIdOf=u=>u?.patternId||u?.config?.patternId||"tentacle-orbit";
   const patternTitle=pid=>Setka.getPatternTitle?.(pid)||(pid==="dandelion"?"Одуванчик":"Tentacle Orbit");
+  const isExploration=s=>!!(s?.isExploration||s?.sessionType==="exploration"||s?.requestKey==="explore");
 
   const style=document.createElement("style");
   style.textContent=`
@@ -32,7 +32,7 @@
   `;
   document.head.appendChild(style);
 
-  function stableSegments(session,phase){
+  function stableSegments(session,phase=null){
     return (session?.usage||[])
       .filter(u=>u?.config&&Number(u.durationMs)>0&&(!phase||u.phase===phase))
       .map((u,index)=>({
@@ -50,63 +50,53 @@
       .sort((a,b)=>b.durationMs-a.durationMs||a.startedMs-b.startedMs);
   }
 
+  function weighted(arr,total){return arr.map((x,rank)=>({...x,rank:rank+1,participationWeight:total?x.durationMs/total:0}))}
   function sessionWeights(session){
+    if(isExploration(session)){
+      const exploration=stableSegments(session),total=exploration.reduce((a,x)=>a+x.durationMs,0);
+      return{
+        sessionId:session?.id||null,sessionType:"exploration",requestKey:"explore",
+        result:null,explorationTotalMs:total,exploration:weighted(exploration,total),
+        measuredTotalMs:0,afterFeedbackTotalMs:0,measured:[],afterFeedback:[]
+      };
+    }
     const measured=stableSegments(session,"measured"),after=stableSegments(session,"after_feedback");
     const measuredTotalMs=measured.reduce((a,x)=>a+x.durationMs,0),afterTotalMs=after.reduce((a,x)=>a+x.durationMs,0);
-    const withWeight=(arr,total)=>arr.map((x,rank)=>({...x,rank:rank+1,participationWeight:total?x.durationMs/total:0}));
     return{
-      sessionId:session?.id||null,
-      requestKey:session?.requestKey||null,
+      sessionId:session?.id||null,sessionType:"outcome",requestKey:session?.requestKey||null,
       result:{preState:session?.preState??null,postState:session?.postState??null,helped:session?.helped??null,completed:!!session?.completed},
-      measuredTotalMs,
-      afterFeedbackTotalMs:afterTotalMs,
-      measured:withWeight(measured,measuredTotalMs),
-      afterFeedback:withWeight(after,afterTotalMs)
+      measuredTotalMs,afterFeedbackTotalMs:afterTotalMs,
+      measured:weighted(measured,measuredTotalMs),afterFeedback:weighted(after,afterTotalMs),
+      explorationTotalMs:0,exploration:[]
     };
   }
 
-  C.getSessionPatternWeights=sid=>{
-    const s=C.getData().sessions.find(x=>x.id===sid);
-    return s?sessionWeights(s):null;
-  };
+  C.getSessionPatternWeights=sid=>{const s=C.getData().sessions.find(x=>x.id===sid);return s?sessionWeights(s):null};
 
   function durationLabel(ms){
-    ms=Math.max(0,Number(ms)||0);
-    if(ms<1000)return`${Math.max(.1,ms/1000).toFixed(1).replace(".0","")} сек`;
-    return C.fmt(ms);
+    ms=Math.max(0,Number(ms)||0);if(ms<1000)return`${Math.max(.1,ms/1000).toFixed(1).replace(".0","")} сек`;return C.fmt(ms);
   }
-
-  function renderPreview(canvas,segment){
-    requestAnimationFrame(()=>{
-      try{Setka.renderPreview?.(canvas,segment.config,segment.previewFrame,segment.patternId)}catch(_){}
-    });
-  }
-
+  function renderPreview(canvas,segment){requestAnimationFrame(()=>{try{Setka.renderPreview?.(canvas,segment.config,segment.previewFrame,segment.patternId)}catch(_){}})}
   function openSegment(session,segment,rank){
-    C.recordEvent?.("session_stable_config_open",{
-      viewedSessionId:session.id,
-      patternId:segment.patternId,
-      configKey:segment.configKey,
-      durationMs:segment.durationMs,
-      rank,
-      phase:segment.phase
-    },false);
-    C.hideLayer();
-    Setka.openConfig?.(clone(segment.config),{
-      type:"history",
-      id:`${session.id}-stable-${segment.phase}-${segment.index}`,
-      sessionId:session.id,
-      patternId:segment.patternId
-    });
+    C.recordEvent?.("session_stable_config_open",{viewedSessionId:session.id,sessionType:isExploration(session)?"exploration":"outcome",patternId:segment.patternId,configKey:segment.configKey,durationMs:segment.durationMs,rank,phase:segment.phase},false);
+    C.hideLayer();Setka.openConfig?.(clone(segment.config),{type:"history",id:`${session.id}-stable-${segment.phase}-${segment.index}`,sessionId:session.id,patternId:segment.patternId});
   }
 
   function makeCard(session,segment,rank,totalMs,scope){
-    const share=totalMs?Math.max(0,Math.min(1,segment.durationMs/totalMs)):0;
-    const b=document.createElement("button");b.type="button";b.className="st34-stable-card";
+    const share=totalMs?Math.max(0,Math.min(1,segment.durationMs/totalMs)):0,b=document.createElement("button");b.type="button";b.className="st34-stable-card";
     const canvas=document.createElement("canvas");canvas.className="st34-stable-preview";canvas.width=260;canvas.height=260;b.appendChild(canvas);
     const info=document.createElement("div");
-    const rankText=rank===1?(scope==="measured"?"Дольше всего без изменений":"Дольше всего после оценки"):`${rank}-е по времени`;
-    const relation=scope==="measured"?`${Math.round(share*100)}% времени в паттернах до оценки`:`${Math.round(share*100)}% времени после оценки`;
+    let rankText,relation;
+    if(scope==="exploration"){
+      rankText=rank===1?"Дольше всего без изменений":`${rank}-е по времени`;
+      relation=`${Math.round(share*100)}% времени просмотра комбинаций`;
+    }else if(scope==="measured"){
+      rankText=rank===1?"Дольше всего без изменений":`${rank}-е по времени`;
+      relation=`${Math.round(share*100)}% времени в паттернах до оценки`;
+    }else{
+      rankText=rank===1?"Дольше всего после оценки":`${rank}-е по времени`;
+      relation=`${Math.round(share*100)}% времени после оценки`;
+    }
     info.innerHTML=`<div class="st34-stable-rank">${esc(rankText)}</div><div class="st34-stable-name">${esc(patternTitle(segment.patternId))}</div><div class="st34-stable-time">${esc(durationLabel(segment.durationMs))}</div><div class="st34-stable-meta">${esc(relation)}${segment.saved?" · сохранён ♥":""}</div><div class="st34-stable-bar"><i style="width:${Math.round(share*100)}%"></i></div>`;
     b.appendChild(info);b.onclick=()=>openSegment(session,segment,rank);renderPreview(canvas,segment);return b;
   }
@@ -115,26 +105,31 @@
     if(!segments.length)return;
     const wrap=document.createElement("div");wrap.className=`st34-session-patterns${scope==="after"?" st34-session-after":""}`;
     const head=document.createElement("div");head.className="st34-session-patterns-head";
-    if(scope==="measured")head.innerHTML='<b>Конфигурации до оценки</b><span>От самого долгого непрерывного просмотра без изменения параметров — к более короткому.</span>';
+    if(scope==="exploration")head.innerHTML='<b>Комбинации этого исследования</b><span>От самого долгого непрерывного просмотра без изменения параметров — к более короткому.</span>';
+    else if(scope==="measured")head.innerHTML='<b>Конфигурации до оценки</b><span>От самого долгого непрерывного просмотра без изменения параметров — к более короткому.</span>';
     else head.innerHTML='<b>После итоговой оценки</b><span>Эти просмотры сохранены отдельно и не участвуют в связи с результатом «до → после».</span>';
     wrap.appendChild(head);
-    const initial=6;
-    segments.slice(0,initial).forEach((x,i)=>wrap.appendChild(makeCard(session,x,i+1,totalMs,scope==="measured"?"measured":"after")));
-    if(segments.length>initial){
-      const more=document.createElement("button");more.type="button";more.className="st34-stable-more";more.textContent=`Показать ещё ${segments.length-initial}`;
-      more.onclick=()=>{segments.slice(initial).forEach((x,i)=>wrap.insertBefore(makeCard(session,x,i+initial+1,totalMs,scope==="measured"?"measured":"after"),more));more.remove()};wrap.appendChild(more);
-    }
-    if(scope==="measured"){
-      const method=document.createElement("div");method.className="st34-session-method";method.textContent="Доля по времени — это вес участия конкретной конфигурации в этой сессии. Она помогает сравнивать выборы внутри одного запроса и результата, но сама по себе не доказывает эффект.";wrap.appendChild(method);
-    }
-    parent.appendChild(wrap);
+    const initial=6;segments.slice(0,initial).forEach((x,i)=>wrap.appendChild(makeCard(session,x,i+1,totalMs,scope)));
+    if(segments.length>initial){const more=document.createElement("button");more.type="button";more.className="st34-stable-more";more.textContent=`Показать ещё ${segments.length-initial}`;more.onclick=()=>{segments.slice(initial).forEach((x,i)=>wrap.insertBefore(makeCard(session,x,i+initial+1,totalMs,scope),more));more.remove()};wrap.appendChild(more)}
+    const method=document.createElement("div");method.className="st34-session-method";
+    method.textContent=scope==="exploration"
+      ?"Доля по времени показывает, какие комбинации сильнее удерживали внимание в свободном исследовании. Здесь нет результата «до → после», поэтому этот вес не трактуется как эффект."
+      :scope==="measured"
+        ?"Доля по времени — это вес участия конкретной конфигурации в этой сессии. Она помогает сравнивать выборы внутри одного запроса и результата, но сама по себе не доказывает эффект."
+        :"Просмотры после итоговой оценки хранятся отдельно от измеряемого результата.";
+    wrap.appendChild(method);parent.appendChild(wrap);
   }
 
   function findSession(title,copy){
-    const all=C.getData().sessions||[];
-    const exact=all.filter(s=>C.dt(s.startedAt)===copy&&intentLabel(s.requestKey)===title);
+    const all=C.getData().sessions||[],exact=all.filter(s=>C.dt(s.startedAt)===copy&&intentLabel(s.requestKey)===title);
     if(exact.length)return exact.sort((a,b)=>Date.parse(b.startedAt)-Date.parse(a.startedAt))[0];
     return all.filter(s=>C.dt(s.startedAt)===copy).sort((a,b)=>Date.parse(b.startedAt)-Date.parse(a.startedAt))[0]||null;
+  }
+
+  function insertionAnchor(body){
+    const notes=[...body.querySelectorAll(":scope > .st34-note-card")];if(notes.length)return notes.at(-1);
+    const notesLabel=[...body.querySelectorAll(":scope > .st-label")].find(x=>x.textContent.trim()==="Заметки");if(notesLabel)return notesLabel;
+    return body.querySelector(":scope > .st-card")||null;
   }
 
   function enhanceSession(body,title,copy){
@@ -143,21 +138,22 @@
     const oldLabel=[...body.querySelectorAll(":scope > .st-label")].find(x=>x.textContent.trim()==="Паттерны этой сессии");
     if(!oldLabel)return;
     body.dataset.stablePatternsEnhanced="1";
-    let n=oldLabel.nextElementSibling;
-    while(n&&n.classList.contains("st-action")){const next=n.nextElementSibling;n.remove();n=next}
-    const marker=document.createElement("div");marker.className="st-label";marker.textContent="Паттерны этой сессии";oldLabel.replaceWith(marker);
-    const holder=document.createElement("div");marker.insertAdjacentElement("afterend",holder);
+    let n=oldLabel.nextElementSibling;while(n&&n.classList.contains("st-action")){const next=n.nextElementSibling;n.remove();n=next}oldLabel.remove();
+
+    const marker=document.createElement("div");marker.className="st-label";marker.textContent=isExploration(session)?"Комбинации":"Паттерны этой сессии";
+    const holder=document.createElement("div");
+    const anchor=insertionAnchor(body);
+    if(anchor){anchor.insertAdjacentElement("afterend",marker);marker.insertAdjacentElement("afterend",holder)}else{body.append(marker,holder)}
+
     const weights=sessionWeights(session);
-    renderGroup(holder,session,weights.measured,weights.measuredTotalMs,"measured");
-    renderGroup(holder,session,weights.afterFeedback,weights.afterFeedbackTotalMs,"after");
+    if(weights.sessionType==="exploration")renderGroup(holder,session,weights.exploration,weights.explorationTotalMs,"exploration");
+    else{
+      renderGroup(holder,session,weights.measured,weights.measuredTotalMs,"measured");
+      renderGroup(holder,session,weights.afterFeedback,weights.afterFeedbackTotalMs,"after");
+    }
   }
 
   const nativeScreen=C.screen.bind(C);
-  C.screen=function(title,copy="",kicker="SETKA",back){
-    const body=nativeScreen(title,copy,kicker,back);
-    if(kicker==="СЕССИЯ")setTimeout(()=>enhanceSession(body,title,copy),0);
-    return body;
-  };
-
+  C.screen=function(title,copy="",kicker="SETKA",back){const body=nativeScreen(title,copy,kicker,back);if(kicker==="СЕССИЯ")setTimeout(()=>enhanceSession(body,title,copy),0);return body};
   window.__SETKA_SESSION_PATTERN_WEIGHTS_V34__=true;
 })();
