@@ -1,92 +1,33 @@
 <!doctype html>
 <html lang="ru">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#0b0b0c" />
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-  <title>SETKA Admin Новый чат v1.0</title>
-  <link rel="stylesheet" href="styles.css?v=new-chat-1" />
-  <style>
-    :root { color-scheme: dark; }
-    body { margin:0; background:#0b0b0c; color:#f5f5f5; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
-    .nc-shell { max-width:1180px; margin:0 auto; padding:24px 18px 60px; }
-    .nc-head { display:flex; gap:16px; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; margin-bottom:22px; }
-    .nc-kicker { font-size:12px; letter-spacing:.12em; text-transform:uppercase; opacity:.55; }
-    h1 { margin:6px 0 0; font-size:32px; }
-    .nc-badge { border:1px solid #3a3a3d; border-radius:999px; padding:8px 12px; font-size:12px; opacity:.8; }
-    .nc-tabs { display:flex; gap:8px; flex-wrap:wrap; margin:18px 0 20px; }
-    .nc-tab { background:#151518; border:1px solid #2e2e32; color:#fff; border-radius:999px; padding:9px 13px; cursor:pointer; }
-    .nc-tab.active { background:#fff; color:#111; }
-    .nc-grid { display:grid; grid-template-columns:repeat(12,minmax(0,1fr)); gap:14px; }
-    .nc-card { grid-column:span 4; background:#141416; border:1px solid #29292d; border-radius:18px; padding:16px; }
-    .nc-card.wide { grid-column:span 8; }
-    .nc-card.full { grid-column:1/-1; }
-    .nc-title { font-weight:700; font-size:17px; margin-bottom:8px; }
-    .nc-sub { opacity:.62; font-size:13px; line-height:1.45; }
-    .metric { display:flex; justify-content:space-between; gap:20px; padding:8px 0; border-bottom:1px solid #242428; font-size:14px; }
-    .metric:last-child { border-bottom:0; }
-    .signal { display:inline-flex; border:1px solid #34343a; border-radius:999px; padding:6px 9px; margin:3px 4px 3px 0; font-size:11px; letter-spacing:.03em; }
-    .semantic { margin-top:12px; border-left:3px solid #f5f5f5; padding:10px 12px; background:#101012; border-radius:0 12px 12px 0; line-height:1.45; }
-    .content-row { padding:12px 0; border-bottom:1px solid #242428; }
-    .content-row:last-child { border-bottom:0; }
-    .meta { opacity:.55; font-size:12px; margin-top:5px; }
-    .actions { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
-    .btn { border:1px solid #35353a; background:#1a1a1e; color:#fff; border-radius:10px; padding:8px 10px; font-size:12px; cursor:pointer; }
-    .btn.primary { background:#fff; color:#111; }
-    .timeline { display:flex; gap:6px; align-items:flex-end; height:90px; padding-top:10px; }
-    .bar { flex:1; min-width:8px; background:#eee; border-radius:5px 5px 2px 2px; opacity:.9; }
-    .hidden { display:none !important; }
-    @media (max-width:850px){ .nc-card,.nc-card.wide{grid-column:1/-1;} h1{font-size:27px;} }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="theme-color" content="#000" />
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<title>SETKA Research Admin — Новый чат v1.0</title>
+<link rel="stylesheet" href="admin-v3.css?v=2" />
+<style>.setka-evolution-mark{display:inline-flex;margin-top:7px;padding:4px 8px;border:1px solid rgba(255,255,255,.2);border-radius:999px;font-size:9px;letter-spacing:.11em;color:rgba(255,255,255,.62)}</style>
 </head>
 <body>
-  <main class="nc-shell">
-    <header class="nc-head">
-      <div>
-        <div class="nc-kicker">SETKA research admin · third line</div>
-        <h1>Админка Новый чат</h1>
-      </div>
-      <div class="nc-badge">v1.0 · base Evolution v35.2</div>
-    </header>
-
-    <nav class="nc-tabs" aria-label="Разделы">
-      <button class="nc-tab active" data-view="overview">Overview</button>
-      <button class="nc-tab" data-view="notes">Public Notes</button>
-      <button class="nc-tab" data-view="cruise">Cruise</button>
-      <button class="nc-tab" data-view="signals">Signals</button>
-      <button class="nc-tab" data-view="system">Data/System</button>
-    </nav>
-
-    <section id="view-overview" class="nc-view">
-      <div class="nc-grid">
-        <article class="nc-card"><div class="nc-title">Public Notes</div><div class="metric"><span>Published</span><strong id="ovNotes">0</strong></div><div class="metric"><span>Unique saves</span><strong id="ovNoteSaves">0</strong></div><div class="metric"><span>Comments</span><strong id="ovComments">0</strong></div></article>
-        <article class="nc-card"><div class="nc-title">Cruise</div><div class="metric"><span>Published</span><strong id="ovCruises">0</strong></div><div class="metric"><span>Total play time</span><strong id="ovCruiseTime">0m</strong></div><div class="metric"><span>Replays</span><strong id="ovReplays">0</strong></div></article>
-        <article class="nc-card"><div class="nc-title">Social depth</div><div class="metric"><span>Save = ♥</span><strong>canonical</strong></div><div class="metric"><span>Cheap likes</span><strong>0</strong></div><div class="metric"><span>Public IDs exposed</span><strong>0</strong></div></article>
-        <article class="nc-card wide"><div class="nc-title">Current strongest interpretation</div><div id="overviewSemantic" class="semantic">Пока недостаточно данных. Система начнёт помечать паттерны после накопления устойчивых сигналов.</div></article>
-        <article class="nc-card"><div class="nc-title">Why this line exists</div><div class="nc-sub">Экспериментальная social + Cruise архитектура. Standard v34.10 и Evolution v35.x не изменяются.</div></article>
-      </div>
-    </section>
-
-    <section id="view-notes" class="nc-view hidden">
-      <div class="nc-grid"><article class="nc-card full"><div class="nc-title">Публичные заметки</div><div class="nc-sub">♥ = уникальное сохранение заметки. Комментарии считаются отдельно.</div><div id="notesList"></div></article></div>
-    </section>
-
-    <section id="view-cruise" class="nc-view hidden">
-      <div class="nc-grid"><article class="nc-card full"><div class="nc-title">Cruise library</div><div class="nc-sub">Записанные визуальные сессии: события, конфигурации, длительность, сохранения, повторные просмотры.</div><div id="cruiseList"></div></article></div>
-    </section>
-
-    <section id="view-signals" class="nc-view hidden">
-      <div class="nc-grid">
-        <article class="nc-card wide"><div class="nc-title">Behavioral signal engine</div><div id="signalCards"></div></article>
-        <article class="nc-card"><div class="nc-title">Public interpretation rules</div><div class="nc-sub">Детерминированные правила по percentile/relative thresholds. Один главный комментарий + максимум один дополнительный сигнал.</div></article>
-      </div>
-    </section>
-
-    <section id="view-system" class="nc-view hidden">
-      <div class="nc-grid"><article class="nc-card full"><div class="nc-title">Canonical events</div><div id="eventsBox" class="nc-sub"></div></article></div>
-    </section>
-  </main>
-<script src="standalone-admin-new-chat-v1.js?v=1.0"></script>
+<div id="login" class="login"><div class="loginbox"><div class="brand">SETKA RESEARCH</div><div class="setka-evolution-mark">НОВЫЙ ЧАТ · v1.0</div><div class="muted small" style="margin-top:8px">Evolution v35.2 clone + Social / Cruise / Signals</div><input id="keyInput" type="password" placeholder="Admin key" autocomplete="current-password"><button id="loginBtn" class="btn primary" style="width:100%;margin-top:10px">Войти</button><div id="loginError" class="muted small" style="margin-top:12px"></div></div></div>
+<div id="dashboard" class="shell hidden">
+  <div class="top"><div><div class="brand">SETKA RESEARCH</div><div class="setka-evolution-mark">НОВЫЙ ЧАТ · v1.0</div><div class="sub" style="margin-top:7px">EVOLUTION v35.2 BASE · SOCIAL × CRUISE × SEMANTIC SIGNALS</div></div><div class="spacer"></div><button id="createCodeBtn" class="btn primary">+ ID</button><button id="refreshBtn" class="btn">Обновить</button><button id="logoutBtn" class="btn">Выйти</button></div>
+  <div class="tabs"></div>
+  <section id="tab-overview" class="tab-page hidden"></section>
+  <section id="tab-journey" class="tab-page hidden"></section>
+  <section id="tab-participants" class="tab-page hidden"></section>
+  <section id="tab-timing" class="tab-page hidden"></section>
+  <section id="tab-symptoms" class="tab-page hidden"></section>
+  <section id="tab-notes" class="tab-page hidden"></section>
+  <section id="tab-invites" class="tab-page hidden"></section>
+  <section id="tab-insights" class="tab-page hidden"></section>
+  <section id="tab-community" class="tab-page hidden"></section>
+  <section id="detail" class="hidden"></section>
+</div>
+<script src="standalone-admin-evolution-login-v35.js?v=35.2"></script>
+<script src="standalone-admin-evolution-v35.js?v=35.2"></script>
+<script src="standalone-admin-evolution-pattern-lab-v35.js?v=35.2"></script>
+<script src="standalone-admin-new-chat-social-v1.js?v=1.0"></script>
 </body>
 </html>
