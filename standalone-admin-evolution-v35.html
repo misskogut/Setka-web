@@ -13,18 +13,8 @@
 <div id="login" class="login"><div class="loginbox"><div class="brand">SETKA RESEARCH</div><div class="setka-evolution-mark">EVOLUTION · v35.1</div><div class="muted small" style="margin-top:8px">Административная исследовательская панель</div><input id="keyInput" type="password" placeholder="Admin key" autocomplete="current-password"><button id="loginBtn" class="btn primary" style="width:100%;margin-top:10px">Войти</button><div id="loginError" class="muted small" style="margin-top:12px"></div></div></div>
 <div id="dashboard" class="shell hidden">
   <div class="top"><div><div class="brand">SETKA RESEARCH</div><div class="setka-evolution-mark">EVOLUTION · v35.1</div><div class="sub" style="margin-top:7px">HUMAN ANALYTICS · PARTICIPANT × PATTERN × STATE × SESSION × UX</div></div><div class="spacer"></div><button id="createCodeBtn" class="btn primary">+ ID</button><button id="refreshBtn" class="btn">Обновить</button><button id="logoutBtn" class="btn">Выйти</button></div>
-  <div class="tabs">
-    <button class="tab active" data-tab="overview">Обзор</button>
-    <button class="tab" data-tab="journey">Путь по приложению</button>
-    <button class="tab" data-tab="participants">Участники</button>
-    <button class="tab" data-tab="timing">Таймер / удержание</button>
-    <button class="tab" data-tab="symptoms">Симптомы</button>
-    <button class="tab" data-tab="notes">Заметки</button>
-    <button class="tab" data-tab="invites">Инвайты</button>
-    <button class="tab" data-tab="insights">Запросы / эффект</button>
-    <button class="tab" data-tab="community">Сообщество</button>
-  </div>
-  <section id="tab-overview" class="tab-page"></section>
+  <div class="tabs"></div>
+  <section id="tab-overview" class="tab-page hidden"></section>
   <section id="tab-journey" class="tab-page hidden"></section>
   <section id="tab-participants" class="tab-page hidden"></section>
   <section id="tab-timing" class="tab-page hidden"></section>
@@ -33,19 +23,9 @@
   <section id="tab-invites" class="tab-page hidden"></section>
   <section id="tab-insights" class="tab-page hidden"></section>
   <section id="tab-community" class="tab-page hidden"></section>
-  <section id="detail" class="hidden" style="margin-top:16px"></section>
+  <section id="detail" class="hidden"></section>
 </div>
-<script src="standalone-admin-bridge-v34b.js?v=34-final-admin-2"></script>
-<script src="standalone-admin-participants-v34.js?v=34.8.1"></script>
-<script src="standalone-admin-activity-v34.js?v=34.8.2"></script>
-<script src="standalone-admin-participant-modal-v34.js?v=34.10"></script>
-<script src="admin-replay-first-v34.js?v=34-first-replay-1"></script>
-<script src="admin-v3.js?v=2"></script>
-<script src="admin-v4-extra.js?v=2"></script>
-<script src="admin-v5-extra.js?v=1"></script>
-<script src="admin-guest-v12.js?v=1"></script>
-<script src="admin-sensors-v13.js?v=2"></script>
-<script src="standalone-admin-retention-v34.js?v=34.9"></script>
+<script src="standalone-admin-evolution-login-v35.js?v=35.1"></script>
 <script src="standalone-admin-evolution-v35.js?v=35.1"></script>
 </body>
 </html>
