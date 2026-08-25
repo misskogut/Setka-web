@@ -24,6 +24,7 @@ on:
       - 'standalone-navigation-v34.js'
       - 'standalone-admin-bridge-v34b.js'
       - 'standalone-admin-participants-v34.js'
+      - 'standalone-admin-activity-v34.js'
       - 'admin-replay-first-v34.js'
       - 'standalone-admin-v34.html'
       - 'standalone-v34.html'
@@ -58,4 +59,5 @@ jobs:
       - run: node --check standalone-navigation-v34.js
       - run: node --check standalone-admin-bridge-v34b.js
       - run: node --check standalone-admin-participants-v34.js
+      - run: node --check standalone-admin-activity-v34.js
       - run: node --check admin-replay-first-v34.js
