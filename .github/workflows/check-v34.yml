@@ -16,6 +16,7 @@ on:
       - 'standalone-admin-v34.js'
       - 'standalone-admin-deep-v34.js'
       - 'standalone-admin-notes-v34.js'
+      - 'standalone-admin-video-v34.js'
       - 'standalone-admin-v34.html'
       - 'standalone-v34.html'
       - '.github/workflows/check-v34.yml'
@@ -41,3 +42,4 @@ jobs:
       - run: node --check standalone-admin-v34.js
       - run: node --check standalone-admin-deep-v34.js
       - run: node --check standalone-admin-notes-v34.js
+      - run: node --check standalone-admin-video-v34.js
