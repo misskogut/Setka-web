@@ -4,6 +4,7 @@ on:
     paths:
       - 'standalone-core-v34.js'
       - 'standalone-runtime-v34.js'
+      - 'standalone-favorites-repair-v34.js'
       - 'standalone-methodology-v34.js'
       - 'standalone-advanced-v34.js'
       - 'standalone-analysis-v34.js'
@@ -27,6 +28,7 @@ jobs:
           node-version: '22'
       - run: node --check standalone-core-v34.js
       - run: node --check standalone-runtime-v34.js
+      - run: node --check standalone-favorites-repair-v34.js
       - run: node --check standalone-methodology-v34.js
       - run: node --check standalone-advanced-v34.js
       - run: node --check standalone-analysis-v34.js
