@@ -15,7 +15,7 @@
     if(type==="memory"||type==="note")next={kind:"notes",id:source.noteId||source.id||null};
     else if(type==="favorite")next={kind:"favorites",id:source.id||null};
     else if(type==="community")next={kind:"community",id:source.id||source.communityId||null};
-    else if(type==="history")next={kind:"sessions",id:source.sessionId||null};
+    else if(type==="history")next={kind:"session-detail",sessionId:source.sessionId||null,id:source.id||null};
     else if(type==="personal")next={kind:"insights",id:source.id||null};
     else if(type==="base")next={kind:"library",page:"all"};
     else if(type==="exact-link")next={kind:"library",page:"all"};
@@ -46,12 +46,15 @@
     if(bypass)return;
     e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
     const o=clone(origin)||{kind:"library",page:"all"};
-    C.recordEvent?.("game_return",{origin:o.kind,page:o.page||null},!!C.getActiveSession?.());
+    C.recordEvent?.("game_return",{origin:o.kind,page:o.page||null,sessionId:o.sessionId||null},!!C.getActiveSession?.());
 
     if(o.kind==="notes")return leaveGame("all",()=>C.showNotes?.());
     if(o.kind==="favorites")return leaveGame("favorites");
     if(o.kind==="community")return leaveGame("community");
-    if(o.kind==="sessions")return leaveGame("all",()=>C.showSessions?.());
+    if(o.kind==="session-detail"){
+      if(o.sessionId&&typeof C.showSessionDetail==="function")return leaveGame("all",()=>C.showSessionDetail(o.sessionId));
+      return leaveGame("all",()=>C.showSessions?.());
+    }
     if(o.kind==="insights")return leaveGame("all",()=>C.showUserInsights?.());
     leaveGame(o.page||"all");
   },true);
