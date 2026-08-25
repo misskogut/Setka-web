@@ -27,8 +27,10 @@ on:
       - 'standalone-admin-activity-v34.js'
       - 'standalone-admin-retention-v34.js'
       - 'standalone-admin-participant-modal-v34.js'
+      - 'standalone-admin-evolution-v35.js'
       - 'admin-replay-first-v34.js'
       - 'standalone-admin-v34.html'
+      - 'standalone-admin-evolution-v35.html'
       - 'standalone-v34.html'
       - '.github/workflows/check-v34.yml'
 jobs:
@@ -64,4 +66,5 @@ jobs:
       - run: node --check standalone-admin-activity-v34.js
       - run: node --check standalone-admin-retention-v34.js
       - run: node --check standalone-admin-participant-modal-v34.js
+      - run: node --check standalone-admin-evolution-v35.js
       - run: node --check admin-replay-first-v34.js
