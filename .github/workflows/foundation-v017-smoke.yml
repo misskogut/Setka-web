@@ -1,0 +1,35 @@
+name: SETKA Foundation 0.1.7 Smoke
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax
+        run: |
+          node --check foundation-api-route-v017.js
+          node --check foundation-user-patch-v017.js
+          node --check foundation-admin-patch-v017.js
+          node --check foundation-control-context-v017.js
+          node --check foundation-control-refresh-v017.js
+          node --check foundation-v017-smoke.mjs
+      - name: Install Playwright core
+        run: npm install --no-save playwright-core@1.55.0
+      - name: Wait for 0.1.7 artifacts
+        run: |
+          for i in $(seq 1 40); do
+            if curl -fsS "https://misskogut.github.io/Setka-web/foundation-shell-user-v017.html" >/dev/null && curl -fsS "https://misskogut.github.io/Setka-web/foundation-shell-president-v017.html" >/dev/null && curl -fsS "https://misskogut.github.io/Setka-web/foundation-user-v017.html" >/dev/null && curl -fsS "https://misskogut.github.io/Setka-web/foundation-admin-v017.html" >/dev/null; then exit 0; fi
+            sleep 5
+          done
+          exit 1
+      - name: Identity + same-place switching smoke
+        env:
+          CHROME_PATH: /usr/bin/chromium
+        run: node foundation-v017-smoke.mjs
