@@ -24,7 +24,7 @@ await page.click('#nextButton');await page.waitForFunction(id=>window.Foundation
 await page.click('#prevButton');await page.waitForFunction(id=>window.FoundationUser.state().currentPattern===id,first,{timeout:10000});
 await page.click('#favoriteButton');await page.waitForFunction(({id,initial})=>!!window.FoundationUser.state().patterns.find(x=>x.patternId===id).favorite!==initial,{id:first,initial},{timeout:10000});
 await page.click('#libraryButton');await page.waitForSelector('#libraryScreen.active');await page.click('#savedPagerButton');
-const savedCount=await page.locator('#savedPanel .pattern-tile').count();if(initial? savedCount<1 : savedCount!==1)throw new Error('saved_panel_count '+savedCount);
+const firstSaved=await page.locator(`#savedPanel [data-pattern-id="${first}"]`).count();const expectedSaved=initial?0:1;if(firstSaved!==expectedSaved)throw new Error(`saved_state expected=${expectedSaved} actual=${firstSaved}`);
 await page.click('#patternsPagerButton');await page.click(`#patternsPanel [data-pattern-id="${first}"]`);await page.click('#favoriteButton');await page.waitForFunction(({id,initial})=>!!window.FoundationUser.state().patterns.find(x=>x.patternId===id).favorite===initial,{id:first,initial},{timeout:10000});
 await page.click('#libraryButton');
 const session=await page.evaluate(async api=>{const r=await fetch(api,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'synthetic_login',personaKey:'sonya_regular',pairVersion:'0.2.0'})});const d=await r.json();if(!r.ok)throw new Error(JSON.stringify(d));return d.sessionToken},API);
