@@ -1,0 +1,24 @@
+name: SETKA President Top-Level Research Smoke
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'diamond-president-v082.html'
+      - 'president-top-level-research-smoke.mjs'
+      - '.github/workflows/president-top-level-research-smoke.yml'
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --no-save playwright-core@1.55.0
+      - name: Wait for Pages propagation
+        run: sleep 18
+      - name: Smoke top-level historical research on mobile viewport
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+          PRESIDENT_RESEARCH_URL: https://misskogut.github.io/Setka-web/diamond-president-v082.html?v=diamond-v0.3
+        run: node president-top-level-research-smoke.mjs
