@@ -16,6 +16,7 @@ try{
   await p.waitForSelector('#pinListTool',{timeout:15000});
   const f=p.frameLocator('#appFrame');await f.locator('.patternCard').first().waitFor({timeout:30000});assert.equal(await f.locator('.patternCard').count(),2);
   assert.equal(await f.locator('body').getAttribute('data-foundation-version'),'018');
+
   const a=await browser.newPage({viewport:{width:1180,height:820}});const aerrors=[];a.on('pageerror',e=>aerrors.push(String(e)));a.on('console',m=>{if(m.type()==='error')aerrors.push(m.text())});
   await gotoRetry(a,BASE+'foundation-president.html?view=0.1.8');
   await a.waitForFunction(()=>document.readyState==='interactive'||document.readyState==='complete',{timeout:30000});
@@ -24,8 +25,15 @@ try{
   await a.waitForFunction(()=>document.querySelector('#versionSelect')?.value==='0.1.8',{timeout:30000});
   await a.waitForFunction(()=>window.FoundationContextV018?.version==='0.1.8'&&!!window.FoundationPinsV018,{timeout:20000});
   await a.waitForSelector('#pinListTool',{timeout:15000});
+  const af=a.frameLocator('#appFrame');
+  await af.locator('body').waitFor({state:'attached',timeout:30000});
+  assert.equal(await af.locator('body').getAttribute('data-foundation-version'),'018','President iframe must be the 0.1.8 pair, not a blank/old page');
+  await af.locator('#login').waitFor({state:'attached',timeout:15000});
+  await af.locator('.nav button[data-page="synthetics"]').waitFor({state:'attached',timeout:15000});
+  await af.locator('.nav button[data-page="constants"]').waitFor({state:'attached',timeout:15000});
+  await af.locator('body').evaluate(()=>{if(!window.FoundationAdminPatchV018||window.FoundationAdminPatchV018.version!=='0.1.8')throw new Error('FoundationAdminPatchV018 missing')});
   await a.waitForFunction(()=>document.querySelector('#appFrame')?.contentDocument?.querySelector('.nav button[data-page="synthetics"]')?.classList.contains('active'),{timeout:25000});
   const html=await (await fetch(BASE+'foundation-president.html')).text();assert.match(html,/foundation-control-context-v018\.js/);assert.match(html,/foundation-control-pins-v018\.js/);
   if(errors.length)throw new Error('front errors: '+errors.join(' | '));if(aerrors.length)throw new Error('president errors: '+aerrors.join(' | '));
-  console.log('Foundation 0.1.8 live smoke passed: WORKING pointer, front pair, guarded context restore, pin-board shell, President surface.');
+  console.log('Foundation 0.1.8 live smoke passed: additive lineage, non-blank President pair, constants tab, Front, pin shell.');
 }finally{await browser.close()}
