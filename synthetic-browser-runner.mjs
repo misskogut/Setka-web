@@ -1,3 +1,4 @@
+// Synthetic User Lab browser runner · simulation schema v3
 import { chromium } from 'playwright-core';
 
 const FRONT='https://misskogut.github.io/Setka-web/standalone-new-chat-v1.html';
