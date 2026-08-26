@@ -16,10 +16,11 @@
   html=html.replace(/<title>[^<]*<\/title>/i,'<title>SETKA Diamond · President v0.8.7</title>');
   const policy='<meta http-equiv="Content-Security-Policy" content="default-src \'none\';script-src \'unsafe-inline\' \'self\';connect-src \'self\' https://gfchgaphzhxufwdhrcis.supabase.co;style-src \'unsafe-inline\' \'self\';img-src \'self\' data:;font-src \'self\' data:;base-uri \'none\';form-action \'none\'">';
   html=html.replace(/<\/head>/i,policy+'<link rel="stylesheet" href="./president-v087.css"></head>');
-  const research='<div id="r87bar"><div class="r87brand">SETKA · DIAMOND<span>РАБОЧАЯ ВЕРСИЯ · v0.8.7</span></div><div class="r87note">История версий находится во вкладке «Версии»</div><button id="r87pencil">✎ Записать путь</button></div><div id="r87modal"><div class="r87modalCard"><h2>Что ты показала?</h2><p>Запись пути сохраняется без рисунков, точек и линий на экране.</p><label>Название</label><input id="r87title" maxlength="240"><label>Комментарий</label><textarea id="r87comment" maxlength="6000"></textarea><div class="r87modalActions"><button id="r87continue">Продолжить</button><button id="r87save" class="primary">Сохранить запись</button></div></div></div>';
+  const research='<div id="r87bar"><div class="r87brand">SETKA · DIAMOND<span>РАБОЧАЯ ВЕРСИЯ · v0.8.7</span></div><div class="r87note">История версий находится во вкладке «Версии»</div><button id="r87pencil">✎ Записать путь</button></div><div id="r87modal"><div class="r87modalCard"><h2>Что ты показала?</h2><p>Запись пути сохраняется без рисунков, точек и линий на экране.</p><label>Название</label><input id="r87title" maxlength="240"><label>Комментарий</label><textarea id="r87comment" maxlength="6000></textarea><div class="r87modalActions"><button id="r87continue">Продолжить</button><button id="r87save" class="primary">Сохранить запись</button></div></div></div>';
   html=html.replace(/<body([^>]*)>/i,m=>m+research);
+  const prelude='<script>(function(){const N=window.MutationObserver;window.MutationObserver=class{constructor(){}observe(){}disconnect(){}};setTimeout(function(){window.MutationObserver=N},2500)})()</scr'+'ipt>';
   const runtime='<script src="./president-v087-runtime.js"></scr'+'ipt>';
-  html=html.replace(/<\/body>/i,runtime+'</body>');
+  html=html.replace(/<\/body>/i,prelude+runtime+'</body>');
   document.open();document.write(html);document.close();
 })().catch(e=>{document.getElementById('boot').textContent='SETKA · ОШИБКА v0.8.7 · '+e.message;console.error(e)});
 </script>
