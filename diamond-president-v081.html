@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow,noarchive"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"><title>SETKA Diamond · President v0.8.1</title></head><body style="margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',Arial,sans-serif"><div id="boot" style="display:grid;place-items:center;height:100vh;font-size:12px;letter-spacing:.12em">SETKA · ЗАГРУЖАЮ PRESIDENT v0.8.1</div><script>
+(async()=>{
+let html=await fetch('./diamond-president-v08.html',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('base_'+r.status);return r.text()});
+const replacements=[
+['SETKA Diamond · President v0.8','SETKA Diamond · President v0.8.1'],
+['VERSION RESEARCH','ИССЛЕДОВАНИЕ ВЕРСИЙ'],
+['title="Previous version"','title="Предыдущая версия"'],
+['aria-label="Viewing version"','aria-label="Просматриваемая версия"'],
+['title="Next version"','title="Следующая версия"'],
+['>VIEWING<','>СМОТРИМ<'],
+['>WORKING · …<','>РАБОЧАЯ · …<'],
+['title="Open this version in another research tab"','title="Открыть эту версию в отдельной вкладке исследования"'],
+['>TRACES<','>ЗАПИСИ<'],
+['>READY<','>КАРАНДАШ ГОТОВ<'],
+['title="Start / stop research recording"','title="Записать путь / остановить и добавить комментарий"'],
+['>✎</button>','><span class="pencilIcon">✎</span><span class="pencilText">Записать путь</span></button>'],
+['loading version…','загружаю версию…'],
+['ADMIN RESEARCH MEMORY','ПАМЯТЬ ИССЛЕДОВАНИЙ'],
+['VIEWING · ','СМОТРИМ · '],
+['WORKING · ','РАБОЧАЯ · '],
+['READY','КАРАНДАШ ГОТОВ'],
+['RECORDING','ИДЁТ ЗАПИСЬ'],
+['TRACE SAVED','ЗАПИСЬ СОХРАНЕНА'],
+['FAILED','НЕ РАБОТАЕТ'],
+['no UI','нет интерфейса'],
+['shell loaded','интерфейс загружен'],
+['load error','ошибка загрузки']
+];
+for(const [a,b] of replacements)html=html.split(a).join(b);
+const css=`
+<style id="ruUxPatch">
+.pencil{width:auto!important;min-width:142px!important;height:38px!important;border-radius:10px!important;padding:0 12px!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:7px!important;font-size:12px!important;white-space:nowrap!important}.pencilIcon{font-size:18px;line-height:1}.pencilText{font-weight:820;letter-spacing:.01em}.pencil.recording{min-width:248px!important}.systemEntityRu{font-weight:820!important;color:#fff!important;letter-spacing:.01em}.canonicalHint{opacity:.58}
+@media(max-width:1050px) and (orientation:landscape){.pencil{min-width:132px!important}.pencil.recording{min-width:220px!important}}
+</style>`;
+html=html.replace('</head>',css+'</head>');
+const patch=`<script id="ruUxRuntime">(()=>{
+const pencil=document.getElementById('pencil');
+function pencilLabel(){if(!pencil)return;const on=pencil.classList.contains('recording');let icon=pencil.querySelector('.pencilIcon'),tx=pencil.querySelector('.pencilText');if(!icon||!tx){pencil.innerHTML='<span class="pencilIcon"></span><span class="pencilText"></span>';icon=pencil.querySelector('.pencilIcon');tx=pencil.querySelector('.pencilText')}icon.textContent=on?'■':'✎';tx.textContent=on?'Остановить и добавить комментарий':'Записать путь';pencil.title=on?'Остановить запись и добавить комментарий':'Начать запись пути по админке'}
+if(pencil){new MutationObserver(pencilLabel).observe(pencil,{attributes:true,attributeFilter:['class']});pencilLabel()}
+const dict=new Map([
+['PRESIDENT ROOT','Президент / корневой доступ'],['PRESIDENT','Президент'],['BLACK BOX','Чёрный ящик'],['PREVIEW','Предпросмотр'],['PRODUCTION','Рабочая среда'],['PUBLIC','Публичный контур'],['SIMULATION','Симуляция'],['DRAFT','Черновик'],['RUNTIME','Рабочее подключение'],['DESIGN','Проектная связь'],['GUARDRAIL','Защитное правило'],['WORKSHOP','Мастерская'],['OPERATIONS','Операции'],['EXTERNAL BUSINESS','Внешний бизнес'],['MACHINE','Станок'],['FLOW','Поток'],['VERSIONS','Версии'],['SYSTEM','Система'],['HEADQUARTERS','Штаб-квартира'],['VIEW AS','Посмотреть как роль'],['SETKA ID','Идентификатор SETKA'],['PATTERN EXPOSURE','Экспозиция паттерна']
+]);
+function translateDoc(doc){if(!doc||!doc.body)return;const walker=doc.createTreeWalker(doc.body,NodeFilter.SHOW_TEXT);const nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);for(const n of nodes){const p=n.parentElement;if(!p||/^(SCRIPT|STYLE|TEXTAREA|INPUT|OPTION)$/.test(p.tagName))continue;const raw=n.nodeValue||'',trim=raw.trim(),up=trim.toUpperCase();if(!dict.has(up))continue;const ru=dict.get(up);n.nodeValue=raw.replace(trim,ru);p.dataset.canonical=trim;p.title=p.title||('Системное имя: '+trim);p.classList.add('systemEntityRu')}if(!doc.getElementById('systemEntityRuStyle')){const s=doc.createElement('style');s.id='systemEntityRuStyle';s.textContent='.systemEntityRu{font-weight:820!important;color:#fff!important;letter-spacing:.01em}';doc.head.appendChild(s)}}
+const frame=document.getElementById('cabinet');function apply(){try{translateDoc(frame.contentDocument)}catch(e){console.debug('ru display layer',e)}}if(frame){frame.addEventListener('load',()=>{setTimeout(apply,80);setTimeout(apply,700)});setInterval(apply,1800)}
+})();<\/script>`;
+html=html.replace('</body>',patch+'</body>');
+html=html.replaceAll('diamond-v0.8\'','diamond-v0.8.1\'').replaceAll("label:'v0.8'","label:'v0.8.1'").replaceAll("front:'diamond-president-v0.8'","front:'diamond-president-v0.8.1'");
+document.open();document.write(html);document.close();
+})().catch(e=>{document.getElementById('boot').textContent='SETKA · v0.8.1 · ОШИБКА ЗАГРУЗКИ · '+e.message;console.error(e)});
+</script></body></html>
