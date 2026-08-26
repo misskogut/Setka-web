@@ -1,4 +1,4 @@
-// Synthetic User Lab browser runner · service-only RPC gateway v4
+// Synthetic User Lab browser runner · pointer-tap UI semantics
 import { chromium } from 'playwright-core';
 
 const FRONT='https://misskogut.github.io/Setka-web/standalone-new-chat-v1.html';
@@ -7,6 +7,10 @@ const post=async body=>{const r=await fetch(SIM,{method:'POST',headers:{'content
 const pick=(v,d)=>Array.isArray(v)&&v.length===2?Math.round(Number(v[0])+Math.random()*(Number(v[1])-Number(v[0]))):d;
 const chance=p=>Math.random()<Number(p||0);
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function tapFirstTile(page){
+ const tile=page.locator('.pattern-tile').first(); await tile.scrollIntoViewIfNeeded();
+ await tile.evaluate(async el=>{const r=el.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2,old=el.setPointerCapture;try{el.setPointerCapture=()=>{};const base={bubbles:true,cancelable:true,pointerId:77,pointerType:'touch',isPrimary:true,clientX:x,clientY:y,button:0,buttons:1};el.dispatchEvent(new PointerEvent('pointerdown',base));await new Promise(res=>setTimeout(res,75));el.dispatchEvent(new PointerEvent('pointerup',{...base,buttons:0}))}finally{if(old)el.setPointerCapture=old}});
+}
 
 async function runPersona(browser,p){
  const seed=`${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
@@ -20,14 +24,14 @@ async function runPersona(browser,p){
   await page.goto(FRONT,{waitUntil:'domcontentloaded',timeout:45000}); await page.waitForSelector('.pattern-tile',{timeout:20000}); await log('front_open','library',{archetype:p.archetype});
   const policy=p.behaviorPolicy||{};
   if(chance(policy.communityProbability)){await page.click('#communityPagerButton').catch(()=>{});await log('library_page','community');await sleep(400);await page.click('#libraryPagerButton').catch(()=>{})}
-  await page.locator('.pattern-tile').first().click(); await page.waitForSelector('#gameScreen.active',{timeout:10000}); await log('pattern_open','first_pattern');
+  await tapFirstTile(page); await page.waitForSelector('#gameScreen.active',{timeout:10000}); await log('pattern_open','first_pattern');
   if(chance(policy.readInstructions)){await page.click('#instructionsButton').catch(()=>{});await log('instructions_open','instructions');await sleep(300);await page.click('#closeInstructionsButton').catch(()=>{})}
   const gestures=Math.min(8,pick(policy.gestures,3));
   for(let i=0;i<gestures;i++){const box=await page.locator('#patternCanvas').boundingBox();if(!box)break;const x=box.x+box.width*(.2+Math.random()*.6),y=box.y+box.height*(.25+Math.random()*.5);await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+(Math.random()-.5)*100,y+(Math.random()-.5)*120,{steps:4});await page.mouse.up();await log('gesture','patternCanvas',{i});if(chance(.35))await page.click('#colorButton').catch(()=>{});await sleep(180)}
   const switches=Math.min(4,pick(policy.patternSwitches,1));for(let i=0;i<switches;i++){await page.click(i%2?'#prevButton':'#nextButton').catch(()=>{});await log('pattern_switch',i%2?'prev':'next');await sleep(220)}
   if(chance(policy.saveProbability)){await page.click('#favoriteButton').catch(()=>{});await log('favorite_toggle','gameplay')}
   const dwell=Math.min(12,Math.max(2,pick(policy.dwellSeconds,10)));await sleep(dwell*1000);
-  if(chance(policy.abandonProbability)){await log('abandon','gameplay')}else{await page.click('#libraryButton').catch(()=>{});await log('return_library','library');if(chance(policy.returnProbability)){await page.locator('.pattern-tile').first().click().catch(()=>{});await sleep(800);await page.click('#libraryButton').catch(()=>{});await log('revisit','first_pattern')}}
+  if(chance(policy.abandonProbability)){await log('abandon','gameplay')}else{await page.click('#libraryButton').catch(()=>{});await log('return_library','library');if(chance(policy.returnProbability)){await tapFirstTile(page).catch(()=>{});await sleep(800);await page.click('#libraryButton').catch(()=>{});await log('revisit','first_pattern')}}
   await page.evaluate(()=>window.dispatchEvent(new Event('pagehide'))).catch(()=>{});await sleep(1000);
  }catch(e){ok=false;error=String(e?.message||e)}
  await post({action:'complete',runId:begin.runId,runToken:begin.runToken,ok,steps:seq,error,note:`${p.displayName} / ${p.archetype}`}).catch(()=>{}); await ctx.close(); if(!ok)throw new Error(`${p.personaKey}: ${error}`);
