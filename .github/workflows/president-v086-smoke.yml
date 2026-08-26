@@ -1,0 +1,24 @@
+name: SETKA President v0.8.6 Smoke
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'diamond-president-v086.html'
+      - 'president-v086-smoke.mjs'
+      - '.github/workflows/president-v086-smoke.yml'
+  workflow_dispatch:
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-save playwright-core@1.55.0
+      - run: sleep 20
+      - name: Smoke clean research shell and live blueprint
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+          URL: https://misskogut.github.io/Setka-web/diamond-president-v086.html
+        run: node president-v086-smoke.mjs
