@@ -18,6 +18,8 @@ jobs:
         run: node --check foundation-admin-v016.js
       - name: Check control patch syntax
         run: node --check foundation-control-patch-v016.js
+      - name: Check refresh runtime syntax
+        run: node --check foundation-control-refresh-v016.js
       - name: Check smoke syntax
         run: node --check foundation-v016-smoke.mjs
       - name: Install Playwright core
