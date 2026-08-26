@@ -1,0 +1,7 @@
+import { chromium } from 'playwright-core';
+const b=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||'/usr/bin/google-chrome',args:['--no-sandbox']});
+const p=await b.newPage({viewport:{width:1180,height:820}});let errs=[];p.on('pageerror',e=>errs.push(String(e.message||e)));
+await p.goto(process.env.URL||'https://misskogut.github.io/Setka-web/diamond-president-v085.html',{waitUntil:'networkidle',timeout:45000});
+await p.waitForTimeout(2500);
+const s=await p.evaluate(()=>({title:document.title,bar:!!document.querySelector('#setkaResearchBar'),bp:!!document.querySelector('#bp5'),nav:document.querySelector('#bp5nav')?.textContent||'',canvas:getComputedStyle(document.querySelector('#setkaTraceCanvas')).display,iframe:document.querySelectorAll('iframe').length}));
+if(!/v0\.8\.5/.test(s.title))throw new Error('wrong_title '+s.title);if(!s.bar)throw new Error('research_bar_missing');if(!s.bp)throw new Error('blueprint_scene_missing');if(!/Живой чертёж/.test(s.nav))throw new Error('blueprint_nav_missing');if(s.canvas!=='none')throw new Error('pencil_still_draws '+s.canvas);if(s.iframe)throw new Error('iframe_returned');if(errs.length)throw new Error('page_errors '+errs.join(' | '));console.log(JSON.stringify(s));await b.close();
