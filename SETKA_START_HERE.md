@@ -12,7 +12,7 @@ When sources disagree, use this order:
 
 1. **Current live reality** — deployed code, active database schema/data contracts, active Edge Functions, current checkpoint/release pointers.
 2. **Versioned migrations and immutable commits/checkpoints** — what was intentionally installed.
-3. **Canonical architecture documents** — this file, `docs/DIAMOND_ARCHITECTURE.md`, `docs/VERSION_INHERITANCE_LAW.md`, `SETKA_DATA_MODEL_V1.md`, version-line docs and ADR/decision log.
+3. **Canonical architecture documents** — this file, `docs/DIAMOND_ARCHITECTURE.md`, `docs/VERSION_INHERITANCE_LAW.md`, `docs/FOUNDATION_OPERATING_SYSTEM.md`, `SETKA_DATA_MODEL_V1.md`, version-line docs and ADR/decision log.
 4. **Conversation/history** — useful for intent, never sufficient proof of current implementation.
 
 A Work review MUST resolve mismatches instead of silently choosing one source.
@@ -22,16 +22,17 @@ A Work review MUST resolve mismatches instead of silently choosing one source.
 Read these before changing anything:
 
 1. `SETKA_START_HERE.md`
-2. `docs/DIAMOND_ARCHITECTURE.md`
-3. `docs/VERSION_INHERITANCE_LAW.md`
-4. `SETKA_DATA_MODEL_V1.md`
-5. `ADMIN_VERSIONS.md`
-6. `NEW_CHAT_ADMIN_VERSIONS.md`
-7. `docs/DECISIONS_LOG.md`
-8. `docs/WORK_REVIEW_PROTOCOL.md`
-9. Latest `docs/VERSION_HANDOFF_DIAMOND_*.md` handoff.
-10. Latest Diamond President front file and its parent version.
-11. Relevant migrations / Edge Functions for the layer being changed.
+2. `docs/FOUNDATION_OPERATING_SYSTEM.md` when touching Foundation 0.1.x.
+3. `docs/DIAMOND_ARCHITECTURE.md`
+4. `docs/VERSION_INHERITANCE_LAW.md`
+5. `SETKA_DATA_MODEL_V1.md`
+6. `ADMIN_VERSIONS.md`
+7. `NEW_CHAT_ADMIN_VERSIONS.md`
+8. `docs/DECISIONS_LOG.md`
+9. `docs/WORK_REVIEW_PROTOCOL.md`
+10. Latest `docs/VERSION_HANDOFF_DIAMOND_*.md` handoff.
+11. Latest Diamond President front file and its parent version.
+12. Relevant migrations / Edge Functions for the layer being changed.
 
 ## 3. Mandatory cold-start verification
 
@@ -50,6 +51,13 @@ Verify at minimum:
 - CI / deploy state for the version being reviewed.
 - Latest version-lineage smoke result and any baseline-degraded or failed checkpoints.
 - Latest President `TRACE-...` research evidence when the user references one.
+
+For Foundation 0.1.x also verify:
+
+- current `foundation-contract-v*.json` lineage;
+- current constants registry;
+- unresolved President pins and approved synthetic pins;
+- parent capability parity before accepting a child as WORKING.
 
 Before writing, produce a short current-state statement:
 
@@ -84,6 +92,14 @@ Diamond now also has a President version-research layer. Its core law is:
 A new Diamond version is a child of the previous architecture lineage, not a replacement universe. Read `docs/VERSION_INHERITANCE_LAW.md` before changing version semantics.
 
 President research `TRACE-...` records are protected internal evidence that can span several historical versions. They are useful for reconstructing what the President actually inspected, but they are not automatically canonical architecture truth; they must be interpreted against code, schema and checkpoint reality.
+
+### Foundation additive line
+
+Foundation 0.1.x follows an explicit carving law:
+
+`child = accepted parent + additive delta`
+
+Existing entities, analytics, reports, actions and relationships are protected parent capabilities. A child may move or redesign them, but may not silently remove or recreate them. The machine-readable guard is `foundation-lineage-check.mjs`; the human operating law is `docs/FOUNDATION_OPERATING_SYSTEM.md`.
 
 Always verify this snapshot against the current checkpoint before relying on it.
 
@@ -139,6 +155,7 @@ Always verify this snapshot against the current checkpoint before relying on it.
 - “Make working” changes only the working pointer unless an explicitly reviewed migration is required.
 - Rollback should preserve later versions for comparison.
 - Historical checkpoint status and current observable compatibility/health are separate facts.
+- Foundation 0.1.x additionally enforces parent-capability and constant superset contracts before a child is trusted as WORKING.
 
 ### President research traces
 
@@ -183,6 +200,7 @@ Historical lines must remain distinguishable:
 - Evolution v35.x — canonical research redesign line.
 - New Chat v1.x / v36 — social/Cruise experimental line.
 - Diamond v0.x — President/root architecture, access, release, recovery and system-control line.
+- Foundation 0.1.x — additive Front/President research pair with ID, synthetics, pins, traces and constants registry.
 
 Do not flatten these histories into one fake linear version number.
 
@@ -242,8 +260,10 @@ Every substantial future Diamond version should leave:
 - version-lineage health impact;
 - documentation updates.
 
+Foundation versions additionally leave or update their machine-readable regression contract.
+
 ## 9. Work review gate
 
-Before a Work run promotes its result as the next stable checkpoint, it must review the rubric in `docs/WORK_REVIEW_PROTOCOL.md` and the inheritance laws in `docs/VERSION_INHERITANCE_LAW.md`.
+Before a Work run promotes its result as the next stable checkpoint, it must review the rubric in `docs/WORK_REVIEW_PROTOCOL.md` and the inheritance laws in `docs/VERSION_INHERITANCE_LAW.md`. Foundation 0.1.x work must also pass `docs/FOUNDATION_OPERATING_SYSTEM.md` and its lineage guard.
 
 The goal is not maximum cleverness. The goal is a system that becomes **more correct, more recoverable, more understandable and more valuable as an asset with every version**.
