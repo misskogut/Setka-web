@@ -194,6 +194,26 @@ Reason: reduce key-person/context risk and allow a future smarter review mode to
 
 Consequence: docs must be updated with versions, but live code/schema remain higher truth than prose.
 
+## ADR-023 — Build in an unnumbered working draft; number only the accepted result
+
+Decision: a numbered version is an immutable/frozen result. New changes are developed in an exact working copy derived from the latest intact frozen parent. The next permanent version number is assigned only after the draft passes regression checks and the required President review.
+
+Canonical cycle:
+
+`N FROZEN → WORKING DRAFT FROM N → additive delta → tests/review → N+1 FROZEN`
+
+Reason: assigning `N+1` before the work is stable turns a historical checkpoint into a mutable construction site, encourages accidental regressions, and makes it harder to know what a version actually means.
+
+Consequence:
+
+- never edit frozen N in place;
+- never create permanent N+1 merely to start coding;
+- pins on N feed the working draft derived from N;
+- after promotion those pins may record `implemented in N+1`;
+- the draft must preserve all parent constants/capabilities by default;
+- only a stable/accepted draft becomes the next immutable numbered checkpoint;
+- legacy control-plane fields named `WORKING` that still point to numbered versions are transitional implementation debt and must not override this semantic law.
+
 ---
 
 ## Adding a decision
