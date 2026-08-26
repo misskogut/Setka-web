@@ -1,4 +1,5 @@
 // Foundation 0.1.7 release gate
+// Re-run after admin patch syntax fix; this commit is the release-gate trigger.
 import { chromium } from 'playwright-core';
 import assert from 'node:assert/strict';
 const BASE='https://misskogut.github.io/Setka-web/';
