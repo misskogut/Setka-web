@@ -14,7 +14,7 @@ const context=await browser.newContext({viewport:{width:430,height:932},deviceSc
 const errors=[];
 function watch(page,label){page.on('pageerror',e=>errors.push(`${label} pageerror ${e.message}`));page.on('console',m=>{if(m.type()==='error')errors.push(`${label} console ${m.text()}`)});page.on('response',r=>{if(r.status()>=400)errors.push(`${label} response ${r.status()} ${r.url()}`)});page.on('requestfailed',r=>{const t=r.failure()?.errorText||'';if(!t.includes('ERR_ABORTED'))errors.push(`${label} requestfailed ${r.url()} ${t}`)})}
 const user=await context.newPage();watch(user,'user');
-await user.goto(base+'foundation-shell-user-v015.html?view=0.1.5&synthetic=max_sprinter',{waitUntil:'domcontentloaded'});
+await user.goto(base+'foundation.html?view=0.1.5&synthetic=max_sprinter',{waitUntil:'domcontentloaded'});
 await user.waitForFunction(()=>document.querySelector('#versionSelect')?.value==='0.1.5');
 await user.waitForFunction(()=>document.querySelector('#appFrame')?.contentWindow?.FoundationV015?.version==='0.1.5');
 const uframe=user.frameLocator('#appFrame');
@@ -24,9 +24,9 @@ await user.selectOption('#versionSelect','0.1.4');
 await user.waitForFunction(()=>document.querySelector('#appFrame')?.contentWindow?.FoundationV014?.version==='0.1.4');
 assert(await user.evaluate(()=>localStorage.getItem('setka:foundation:viewing:version'))==='0.1.4','viewing version not persisted');
 const admin=await context.newPage();watch(admin,'admin');
-await admin.goto(base+'foundation-shell-president-v015.html',{waitUntil:'domcontentloaded'});
+await admin.goto(base+'foundation-president.html',{waitUntil:'domcontentloaded'});
 await admin.waitForFunction(()=>document.querySelector('#versionSelect')?.value==='0.1.4');
-assert((await admin.getAttribute('#appFrame','src')).includes('foundation-admin-v014.html'),'President shell did not inherit shared viewing 0.1.4');
+assert((await admin.getAttribute('#appFrame','src')).includes('foundation-admin-v014.html'),'President permanent door did not inherit shared viewing 0.1.4');
 await admin.selectOption('#versionSelect','0.1.5');
 await admin.waitForFunction(()=>document.querySelector('#appFrame')?.getAttribute('src')?.includes('foundation-admin-v015.html'));
 await user.waitForFunction(()=>document.querySelector('#versionSelect')?.value==='0.1.5');
@@ -42,4 +42,4 @@ assert(await admin.locator('#eyeTool').count()===1,'eye tool missing');
 assert(await admin.locator('#recordTool').count()===1,'record tool missing');
 assert(errors.length===0,errors.join('\n'));
 await browser.close();
-console.log(JSON.stringify({ok:true,version:'0.1.5',working:workingBefore,canon:manifest.pointers.canon,sync:'front-president',pins:'guarded',errors:0},null,2));
+console.log(JSON.stringify({ok:true,version:'0.1.5',working:workingBefore,canon:manifest.pointers.canon,sync:'front-president',permanentDoors:true,pins:'guarded',errors:0},null,2));
