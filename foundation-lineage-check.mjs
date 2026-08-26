@@ -22,6 +22,7 @@ assert.match(admin,/foundation-admin-patch-v017\.js/, '0.1.8 must carry the 0.1.
 assert.match(admin,/foundation-admin-patch-v018\.js/, '0.1.8 delta missing');
 assert.match(admin,/foundation-constants-v018\.js/, '0.1.8 constants registry missing');
 assert.match(patch,/syntheticRuns/, '0.1.8 must restore synthetic run history');
+assert.match(patch,/v018OpenSynthetic/, '0.1.8 must guarantee open-as-user for Front-enabled synthetics');
 assert.match(patch,/АКТИВНОСТЬ ИЗ ПРЕДЫДУЩИХ ВЕРСИЙ/, '0.1.8 carry-forward UI marker missing');
 assert.match(patch,/data-page="constants"/, '0.1.8 constants tab missing');
 assert.doesNotMatch(patch,/MutationObserver/, '0.1.8 delta must not use self-triggering DOM MutationObserver');
