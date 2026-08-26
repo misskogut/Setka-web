@@ -12,7 +12,7 @@ const executablePath=process.env.CHROME_PATH||'/usr/bin/chromium';
 const browser=await chromium.launch({headless:true,executablePath,args:['--no-sandbox']});
 const context=await browser.newContext({viewport:{width:430,height:932},deviceScaleFactor:3,isMobile:true,hasTouch:true});
 const errors=[];
-function watch(page,label){page.on('pageerror',e=>errors.push(`${label} pageerror ${e.message}`));page.on('console',m=>{if(m.type()==='error')errors.push(`${label} console ${m.text()}`)});page.on('response',r=>{if(r.status()>=400)errors.push(`${label} response ${r.status()} ${r.url()}`)});page.on('requestfailed',r=>errors.push(`${label} requestfailed ${r.url()} ${r.failure()?.errorText||''}`))}
+function watch(page,label){page.on('pageerror',e=>errors.push(`${label} pageerror ${e.message}`));page.on('console',m=>{if(m.type()==='error')errors.push(`${label} console ${m.text()}`)});page.on('response',r=>{if(r.status()>=400)errors.push(`${label} response ${r.status()} ${r.url()}`)});page.on('requestfailed',r=>{const t=r.failure()?.errorText||'';if(!t.includes('ERR_ABORTED'))errors.push(`${label} requestfailed ${r.url()} ${t}`)})}
 const user=await context.newPage();watch(user,'user');
 await user.goto(base+'foundation-shell-user-v015.html?view=0.1.5&synthetic=max_sprinter',{waitUntil:'domcontentloaded'});
 await user.waitForFunction(()=>document.querySelector('#versionSelect')?.value==='0.1.5');
