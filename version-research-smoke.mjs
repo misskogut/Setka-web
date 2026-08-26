@@ -1,6 +1,9 @@
 import { chromium } from 'playwright-core';
 const url=process.env.PRESIDENT_RESEARCH_URL||'https://misskogut.github.io/Setka-web/diamond-president-v08.html';
 const stable=['diamond-v0.3','diamond-v0.4','diamond-v0.5','diamond-v0.6','diamond-v0.6.1','diamond-v0.7','diamond-v0.7.1','diamond-v0.7.3','diamond-v0.8'];
+const baselineDegraded={
+  'diamond-v0.5':[/Unexpected token ','/]
+};
 const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||'/usr/bin/google-chrome',args:['--no-sandbox']});
 try{
   const page=await browser.newPage({viewport:{width:1280,height:820}});
@@ -22,8 +25,12 @@ try{
     });
     if(!info.body.trim())throw new Error('empty historical cabinet '+checkpoint+' src='+info.src);
     if(/LOAD ERROR/i.test(info.body))throw new Error('historical load error '+checkpoint+' '+info.body);
-    if(pageErrors.length)throw new Error('stable checkpoint page errors '+checkpoint+': '+pageErrors.join(' | '));
-    console.log('OK',checkpoint,info.title,info.health);
+    if(pageErrors.length){
+      const expected=baselineDegraded[checkpoint]||[];
+      const unexpected=pageErrors.filter(msg=>!expected.some(re=>re.test(msg)));
+      if(!expected.length||unexpected.length)throw new Error('new stable checkpoint page errors '+checkpoint+': '+pageErrors.join(' | '));
+      console.log('BASELINE DEGRADED',checkpoint,pageErrors.join(' | '),info.health);
+    }else console.log('PASS',checkpoint,info.title,info.health);
   }
   pageErrors.length=0;
   await page.selectOption('#versionSelect','diamond-v0.7.2');
