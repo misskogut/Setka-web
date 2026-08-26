@@ -1,4 +1,4 @@
-// Synthetic User Lab browser runner · simulation schema v3
+// Synthetic User Lab browser runner · service-only RPC gateway v4
 import { chromium } from 'playwright-core';
 
 const FRONT='https://misskogut.github.io/Setka-web/standalone-new-chat-v1.html';
