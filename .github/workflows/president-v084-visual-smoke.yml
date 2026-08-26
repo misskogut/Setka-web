@@ -1,0 +1,21 @@
+name: SETKA President v0.8.4 Visual Smoke
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --no-save playwright-core@1.55.0
+      - name: Wait for Pages propagation
+        run: sleep 18
+      - name: Smoke President v0.8.4 visual integrity
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+          PRESIDENT_V084_URL: https://misskogut.github.io/Setka-web/diamond-president-v084.html?v=diamond-v0.8.4
+        run: node president-v084-visual-smoke.mjs
