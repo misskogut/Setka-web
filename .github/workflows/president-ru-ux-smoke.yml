@@ -1,0 +1,25 @@
+name: SETKA President RU UX Smoke
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'diamond-president-v081.html'
+      - 'president-ru-ux-smoke.mjs'
+      - '.github/workflows/president-ru-ux-smoke.yml'
+  workflow_dispatch:
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --no-save playwright-core@1.55.0
+      - name: Wait for Pages propagation
+        run: sleep 18
+      - name: Smoke President v0.8.1 Russian UX
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+          PRESIDENT_RU_URL: https://misskogut.github.io/Setka-web/diamond-president-v081.html
+        run: node president-ru-ux-smoke.mjs
