@@ -1,0 +1,29 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+const ids=['016','017','018'];
+const contracts=new Map(ids.map(id=>{const c=JSON.parse(fs.readFileSync(`foundation-contract-v${id}.json`,'utf8'));return[c.version,c]}));
+for(const c of contracts.values()){
+  assert.equal(c.policy,'additive-lineage',`${c.version}: lineage policy must stay additive-lineage`);
+  if(!c.parent)continue;
+  const p=contracts.get(c.parent);assert.ok(p,`${c.version}: parent contract ${c.parent} is missing`);
+  const caps=new Set(c.capabilities||[]),constants=new Set(c.constants||[]);
+  const lostCaps=(p.capabilities||[]).filter(x=>!caps.has(x));
+  const lostConstants=(p.constants||[]).filter(x=>!constants.has(x));
+  assert.deepEqual(lostCaps,[],`${c.version}: parent capabilities lost: ${lostCaps.join(', ')}`);
+  assert.deepEqual(lostConstants,[],`${c.version}: parent constants lost: ${lostConstants.join(', ')}`);
+}
+const v18=contracts.get('0.1.8');
+for(const required of ['synthetics.run_history','synthetics.activity_counts','synthetics.open_as_user','identity.neutral_id','identity.front_back','pins.workflow_status','constants.registry'])assert.ok(v18.capabilities.includes(required),`0.1.8 missing ${required}`);
+const admin=fs.readFileSync('foundation-admin-v018.html','utf8');
+const patch=fs.readFileSync('foundation-admin-patch-v018.js','utf8');
+const registry=fs.readFileSync('foundation-constants-v018.js','utf8');
+assert.match(admin,/foundation-admin-v016\.js/, '0.1.8 must carry the preserved 0.1.6 admin base');
+assert.match(admin,/foundation-admin-patch-v017\.js/, '0.1.8 must carry the 0.1.7 identity layer');
+assert.match(admin,/foundation-admin-patch-v018\.js/, '0.1.8 delta missing');
+assert.match(admin,/foundation-constants-v018\.js/, '0.1.8 constants registry missing');
+assert.match(patch,/syntheticRuns/, '0.1.8 must restore synthetic run history');
+assert.match(patch,/АКТИВНОСТЬ ИЗ ПРЕДЫДУЩИХ ВЕРСИЙ/, '0.1.8 carry-forward UI marker missing');
+assert.match(patch,/data-page="constants"/, '0.1.8 constants tab missing');
+assert.doesNotMatch(patch,/MutationObserver/, '0.1.8 delta must not use self-triggering DOM MutationObserver');
+for(const key of v18.constants)assert.ok(registry.includes(`id:'${key}'`),`constants registry missing ${key}`);
+console.log('Foundation lineage check passed: 0.1.6 -> 0.1.7 -> 0.1.8 is additive.');
