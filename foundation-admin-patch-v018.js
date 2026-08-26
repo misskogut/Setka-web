@@ -39,12 +39,19 @@ function time(v){if(!v)return'—';const d=new Date(v);if(Number.isNaN(d.getTime
 function runView(r){const s=String(r?.status||'').toLowerCase();if(['completed','done','passed','success','ok'].includes(s))return{label:'✓ пройден',cls:'ok'};if(['error','failed','failure'].includes(s))return{label:'× ошибка',cls:'error'};if(['running','started','active','in_progress'].includes(s))return{label:'… идёт',cls:'running'};return{label:s||'… идёт',cls:'running'}}
 function legacyFor(identity){const users=carry.snapshot?.users||[];return users.find(u=>(identity?.personaKey&&u.personaKey===identity.personaKey)||u.setkaId===identity?.setkaId)||null}
 function runsFor(identity){const key=identity?.personaKey||legacyFor(identity)?.personaKey;if(!key)return[];return(carry.snapshot?.syntheticRuns||[]).filter(r=>r.personaKey===key).slice(0,5)}
+function ensureOpenButton(card,identity){
+  if(!identity?.frontEnabled||!identity?.personaKey)return;
+  if(card.querySelector('.openLegacySynthetic017,.v018OpenSynthetic'))return;
+  let actions=card.querySelector('.synthetic017Actions');if(!actions){actions=document.createElement('div');actions.className='synthetic017Actions';card.appendChild(actions)}
+  const b=document.createElement('button');b.className='v018OpenSynthetic';b.dataset.persona=identity.personaKey;b.textContent='Открыть как этого пользователя';actions.insertBefore(b,actions.firstChild);
+}
 function augmentSynthetics(){
   if(!carry.directory||!carry.snapshot)return;
   const ids=carry.directory.identities||[];
   qa('.synthetic017Card[data-synthetic-id]').forEach(card=>{
-    if(card.querySelector('.v018CarryBlock'))return;
     const identity=ids.find(x=>x.identityId===card.dataset.syntheticId);if(!identity)return;
+    ensureOpenButton(card,identity);
+    if(card.querySelector('.v018CarryBlock'))return;
     const legacy=legacyFor(identity),runs=runsFor(identity);
     const block=document.createElement('div');block.className='v018CarryBlock';
     const rows=runs.length?runs.map(r=>{const v=runView(r);return`<div class="v018Run ${v.cls}">${esc(v.label)} · ${esc(time(r.startedAt||r.createdAt||r.finishedAt))}</div>`}).join(''):'<div class="v018Run">Прогонов ещё нет</div>';
@@ -57,7 +64,7 @@ async function loadCarry(force=false){
   carry.loading=true;
   try{const [a,b]=await Promise.all([api('admin_snapshot'),api('admin_identity_snapshot')]);carry.snapshot=a.snapshot||null;carry.directory=b.directory||null;carry.lastLoad=Date.now();augmentSynthetics()}catch(e){if(!/session|access|authorized/i.test(e.message||''))console.warn('v018 carry-forward',e)}finally{carry.loading=false}
 }
-function interceptOpen(e){const b=e.target.closest?.('.openLegacySynthetic017');if(!b)return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();window.open(`foundation.html?view=${encodeURIComponent(VERSION)}&synthetic=${encodeURIComponent(b.dataset.persona||'')}`,'_blank')}
+function interceptOpen(e){const b=e.target.closest?.('.openLegacySynthetic017,.v018OpenSynthetic');if(!b)return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();window.open(`foundation.html?view=${encodeURIComponent(VERSION)}&synthetic=${encodeURIComponent(b.dataset.persona||'')}`,'_blank')}
 function tick(){rewriteVersionText();ensureConstants();augmentSynthetics()}
 document.addEventListener('click',e=>{
   interceptOpen(e);
