@@ -5,7 +5,7 @@ const browser=await chromium.launch({headless:true,executablePath:process.env.CH
 try{
   const page=await browser.newPage({viewport:{width:1180,height:820}});
   const errors=[];
-  page.on('pageerror',e=>errors.push(String(e.message||e)));
+  page.on('pageerror',e=>{const msg=String(e.stack||e.message||e);errors.push(msg);console.error('PAGEERROR',msg)});
   await page.goto(url,{waitUntil:'networkidle',timeout:45000});
   await page.waitForSelector('#login',{timeout:15000});
   const pencil=await page.$('#pencilBtn');
