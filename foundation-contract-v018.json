@@ -1,0 +1,40 @@
+{
+  "version":"0.1.8",
+  "parent":"0.1.7",
+  "policy":"additive-lineage",
+  "constants":["PRESIDENT","PRESIDENT_CABINET","PATTERN","SYNTHETIC","SESSION_TRACE","VERSION","PIN","SETKA_ID","SURFACE"],
+  "capabilities":[
+    "president.login",
+    "users.create",
+    "users.analytics",
+    "patterns.analytics",
+    "synthetics.cards",
+    "synthetics.activity_counts",
+    "synthetics.run_history",
+    "synthetics.open_as_user",
+    "protocol.versions",
+    "protocol.traces",
+    "trace.record",
+    "trace.replay",
+    "pins.create",
+    "pins.addressed",
+    "identity.neutral_id",
+    "identity.bulk_create",
+    "identity.nature",
+    "identity.front_back",
+    "identity.origin",
+    "identity.role_task",
+    "synthetic_admin.permissions",
+    "synthetics.role_task",
+    "pins.list",
+    "pins.workflow_status",
+    "pins.synthetic_review",
+    "constants.registry",
+    "lineage.regression_guard"
+  ],
+  "forbiddenRegressions":[
+    "Remove a parent capability without an explicit President-approved removal record",
+    "Replace an existing entity with a new entity when the old entity can be extended",
+    "Move WORKING to a child version before Front and President surfaces open successfully"
+  ]
+}
