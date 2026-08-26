@@ -2,7 +2,6 @@ import fs from 'node:fs';
 import { chromium } from 'playwright-core';
 const base='https://misskogut.github.io/Setka-web/';
 const control='https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-foundation-control';
-const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 function assert(v,m){if(!v)throw new Error(m)}
 for(const f of ['foundation-control-shell.js','foundation-user-v015.js','foundation-admin-v015.js']) assert(fs.existsSync(f),`missing ${f}`);
 const manifestRes=await fetch(control,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'manifest'})});
@@ -13,7 +12,8 @@ const executablePath=process.env.CHROME_PATH||'/usr/bin/chromium';
 const browser=await chromium.launch({headless:true,executablePath,args:['--no-sandbox']});
 const context=await browser.newContext({viewport:{width:430,height:932},deviceScaleFactor:3,isMobile:true,hasTouch:true});
 const errors=[];
-const user=await context.newPage();user.on('pageerror',e=>errors.push('user pageerror '+e.message));user.on('console',m=>{if(m.type()==='error')errors.push('user console '+m.text())});
+function watch(page,label){page.on('pageerror',e=>errors.push(`${label} pageerror ${e.message}`));page.on('console',m=>{if(m.type()==='error')errors.push(`${label} console ${m.text()}`)});page.on('response',r=>{if(r.status()>=400)errors.push(`${label} response ${r.status()} ${r.url()}`)});page.on('requestfailed',r=>errors.push(`${label} requestfailed ${r.url()} ${r.failure()?.errorText||''}`))}
+const user=await context.newPage();watch(user,'user');
 await user.goto(base+'foundation-shell-user-v015.html?view=0.1.5&synthetic=max_sprinter',{waitUntil:'domcontentloaded'});
 await user.waitForFunction(()=>document.querySelector('#versionSelect')?.value==='0.1.5');
 await user.waitForFunction(()=>document.querySelector('#appFrame')?.contentWindow?.FoundationV015?.version==='0.1.5');
@@ -23,7 +23,7 @@ assert(await uframe.locator('#patterns .patternCard').count()===2,'user 0.1.5 mu
 await user.selectOption('#versionSelect','0.1.4');
 await user.waitForFunction(()=>document.querySelector('#appFrame')?.contentWindow?.FoundationV014?.version==='0.1.4');
 assert(await user.evaluate(()=>localStorage.getItem('setka:foundation:viewing:version'))==='0.1.4','viewing version not persisted');
-const admin=await context.newPage();admin.on('pageerror',e=>errors.push('admin pageerror '+e.message));admin.on('console',m=>{if(m.type()==='error')errors.push('admin console '+m.text())});
+const admin=await context.newPage();watch(admin,'admin');
 await admin.goto(base+'foundation-shell-president-v015.html',{waitUntil:'domcontentloaded'});
 await admin.waitForFunction(()=>document.querySelector('#versionSelect')?.value==='0.1.4');
 assert((await admin.getAttribute('#appFrame','src')).includes('foundation-admin-v014.html'),'President shell did not inherit shared viewing 0.1.4');
