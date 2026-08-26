@@ -39,7 +39,30 @@ At minimum, inheritance review asks:
 6. Can a failed experimental block be removed without erasing the rest of the child history?
 7. Is rollback a pointer/history operation rather than deletion of newer versions?
 
-## 4. Failed parts vs failed versions
+## 4. Frozen checkpoint vs working draft
+
+A numbered version/checkpoint is an immutable result. It is not the place where the next round of changes is developed.
+
+Canonical cycle:
+
+`frozen parent → exact working draft copy → additive changes → tests/review → freeze/promote as next numbered checkpoint`
+
+Example:
+
+`0.1.8 FROZEN → draft derived from 0.1.8 → changes/tests → President acceptance → 0.1.9 FROZEN`
+
+Rules:
+
+- never overwrite the frozen parent to develop the next result;
+- never assign the next permanent version number merely because development began;
+- a working draft has a parent checkpoint but is not yet the next immutable checkpoint;
+- all accepted parent invariants remain active in the draft unless an explicit reviewed removal/migration exists;
+- only a tested/accepted draft is promoted and receives the next permanent version number;
+- once promoted, that version is frozen and becomes the parent for the next draft.
+
+This distinction is semantically stronger than legacy UI labels. If an existing control-plane field called `WORKING` still points to a numbered checkpoint, treat that as transitional implementation debt, not permission to use immutable checkpoints as mutable workspaces.
+
+## 5. Failed parts vs failed versions
 
 When a new block does not work, choose deliberately:
 
@@ -49,17 +72,18 @@ When a new block does not work, choose deliberately:
 
 Never overwrite a failed checkpoint to make history look cleaner.
 
-## 5. Viewing is not activation
+## 6. Viewing is not activation
 
 The President interface must distinguish:
 
 - **VIEWING VERSION** — observational navigation only. It may load any registered historical cabinet for comparison.
-- **WORKING CHECKPOINT** — the system pointer used by current Diamond work.
+- **WORKING DRAFT** — mutable child workspace derived from a frozen parent; not yet a permanent numbered checkpoint.
+- **WORKING CHECKPOINT** — legacy/current control pointer when the runtime still requires a numbered checkpoint; do not confuse it with the mutable draft concept.
 - **PRODUCTION** — the explicitly released public product.
 
 Changing VIEWING VERSION must never change WORKING or PRODUCTION.
 
-## 6. Cross-version President research
+## 7. Cross-version President research
 
 President research traces are first-class internal evidence.
 
@@ -82,7 +106,7 @@ It must NOT record:
 
 Research traces live in the protected Diamond internal layer and do not enter public product analytics.
 
-## 7. Research session continuity
+## 8. Research session continuity
 
 A long trace is stored incrementally as small chunks. Therefore:
 
@@ -93,7 +117,7 @@ A long trace is stored incrementally as small chunks. Therefore:
 
 A Trace ID can be used in later architecture discussion to refer to the exact President investigation instead of reconstructing intent from screenshots.
 
-## 8. Automated checks
+## 9. Automated checks
 
 Automation should progressively verify stable versions across the lineage.
 
@@ -106,12 +130,12 @@ Initial minimum:
 
 Future credentialed checks should add real President-path/API compatibility without storing root credentials in source control.
 
-## 9. Work review rule
+## 10. Work review rule
 
 A Work pass must treat version history as evidence, not clutter.
 
 When reviewing the next version, Work should compare:
 
-`parent intent + parent runtime + child delta + regression evidence + President traces`
+`parent intent + parent runtime + draft delta + regression evidence + President traces`
 
 The goal is not to preserve every experimental feature forever. The goal is to preserve the architectural lineage and canonical truth while allowing failed experiments to be clearly isolated, disabled, or superseded.
