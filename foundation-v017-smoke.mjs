@@ -16,7 +16,8 @@ try{
  const f=a.frameLocator('#appFrame');await f.locator('.nav button[data-page="synthetics"].active').waitFor({timeout:15000});
  await a.selectOption('#versionSelect','0.1.6');await a.waitForFunction(()=>document.querySelector('#appFrame')?.getAttribute('src')?.includes('foundation-admin-v016.html'),{timeout:15000});await f.locator('.nav button[data-page="synthetics"].active').waitFor({timeout:15000});
  assert.equal(await a.evaluate(()=>localStorage.getItem('setka:foundation:viewing:context:president')),'synthetics');
- const staticHtml=await (await fetch(BASE+'foundation-admin-v017.html')).text();assert.match(staticHtml,/foundation-admin-patch-v017\.js/);assert.match(staticHtml,/foundation-api-route-v017\.js/);
+ const staticHtml=await (await fetch(BASE+'foundation-admin-v017.html')).text();assert.match(staticHtml,/foundation-admin-patch-v017\.js/);assert.match(staticHtml,/foundation-api-route-v017\.js/);assert.match(staticHtml,/Создать ID/);
+ const shellHtml=await (await fetch(BASE+'foundation-shell-president-v017.html')).text();assert.match(shellHtml,/foundation-control-context-v017\.js/);assert.match(shellHtml,/foundation-control-refresh-v017\.js/);
  if(errs.length)throw new Error('user errors: '+errs.join(' | '));if(aerrs.length)throw new Error('admin/shell errors: '+aerrs.join(' | '));
- console.log('Foundation 0.1.7 smoke passed: API, two patterns, identity runtime, and same-page version switching.');
+ console.log('Foundation 0.1.7 smoke passed: API, two patterns, identity runtime, Create ID, and same-page version switching.');
 }finally{await browser.close()}
