@@ -5,6 +5,7 @@ on:
   workflow_dispatch:
 jobs:
   smoke:
+    # 0.1.7 release gate after admin-patch syntax fix
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
