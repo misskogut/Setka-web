@@ -12,7 +12,7 @@ When sources disagree, use this order:
 
 1. **Current live reality** — deployed code, active database schema/data contracts, active Edge Functions, current checkpoint/release pointers.
 2. **Versioned migrations and immutable commits/checkpoints** — what was intentionally installed.
-3. **Canonical architecture documents** — this file, `docs/DIAMOND_ARCHITECTURE.md`, `SETKA_DATA_MODEL_V1.md`, version-line docs and ADR/decision log.
+3. **Canonical architecture documents** — this file, `docs/DIAMOND_ARCHITECTURE.md`, `docs/VERSION_INHERITANCE_LAW.md`, `SETKA_DATA_MODEL_V1.md`, version-line docs and ADR/decision log.
 4. **Conversation/history** — useful for intent, never sufficient proof of current implementation.
 
 A Work review MUST resolve mismatches instead of silently choosing one source.
@@ -23,13 +23,15 @@ Read these before changing anything:
 
 1. `SETKA_START_HERE.md`
 2. `docs/DIAMOND_ARCHITECTURE.md`
-3. `SETKA_DATA_MODEL_V1.md`
-4. `ADMIN_VERSIONS.md`
-5. `NEW_CHAT_ADMIN_VERSIONS.md`
-6. `docs/DECISIONS_LOG.md`
-7. `docs/WORK_REVIEW_PROTOCOL.md`
-8. Latest Diamond President front file and its parent version.
-9. Relevant migrations / Edge Functions for the layer being changed.
+3. `docs/VERSION_INHERITANCE_LAW.md`
+4. `SETKA_DATA_MODEL_V1.md`
+5. `ADMIN_VERSIONS.md`
+6. `NEW_CHAT_ADMIN_VERSIONS.md`
+7. `docs/DECISIONS_LOG.md`
+8. `docs/WORK_REVIEW_PROTOCOL.md`
+9. Latest `docs/VERSION_HANDOFF_DIAMOND_*.md` handoff.
+10. Latest Diamond President front file and its parent version.
+11. Relevant migrations / Edge Functions for the layer being changed.
 
 ## 3. Mandatory cold-start verification
 
@@ -46,6 +48,8 @@ Verify at minimum:
 - Security advisor results, especially RLS and SECURITY DEFINER exposure.
 - Current public product version and whether the requested change is Black Box, Preview, Approved, or Public.
 - CI / deploy state for the version being reviewed.
+- Latest version-lineage smoke result and any baseline-degraded or failed checkpoints.
+- Latest President `TRACE-...` research evidence when the user references one.
 
 Before writing, produce a short current-state statement:
 
@@ -53,7 +57,7 @@ Before writing, produce a short current-state statement:
 
 ## 4. Current architecture snapshot
 
-As of Diamond v0.6, the intended working architecture is:
+The architecture line began with the following intended spine and must be reverified against the current checkpoint on every cold start:
 
 `SETKA ID → Credentials → Capabilities → Scope → Floor → Cabinet → Role/Perspective → Audit`
 
@@ -70,6 +74,16 @@ Binding semantics:
 - `RUNTIME` — only when working code actually consumes the connection state. Never label a relation runtime merely because it is drawn.
 
 Connected wires may glow in the President UI; disconnected allowed wires remain visible. `never-break` relationships cannot be casually disconnected from the control plane.
+
+### Current version-research layer
+
+Diamond now also has a President version-research layer. Its core law is:
+
+`VIEWING VERSION ≠ WORKING CHECKPOINT ≠ PRODUCTION`
+
+A new Diamond version is a child of the previous architecture lineage, not a replacement universe. Read `docs/VERSION_INHERITANCE_LAW.md` before changing version semantics.
+
+President research `TRACE-...` records are protected internal evidence that can span several historical versions. They are useful for reconstructing what the President actually inspected, but they are not automatically canonical architecture truth; they must be interpreted against code, schema and checkpoint reality.
 
 Always verify this snapshot against the current checkpoint before relying on it.
 
@@ -119,9 +133,20 @@ Always verify this snapshot against the current checkpoint before relying on it.
 
 - Meaningful versions are immutable checkpoints.
 - Never overwrite a useful historical checkpoint merely to make the latest version cleaner.
+- Every child version inherits parent architecture/data laws unless an explicit reviewed migration says otherwise.
+- A broken experimental block must be marked inactive/disconnected, the checkpoint marked failed, or a corrective child created. Never silently hide failure by rewriting history.
 - “View version” must not mutate the active pointer.
 - “Make working” changes only the working pointer unless an explicitly reviewed migration is required.
 - Rollback should preserve later versions for comparison.
+- Historical checkpoint status and current observable compatibility/health are separate facts.
+
+### President research traces
+
+- A research Trace ID may span several versions and browser tabs.
+- Store technical path/evidence incrementally so a version crash does not erase prior evidence.
+- Final human title/comment explains intent; it does not rewrite recorded technical evidence.
+- Never record President credentials, secret values or ordinary input-field values.
+- Research traces are Diamond internal evidence and must not contaminate public product analytics.
 
 ### Data
 
@@ -142,6 +167,7 @@ Always verify this snapshot against the current checkpoint before relying on it.
 
 - Internal complexity must not become cognitive burden.
 - President can see everything but must not be forced to see everything at once.
+- President control surfaces are tablet-landscape-first unless a version explicitly documents another use case.
 - Every important screen should answer: where am I, what am I seeing, what can I do, what will happen, can I undo it?
 
 ### Secrets
@@ -175,7 +201,9 @@ After every meaningful version it should leave a handoff trail:
 - migrations/API/front version;
 - what was deliberately not touched;
 - known debt / questions for Work review;
-- rollback/checkpoint information.
+- rollback/checkpoint information;
+- regression/lineage test result where applicable;
+- relevant President Trace IDs when the user explicitly created/referenced them.
 
 ### Work mode
 
@@ -186,10 +214,12 @@ Work should:
 1. cold-start from this package;
 2. verify actual implementation;
 3. compare intent vs code vs data model;
-4. identify architectural debt and accidental complexity;
-5. improve reliability, security, clarity, testability and human ergonomics;
-6. create a **new immutable version**, not rewrite history;
-7. update this documentation package after the review.
+4. include version-lineage smoke/baseline health in the review;
+5. inspect user-referenced President traces as evidence;
+6. identify architectural debt and accidental complexity;
+7. improve reliability, security, clarity, testability and human ergonomics;
+8. create a **new immutable version**, not rewrite history;
+9. update this documentation package after the review.
 
 Work is not allowed to “clean up” by deleting historical evidence or silently redefining canonical semantics.
 
@@ -209,10 +239,11 @@ Every substantial future Diamond version should leave:
 - new/changed architecture wires;
 - security/data implications;
 - tests performed / tests still missing;
+- version-lineage health impact;
 - documentation updates.
 
 ## 9. Work review gate
 
-Before a Work run promotes its result as the next stable checkpoint, it must review the rubric in `docs/WORK_REVIEW_PROTOCOL.md`.
+Before a Work run promotes its result as the next stable checkpoint, it must review the rubric in `docs/WORK_REVIEW_PROTOCOL.md` and the inheritance laws in `docs/VERSION_INHERITANCE_LAW.md`.
 
 The goal is not maximum cleverness. The goal is a system that becomes **more correct, more recoverable, more understandable and more valuable as an asset with every version**.
