@@ -1,3 +1,4 @@
+// Foundation 0.1.7 release gate
 import { chromium } from 'playwright-core';
 import assert from 'node:assert/strict';
 const BASE='https://misskogut.github.io/Setka-web/';
