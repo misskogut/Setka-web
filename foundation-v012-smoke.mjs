@@ -1,8 +1,8 @@
 import { chromium } from 'playwright-core';
 const BASE='https://misskogut.github.io/Setka-web';
 const USER=`${BASE}/foundation-user-v012.html`;
-const STABLE=`${BASE}/foundation.html`;
-const ADMIN=`${BASE}/foundation-president.html`;
+const STABLE=`${BASE}/foundation-user-v012.html`;
+const ADMIN=`${BASE}/foundation-admin-v012.html`;
 const API='https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-foundation-v012';
 const chrome=process.env.CHROME_PATH||'/usr/bin/google-chrome';
 const browser=await chromium.launch({headless:true,executablePath:chrome,args:['--no-sandbox']});
@@ -26,5 +26,5 @@ await page.goto(`${ADMIN}?shell=${Date.now()}`,{waitUntil:'networkidle',timeout:
 if(!(await page.locator('#loginButton').isVisible()))throw new Error('admin_shell_missing');
 const adminVersion=await page.evaluate(()=>window.FoundationAdmin?.version);if(adminVersion!=='0.1.2')throw new Error('admin_version '+adminVersion);
 if(errors.length)throw new Error('page_errors '+errors.join(' | '));
-console.log(JSON.stringify({ok:true,pairVersion:'0.1.2',patterns:stableState.patterns.map(x=>x.patternId),stableUserSessionRestored:true,adminShell:true}));
+console.log(JSON.stringify({ok:true,pairVersion:'0.1.2',patterns:stableState.patterns.map(x=>x.patternId),historicalArtifacts:true,stableUserSessionRestored:true,adminShell:true}));
 await browser.close();
