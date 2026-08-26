@@ -25,8 +25,8 @@ try{
   await a.waitForFunction(()=>document.querySelector('#versionSelect')?.value==='0.1.8',{timeout:30000});
   await a.waitForFunction(()=>window.FoundationContextV018?.version==='0.1.8'&&!!window.FoundationPinsV018,{timeout:20000});
   await a.waitForSelector('#pinListTool',{timeout:15000});
+  await a.waitForFunction(()=>document.querySelector('#appFrame')?.contentDocument?.body?.dataset?.foundationVersion==='018',{timeout:30000});
   const af=a.frameLocator('#appFrame');
-  await af.locator('body').waitFor({state:'attached',timeout:30000});
   assert.equal(await af.locator('body').getAttribute('data-foundation-version'),'018','President iframe must be the 0.1.8 pair, not a blank/old page');
   await af.locator('#login').waitFor({state:'attached',timeout:15000});
   await af.locator('.nav button[data-page="synthetics"]').waitFor({state:'attached',timeout:15000});
