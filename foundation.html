@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#000000">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<meta http-equiv="Cache-Control" content="no-cache,no-store,must-revalidate">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none';style-src 'self';script-src 'self';connect-src https://gfchgaphzhxufwdhrcis.supabase.co;img-src 'self' data:;font-src 'self' data:;base-uri 'none';form-action 'none'">
+<title>SETKA · Foundation</title>
+<link rel="stylesheet" href="foundation-user-v012.css?v=012">
+</head>
+<body>
+<section id="login" class="login"><div class="loginCard"><div><div class="brand">SETKA</div><div class="version">FOUNDATION 0.1.2 · ЛИЧНЫЙ КАБИНЕТ</div></div><div><h1>Паттерны.</h1><div class="lead">Текущая рабочая пара Foundation. Этот адрес остаётся постоянным.</div></div><div class="field"><label>SETKA ID</label><input id="setkaId" autocomplete="username" placeholder="SETKA-XXXX-XXXX"></div><div class="field"><label>Личный ключ</label><input id="personalKey" type="password" autocomplete="current-password" placeholder="KEY-••••••-••••••-••••••"></div><button id="loginButton" class="primary">Войти</button><div id="loginError" class="error"></div></div></section>
+<section id="app" class="app hidden"><header class="top"><div><div class="brand">SETKA</div><div class="version">РАБОЧАЯ ПАРА · 0.1.2</div><div id="identity" class="identity"></div><div id="syntheticFlag" class="syntheticFlag hidden">СИНТЕТИЧЕСКИЙ ПОЛЬЗОВАТЕЛЬ</div></div><button id="logout" class="logout">Выйти</button></header><div class="title">Паттерны</div><div id="patterns" class="patterns"></div></section>
+<section id="viewer" class="viewer hidden" aria-label="Просмотр паттерна"><canvas id="patternCanvas"></canvas><div class="viewerUi"><button id="backButton" class="back" aria-label="Назад">←</button><button id="heartButton" class="heart" aria-label="Сохранить">♡</button><div id="patternLabel" class="patternLabel"></div></div></section>
+<script src="foundation-user-v012.js?v=012"></script>
+</body>
+</html>
