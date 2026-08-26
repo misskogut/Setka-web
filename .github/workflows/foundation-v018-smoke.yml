@@ -1,0 +1,49 @@
+name: Foundation 0.1.8 smoke
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'foundation-*v018*'
+      - 'foundation-control-pins-v018.js'
+      - 'foundation-control-v018.css'
+      - '.github/workflows/foundation-v018-smoke.yml'
+  workflow_dispatch:
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax
+        run: |
+          node --check foundation-api-route-v018.js
+          node --check foundation-user-patch-v018.js
+          node --check foundation-admin-patch-v018.js
+          node --check foundation-control-pins-v018.js
+      - name: Static contracts
+        run: |
+          grep -q '0.1.8' foundation-user-v018.html
+          grep -q '0.1.8' foundation-admin-v018.html
+          grep -q 'foundation-control-pins-v018.js' foundation-shell-user-v018.html
+          grep -q 'foundation-control-pins-v018.js' foundation-shell-president-v018.html
+          grep -q 'pin_status' foundation-control-pins-v018.js
+          grep -q 'pin_review' foundation-control-pins-v018.js
+          grep -q 'Создать ID' foundation-admin-v018.html
+      - name: Backend version
+        run: |
+          node - <<'NODE'
+          const url='https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-foundation-v018';
+          const r=await fetch(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'version'})});
+          const d=await r.json();
+          if(!r.ok||d.pairVersion!=='0.1.8') throw new Error(JSON.stringify(d));
+          console.log('backend',d.pairVersion);
+          NODE
+      - name: Manifest registration
+        run: |
+          node - <<'NODE'
+          const url='https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-foundation-control';
+          const r=await fetch(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'manifest'})});
+          const d=await r.json();
+          const v=d.manifest?.versions?.find(x=>x.version==='0.1.8');
+          if(!r.ok||!v||v.parentVersion!=='0.1.7'||v.backendSlug!=='setka-foundation-v018') throw new Error(JSON.stringify(d));
+          console.log('manifest ok',v.version);
+          NODE
