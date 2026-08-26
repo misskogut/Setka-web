@@ -6,6 +6,10 @@ on:
       - 'foundation.html'
       - 'foundation-president.html'
       - 'foundation-*v018*'
+      - 'foundation-contract-v016.json'
+      - 'foundation-contract-v017.json'
+      - 'foundation-contract-v018.json'
+      - 'foundation-lineage-check.mjs'
       - 'foundation-control-pins-v018.js'
       - 'foundation-control-context-v018.js'
       - 'foundation-control-v018.css'
@@ -27,11 +31,18 @@ jobs:
           node --check foundation-admin-patch-v018.js
           node --check foundation-control-context-v018.js
           node --check foundation-control-pins-v018.js
+          node --check foundation-lineage-check.mjs
           node --check foundation-v018-smoke.mjs
+      - name: Additive lineage contract
+        run: node foundation-lineage-check.mjs
       - name: Static contracts
         run: |
           grep -q '0.1.8' foundation-user-v018.html
           grep -q '0.1.8' foundation-admin-v018.html
+          grep -q 'foundation-admin-v016.js' foundation-admin-v018.html
+          grep -q 'foundation-admin-patch-v017.js' foundation-admin-v018.html
+          grep -q 'foundation-constants-v018.js' foundation-admin-v018.html
+          grep -q 'syntheticRuns' foundation-admin-patch-v018.js
           grep -q 'foundation-control-context-v018.js' foundation-shell-user-v018.html
           grep -q 'foundation-control-context-v018.js' foundation-shell-president-v018.html
           grep -q 'foundation-control-pins-v018.js' foundation-shell-user-v018.html
@@ -49,7 +60,7 @@ jobs:
             if curl -fsS "https://misskogut.github.io/Setka-web/foundation.html" | grep -q 'foundation-control-context-v018.js' \
               && curl -fsS "https://misskogut.github.io/Setka-web/foundation-president.html" | grep -q 'foundation-control-context-v018.js' \
               && curl -fsS "https://misskogut.github.io/Setka-web/foundation-user-v018.html" >/dev/null \
-              && curl -fsS "https://misskogut.github.io/Setka-web/foundation-admin-v018.html" >/dev/null; then exit 0; fi
+              && curl -fsS "https://misskogut.github.io/Setka-web/foundation-admin-v018.html" | grep -q 'foundation-constants-v018.js'; then exit 0; fi
             sleep 5
           done
           exit 1
