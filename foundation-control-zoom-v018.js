@@ -29,7 +29,7 @@ function bindDoc(){
  d.addEventListener('touchmove',move,{passive:false,capture:true});
  d.addEventListener('touchend',end,{passive:false,capture:true});
  d.addEventListener('touchcancel',end,{passive:false,capture:true});
- d.addEventListener('wheel',e=>{if(!(e.ctrlKey||e.metaKey))return;e.preventDefault();scale=clamp(scale*(e.deltaY>0?.94:1.06));apply(true)},{passive:false,capture:true});
+ d.addEventListener('wheel',e=>{if(!(e.ctrlKey||e.metaKey))return;e.preventDefault();scale=clamp(scale*(e.deltaY>0 ? .94 : 1.06));apply(true)},{passive:false,capture:true});
  apply(false);
 }
 frame.addEventListener('load',()=>requestAnimationFrame(bindDoc));
