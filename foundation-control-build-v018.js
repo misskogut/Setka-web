@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const BUILD='018-transcript-search2';
+const BUILD='018-pin-address1';
 const frame=document.getElementById('appFrame');
 if(!frame)return;
 const proto=Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype,'src');
@@ -19,5 +19,11 @@ Object.defineProperty(frame,'src',{
     }
   }
 });
+if(!document.querySelector('script[data-foundation-pin-address="1"]')){
+  const s=document.createElement('script');
+  s.src='foundation-control-pin-address-v018.js?build='+encodeURIComponent(BUILD);
+  s.dataset.foundationPinAddress='1';
+  document.head.appendChild(s);
+}
 window.FoundationBuildV018={build:BUILD};
 })();
