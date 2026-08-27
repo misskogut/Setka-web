@@ -2,6 +2,7 @@
 'use strict';
 const ENDPOINT='https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-foundation-autonomy-v018';
 const SESSION_KEY='setka:foundation:president:session';
+const METRIC_PIN='PIN-FD8014D5';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]));
 const num=(v,f=0)=>Number.isFinite(Number(v))?Number(v):f;
@@ -32,5 +33,5 @@ function renderPanel(error=''){const body=$('autonomyPanelBody018');if(!body)ret
 async function refresh(force=false){ensure();if(loading)return;if(!token()){updateCard();return}if(!force&&Date.now()-lastLoad<30000)return;loading=true;if($('autonomyOverlay018')?.classList.contains('open'))renderPanel();try{data=await call();lastLoad=Date.now();updateCard();if($('autonomyOverlay018')?.classList.contains('open'))renderPanel()}catch(e){if($('autonomyOverlay018')?.classList.contains('open'))renderPanel(e.message)}finally{loading=false}}
 function init(){ensure();updateCard();setTimeout(()=>refresh(true),700);$('refreshVersions')?.addEventListener('click',()=>setTimeout(()=>refresh(true),500));window.addEventListener('focus',()=>refresh(false));window.addEventListener('storage',e=>{if(e.key===SESSION_KEY)setTimeout(()=>refresh(true),50)})}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
-window.FoundationAutonomyDashboardV018={version:'0.1.8',refresh:()=>refresh(true),data:()=>data,open:()=>{$('autonomyOverlay018')?.classList.add('open');refresh(true)}};
+window.FoundationAutonomyDashboardV018={version:'0.1.8',pin:METRIC_PIN,refresh:()=>refresh(true),data:()=>data,open:()=>{$('autonomyOverlay018')?.classList.add('open');refresh(true)}};
 })();
