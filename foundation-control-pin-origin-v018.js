@@ -9,6 +9,7 @@ function originFromItem(item){
  if(author==='PRESIDENT')return{key:'president_direct',mark:'👑',label:'Президент'};
  return{key:'other',mark:'•',label:'Другое'};
 }
+function setText(el,text){if(el&&el.textContent!==text)el.textContent=text}
 function decorate(){
  const board=$('pinBoard'); if(!board)return;
  const items=[...board.querySelectorAll('.pinListItem[data-pin-open]')];
@@ -18,11 +19,11 @@ function decorate(){
   item.dataset.pinOrigin=o.key;
   let badge=item.querySelector('.pinOriginBadge018');
   if(!badge){badge=document.createElement('span');badge.className='pinOriginBadge018';item.querySelector('.pinItemCode')?.before(badge)}
-  badge.textContent=`${o.mark} ${o.label}`;
+  setText(badge,`${o.mark} ${o.label}`);
  });
  let summary=$('pinOriginSummary018');
  if(!summary){summary=document.createElement('div');summary.id='pinOriginSummary018';summary.className='pinOriginSummary018';$('pinBoardMeta')?.after(summary)}
- if(summary)summary.textContent=`👑 ${counts.president_direct} · 👑✎ ${counts.president_protocolled} · ❤️ ${counts.gpt_proactive}`;
+ setText(summary,`👑 ${counts.president_direct} · 👑✎ ${counts.president_protocolled} · ❤️ ${counts.gpt_proactive}`);
 }
 function hook(){
  const list=$('pinBoardList');
