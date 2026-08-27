@@ -33,7 +33,22 @@ try{
   await af.locator('.nav button[data-page="constants"]').waitFor({state:'attached',timeout:15000});
   await af.locator('body').evaluate(()=>{if(!window.FoundationAdminPatchV018||window.FoundationAdminPatchV018.version!=='0.1.8')throw new Error('FoundationAdminPatchV018 missing')});
   await a.waitForFunction(()=>document.querySelector('#appFrame')?.contentDocument?.querySelector('.nav button[data-page="synthetics"]')?.classList.contains('active'),{timeout:25000});
-  const html=await (await fetch(BASE+'foundation-president.html')).text();assert.match(html,/foundation-control-context-v018\.js/);assert.match(html,/foundation-control-pins-v018\.js/);
+  const html=await (await fetch(BASE+'foundation-president.html')).text();assert.match(html,/foundation-control-context-v018\.js/);assert.match(html,/foundation-control-pins-v018\.js/);assert.match(html,/foundation-control-build-v018\.js/);
+
+  const q=await browser.newPage({viewport:{width:1180,height:820}});const qerrors=[];q.on('pageerror',e=>qerrors.push(String(e)));q.on('console',m=>{if(m.type()==='error')qerrors.push(m.text())});
+  await q.route(CONTROL,async route=>{let body={};try{body=route.request().postDataJSON()||{}}catch{}if(body.action==='pin_list'){await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({pins:[{pin_code:'PIN-SMOKE-ADDRESS',version:'0.1.8',surface:'president',page_key:'transcript',status:'open',authorKind:'assistant'}],actor:{president:true}})});return}await route.continue()});
+  await gotoRetry(q,BASE+'foundation-president.html?view=0.1.8');
+  await q.evaluate(()=>{localStorage.setItem('setka:foundation:president:session','smoke-address-session');localStorage.setItem('setka:foundation:viewing:context:president','synthetics')});
+  await q.reload({waitUntil:'commit',timeout:60000});
+  await q.waitForFunction(()=>window.FoundationPinAddressV018?.version==='0.1.8'&&window.FoundationContextV018?.current?.()==='synthetics',{timeout:30000});
+  await q.evaluate(()=>{const m=document.createElement('button');m.id='pinAddressSmokeMarker';m.className='pinMarker';m.dataset.pinCode='PIN-SMOKE-ADDRESS';document.body.appendChild(m);window.FoundationPinAddressV018.refresh()});
+  await q.waitForFunction(()=>document.querySelector('#pinAddressSmokeMarker')?.hidden===true,{timeout:10000});
+  const qf=q.frameLocator('#appFrame');await qf.locator('.nav button[data-page="transcript"]').waitFor({state:'attached',timeout:15000});await qf.locator('.nav button[data-page="transcript"]').click({force:true});
+  await q.waitForFunction(()=>window.FoundationPinAddressV018?.currentPage?.()==='transcript',{timeout:10000});
+  await q.waitForFunction(()=>document.querySelector('#pinAddressSmokeMarker')?.hidden===false,{timeout:10000});
+  assert.equal(await q.locator('#pinAddressSmokeMarker').getAttribute('data-pin-address-visible'),'1');
+  if(qerrors.length)throw new Error('pin address errors: '+qerrors.join(' | '));
+
   if(errors.length)throw new Error('front errors: '+errors.join(' | '));if(aerrors.length)throw new Error('president errors: '+aerrors.join(' | '));
-  console.log('Foundation 0.1.8 live smoke passed: additive lineage, non-blank President pair, constants tab, Front, pin shell.');
+  console.log('Foundation 0.1.8 live smoke passed: additive lineage, non-blank President pair, constants tab, Front, pin shell, page-scoped PIN markers.');
 }finally{await browser.close()}
