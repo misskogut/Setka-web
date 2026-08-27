@@ -58,6 +58,19 @@
         {"path":"foundation-admin-v018.html","sha256":"f99eed3e8f629b6c95a1502e477106659439f74bb606e54177deec07b5306a11"},
         {"path":"foundation-president.html","sha256":"99d47162b4d32cb92c85fd9874bd4ff51b0e68d51e374f4b6b9b4ec3859a1a1c"}
       ]
+    },
+    {
+      "key":"transcript-stable-mobile-viewport-v018","status":"admitted","classification":"structural","complete":true,
+      "titleRu":"Стенограмма · стабильный мобильный viewport и порционная DOM-отрисовка",
+      "rationaleRu":"Исправление PIN-1E633290 основано на TRACE-360F051B: фильтрация ленты вызывала изменение высоты #page-transcript до 22579px и могла блокировать мобильный Safari. Лента получает собственный ограниченный scroll-viewport; фильтр применяется к массиву данных; одновременно в DOM отображается ограниченная порция событий. Материнская хронология, event_no, identity, права и смысл событий не меняются.",
+      "touchedConstants":["PRESIDENT","PRESIDENT_CABINET","SURFACE","SESSION_TRACE","VERSION"],
+      "assessments":{"PRESIDENT":"compatible","PRESIDENT_CABINET":"compatible","SURFACE":"compatible","SESSION_TRACE":"compatible","VERSION":"compatible"},
+      "files":[
+        {"path":"foundation-admin-transcript-v018.js","sha256":"475caa175acc881805969d0ef722f7346094fb5b57cbbd84b8e033c08cd1977a"},
+        {"path":"foundation-admin-v018.html","sha256":"694718b78728bc2c5be5f99c747dac5226d9d82ad55dc7b6f6e942320b48053c"},
+        {"path":"foundation-control-build-v018.js","sha256":"04845bb8a6ce4be6c2a2d6e97d14ed42cd47f036096eaee572362e7c2c1870ae"},
+        {"path":"foundation-president.html","sha256":"a3b50d4d1bf0bfb53df34c17042bb7a2ec8a2912f412a86f83e7d979933cf4a4"}
+      ]
     }
   ]
 }
