@@ -1,0 +1,15 @@
+name: Temporary transcript stable hash audit
+on:
+  push:
+    branches: [main]
+jobs:
+  hashes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: SHA256
+        run: |
+          sha256sum foundation-admin-transcript-v018.js
+          sha256sum foundation-admin-v018.html
+          sha256sum foundation-control-build-v018.js
+          sha256sum foundation-president.html
