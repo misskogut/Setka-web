@@ -93,6 +93,29 @@
           "sha256": "3cd03b385137e9cecb6be2e69aea98c9cdda2a610af084a0c77dc79733ea14d5"
         }
       ]
+    },
+    {
+      "key": "pin-semantic-meaning-passport-v018",
+      "status": "admitted",
+      "classification": "structural",
+      "complete": true,
+      "titleRu": "PIN · смысловой паспорт концептуальной задачи",
+      "rationaleRu": "Добавляет к концептуальному PIN структурированный append-only смысловой слой: идея Президента, интерпретация GPT, summary и системные следствия. Исходный PIN не переписывается; карточка только показывает связанную каноническую запись смысла.",
+      "touchedConstants": ["PRESIDENT_CABINET", "PIN"],
+      "assessments": {
+        "PRESIDENT_CABINET": "compatible",
+        "PIN": "compatible"
+      },
+      "files": [
+        {
+          "path": "foundation-control-pin-semantic-v018.js",
+          "sha256": "cb9b2dee2e4b9cd733f0b893b517a20ff9ff426ef2789a4bf2b91ca8d8ccfc76"
+        },
+        {
+          "path": "foundation-president.html",
+          "sha256": "97e2efab40a5feb9fbfad9c53d4111a3dc3d34d9113efb93a3231dd03e9366ce"
+        }
+      ]
     }
   ]
 }
