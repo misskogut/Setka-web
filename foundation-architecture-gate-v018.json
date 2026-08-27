@@ -1,0 +1,50 @@
+{
+  "version": "0.1.8",
+  "policy": "architecture-gate-v018",
+  "meaningRu": "Новое структурное изменение не входит в SETKA молча: оно обязано объявить затронутые действующие константы и совместимость. Изменение существующего закона требует отдельного решения Президента.",
+  "activeConstants": [
+    "PRESIDENT",
+    "PRESIDENT_CABINET",
+    "SETKA_ID",
+    "SURFACE",
+    "VERSION",
+    "PIN",
+    "SYNTHETIC",
+    "PATTERN",
+    "SESSION_TRACE"
+  ],
+  "candidateConstants": [
+    {
+      "key": "ARCHITECTURE_ADMISSION_GATE",
+      "nameRu": "Архитектурный допуск новой функции",
+      "source": "PIN-456F0EA3",
+      "activation": "Только после принятия Президентом"
+    }
+  ],
+  "admissions": [
+    {
+      "key": "architecture-gate-v018-bootstrap",
+      "status": "admitted",
+      "classification": "structural",
+      "complete": true,
+      "titleRu": "Машинная проверка архитектурного допуска",
+      "rationaleRu": "Gate сам проходит собственную проверку: он связывает изменение с Президентом, версией и PIN-доказательством и не меняет содержание уже действующих законов.",
+      "touchedConstants": ["PRESIDENT", "VERSION", "PIN"],
+      "assessments": {
+        "PRESIDENT": "compatible",
+        "VERSION": "compatible",
+        "PIN": "compatible"
+      },
+      "files": [
+        {
+          "path": "foundation-architecture-gate-v018.mjs",
+          "sha256": "831e1732cae7dbec5ff8fb6451d3065f2ba4b4f3ca5c209180d693dd9c3a98ae"
+        },
+        {
+          "path": ".github/workflows/foundation-v018-smoke.yml",
+          "sha256": "6d0c0bdd09d1289ad9ef37f37f09ad3c7636103c212b7af3fdd70debdd7b6722"
+        }
+      ]
+    }
+  ]
+}
