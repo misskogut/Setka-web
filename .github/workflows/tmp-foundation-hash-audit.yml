@@ -1,0 +1,17 @@
+name: Temporary Foundation hash audit
+on:
+  push:
+    branches: [main]
+jobs:
+  hashes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: SHA256 Foundation knowledge files
+        run: |
+          sha256sum \
+            foundation-admin-knowledge-v018.js \
+            foundation-admin-knowledge-v018.css \
+            foundation-admin-v018.html \
+            foundation-control-build-v018.js \
+            foundation-president.html
