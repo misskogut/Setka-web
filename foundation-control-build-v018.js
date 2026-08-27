@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const BUILD='018-wd-20260826-2217';
+const BUILD='018-transcript-search2';
 const frame=document.getElementById('appFrame');
 if(!frame)return;
 const proto=Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype,'src');
