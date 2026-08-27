@@ -65,6 +65,34 @@
           "sha256": "bfb845257aac19bf8554a13dbdeaa680e9e0a2ce32476f8662ac41e8c4aa7d57"
         }
       ]
+    },
+    {
+      "key": "president-explicit-navigation-v018",
+      "status": "admitted",
+      "classification": "structural",
+      "complete": true,
+      "titleRu": "Навигация Президента · только по явному действию",
+      "rationaleRu": "Убирает самопроизвольные переходы между версиями из-за фонового refresh и VIEWING другой вкладки. Смена открытой версии остаётся только результатом явного действия Президента или явно выполненной команды в Протоколе.",
+      "touchedConstants": ["PRESIDENT_CABINET", "SURFACE", "VERSION"],
+      "assessments": {
+        "PRESIDENT_CABINET": "compatible",
+        "SURFACE": "compatible",
+        "VERSION": "compatible"
+      },
+      "files": [
+        {
+          "path": "foundation-control-stability-v018.js",
+          "sha256": "769a07471f11ca63ced1b81adb02619f63312ac01f4bf924dfbd79f9871bc81a"
+        },
+        {
+          "path": "foundation-control-build-v018.js",
+          "sha256": "751472dce5914a218a31734c5a2d9023f353dfda43ccd881183254b7defe7209"
+        },
+        {
+          "path": "foundation-president.html",
+          "sha256": "679d74560909c0c7ab2a5d90284e852d35e4a844f6d756f00f511f1d25c28a8e"
+        }
+      ]
     }
   ]
 }
