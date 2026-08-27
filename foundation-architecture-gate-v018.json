@@ -116,6 +116,42 @@
           "sha256": "1e458594b54c22aeb76b142216dae35988b454deadaca8dcb9f6efcf03418fe7"
         }
       ]
+    },
+    {
+      "key": "constants-knowledge-workspace-v018",
+      "status": "admitted",
+      "classification": "structural",
+      "complete": true,
+      "titleRu": "Константы · типология, кандидаты и Президентский review",
+      "rationaleRu": "Развивает вкладку Константы в рабочий контур знаний: утверждённые константы группируются по рабочей типологии-кандидату, кандидаты получают отдельные карточки, стадии, provenance/evidence и ручной President-only review. Кандидат не становится константой автоматически; типобезопасный promotion сохраняет архитектурные границы.",
+      "touchedConstants": ["PRESIDENT", "PRESIDENT_CABINET", "PIN"],
+      "assessments": {
+        "PRESIDENT": "compatible",
+        "PRESIDENT_CABINET": "compatible",
+        "PIN": "compatible"
+      },
+      "files": [
+        {
+          "path": "foundation-admin-knowledge-v018.js",
+          "sha256": "a084b7fc359fcef728ad9b02594745a81099009e0b46c6344c2d50ba4550a651"
+        },
+        {
+          "path": "foundation-admin-knowledge-v018.css",
+          "sha256": "7281f03c73f807a85951092bd940616ccc15925e01931ba47aa0ec29fe385f46"
+        },
+        {
+          "path": "foundation-admin-v018.html",
+          "sha256": "f8a28c8b99aae31f2c5232b3b5131cb1f775ae4dd4a13a7fadd4d9c857e0f24c"
+        },
+        {
+          "path": "foundation-control-build-v018.js",
+          "sha256": "7388bc5870395a70cc0fd019c659087a56fa8599555b3798cfb4678cb281a3fd"
+        },
+        {
+          "path": "foundation-president.html",
+          "sha256": "336392278c6ee9b7b644cba0d0d79ca6a19f3c1324adac41d5b0a1e021e7bae1"
+        }
+      ]
     }
   ]
 }
