@@ -2,5 +2,6 @@
 .pinTimeLine018{display:block;margin-top:5px;font-size:10px;line-height:1.35;color:rgba(255,255,255,.58)}
 .priorityMeta018{margin:10px 0 2px;padding:9px 10px;border:1px solid rgba(255,255,255,.11);border-radius:10px;font-size:11px;line-height:1.45;color:rgba(255,255,255,.72);background:rgba(255,255,255,.025)}
 .priorityMeta018 b{color:#fff}
+.priorityExplain018{margin-top:5px}
 .priorityToggle018{border-color:rgba(255,196,64,.42)!important;color:#ffd36a!important}
 .priorityToggle018.active{background:rgba(255,190,40,.13)!important;box-shadow:0 0 0 1px rgba(255,190,40,.08) inset}
