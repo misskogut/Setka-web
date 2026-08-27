@@ -100,7 +100,7 @@
       "classification": "structural",
       "complete": true,
       "titleRu": "PIN · смысловой паспорт концептуальной задачи",
-      "rationaleRu": "Добавляет к концептуальному PIN структурированный append-only смысловой слой: идея Президента, интерпретация GPT, summary и системные следствия. Исходный PIN не переписывается; карточка только показывает связанную каноническую запись смысла.",
+      "rationaleRu": "Добавляет к концептуальному PIN структурированный append-only смысловой слой: идея Президента, интерпретация GPT, summary и системные следствия. Старые реконструированные паспорта визуально отделяются от прямой протоколизации и не выдаются за дословную исходную формулировку.",
       "touchedConstants": ["PRESIDENT_CABINET", "PIN"],
       "assessments": {
         "PRESIDENT_CABINET": "compatible",
@@ -109,11 +109,11 @@
       "files": [
         {
           "path": "foundation-control-pin-semantic-v018.js",
-          "sha256": "cb9b2dee2e4b9cd733f0b893b517a20ff9ff426ef2789a4bf2b91ca8d8ccfc76"
+          "sha256": "b6a981b62640d60db4567f0270c804004a3f3f215b35e1ed8aed37a85b0bdfb6"
         },
         {
           "path": "foundation-president.html",
-          "sha256": "97e2efab40a5feb9fbfad9c53d4111a3dc3d34d9113efb93a3231dd03e9366ce"
+          "sha256": "1e458594b54c22aeb76b142216dae35988b454deadaca8dcb9f6efcf03418fe7"
         }
       ]
     }
