@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const BUILD='018-rhythm1';
+const BUILD='018-uxrescue1';
 const frame=document.getElementById('appFrame');
 if(!frame)return;
 const proto=Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype,'src');
