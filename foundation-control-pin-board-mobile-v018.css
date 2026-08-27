@@ -24,3 +24,18 @@
 .modalPinComposerActions018{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}.modalPinComposerActions018 button{border:1px solid rgba(255,255,255,.18);border-radius:10px;background:#080808;color:#fff;padding:9px 11px;font-weight:800}.modalPinComposerActions018 .primary{background:#fff;color:#000;border-color:#fff}
 .modalPinInstruction018{position:fixed;z-index:2100;left:50%;top:calc(10px + env(safe-area-inset-top));transform:translateX(-50%);display:none;max-width:calc(100vw - 24px);border-radius:999px;background:#7af0b7;color:#07120d;padding:8px 12px;font-size:10px;font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.modalPinInstruction018.show{display:block}
 @media(max-width:700px){.modalPinTool018{font-size:10px;padding:7px 9px}.modalPinComposer018{padding:8px;padding-bottom:calc(8px + env(safe-area-inset-bottom))}}
+
+/* 0.1.8 mobile contract: one vertical scroll surface, compact previews, dvh + safe-area. */
+@media(max-width:700px){
+ .pinBoard.open:not(.pinBoardCollapsed018){top:56px!important;right:6px!important;bottom:calc(6px + env(safe-area-inset-bottom))!important;width:calc(100vw - 12px)!important;height:auto!important;max-height:none!important;overflow:hidden!important}
+ .pinBoard.open:not(.pinBoardCollapsed018) .pinBoardHead,
+ .pinBoard.open:not(.pinBoardCollapsed018) #pinFilters,
+ .pinBoard.open:not(.pinBoardCollapsed018) #pinOriginFilters018{flex:0 0 auto}
+ .pinBoard.open:not(.pinBoardCollapsed018) #pinBoardList{min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain!important;touch-action:pan-y!important;padding-bottom:calc(10px + env(safe-area-inset-bottom))!important}
+ .pinBoard.open:not(.pinBoardCollapsed018) .pinListItem{width:100%!important;max-width:100%!important;overflow:hidden!important}
+ .pinBoard.open:not(.pinBoardCollapsed018) .pinItemComment{display:-webkit-box!important;-webkit-box-orient:vertical!important;-webkit-line-clamp:2!important;max-height:2.8em!important;overflow:hidden!important;white-space:normal!important;text-overflow:ellipsis!important}
+ .pinBoard.open:not(.pinBoardCollapsed018) .pinItemMeta,
+ .pinBoard.open:not(.pinBoardCollapsed018) .pinItemCode{overflow-wrap:anywhere!important}
+ .overlayModal .modalCard{max-width:calc(100vw - 12px)!important;max-height:calc(100dvh - 12px)!important;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain!important;touch-action:pan-y!important;padding-bottom:calc(14px + env(safe-area-inset-bottom))!important}
+ .overlayModal .pinRead{overflow-wrap:anywhere!important;white-space:pre-wrap!important}
+}
