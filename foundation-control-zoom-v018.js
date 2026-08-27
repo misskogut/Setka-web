@@ -25,7 +25,7 @@ function bindDoc(){let d;try{d=frame.contentDocument}catch{return}if(!d||d.docum
  const move=e=>{if(!pinch||!e.touches||e.touches.length<2)return;e.preventDefault();const m=midpoint(e.touches);scale=clamp(pinch.scale*(distance(e.touches)/pinch.distance));apply(false);const s=scroller();s.scrollLeft=Math.max(0,pinch.contentX*scale-m.x);s.scrollTop=Math.max(0,pinch.contentY*scale-m.y)};
  const end=e=>{if(pinch&&(!e.touches||e.touches.length<2)){pinch=null;apply(true)}};
  d.addEventListener('touchstart',start,{passive:false,capture:true});d.addEventListener('touchmove',move,{passive:false,capture:true});d.addEventListener('touchend',end,{passive:false,capture:true});d.addEventListener('touchcancel',end,{passive:false,capture:true});
- d.addEventListener('wheel',e=>{if(!(e.ctrlKey||e.metaKey))return;e.preventDefault();const s=scroller(),before=scale,contentX=(s.scrollLeft+e.clientX)/before,contentY=(s.scrollTop+e.clientY)/before;scale=clamp(scale*(e.deltaY>0?.92:1.08));apply(true);s.scrollLeft=Math.max(0,contentX*scale-e.clientX);s.scrollTop=Math.max(0,contentY*scale-e.clientY)},{passive:false,capture:true});
+ d.addEventListener('wheel',e=>{if(!(e.ctrlKey||e.metaKey))return;e.preventDefault();const s=scroller(),before=scale,contentX=(s.scrollLeft+e.clientX)/before,contentY=(s.scrollTop+e.clientY)/before;scale=clamp(scale*(e.deltaY>0 ? .92 : 1.08));apply(true);s.scrollLeft=Math.max(0,contentX*scale-e.clientX);s.scrollTop=Math.max(0,contentY*scale-e.clientY)},{passive:false,capture:true});
  const workspace=ensureWorkspace(d);if(workspace){resizeObserver?.disconnect();resizeObserver=new ResizeObserver(()=>schedule(false));resizeObserver.observe(workspace.shell)}
  apply(false);
 }
