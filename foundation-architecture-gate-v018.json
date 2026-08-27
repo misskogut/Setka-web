@@ -45,6 +45,26 @@
           "sha256": "6d0c0bdd09d1289ad9ef37f37f09ad3c7636103c212b7af3fdd70debdd7b6722"
         }
       ]
+    },
+    {
+      "key": "president-ux-rescue-stable-canvas-v018",
+      "status": "admitted",
+      "classification": "structural",
+      "complete": true,
+      "titleRu": "Рабочий стол Президента · статичная карта с жестовым масштабом",
+      "rationaleRu": "Исправляет блокирующий UI/UX-дефект: геометрия рабочего стола больше не перестраивается при zoom, масштаб является преобразованием одной карты, а не изменением структуры сущностей или их данных.",
+      "touchedConstants": ["PRESIDENT_CABINET", "SURFACE", "SESSION_TRACE"],
+      "assessments": {
+        "PRESIDENT_CABINET": "compatible",
+        "SURFACE": "compatible",
+        "SESSION_TRACE": "compatible"
+      },
+      "files": [
+        {
+          "path": "foundation-control-zoom-v018.js",
+          "sha256": "bfb845257aac19bf8554a13dbdeaa680e9e0a2ce32476f8662ac41e8c4aa7d57"
+        }
+      ]
     }
   ]
 }
