@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const BUILD='018-knowledge1';
+const BUILD='018-freeze1';
 const frame=document.getElementById('appFrame');
 if(!frame)return;
 const proto=Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype,'src');
