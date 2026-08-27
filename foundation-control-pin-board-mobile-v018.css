@@ -1,0 +1,13 @@
+/* Mobile PIN board: collapse the mail/list panel so page PIN markers stay tappable. */
+.pinBoardMinimize018{border:0;background:transparent;color:#fff;font-size:22px;line-height:1;width:34px;height:34px;border-radius:9px;flex:0 0 34px}
+.pinBoardMinimize018:active{background:#171b21}
+@media(max-width:700px){
+ .pinBoard.pinBoardCollapsed018{display:flex!important;top:58px;right:8px;width:48px;height:48px;max-height:48px;border-radius:14px;overflow:hidden;box-shadow:0 12px 32px rgba(0,0,0,.45)}
+ .pinBoard.pinBoardCollapsed018 .pinBoardHead{width:48px;height:48px;padding:7px;border:0;display:flex;align-items:center;justify-content:center}
+ .pinBoard.pinBoardCollapsed018 .pinBoardHead>div,
+ .pinBoard.pinBoardCollapsed018 #pinBoardClose,
+ .pinBoard.pinBoardCollapsed018 #pinFilters,
+ .pinBoard.pinBoardCollapsed018 #pinOriginFilters018,
+ .pinBoard.pinBoardCollapsed018 #pinBoardList{display:none!important}
+ .pinBoard.pinBoardCollapsed018 .pinBoardMinimize018{display:block;width:34px;height:34px;margin:0;padding:0;font-size:20px;border:1px solid #30343c;background:#10141a}
+}
