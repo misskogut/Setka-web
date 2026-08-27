@@ -1,0 +1,84 @@
+/* Additive control-layer mobile fix for PIN navigation.
+   Applies through the permanent Foundation doors and does not mutate frozen version artifacts. */
+
+/* PIN board: long comments must stay compact instead of expanding the whole card. */
+.pinItemCode,
+.pinItemComment,
+.pinItemMeta{
+  display:block;
+  min-width:0;
+}
+.pinItemComment{
+  overflow:hidden;
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:3;
+  max-height:4.1em;
+}
+.pinBoardHead,
+.pinFilters{
+  flex:0 0 auto;
+}
+.pinBoardList{
+  flex:1 1 auto;
+  min-height:0;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior-y:contain;
+  touch-action:pan-y;
+}
+
+/* Every control modal must fit the dynamic Safari viewport and scroll internally. */
+.overlayModal{
+  overflow:hidden;
+}
+.overlayModal .modalCard{
+  max-height:calc(100vh - 40px);
+  overflow-y:auto;
+  overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior-y:contain;
+  touch-action:pan-y;
+}
+@supports (height:100dvh){
+  .overlayModal .modalCard{
+    max-height:calc(100dvh - 40px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  }
+}
+
+@media(max-width:700px){
+  .pinBoard{
+    top:56px;
+    right:8px;
+    width:calc(100vw - 16px);
+    max-height:calc(100vh - 68px);
+  }
+  @supports (height:100dvh){
+    .pinBoard{
+      max-height:calc(100dvh - 68px - env(safe-area-inset-bottom));
+    }
+  }
+  .pinBoardList{
+    padding-bottom:calc(12px + env(safe-area-inset-bottom));
+  }
+  .pinListItem{
+    touch-action:manipulation;
+  }
+
+  .overlayModal{
+    place-items:center;
+    padding:8px;
+    padding-top:calc(8px + env(safe-area-inset-top));
+    padding-bottom:calc(8px + env(safe-area-inset-bottom));
+  }
+  .overlayModal .modalCard{
+    width:100%;
+    max-height:calc(100vh - 16px);
+    padding-bottom:calc(16px + env(safe-area-inset-bottom));
+  }
+  @supports (height:100dvh){
+    .overlayModal .modalCard{
+      max-height:calc(100dvh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    }
+  }
+}
