@@ -21,6 +21,8 @@ jobs:
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -34,7 +36,10 @@ jobs:
           node --check foundation-control-pins-v018.js
           node --check foundation-control-zoom-v018.js
           node --check foundation-lineage-check.mjs
+          node --check foundation-architecture-gate-v018.mjs
           node --check foundation-v018-smoke.mjs
+      - name: Architecture admission gate
+        run: node foundation-architecture-gate-v018.mjs
       - name: Additive lineage contract
         run: node foundation-lineage-check.mjs
       - name: Static contracts
