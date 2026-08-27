@@ -1,20 +1,43 @@
 (()=>{
 'use strict';
 const KEY='setka:foundation:president:zoom:v018';
-const LEVELS=[.6,.75,.9,1,1.15,1.3,1.4];
+const MIN=.5,MAX=1.5;
 const frame=document.getElementById('appFrame');
-const bar=document.querySelector('.controlBar');
-if(!frame||!bar)return;
-let scale=1;
-try{const x=Number(localStorage.getItem(KEY));if(LEVELS.includes(x))scale=x}catch{}
-const wrap=document.createElement('div');wrap.className='zoomTool';wrap.setAttribute('aria-label','Масштаб админки');wrap.innerHTML='<button type="button" data-zoom="out" aria-label="Уменьшить масштаб">−</button><span class="zoomValue">100%</span><button type="button" data-zoom="in" aria-label="Увеличить масштаб">+</button>';
-const anchor=document.getElementById('refreshVersions');bar.insertBefore(wrap,anchor||null);
-const value=wrap.querySelector('.zoomValue');
-function nearestIndex(){let best=0,dist=Infinity;LEVELS.forEach((v,i)=>{const d=Math.abs(v-scale);if(d<dist){dist=d;best=i}});return best}
-function apply(){value.textContent=`${Math.round(scale*100)}%`;try{localStorage.setItem(KEY,String(scale))}catch{}try{const d=frame.contentDocument;if(!d)return;const root=d.documentElement,body=d.body;if('zoom' in root.style){root.style.zoom=String(scale);root.style.transform='';root.style.width=''}else{root.style.zoom='';body.style.transformOrigin='0 0';body.style.transform=`scale(${scale})`;body.style.width=`${100/scale}%`}d.documentElement.dataset.shellZoom=String(scale);frame.contentWindow.dispatchEvent(new CustomEvent('foundation:admin-zoom',{detail:{scale}}))}catch{}}
-function step(dir){const i=nearestIndex(),j=Math.max(0,Math.min(LEVELS.length-1,i+dir));scale=LEVELS[j];apply()}
-wrap.addEventListener('click',e=>{const b=e.target.closest('button[data-zoom]');if(!b)return;step(b.dataset.zoom==='in'?1:-1)});
-frame.addEventListener('load',()=>requestAnimationFrame(apply));
-apply();
-window.FoundationControlZoomV018={get:()=>scale,set:v=>{const n=Number(v);if(!Number.isFinite(n))return scale;scale=LEVELS.reduce((a,b)=>Math.abs(b-n)<Math.abs(a-n)?b:a,LEVELS[0]);apply();return scale}};
+if(!frame)return;
+let scale=1,pinch=null,raf=0;
+try{const x=Number(localStorage.getItem(KEY));if(Number.isFinite(x))scale=Math.max(MIN,Math.min(MAX,x))}catch{}
+function clamp(v){return Math.max(MIN,Math.min(MAX,Number(v)||1))}
+function persist(){try{localStorage.setItem(KEY,String(scale))}catch{}}
+function apply(save=true){
+ const d=frame.contentDocument;if(!d)return;
+ const root=d.documentElement,body=d.body;if(!root||!body)return;
+ if('zoom' in root.style){root.style.zoom=String(scale);root.style.transform='';root.style.width=''}
+ else{root.style.zoom='';body.style.transformOrigin='0 0';body.style.transform=`scale(${scale})`;body.style.width=`${100/scale}%`}
+ root.style.overflow='auto';body.style.overflow='visible';root.dataset.shellZoom=String(scale);
+ if(save)persist();
+ try{frame.contentWindow.dispatchEvent(new CustomEvent('foundation:admin-zoom',{detail:{scale,source:'gesture'}}))}catch{}
+}
+function schedule(save=false){cancelAnimationFrame(raf);raf=requestAnimationFrame(()=>apply(save))}
+function distance(t){const dx=t[0].clientX-t[1].clientX,dy=t[0].clientY-t[1].clientY;return Math.hypot(dx,dy)}
+function bindDoc(){
+ const d=frame.contentDocument;if(!d||d.documentElement.dataset.gestureZoomBound==='1')return;
+ d.documentElement.dataset.gestureZoomBound='1';
+ const start=e=>{if(e.touches&&e.touches.length===2){pinch={distance:Math.max(1,distance(e.touches)),scale};e.preventDefault()}};
+ const move=e=>{if(!pinch||!e.touches||e.touches.length<2)return;e.preventDefault();scale=clamp(pinch.scale*(distance(e.touches)/pinch.distance));schedule(false)};
+ const end=e=>{if(pinch&&(!e.touches||e.touches.length<2)){pinch=null;apply(true)}};
+ d.addEventListener('touchstart',start,{passive:false,capture:true});
+ d.addEventListener('touchmove',move,{passive:false,capture:true});
+ d.addEventListener('touchend',end,{passive:false,capture:true});
+ d.addEventListener('touchcancel',end,{passive:false,capture:true});
+ d.addEventListener('wheel',e=>{if(!(e.ctrlKey||e.metaKey))return;e.preventDefault();scale=clamp(scale*(e.deltaY>0?.94:1.06));apply(true)},{passive:false,capture:true});
+ apply(false);
+}
+frame.addEventListener('load',()=>requestAnimationFrame(bindDoc));
+requestAnimationFrame(bindDoc);
+window.FoundationControlZoomV018={
+ get:()=>scale,
+ set:v=>{scale=clamp(v);apply(true);return scale},
+ reset:()=>{scale=1;apply(true);return scale},
+ mode:'gesture'
+};
 })();
