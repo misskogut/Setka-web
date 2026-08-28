@@ -163,7 +163,7 @@
       "titleRu": "Карандаш · browser regression открытия карточки",
       "rationaleRu": "Добавляет только автоматический browser-smoke и его запуск в CI для доказательства существующего пути почта Карандашей → iframe → trace_get → модалка; продуктовые законы, права, данные и UI не изменяются.",
       "files": [
-        {"path": "foundation-trace-open-smoke-v018.mjs", "sha256": "892e18723cc2cf39e28bc1bd3e6fa8dfe360b214bf6e267a53556ff68d50ac3e"},
+        {"path": "foundation-trace-open-smoke-v018.mjs", "sha256": "f3a2d00e53e011ae5fa12709d769f82fac5027a01fb0e02614ea8a97727c5915"},
         {"path": ".github/workflows/foundation-v018-smoke.yml", "sha256": "bce079ad4ca80a2f97e1331fdffe327ba248075493a1afff1ca1b37651f0ea57"}
       ]
     }
