@@ -43,6 +43,7 @@ try{
       await route.fulfill({status:204,headers:CORS,body:''});return;
     }
     const reply=async payload=>route.fulfill({status:200,contentType:'application/json',headers:CORS,body:JSON.stringify(payload)});
+    if(body.action==='priority_list'){await reply({pins:[],traces:[]});return;}
     if(body.action==='trace_list'){await reply({traces:[TRACE]});return;}
     if(body.action==='trace_get'){
       traceGetSeen=true;
