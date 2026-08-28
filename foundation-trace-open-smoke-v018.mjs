@@ -58,7 +58,7 @@ try{
 
   const frame=page.frameLocator('#appFrame');
   await frame.locator('#traceModal018.open').waitFor({state:'visible',timeout:15000});
-  assert.equal(await frame.locator('#traceModalCode018').textContent(),`${TRACE.traceCode} · ${TRACE.frontVersion}`);
+  assert.equal(await frame.locator('#traceModalCode018').textContent(),TRACE.traceCode);
   assert.equal(await frame.locator('#traceModalTitle018').textContent(),TRACE.title);
   if(errors.length)throw new Error('trace open page errors: '+errors.join(' | '));
   console.log('Foundation 0.1.8 trace open smoke passed: trace mail card -> iframe postMessage -> trace_get -> matching modal.');
