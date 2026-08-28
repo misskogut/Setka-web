@@ -38,6 +38,7 @@ jobs:
           node --check foundation-lineage-check.mjs
           node --check foundation-architecture-gate-v018.mjs
           node --check foundation-v018-smoke.mjs
+          node --check foundation-trace-open-smoke-v018.mjs
       - name: Architecture admission gate
         run: node foundation-architecture-gate-v018.mjs
       - name: Additive lineage contract
@@ -83,3 +84,7 @@ jobs:
         env:
           CHROME_PATH: /usr/bin/chromium
         run: node foundation-v018-smoke.mjs
+      - name: Trace card open browser smoke
+        env:
+          CHROME_PATH: /usr/bin/chromium
+        run: node foundation-trace-open-smoke-v018.mjs
