@@ -4,7 +4,7 @@ const KEY='setka:foundation:president:zoom:v018-transform1';
 const MIN=.18,MAX=2.25,WORKSPACE_WIDTH=1280;
 const frame=document.getElementById('appFrame');
 if(!frame)return;
-let scale=1,pinch=null,extentRaf=0,mutationObserver=null;
+let scale=1,pinch=null,extentRaf=0,mutationObserver=null,lastFrameWidth=0,lastNotifiedScale=null;
 function clamp(v){return Math.max(MIN,Math.min(MAX,Number(v)||1))}
 function frameWidth(){try{return frame.clientWidth||innerWidth||390}catch{return 390}}
 function fitValue(){return clamp(Math.max(1,frameWidth()-12)/WORKSPACE_WIDTH)}
@@ -44,6 +44,11 @@ function queueExtent(workspace){
  cancelAnimationFrame(extentRaf);
  extentRaf=requestAnimationFrame(()=>updateExtent(workspace));
 }
+function notifyScale(){
+ if(lastNotifiedScale!==null&&Math.abs(lastNotifiedScale-scale)<.0001)return;
+ lastNotifiedScale=scale;
+ try{frame.contentWindow.dispatchEvent(new CustomEvent('foundation:admin-zoom',{detail:{scale,source:'gesture-canvas-transform'}}))}catch{}
+}
 function apply(save=true){
  let d;
  try{d=frame.contentDocument}catch{return}
@@ -65,7 +70,7 @@ function apply(save=true){
  root.dataset.shellZoomMode='transform-hit-safe';
  updateExtent(workspace);
  if(save)persist();
- try{frame.contentWindow.dispatchEvent(new CustomEvent('foundation:admin-zoom',{detail:{scale,source:'gesture-canvas-transform'}}))}catch{}
+ notifyScale();
 }
 function bindDoc(){
  let d;
@@ -122,22 +127,31 @@ try{
 }catch{
  if(frameWidth()<760)scale=fitValue();
 }
+lastFrameWidth=frameWidth();
 frame.addEventListener('load',()=>requestAnimationFrame(()=>{
- if(frameWidth()<760){
+ lastNotifiedScale=null;
+ lastFrameWidth=frameWidth();
+ if(lastFrameWidth<760){
    try{
      if(!localStorage.getItem(KEY))scale=fitValue();
    }catch{scale=fitValue()}
  }
  bindDoc();
 }));
-window.addEventListener('resize',()=>{if(frameWidth()<760&&scale>1.2)scale=fitValue();apply(false)});
+window.addEventListener('resize',()=>{
+ const nextWidth=frameWidth();
+ if(Math.abs(nextWidth-lastFrameWidth)<1)return;
+ lastFrameWidth=nextWidth;
+ if(nextWidth<760&&scale>1.2)scale=fitValue();
+ apply(false);
+});
 requestAnimationFrame(bindDoc);
 window.FoundationControlZoomV018={
  get:()=>scale,
  set:v=>{scale=clamp(v);apply(true);return scale},
  reset:()=>{scale=1;apply(true);return scale},
  fit:()=>{scale=fitValue();apply(true);return scale},
- mode:'stable-canvas-transform',
+ mode:'stable-canvas-transform-width-guard',
  workspaceWidth:WORKSPACE_WIDTH
 };
 })();
