@@ -29,11 +29,25 @@
       "complete": true,
       "titleRu": "Машинная проверка архитектурного допуска",
       "rationaleRu": "Gate сам проходит собственную проверку: он связывает изменение с Президентом, версией и PIN-доказательством и не меняет содержание уже действующих законов.",
-      "touchedConstants": ["PRESIDENT", "VERSION", "PIN"],
-      "assessments": {"PRESIDENT": "compatible", "VERSION": "compatible", "PIN": "compatible"},
+      "touchedConstants": [
+        "PRESIDENT",
+        "VERSION",
+        "PIN"
+      ],
+      "assessments": {
+        "PRESIDENT": "compatible",
+        "VERSION": "compatible",
+        "PIN": "compatible"
+      },
       "files": [
-        {"path": "foundation-architecture-gate-v018.mjs", "sha256": "831e1732cae7dbec5ff8fb6451d3065f2ba4b4f3ca5c209180d693dd9c3a98ae"},
-        {"path": ".github/workflows/foundation-v018-smoke.yml", "sha256": "6d0c0bdd09d1289ad9ef37f37f09ad3c7636103c212b7af3fdd70debdd7b6722"}
+        {
+          "path": "foundation-architecture-gate-v018.mjs",
+          "sha256": "831e1732cae7dbec5ff8fb6451d3065f2ba4b4f3ca5c209180d693dd9c3a98ae"
+        },
+        {
+          "path": ".github/workflows/foundation-v018-smoke.yml",
+          "sha256": "6d0c0bdd09d1289ad9ef37f37f09ad3c7636103c212b7af3fdd70debdd7b6722"
+        }
       ]
     },
     {
@@ -43,10 +57,21 @@
       "complete": true,
       "titleRu": "Рабочий стол Президента · статичная карта с жестовым масштабом",
       "rationaleRu": "Исправляет блокирующий UI/UX-дефект: геометрия рабочего стола больше не перестраивается при zoom, масштаб является преобразованием одной карты, а не изменением структуры сущностей или их данных.",
-      "touchedConstants": ["PRESIDENT_CABINET", "SURFACE", "SESSION_TRACE"],
-      "assessments": {"PRESIDENT_CABINET": "compatible", "SURFACE": "compatible", "SESSION_TRACE": "compatible"},
+      "touchedConstants": [
+        "PRESIDENT_CABINET",
+        "SURFACE",
+        "SESSION_TRACE"
+      ],
+      "assessments": {
+        "PRESIDENT_CABINET": "compatible",
+        "SURFACE": "compatible",
+        "SESSION_TRACE": "compatible"
+      },
       "files": [
-        {"path": "foundation-control-zoom-v018.js", "sha256": "bfb845257aac19bf8554a13dbdeaa680e9e0a2ce32476f8662ac41e8c4aa7d57"}
+        {
+          "path": "foundation-control-zoom-v018.js",
+          "sha256": "bfb845257aac19bf8554a13dbdeaa680e9e0a2ce32476f8662ac41e8c4aa7d57"
+        }
       ]
     },
     {
@@ -56,12 +81,29 @@
       "complete": true,
       "titleRu": "Навигация Президента · только по явному действию",
       "rationaleRu": "Убирает самопроизвольные переходы между версиями из-за фонового refresh и VIEWING другой вкладки. Смена открытой версии остаётся только результатом явного действия Президента или явно выполненной команды в Протоколе.",
-      "touchedConstants": ["PRESIDENT_CABINET", "SURFACE", "VERSION"],
-      "assessments": {"PRESIDENT_CABINET": "compatible", "SURFACE": "compatible", "VERSION": "compatible"},
+      "touchedConstants": [
+        "PRESIDENT_CABINET",
+        "SURFACE",
+        "VERSION"
+      ],
+      "assessments": {
+        "PRESIDENT_CABINET": "compatible",
+        "SURFACE": "compatible",
+        "VERSION": "compatible"
+      },
       "files": [
-        {"path": "foundation-control-stability-v018.js", "sha256": "769a07471f11ca63ced1b81adb02619f63312ac01f4bf924dfbd79f9871bc81a"},
-        {"path": "foundation-control-build-v018.js", "sha256": "751472dce5914a218a31734c5a2d9023f353dfda43ccd881183254b7defe7209"},
-        {"path": "foundation-president.html", "sha256": "3cd03b385137e9cecb6be2e69aea98c9cdda2a610af084a0c77dc79733ea14d5"}
+        {
+          "path": "foundation-control-stability-v018.js",
+          "sha256": "769a07471f11ca63ced1b81adb02619f63312ac01f4bf924dfbd79f9871bc81a"
+        },
+        {
+          "path": "foundation-control-build-v018.js",
+          "sha256": "751472dce5914a218a31734c5a2d9023f353dfda43ccd881183254b7defe7209"
+        },
+        {
+          "path": "foundation-president.html",
+          "sha256": "3cd03b385137e9cecb6be2e69aea98c9cdda2a610af084a0c77dc79733ea14d5"
+        }
       ]
     },
     {
@@ -71,11 +113,23 @@
       "complete": true,
       "titleRu": "PIN · смысловой паспорт концептуальной задачи",
       "rationaleRu": "Добавляет к концептуальному PIN структурированный append-only смысловой слой: идея Президента, интерпретация GPT, summary и системные следствия. Старые реконструированные паспорта визуально отделяются от прямой протоколизации и не выдаются за дословную исходную формулировку.",
-      "touchedConstants": ["PRESIDENT_CABINET", "PIN"],
-      "assessments": {"PRESIDENT_CABINET": "compatible", "PIN": "compatible"},
+      "touchedConstants": [
+        "PRESIDENT_CABINET",
+        "PIN"
+      ],
+      "assessments": {
+        "PRESIDENT_CABINET": "compatible",
+        "PIN": "compatible"
+      },
       "files": [
-        {"path": "foundation-control-pin-semantic-v018.js", "sha256": "b6a981b62640d60db4567f0270c804004a3f3f215b35e1ed8aed37a85b0bdfb6"},
-        {"path": "foundation-president.html", "sha256": "1e458594b54c22aeb76b142216dae35988b454deadaca8dcb9f6efcf03418fe7"}
+        {
+          "path": "foundation-control-pin-semantic-v018.js",
+          "sha256": "b6a981b62640d60db4567f0270c804004a3f3f215b35e1ed8aed37a85b0bdfb6"
+        },
+        {
+          "path": "foundation-president.html",
+          "sha256": "1e458594b54c22aeb76b142216dae35988b454deadaca8dcb9f6efcf03418fe7"
+        }
       ]
     },
     {
@@ -85,14 +139,37 @@
       "complete": true,
       "titleRu": "Константы · типология, кандидаты и Президентский review",
       "rationaleRu": "Развивает вкладку Константы в рабочий контур знаний: утверждённые константы группируются по рабочей типологии-кандидату, кандидаты получают отдельные карточки, стадии, provenance/evidence и ручной President-only review. Кандидат не становится константой автоматически; типобезопасный promotion сохраняет архитектурные границы.",
-      "touchedConstants": ["PRESIDENT", "PRESIDENT_CABINET", "PIN"],
-      "assessments": {"PRESIDENT": "compatible", "PRESIDENT_CABINET": "compatible", "PIN": "compatible"},
+      "touchedConstants": [
+        "PRESIDENT",
+        "PRESIDENT_CABINET",
+        "PIN"
+      ],
+      "assessments": {
+        "PRESIDENT": "compatible",
+        "PRESIDENT_CABINET": "compatible",
+        "PIN": "compatible"
+      },
       "files": [
-        {"path": "foundation-admin-knowledge-v018.js", "sha256": "a084b7fc359fcef728ad9b02594745a81099009e0b46c6344c2d50ba4550a651"},
-        {"path": "foundation-admin-knowledge-v018.css", "sha256": "7281f03c73f807a85951092bd940616ccc15925e01931ba47aa0ec29fe385f46"},
-        {"path": "foundation-admin-v018.html", "sha256": "f8a28c8b99aae31f2c5232b3b5131cb1f775ae4dd4a13a7fadd4d9c857e0f24c"},
-        {"path": "foundation-control-build-v018.js", "sha256": "7388bc5870395a70cc0fd019c659087a56fa8599555b3798cfb4678cb281a3fd"},
-        {"path": "foundation-president.html", "sha256": "336392278c6ee9b7b644cba0d0d79ca6a19f3c1324adac41d5b0a1e021e7bae1"}
+        {
+          "path": "foundation-admin-knowledge-v018.js",
+          "sha256": "a084b7fc359fcef728ad9b02594745a81099009e0b46c6344c2d50ba4550a651"
+        },
+        {
+          "path": "foundation-admin-knowledge-v018.css",
+          "sha256": "7281f03c73f807a85951092bd940616ccc15925e01931ba47aa0ec29fe385f46"
+        },
+        {
+          "path": "foundation-admin-v018.html",
+          "sha256": "f8a28c8b99aae31f2c5232b3b5131cb1f775ae4dd4a13a7fadd4d9c857e0f24c"
+        },
+        {
+          "path": "foundation-control-build-v018.js",
+          "sha256": "7388bc5870395a70cc0fd019c659087a56fa8599555b3798cfb4678cb281a3fd"
+        },
+        {
+          "path": "foundation-president.html",
+          "sha256": "336392278c6ee9b7b644cba0d0d79ca6a19f3c1324adac41d5b0a1e021e7bae1"
+        }
       ]
     },
     {
@@ -102,14 +179,41 @@
       "complete": true,
       "titleRu": "Президентский UI · восстановление кликов и стабильной геометрии по TRACE-доказательствам",
       "rationaleRu": "Аварийное исправление PIN-21EFAABC основано на реальной активности Президента и raw TRACE telemetry. Убирает полную пересборку DOM при каждом фильтре Стенограммы, 15-секундный автоматический rerender и MutationObserver→transform feedback в zoom. Фильтрация теперь меняет видимость уже существующих событий, Президент распознаётся по каноническому SETKA-0001-0001, ручное обновление сохраняет scroll, а фиксированный 1280px workspace масштабируется CSS zoom с нативным hit-testing. Смысл событий, identity, права и хронология не изменяются.",
-      "touchedConstants": ["PRESIDENT", "PRESIDENT_CABINET", "SURFACE", "SESSION_TRACE", "VERSION"],
-      "assessments": {"PRESIDENT": "compatible", "PRESIDENT_CABINET": "compatible", "SURFACE": "compatible", "SESSION_TRACE": "compatible", "VERSION": "compatible"},
+      "touchedConstants": [
+        "PRESIDENT",
+        "PRESIDENT_CABINET",
+        "SURFACE",
+        "SESSION_TRACE",
+        "VERSION"
+      ],
+      "assessments": {
+        "PRESIDENT": "compatible",
+        "PRESIDENT_CABINET": "compatible",
+        "SURFACE": "compatible",
+        "SESSION_TRACE": "compatible",
+        "VERSION": "compatible"
+      },
       "files": [
-        {"path": "foundation-admin-transcript-v018.js", "sha256": "475caa175acc881805969d0ef722f7346094fb5b57cbbd84b8e033c08cd1977a"},
-        {"path": "foundation-control-zoom-v018.js", "sha256": "0d5e6a1a2b6407b221a655e46d8a4e9a8d73cceecdf980345a3220fafef39706"},
-        {"path": "foundation-control-build-v018.js", "sha256": "3f8254b97782b852eec3a5ab24873e9c69c48639830b9349e02d48aa14c14cdb"},
-        {"path": "foundation-admin-v018.html", "sha256": "f99eed3e8f629b6c95a1502e477106659439f74bb606e54177deec07b5306a11"},
-        {"path": "foundation-president.html", "sha256": "99d47162b4d32cb92c85fd9874bd4ff51b0e68d51e374f4b6b9b4ec3859a1a1c"}
+        {
+          "path": "foundation-admin-transcript-v018.js",
+          "sha256": "475caa175acc881805969d0ef722f7346094fb5b57cbbd84b8e033c08cd1977a"
+        },
+        {
+          "path": "foundation-control-zoom-v018.js",
+          "sha256": "0d5e6a1a2b6407b221a655e46d8a4e9a8d73cceecdf980345a3220fafef39706"
+        },
+        {
+          "path": "foundation-control-build-v018.js",
+          "sha256": "3f8254b97782b852eec3a5ab24873e9c69c48639830b9349e02d48aa14c14cdb"
+        },
+        {
+          "path": "foundation-admin-v018.html",
+          "sha256": "f99eed3e8f629b6c95a1502e477106659439f74bb606e54177deec07b5306a11"
+        },
+        {
+          "path": "foundation-president.html",
+          "sha256": "99d47162b4d32cb92c85fd9874bd4ff51b0e68d51e374f4b6b9b4ec3859a1a1c"
+        }
       ]
     },
     {
@@ -119,13 +223,37 @@
       "complete": true,
       "titleRu": "Стенограмма · стабильный мобильный viewport и порционная DOM-отрисовка",
       "rationaleRu": "Исправление PIN-1E633290 основано на TRACE-360F051B: фильтрация ленты вызывала изменение высоты #page-transcript до 22579px и могла блокировать мобильный Safari. Лента получает собственный ограниченный scroll-viewport; фильтр применяется к массиву данных; одновременно в DOM отображается ограниченная порция событий. Материнская хронология, event_no, identity, права и смысл событий не меняются.",
-      "touchedConstants": ["PRESIDENT", "PRESIDENT_CABINET", "SURFACE", "SESSION_TRACE", "VERSION"],
-      "assessments": {"PRESIDENT": "compatible", "PRESIDENT_CABINET": "compatible", "SURFACE": "compatible", "SESSION_TRACE": "compatible", "VERSION": "compatible"},
+      "touchedConstants": [
+        "PRESIDENT",
+        "PRESIDENT_CABINET",
+        "SURFACE",
+        "SESSION_TRACE",
+        "VERSION"
+      ],
+      "assessments": {
+        "PRESIDENT": "compatible",
+        "PRESIDENT_CABINET": "compatible",
+        "SURFACE": "compatible",
+        "SESSION_TRACE": "compatible",
+        "VERSION": "compatible"
+      },
       "files": [
-        {"path": "foundation-admin-transcript-v018.js", "sha256": "475caa175acc881805969d0ef722f7346094fb5b57cbbd84b8e033c08cd1977a"},
-        {"path": "foundation-admin-v018.html", "sha256": "694718b78728bc2c5be5f99c747dac5226d9d82ad55dc7b6f6e942320b48053c"},
-        {"path": "foundation-control-build-v018.js", "sha256": "04845bb8a6ce4be6c2a2d6e97d14ed42cd47f036096eaee572362e7c2c1870ae"},
-        {"path": "foundation-president.html", "sha256": "a3b50d4d1bf0bfb53df34c17042bb7a2ec8a2912f412a86f83e7d979933cf4a4"}
+        {
+          "path": "foundation-admin-transcript-v018.js",
+          "sha256": "475caa175acc881805969d0ef722f7346094fb5b57cbbd84b8e033c08cd1977a"
+        },
+        {
+          "path": "foundation-admin-v018.html",
+          "sha256": "694718b78728bc2c5be5f99c747dac5226d9d82ad55dc7b6f6e942320b48053c"
+        },
+        {
+          "path": "foundation-control-build-v018.js",
+          "sha256": "04845bb8a6ce4be6c2a2d6e97d14ed42cd47f036096eaee572362e7c2c1870ae"
+        },
+        {
+          "path": "foundation-president.html",
+          "sha256": "a3b50d4d1bf0bfb53df34c17042bb7a2ec8a2912f412a86f83e7d979933cf4a4"
+        }
       ]
     },
     {
@@ -135,12 +263,33 @@
       "complete": true,
       "titleRu": "Президентский UI · устранение resize-feedback и безопасный transform-scale в Yandex/iOS",
       "rationaleRu": "Исправляет подтверждённый после успешной President-session клиентский freeze: прежний zoom-контур мог менять CSS zoom внутри ResizeObserver-измерения, повторно менять размеры shell и создавать feedback-loop. Новый контур не использует CSS zoom, не наблюдает собственные resize-эффекты и масштабирует фиксированный workspace через transform с отдельным extent; cache-key обновлён, чтобы мобильный браузер не воскресил аварийную сборку.",
-      "touchedConstants": ["PRESIDENT", "PRESIDENT_CABINET", "SURFACE", "SESSION_TRACE", "VERSION"],
-      "assessments": {"PRESIDENT": "compatible", "PRESIDENT_CABINET": "compatible", "SURFACE": "compatible", "SESSION_TRACE": "compatible", "VERSION": "compatible"},
+      "touchedConstants": [
+        "PRESIDENT",
+        "PRESIDENT_CABINET",
+        "SURFACE",
+        "SESSION_TRACE",
+        "VERSION"
+      ],
+      "assessments": {
+        "PRESIDENT": "compatible",
+        "PRESIDENT_CABINET": "compatible",
+        "SURFACE": "compatible",
+        "SESSION_TRACE": "compatible",
+        "VERSION": "compatible"
+      },
       "files": [
-        {"path": "foundation-control-zoom-v018.js", "sha256": "6cd63d45ae5f9f8edc3feccfb029e26fa6bb90df06a66bad63be384ba845ddbd"},
-        {"path": "foundation-control-build-v018.js", "sha256": "d624217389e0611f042cbab025f6f53a7943b5b70f7441a425f41c168949c76d"},
-        {"path": "foundation-president.html", "sha256": "796e0a19c8cb1eadd56aea9ffa417d8f76e89fcab8eb8cb359ef9cdf4354a76a"}
+        {
+          "path": "foundation-control-zoom-v018.js",
+          "sha256": "6cd63d45ae5f9f8edc3feccfb029e26fa6bb90df06a66bad63be384ba845ddbd"
+        },
+        {
+          "path": "foundation-control-build-v018.js",
+          "sha256": "d624217389e0611f042cbab025f6f53a7943b5b70f7441a425f41c168949c76d"
+        },
+        {
+          "path": "foundation-president.html",
+          "sha256": "796e0a19c8cb1eadd56aea9ffa417d8f76e89fcab8eb8cb359ef9cdf4354a76a"
+        }
       ]
     },
     {
@@ -150,12 +299,50 @@
       "complete": true,
       "titleRu": "Президентский dashboard · глобальный прогресс автономности SETKA",
       "rationaleRu": "Реализует PIN-FD8014D5 как глобальную read-only метрику миссии: постоянная карточка в Президентском shell агрегирует доказанные операционные события, автономность сущностей и разрез версий. Сырая телеметрия и lifecycle receipts исключены из score; неизвестные события остаются unclassified и снижают coverage. Президентские полномочия, identity boundaries, release pointers и существующие PIN/TRACE законы не изменяются.",
-      "touchedConstants": ["PRESIDENT_CABINET", "VERSION", "PIN", "SYNTHETIC", "SETKA_ID"],
-      "assessments": {"PRESIDENT_CABINET": "compatible", "VERSION": "compatible", "PIN": "compatible", "SYNTHETIC": "compatible", "SETKA_ID": "compatible"},
+      "touchedConstants": [
+        "PRESIDENT_CABINET",
+        "VERSION",
+        "PIN",
+        "SYNTHETIC",
+        "SETKA_ID"
+      ],
+      "assessments": {
+        "PRESIDENT_CABINET": "compatible",
+        "VERSION": "compatible",
+        "PIN": "compatible",
+        "SYNTHETIC": "compatible",
+        "SETKA_ID": "compatible"
+      },
       "files": [
-        {"path": "foundation-control-autonomy-v018.js", "sha256": "b7539f0f65803f0da5667587eb6832234d93c288265d33758ef5c3abd67aad46"},
-        {"path": "foundation-president.html", "sha256": "e6bec4895899a3bd9107df070e4024450c3af0cd70a114d9b79cb8d2316deac6"},
-        {"path": "foundation-shell-president-v018.html", "sha256": "c34717f0145cbd97a9b3591da23d3e5de4e666db52130fa5958d60028c851bd5"}
+        {
+          "path": "foundation-control-autonomy-v018.js",
+          "sha256": "b7539f0f65803f0da5667587eb6832234d93c288265d33758ef5c3abd67aad46"
+        },
+        {
+          "path": "foundation-president.html",
+          "sha256": "e6bec4895899a3bd9107df070e4024450c3af0cd70a114d9b79cb8d2316deac6"
+        },
+        {
+          "path": "foundation-shell-president-v018.html",
+          "sha256": "c34717f0145cbd97a9b3591da23d3e5de4e666db52130fa5958d60028c851bd5"
+        }
+      ]
+    },
+    {
+      "key": "trace-card-open-browser-regression-v018",
+      "status": "admitted",
+      "classification": "non_structural",
+      "titleRu": "Карандаш · browser regression открытия карточки",
+      "rationaleRu": "Добавляет только автоматический browser-smoke и его запуск в CI для доказательства существующего пути почта Карандашей → iframe → trace_get → модалка; продуктовые законы, права, данные и UI не изменяются.",
+      "files": [
+        {
+          "path": "foundation-trace-open-smoke-v018.mjs",
+          "sha256": "31fbeef674eeef6aa09f3c30c972f1f58e71fd8f4cb2dffa0b4d7b9279a3c257"
+        },
+        {
+          "path": ".github/workflows/foundation-v018-smoke.yml",
+          "sha256": "bce079ad4ca80a2f97e1331fdffe327ba248075493a1afff1ca1b37651f0ea57"
+        }
       ]
     }
   ]
