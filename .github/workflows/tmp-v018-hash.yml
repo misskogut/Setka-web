@@ -1,0 +1,13 @@
+name: TMP v018 Hash
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tmp-v018-hash-trigger.txt'
+jobs:
+  hash:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: SHA256
+        run: sha256sum foundation-v018-smoke.mjs
