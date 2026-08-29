@@ -1,0 +1,11 @@
+name: TMP Trace Hash
+on:
+  push:
+    branches: [main]
+jobs:
+  hash:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: SHA256
+        run: sha256sum foundation-trace-open-smoke-v018.mjs
