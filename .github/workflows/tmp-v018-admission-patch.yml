@@ -1,0 +1,40 @@
+name: TMP v018 Admission Patch
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tmp-v018-admission-trigger.txt'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add exact non-structural admission
+        run: |
+          python - <<'PY'
+          import json
+          p='foundation-architecture-gate-v018.json'
+          with open(p,encoding='utf-8') as f: d=json.load(f)
+          key='version-smoke-pointer-separation-v018'
+          d['admissions']=[a for a in d.get('admissions',[]) if a.get('key')!=key]
+          d['admissions'].append({
+            'key':key,
+            'status':'admitted',
+            'classification':'non_structural',
+            'complete':True,
+            'titleRu':'Version smoke · историческая версия отдельно от текущих указателей',
+            'rationaleRu':'Regression-smoke 0.1.8 больше не требует, чтобы 0.1.8 оставалась WORKING после появления новых версий; отдельно проверяется, что live WORKING/CANON/STABLE указывают на зарегистрированные release pairs. Архитектурные законы и release pointers не изменяются.',
+            'files':[{'path':'foundation-v018-smoke.mjs','sha256':'e377d6c33c6709c4a9ed6fe5a77694a3805ec4ff44fe407a337e4db745db1dba'}]
+          })
+          with open(p,'w',encoding='utf-8') as f: json.dump(d,f,ensure_ascii=False,indent=2); f.write('\n')
+          PY
+      - name: Remove temporary helper and commit
+        run: |
+          git config user.name misskogut
+          git config user.email misskogutwork@gmail.com
+          git rm .github/workflows/tmp-v018-admission-patch.yml tmp-v018-admission-trigger.txt
+          git add foundation-architecture-gate-v018.json
+          git commit -m "test(foundation): admit growth-safe v018 smoke"
+          git push
