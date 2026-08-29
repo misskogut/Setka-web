@@ -16,6 +16,7 @@ try{
   await p.waitForFunction(()=>window.FoundationContextV018?.version==='0.1.8'&&!!window.FoundationPinsV018,{timeout:20000});
   await p.waitForSelector('#pinListTool',{timeout:15000});
   const f=p.frameLocator('#appFrame');await f.locator('#login').waitFor({state:'attached',timeout:30000});await f.locator('#patterns').waitFor({state:'attached',timeout:15000});
+  await p.waitForFunction(()=>document.querySelector('#appFrame')?.contentWindow?.FoundationV018?.version==='0.1.8'&&document.querySelector('#appFrame')?.contentDocument?.body?.dataset?.foundationVersion==='018',{timeout:20000});
   assert.equal(await f.locator('body').getAttribute('data-foundation-version'),'018');
   await f.locator('body').evaluate(()=>{if(!window.FoundationV018||window.FoundationV018.version!=='0.1.8')throw new Error('FoundationV018 missing')});
 
