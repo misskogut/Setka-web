@@ -6,7 +6,8 @@ const CONTROL='https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-found
 async function post(url,body){const r=await fetch(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});const d=await r.json();assert.equal(r.ok,true,`${url} ${r.status} ${JSON.stringify(d)}`);return d}
 async function gotoRetry(page,url){let last;for(let i=0;i<3;i++){try{await page.goto(url,{waitUntil:'commit',timeout:60000});return}catch(e){last=e;await new Promise(r=>setTimeout(r,1500*(i+1)))}}throw last}
 const version=await post(API,{action:'version'});assert.equal(version.pairVersion,'0.1.8');
-const manifest=await post(CONTROL,{action:'manifest'});const row=manifest.manifest.versions.find(v=>v.version==='0.1.8');assert.ok(row);assert.equal(row.parentVersion,'0.1.7');assert.equal(row.backendSlug,'setka-foundation-v018');assert.equal(manifest.manifest.pointers.working,'0.1.8');
+const manifest=await post(CONTROL,{action:'manifest'});const row=manifest.manifest.versions.find(v=>v.version==='0.1.8');assert.ok(row);assert.equal(row.parentVersion,'0.1.7');assert.equal(row.backendSlug,'setka-foundation-v018');
+for(const key of ['working','canon','stable']){const target=manifest.manifest.pointers?.[key];assert.equal(typeof target,'string',`${key} pointer missing`);assert.ok(manifest.manifest.versions.some(v=>v.version===target),`${key} pointer targets unknown version ${target}`)}
 const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||'/usr/bin/chromium',args:['--no-sandbox']});
 try{
   const p=await browser.newPage({viewport:{width:440,height:820}});const errors=[];p.on('pageerror',e=>errors.push(String(e)));p.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
@@ -51,5 +52,5 @@ try{
   if(qerrors.length)throw new Error('pin address errors: '+qerrors.join(' | '));
 
   if(errors.length)throw new Error('front errors: '+errors.join(' | '));if(aerrors.length)throw new Error('president errors: '+aerrors.join(' | '));
-  console.log('Foundation 0.1.8 live smoke passed: additive lineage, non-blank President pair, constants tab, Front, pin shell, page-scoped PIN markers.');
+  console.log('Foundation 0.1.8 historical smoke passed: fixed pair + lineage remain valid; live pointers resolve independently to registered versions.');
 }finally{await browser.close()}
