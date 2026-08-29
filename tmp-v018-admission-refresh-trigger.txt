@@ -1,1 +1,0 @@
-refresh exact hash for current historical smoke
