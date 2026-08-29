@@ -1,1 +1,0 @@
-refresh deterministic v018 readiness hash
