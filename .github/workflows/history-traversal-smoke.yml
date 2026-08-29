@@ -1,0 +1,46 @@
+name: Foundation history traversal smoke
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'foundation.html'
+      - 'foundation-president.html'
+      - 'foundation-shell-user-v018.html'
+      - 'foundation-shell-president-v018.html'
+      - 'foundation-user-v017.html'
+      - 'foundation-user-v018.html'
+      - 'foundation-admin-v017.html'
+      - 'foundation-admin-v018.html'
+      - 'foundation-control-context-v018.js'
+      - 'tests/foundation-history-traversal.mjs'
+      - '.github/workflows/history-traversal-smoke.yml'
+  workflow_dispatch:
+
+jobs:
+  traversal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax
+        run: node --check tests/foundation-history-traversal.mjs
+      - name: Install Playwright core
+        run: npm install --no-save playwright-core@1.55.0
+      - name: Wait for GitHub Pages artifacts
+        run: |
+          for i in $(seq 1 45); do
+            if curl -fsS "https://misskogut.github.io/Setka-web/foundation-president.html" | grep -q 'foundation-control-context-v018.js' \
+              && curl -fsS "https://misskogut.github.io/Setka-web/foundation-admin-v017.html" >/dev/null \
+              && curl -fsS "https://misskogut.github.io/Setka-web/foundation-admin-v018.html" >/dev/null \
+              && curl -fsS "https://misskogut.github.io/Setka-web/foundation-user-v017.html" >/dev/null \
+              && curl -fsS "https://misskogut.github.io/Setka-web/foundation-user-v018.html" >/dev/null; then exit 0; fi
+            sleep 5
+          done
+          exit 1
+      - name: Traverse history and return intact
+        env:
+          CHROME_PATH: /usr/bin/chromium
+        run: node tests/foundation-history-traversal.mjs
