@@ -7,8 +7,18 @@ on:
       - 'foundation-president.html'
       - 'foundation-shell-user-v018.html'
       - 'foundation-shell-president-v018.html'
+      - 'foundation-user-v012.html'
+      - 'foundation-user-v013.html'
+      - 'foundation-user-v014.html'
+      - 'foundation-user-v015.html'
+      - 'foundation-user-v016.html'
       - 'foundation-user-v017.html'
       - 'foundation-user-v018.html'
+      - 'foundation-admin-v012.html'
+      - 'foundation-admin-v013.html'
+      - 'foundation-admin-v014.html'
+      - 'foundation-admin-v015.html'
+      - 'foundation-admin-v016.html'
       - 'foundation-admin-v017.html'
       - 'foundation-admin-v018.html'
       - 'foundation-control-context-v018.js'
@@ -32,11 +42,13 @@ jobs:
       - name: Wait for GitHub Pages artifacts
         run: |
           for i in $(seq 1 45); do
-            if curl -fsS "https://misskogut.github.io/Setka-web/foundation-president.html" | grep -q 'foundation-control-context-v018.js' \
-              && curl -fsS "https://misskogut.github.io/Setka-web/foundation-admin-v017.html" >/dev/null \
-              && curl -fsS "https://misskogut.github.io/Setka-web/foundation-admin-v018.html" >/dev/null \
-              && curl -fsS "https://misskogut.github.io/Setka-web/foundation-user-v017.html" >/dev/null \
-              && curl -fsS "https://misskogut.github.io/Setka-web/foundation-user-v018.html" >/dev/null; then exit 0; fi
+            ok=1
+            curl -fsS "https://misskogut.github.io/Setka-web/foundation-president.html" | grep -q 'foundation-control-context-v018.js' || ok=0
+            for v in 012 013 014 015 016 017 018; do
+              curl -fsS "https://misskogut.github.io/Setka-web/foundation-admin-v${v}.html" >/dev/null || ok=0
+              curl -fsS "https://misskogut.github.io/Setka-web/foundation-user-v${v}.html" >/dev/null || ok=0
+            done
+            if [ "$ok" = 1 ]; then exit 0; fi
             sleep 5
           done
           exit 1
