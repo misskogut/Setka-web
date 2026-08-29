@@ -27,14 +27,14 @@ async function expectPresidentPair(page,version){
   await page.waitForFunction(m=>document.querySelector('#appFrame')?.contentDocument?.body?.dataset?.foundationVersion===m,marker,{timeout:30000});
   assert.equal(await page.frameLocator('#appFrame').locator('body').getAttribute('data-foundation-version'),marker);
   await page.frameLocator('#appFrame').locator('#login').waitFor({state:'attached',timeout:15000});
-  await page.frameLocator('#appFrame').locator('.version').waitFor({state:'attached',timeout:15000});
+  await page.frameLocator('#appFrame').locator('.version').first().waitFor({state:'attached',timeout:15000});
   assert.match(await page.frameLocator('#appFrame').locator('.version').first().innerText(),new RegExp(version.replaceAll('.','\\.')));
 }
 async function expectUserPair(page,version){
   await expectShellVersion(page,version);
   const frame=page.frameLocator('#appFrame');
   await frame.locator('#login').waitFor({state:'attached',timeout:30000});
-  await frame.locator('.version').waitFor({state:'attached',timeout:15000});
+  await frame.locator('.version').first().waitFor({state:'attached',timeout:15000});
   assert.match(await frame.locator('.version').first().innerText(),new RegExp(version.replaceAll('.','\\.')));
   if(version==='0.1.8'){
     await page.waitForFunction(()=>document.querySelector('#appFrame')?.contentDocument?.body?.dataset?.foundationVersion==='018',{timeout:30000});
