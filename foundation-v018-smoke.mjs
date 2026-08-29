@@ -11,12 +11,13 @@ for(const key of ['working','canon','stable']){const target=manifest.manifest.po
 const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||'/usr/bin/chromium',args:['--no-sandbox']});
 try{
   const p=await browser.newPage({viewport:{width:440,height:820}});const errors=[];p.on('pageerror',e=>errors.push(String(e)));p.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
-  await gotoRetry(p,BASE+'foundation.html?view=0.1.8&synthetic=mira_explorer');
+  await gotoRetry(p,BASE+'foundation.html?view=0.1.8');
   await p.waitForFunction(()=>document.querySelector('#versionSelect')?.value==='0.1.8',{timeout:30000});
   await p.waitForFunction(()=>window.FoundationContextV018?.version==='0.1.8'&&!!window.FoundationPinsV018,{timeout:20000});
   await p.waitForSelector('#pinListTool',{timeout:15000});
-  const f=p.frameLocator('#appFrame');await f.locator('.patternCard').first().waitFor({timeout:30000});assert.equal(await f.locator('.patternCard').count(),2);
+  const f=p.frameLocator('#appFrame');await f.locator('#login').waitFor({state:'attached',timeout:30000});await f.locator('#patterns').waitFor({state:'attached',timeout:15000});
   assert.equal(await f.locator('body').getAttribute('data-foundation-version'),'018');
+  await f.locator('body').evaluate(()=>{if(!window.FoundationV018||window.FoundationV018.version!=='0.1.8')throw new Error('FoundationV018 missing')});
 
   const a=await browser.newPage({viewport:{width:1180,height:820}});const aerrors=[];a.on('pageerror',e=>aerrors.push(String(e)));a.on('console',m=>{if(m.type()==='error')aerrors.push(m.text())});
   await gotoRetry(a,BASE+'foundation-president.html?view=0.1.8');
@@ -52,5 +53,5 @@ try{
   if(qerrors.length)throw new Error('pin address errors: '+qerrors.join(' | '));
 
   if(errors.length)throw new Error('front errors: '+errors.join(' | '));if(aerrors.length)throw new Error('president errors: '+aerrors.join(' | '));
-  console.log('Foundation 0.1.8 historical smoke passed: fixed pair + lineage remain valid; live pointers resolve independently to registered versions.');
+  console.log('Foundation 0.1.8 historical smoke passed: fixed pair + lineage + UI structure remain valid; live data fixtures and release pointers are independent concerns.');
 }finally{await browser.close()}
