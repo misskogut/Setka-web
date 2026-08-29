@@ -1,0 +1,12 @@
+(()=>{
+'use strict';
+const ENDPOINT='https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-verstak-onboard';
+const SESSION='setka:foundation:president:session';
+const button=document.getElementById('onboardChatButton'),panel=document.getElementById('onboardChatPanel'),body=panel.querySelector('.onboardChatBody'),input=panel.querySelector('.onboardChatInput'),send=panel.querySelector('.onboardChatSend'),error=panel.querySelector('.onboardChatError');
+const esc=v=>String(v??'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]));
+function add(kind,text,routes=[]){const m=document.createElement('div');m.className=`onboardMsg ${kind}`;m.textContent=text||'';if(kind==='computer'&&Array.isArray(routes)&&routes.length){const box=document.createElement('div');box.className='onboardRoutes';for(const r of routes){const item=document.createElement('div');item.className='onboardRoute';item.innerHTML=`<b>${esc(r.title||r.ref||'Маршрут')}</b>${esc(r.whyNow||'')}${r.risk?` · риск ${esc(r.risk)}`:''}`;box.append(item)}m.append(box)}body.append(m);body.scrollTop=body.scrollHeight}
+async function ask(message){const token=localStorage.getItem(SESSION)||'';if(!token)throw new Error('Нужна активная Президентская сессия в Foundation');const r=await fetch(ENDPOINT,{method:'POST',headers:{'content-type':'application/json','x-setka-session':token},body:JSON.stringify({message})});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.detail||d.error||'Не удалось получить ответ');return d}
+button.onclick=()=>{panel.classList.toggle('open');if(panel.classList.contains('open'))input.focus()};panel.querySelector('.onboardChatClose').onclick=()=>panel.classList.remove('open');
+panel.querySelector('.onboardChatForm').onsubmit=async e=>{e.preventDefault();const message=input.value.trim();if(!message)return;error.hidden=true;add('user',message);input.value='';send.disabled=input.disabled=true;try{const d=await ask(message);add('computer',d.response||'Ответ получен.',d.routes||[]);window.dispatchEvent(new CustomEvent('setka:verstak-onboard-turn',{detail:{turnId:d.turnId||null,intent:d.intent||null,aiUsed:Boolean(d.aiUsed),routeCount:Array.isArray(d.routes)?d.routes.length:0}}))}catch(err){error.textContent=String(err?.message||err);error.hidden=false}finally{send.disabled=input.disabled=false;input.focus()}};
+window.VerstakOnboardChat={open:()=>{panel.classList.add('open');input.focus()},close:()=>panel.classList.remove('open'),ask};
+})();
