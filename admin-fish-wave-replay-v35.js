@@ -1,13 +1,14 @@
 (() => {
   "use strict";
 
-  const FISH_ID = "rgb-glitch-rings";
+  const PATTERN_ID = "rgb-glitch-rings";
   const priorFetch = window.fetch.bind(window);
   let latest = null;
   let raf = 0;
 
   function n(v, d = 0) { return Number.isFinite(Number(v)) ? Number(v) : d; }
   function clamp(v, min, max) { return Math.min(max, Math.max(min, v)); }
+  function mod(x, m) { return ((x % m) + m) % m; }
 
   function requestAction(args) {
     try {
@@ -51,14 +52,14 @@
 
   function configOf(raw) {
     return {
-      numLayers: clamp(n(raw?.numLayers, 40), 5, 100),
-      baseRadius: clamp(n(raw?.baseRadius, 10), 1, 100),
-      ringSpacing: clamp(n(raw?.ringSpacing, 9), 1, 80),
-      waveSpeed: clamp(n(raw?.waveSpeed, 0.08), 0.001, 0.2),
-      waveAmplitude: clamp(n(raw?.waveAmplitude, 5), 0, 200),
+      numRings: clamp(n(raw?.numRings ?? raw?.numLayers, 20), 5, 100),
+      baseSpacing: clamp(n(raw?.baseSpacing ?? raw?.ringSpacing, 20), 1, 80),
+      waveSpeed: clamp(n(raw?.waveSpeed, 0.03), 0.001, 0.2),
+      waveAmplitude: clamp(n(raw?.waveAmplitude, 38), 0, 200),
       glitchEnabled: raw?.glitchEnabled !== false,
-      glitchOffset: clamp(n(raw?.glitchOffset, 0.5), 0, 20),
+      glitchOffset: clamp(n(raw?.glitchOffset, 1), 0, 20),
       ringAlpha: clamp(n(raw?.ringAlpha, 180), 0, 255),
+      invertDirection: raw?.invertDirection !== false,
       strokeW: clamp(n(raw?.strokeW, 1), 0.3, 8),
       colorModeIndex: clamp(Math.round(n(raw?.colorModeIndex, 0)), 0, 2)
     };
@@ -71,42 +72,39 @@
     ctx.stroke();
   }
 
-  function overlayStroke(c, i, t, alpha) {
-    if (c.colorModeIndex === 1) return `rgba(255,255,255,${alpha})`;
-    if (c.colorModeIndex === 2) {
-      const hue = ((t * 100 + i * 5) % 360 + 360) % 360;
-      return `hsla(${hue},100%,50%,${alpha})`;
-    }
-    return `rgba(90,200,255,${alpha})`;
-  }
-
-  function renderFish(ctx, w, h, raw, frame) {
+  function renderPattern(ctx, w, h, raw, frame) {
     const c = configOf(raw);
     ctx.save();
     ctx.fillStyle = "#000";
     ctx.fillRect(0, 0, w, h);
     ctx.translate(w / 2, h / 2);
-    const t = frame * c.waveSpeed;
-    const alpha = c.ringAlpha / 255;
-    ctx.lineWidth = c.strokeW;
 
-    for (let i = 0; i < c.numLayers; i++) {
-      const phaseOffset = i * 0.2;
-      const sideOffset = Math.sin(t - phaseOffset) * c.waveAmplitude;
-      const diameter = c.baseRadius + i * c.ringSpacing;
+    const t = frame * c.waveSpeed;
+    const alpha = clamp(c.ringAlpha / 255, 0, 1);
+
+    for (let i = 1; i <= c.numRings; i++) {
+      const phase = c.invertDirection ? -i : i;
+      const offset = Math.sin(t + phase * 0.3) * c.waveAmplitude;
+      const diameter = i * c.baseSpacing + offset;
 
       if (c.glitchEnabled) {
-        ctx.strokeStyle = `rgba(255,0,0,${alpha})`;
-        circle(ctx, 0 * c.glitchOffset + sideOffset, diameter);
-        ctx.strokeStyle = `rgba(0,255,0,${alpha})`;
-        circle(ctx, 1 * c.glitchOffset + sideOffset, diameter);
-        ctx.strokeStyle = `rgba(0,100,255,${alpha})`;
-        circle(ctx, 2 * c.glitchOffset + sideOffset, diameter);
+        ctx.lineWidth = c.strokeW;
+        ctx.strokeStyle = `rgba(255,0,0,${alpha})`; circle(ctx, -c.glitchOffset, diameter);
+        ctx.strokeStyle = `rgba(0,255,0,${alpha})`; circle(ctx, 0, diameter);
+        ctx.strokeStyle = `rgba(0,100,255,${alpha})`; circle(ctx, c.glitchOffset, diameter);
       }
 
-      ctx.strokeStyle = overlayStroke(c, i, t, alpha);
-      circle(ctx, sideOffset, diameter);
+      if (c.colorModeIndex === 1) {
+        ctx.lineWidth = 0.6;
+        ctx.strokeStyle = `rgba(255,100,180,${alpha})`;
+        circle(ctx, 0, diameter);
+      } else if (c.colorModeIndex === 2) {
+        ctx.lineWidth = 0.6;
+        ctx.strokeStyle = `hsla(${mod(t * 100 + i * 5, 360)},100%,50%,${alpha})`;
+        circle(ctx, 0, diameter);
+      }
     }
+
     ctx.restore();
   }
 
@@ -141,7 +139,7 @@
     const ms = n(timeline.value);
     const { state, tMs } = stateAt(latest, ms);
     const pid = state?.patternId || state?.config?.patternId;
-    if (state?.view !== "game" || pid !== FISH_ID) {
+    if (state?.view !== "game" || pid !== PATTERN_ID) {
       overlay.style.display = "none";
       return;
     }
@@ -149,14 +147,12 @@
     overlay.style.display = "block";
     const ctx = overlay.getContext("2d");
     const liveFrame = n(state.frame) + Math.max(0, ms - tMs) / 16.6667;
-    renderFish(ctx, overlay.width, overlay.height, state.config || {}, liveFrame);
+    renderPattern(ctx, overlay.width, overlay.height, state.config || {}, liveFrame);
   }
 
-  function ensureLoop() {
-    if (!raf) raf = requestAnimationFrame(tick);
-  }
+  function ensureLoop() { if (!raf) raf = requestAnimationFrame(tick); }
 
   new MutationObserver(ensureLoop).observe(document.documentElement, { childList: true, subtree: true });
   ensureLoop();
-  window.__SETKA_ADMIN_FISH_WAVE_REPLAY_V35__ = true;
+  window.__SETKA_ADMIN_RGB_GLITCH_RINGS_REPLAY_V36__ = true;
 })();
