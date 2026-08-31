@@ -1,0 +1,36 @@
+name: SETKA Foundation 0.1 Smoke
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'foundation-user-v01.html'
+      - 'foundation-user-v01.css'
+      - 'foundation-user-v01.js'
+      - 'foundation-admin-v01.html'
+      - 'foundation-admin-v01.css'
+      - 'foundation-admin-v01.js'
+      - 'foundation-v01-smoke.mjs'
+      - '.github/workflows/foundation-v01-smoke.yml'
+  workflow_dispatch:
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check user runtime syntax
+        run: node --check foundation-user-v01.js
+      - name: Check admin runtime syntax
+        run: node --check foundation-admin-v01.js
+      - name: Check smoke syntax
+        run: node --check foundation-v01-smoke.mjs
+      - run: npm install --no-save playwright-core@1.55.0
+      - name: Wait for Pages
+        run: sleep 35
+      - name: User + backend E2E
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+          URL: https://misskogut.github.io/Setka-web/foundation-user-v01.html
+        run: node foundation-v01-smoke.mjs

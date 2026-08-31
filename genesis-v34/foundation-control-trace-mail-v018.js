@@ -1,0 +1,30 @@
+(()=>{
+'use strict';
+const CONTROL='https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-foundation-control';
+const SESSION_KEY='setka:foundation:president:session';
+const frame=document.getElementById('appFrame');
+const state={items:[],open:false,loading:false};
+function token(){try{return localStorage.getItem(SESSION_KEY)||''}catch{return''}}
+function esc(s){return String(s??'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]))}
+function time(v){if(!v)return'—';try{return new Date(v).toLocaleString('ru-RU',{timeZone:'Europe/Saratov',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'})}catch{return'—'}}
+function label(s){return({open:'Новая',in_progress:'В работе',done:'Готово',resolved:'Принято'})[s]||String(s||'—')}
+async function call(action,payload={}){const t=token();if(!t)throw new Error('Нужна Президентская сессия');const r=await fetch(CONTROL,{method:'POST',headers:{'content-type':'application/json','x-setka-session':t},body:JSON.stringify({action,...payload})});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.detail||d.error||'Ошибка Карандашей');return d}
+function ensure(){
+ let btn=document.getElementById('traceMailTool018');
+ if(!btn){btn=document.createElement('button');btn.id='traceMailTool018';btn.type='button';btn.className='tool traceMailTool018';btn.textContent='✎ Карандаши';btn.title='Все Карандаши и их рабочие статусы';const ref=document.getElementById('recordTool');ref?.insertAdjacentElement('afterend',btn);btn.addEventListener('click',()=>toggle())}
+ let mail=document.getElementById('traceMail018');if(!mail){mail=document.createElement('div');mail.id='traceMail018';mail.className='traceMail018';mail.innerHTML='<div class="traceMailHead018"><div><b>Карандаши</b><div id="traceMailMeta018" class="traceMailMeta018"></div></div><div class="traceMailHeadActions018"><button id="traceMailRefresh018" type="button">↻</button><button id="traceMailClose018" type="button">×</button></div></div><div id="traceMailList018" class="traceMailList018"></div>';document.body.appendChild(mail);document.getElementById('traceMailClose018').addEventListener('click',()=>setOpen(false));document.getElementById('traceMailRefresh018').addEventListener('click',()=>load(true));}
+}
+function setOpen(v){ensure();state.open=!!v;document.getElementById('traceMail018').classList.toggle('open',state.open);document.getElementById('traceMailTool018')?.classList.toggle('active',state.open);if(state.open)load(true)}
+function toggle(){setOpen(!state.open)}
+function lamps(t){const s=t.workStatus||t.status||'open';return `<div class="traceMailWorkflow018">${[['open','🔴'],['in_progress','🟡'],['done','🟢'],['resolved','✅']].map(([x,i])=>`<button type="button" class="traceMailLamp018 ${s===x?'active':''}" data-mail-trace-status="${x}" data-mail-trace-code="${esc(t.traceCode)}" title="${esc(label(x))}">${i}</button>`).join('')}<span class="traceMailMeta018">${esc(label(s))}</span></div>`}
+function render(){ensure();const list=document.getElementById('traceMailList018'),meta=document.getElementById('traceMailMeta018');meta.textContent=`${state.items.length} записей · нажми карточку, чтобы открыть`;if(!state.items.length){list.innerHTML='<div class="traceMailEmpty018">Карандашей пока нет.</div>';return}list.innerHTML=state.items.map(t=>{const s=t.workStatus||t.status||'open';return `<div class="traceMailItem018" role="button" tabindex="0" data-mail-trace-code="${esc(t.traceCode)}"><div class="traceMailTop018"><span class="traceMailDot018 ${esc(s)}"></span><div class="traceMailText018"><div class="traceMailTitle018">${esc(t.title||t.traceCode)}</div><div class="traceMailCode018">${esc(t.traceCode)} · ${esc(t.frontVersion||'—')}</div></div></div>${t.comment?`<div class="traceMailComment018">${esc(t.comment)}</div>`:''}<div class="traceMailInfo018"><span>${esc(t.authorDisplayName||t.authorSetkaId||'—')}</span><span>${esc(time(t.createdAt||t.startedAt))}</span>${t.priorityActive?'<span>⚡ ПРИОРИТЕТ</span>':''}</div>${lamps(t)}</div>`}).join('')}
+async function load(force=false){if(state.loading||!token())return;state.loading=true;try{const d=await call('trace_list',{limit:100});state.items=Array.isArray(d.traces)?d.traces:[];render()}catch(e){const list=document.getElementById('traceMailList018');if(list)list.innerHTML=`<div class="traceMailEmpty018">${esc(e.message)}</div>`}finally{state.loading=false}}
+async function setStatus(code,status){try{await call('trace_status',{traceCode:code,status,note:'Статус изменён Президентом из почты Карандашей.'});await load(true);try{frame?.contentWindow?.postMessage({type:'foundation:refresh-traces'},location.origin)}catch{}}catch(e){alert('Не удалось изменить статус Карандаша: '+e.message)}}
+function openTrace(code){setOpen(false);try{frame?.contentWindow?.postMessage({type:'foundation:open-trace',traceCode:code},location.origin)}catch{}setTimeout(()=>{try{frame?.contentWindow?.postMessage({type:'foundation:open-trace',traceCode:code},location.origin)}catch{}},180)}
+document.addEventListener('click',e=>{const lamp=e.target.closest?.('[data-mail-trace-status]');if(lamp){e.preventDefault();e.stopPropagation();setStatus(String(lamp.dataset.mailTraceCode||'').toUpperCase(),String(lamp.dataset.mailTraceStatus||''));return}const card=e.target.closest?.('.traceMailItem018[data-mail-trace-code]');if(card){e.preventDefault();openTrace(String(card.dataset.mailTraceCode||'').toUpperCase())}},true);
+document.addEventListener('keydown',e=>{const card=e.target.closest?.('.traceMailItem018[data-mail-trace-code]');if(card&&(e.key==='Enter'||e.key===' ')){e.preventDefault();openTrace(String(card.dataset.mailTraceCode||'').toUpperCase())}},true);
+window.addEventListener('storage',e=>{if(e.key===SESSION_KEY&&token())load(true)});
+setTimeout(()=>{ensure();if(token())load(true)},350);
+setInterval(()=>{if(state.open&&token())load(false)},5000);
+window.FoundationTraceMailV018={open:()=>setOpen(true),close:()=>setOpen(false),refresh:()=>load(true)};
+})();

@@ -1,0 +1,37 @@
+/* Рабочий стол Foundation 0.1.8: статичная широкая карта, а не responsive-перестройка под телефон. */
+:root{--foundation-workspace-width:1280px}
+html,body{overscroll-behavior:contain}
+body[data-foundation-version="018"]{overflow:auto!important;min-width:0!important;max-width:none!important;width:auto!important;touch-action:pan-x pan-y}
+body[data-foundation-version="018"] #foundationWorkspace018{position:relative;transform-origin:0 0;will-change:width,height;touch-action:pan-x pan-y}
+body[data-foundation-version="018"] .shell{width:var(--foundation-workspace-width)!important;min-width:var(--foundation-workspace-width)!important;max-width:none!important;grid-template-columns:220px minmax(0,1fr)!important;grid-template-rows:76px minmax(824px,auto)!important;transform-origin:0 0!important;will-change:transform}
+body[data-foundation-version="018"] .rail{padding:18px 14px!important}
+body[data-foundation-version="018"] .rail .brand{font-size:10px!important}
+body[data-foundation-version="018"] .root{margin:14px 0!important;padding:12px!important}
+body[data-foundation-version="018"] .root b{font-size:10px!important}
+body[data-foundation-version="018"] .root span{font-size:9px!important}
+body[data-foundation-version="018"] .nav button{font-size:12px!important;padding:10px 11px!important}
+body[data-foundation-version="018"] .top{padding:14px 20px!important}
+body[data-foundation-version="018"] .topTitle{font-size:18px!important}
+body[data-foundation-version="018"] .main{width:auto!important;min-width:0!important;max-width:none!important;padding:22px!important;overflow:visible!important}
+body[data-foundation-version="018"] .page{width:auto!important;min-width:0!important;max-width:none!important}
+body[data-foundation-version="018"] .sectionHead{display:flex!important;grid-template-columns:none!important;align-items:flex-start!important;justify-content:space-between!important;gap:18px!important}
+body[data-foundation-version="018"] .stats,body[data-foundation-version="018"] .identityStats{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+body[data-foundation-version="018"] .row{grid-template-columns:minmax(260px,1.3fr) minmax(180px,1fr) auto auto!important}
+body[data-foundation-version="018"] .identityRow{grid-template-columns:minmax(280px,1.4fr) repeat(3,minmax(150px,1fr))!important}
+body[data-foundation-version="018"] .synthetic017Grid,body[data-foundation-version="018"] .constantsGrid,body[data-foundation-version="018"] .patterns{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+body[data-foundation-version="018"] .protocolGrid{grid-template-columns:minmax(0,1.06fr) minmax(0,.94fr)!important}
+body[data-foundation-version="018"] .v017Grid2{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+body[data-foundation-version="018"] .title{font-size:30px!important}
+body[data-foundation-version="018"] .sub{font-size:12px!important}
+@media(max-width:700px){
+ body[data-foundation-version="018"]{overflow:auto!important}
+ body[data-foundation-version="018"] .shell{width:var(--foundation-workspace-width)!important;min-width:var(--foundation-workspace-width)!important;max-width:none!important;grid-template-columns:220px minmax(0,1fr)!important;grid-template-rows:76px minmax(824px,auto)!important}
+ body[data-foundation-version="018"] .main{padding:22px!important}
+ body[data-foundation-version="018"] .sectionHead{display:flex!important}
+ body[data-foundation-version="018"] .stats,body[data-foundation-version="018"] .identityStats{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+ body[data-foundation-version="018"] .identityRow{grid-template-columns:minmax(280px,1.4fr) repeat(3,minmax(150px,1fr))!important}
+ body[data-foundation-version="018"] .synthetic017Grid,body[data-foundation-version="018"] .constantsGrid,body[data-foundation-version="018"] .patterns{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ body[data-foundation-version="018"] .row{grid-template-columns:minmax(260px,1.3fr) minmax(180px,1fr) auto auto!important}
+ body[data-foundation-version="018"] .protocolGrid{grid-template-columns:minmax(0,1.06fr) minmax(0,.94fr)!important}
+ body[data-foundation-version="018"] .v017Grid2{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}

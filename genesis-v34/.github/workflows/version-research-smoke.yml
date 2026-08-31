@@ -1,0 +1,31 @@
+name: SETKA Version Research Smoke
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'diamond-president-v08.html'
+      - 'version-research-smoke.mjs'
+      - '.github/workflows/version-research-smoke.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright core
+        run: npm install --no-save playwright-core@1.55.0
+      - name: Wait for Pages propagation
+        run: sleep 18
+      - name: Smoke cross-version research console
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+          PRESIDENT_RESEARCH_URL: https://misskogut.github.io/Setka-web/diamond-president-v08.html
+        run: node version-research-smoke.mjs

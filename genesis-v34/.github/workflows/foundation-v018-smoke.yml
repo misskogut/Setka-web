@@ -1,0 +1,90 @@
+name: Foundation 0.1.8 smoke
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'foundation.html'
+      - 'foundation-president.html'
+      - 'foundation-*v018*'
+      - 'foundation-contract-v016.json'
+      - 'foundation-contract-v017.json'
+      - 'foundation-contract-v018.json'
+      - 'foundation-lineage-check.mjs'
+      - 'foundation-control-pins-v018.js'
+      - 'foundation-control-context-v018.js'
+      - 'foundation-control-v018.css'
+      - '.github/workflows/foundation-v018-smoke.yml'
+  workflow_dispatch:
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax
+        run: |
+          node --check foundation-api-route-v018.js
+          node --check foundation-user-patch-v018.js
+          node --check foundation-admin-identity-v018.js
+          node --check foundation-admin-patch-v018.js
+          node --check foundation-control-context-v018.js
+          node --check foundation-control-pins-v018.js
+          node --check foundation-control-zoom-v018.js
+          node --check foundation-lineage-check.mjs
+          node --check foundation-architecture-gate-v018.mjs
+          node --check foundation-v018-smoke.mjs
+          node --check foundation-trace-open-smoke-v018.mjs
+      - name: Architecture admission gate
+        run: node foundation-architecture-gate-v018.mjs
+      - name: Additive lineage contract
+        run: node foundation-lineage-check.mjs
+      - name: Static contracts
+        run: |
+          grep -q '0.1.8' foundation-user-v018.html
+          grep -q '0.1.8' foundation-admin-v018.html
+          grep -q 'foundation-admin-v016.js' foundation-admin-v018.html
+          grep -q 'foundation-admin-identity-v018.js' foundation-admin-v018.html
+          ! grep -q 'foundation-admin-patch-v017.js' foundation-admin-v018.html
+          ! grep -q 'foundation-admin-stability-v018.js' foundation-admin-v018.html
+          grep -q 'foundation-constants-v018.js' foundation-admin-v018.html
+          grep -q 'syntheticRuns' foundation-admin-patch-v018.js
+          grep -q 'ЖИВОЙ ОТЧЁТ' foundation-admin-patch-v018.js
+          grep -q 'foundation-control-context-v018.js' foundation-shell-user-v018.html
+          grep -q 'foundation-control-context-v018.js' foundation-shell-president-v018.html
+          grep -q 'foundation-control-pins-v018.js' foundation-shell-user-v018.html
+          grep -q 'foundation-control-pins-v018.js' foundation-shell-president-v018.html
+          grep -q 'foundation-control-context-v018.js' foundation.html
+          grep -q 'foundation-control-context-v018.js' foundation-president.html
+          grep -q 'foundation-control-pin-thread-v018.css' foundation.html
+          grep -q 'foundation-control-pin-thread-v018.css' foundation-president.html
+          grep -q 'pin_status' foundation-control-pins-v018.js
+          grep -q 'pin_review' foundation-control-pins-v018.js
+          grep -q 'pin_thread' foundation-control-pins-v018.js
+          grep -q 'pin_execute' foundation-control-pins-v018.js
+          grep -q 'foundation-control-zoom-v018.js' foundation-president.html
+          grep -q 'Создать ID' foundation-admin-v018.html
+      - name: Install Playwright core
+        run: npm install --no-save playwright-core@1.55.0
+      - name: Wait for deployed 0.1.8 artifacts
+        run: |
+          for i in $(seq 1 45); do
+            if curl -fsS "https://misskogut.github.io/Setka-web/foundation.html" | grep -q 'foundation-control-context-v018.js' \
+              && curl -fsS "https://misskogut.github.io/Setka-web/foundation-president.html" | grep -q 'foundation-control-context-v018.js' \
+              && curl -fsS "https://misskogut.github.io/Setka-web/foundation-user-v018.html" >/dev/null \
+              && curl -fsS "https://misskogut.github.io/Setka-web/foundation-admin-v018.html" | grep -q 'foundation-constants-v018.js'; then exit 0; fi
+            sleep 5
+          done
+          exit 1
+      - name: Live pair + pin shell smoke
+        env:
+          CHROME_PATH: /usr/bin/chromium
+        run: node foundation-v018-smoke.mjs
+      - name: Trace card open browser smoke
+        env:
+          CHROME_PATH: /usr/bin/chromium
+        run: node foundation-trace-open-smoke-v018.mjs

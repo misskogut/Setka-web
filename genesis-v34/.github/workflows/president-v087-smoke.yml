@@ -1,0 +1,28 @@
+name: SETKA President v0.8.7 Smoke
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'diamond-president-v087.html'
+      - 'president-v087.css'
+      - 'president-v087-runtime.js'
+      - 'president-v087-smoke.mjs'
+      - '.github/workflows/president-v087-smoke.yml'
+  workflow_dispatch:
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check v0.8.7 runtime syntax
+        run: node --check president-v087-runtime.js
+      - run: npm install --no-save playwright-core@1.55.0
+      - run: sleep 20
+      - name: Smoke clean Russian foundation
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+          URL: https://misskogut.github.io/Setka-web/diamond-president-v087.html
+        run: node president-v087-smoke.mjs

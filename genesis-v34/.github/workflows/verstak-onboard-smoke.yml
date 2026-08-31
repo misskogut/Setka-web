@@ -1,0 +1,35 @@
+name: VERSTAK Onboard Computer Smoke
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'verstak-onboard-v1.html'
+      - 'verstak-onboard-v1.js'
+      - 'verstak-onboard-v1.css'
+      - 'verstak-onboard-smoke.mjs'
+      - '.github/workflows/verstak-onboard-smoke.yml'
+  workflow_dispatch:
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax
+        run: node --check verstak-onboard-v1.js && node --check verstak-onboard-smoke.mjs
+      - name: Install Playwright core
+        run: npm install --no-save playwright-core@1.55.0
+      - name: Wait for VERSTAK local Front
+        run: |
+          for i in $(seq 1 50); do
+            if curl -fsS "https://misskogut.github.io/Setka-web/verstak-onboard-v1.html" | grep -q 'onboardChatButton'; then exit 0; fi
+            sleep 4
+          done
+          exit 1
+      - name: Browser client-path smoke
+        env:
+          CHROME_PATH: /usr/bin/chromium
+        run: node verstak-onboard-smoke.mjs

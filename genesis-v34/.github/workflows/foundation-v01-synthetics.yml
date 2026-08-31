@@ -1,0 +1,19 @@
+name: SETKA Foundation 0.1 Synthetic Users (archive)
+on:
+  workflow_dispatch:
+jobs:
+  synthetic-browser-run:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check runner syntax
+        run: node --check foundation-v01-synthetic-runner.mjs
+      - run: npm install --no-save playwright-core@1.55.0
+      - name: Run archived five synthetic users manually
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+          URL: https://misskogut.github.io/Setka-web/foundation-user-v01.html
+        run: node foundation-v01-synthetic-runner.mjs

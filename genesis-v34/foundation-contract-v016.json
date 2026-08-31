@@ -1,0 +1,22 @@
+{
+  "version":"0.1.6",
+  "parent":null,
+  "policy":"additive-lineage",
+  "constants":["PRESIDENT","PRESIDENT_CABINET","PATTERN","SYNTHETIC","SESSION_TRACE","VERSION","PIN"],
+  "capabilities":[
+    "president.login",
+    "users.create",
+    "users.analytics",
+    "patterns.analytics",
+    "synthetics.cards",
+    "synthetics.activity_counts",
+    "synthetics.run_history",
+    "synthetics.open_as_user",
+    "protocol.versions",
+    "protocol.traces",
+    "trace.record",
+    "trace.replay",
+    "pins.create",
+    "pins.addressed"
+  ]
+}

@@ -1,0 +1,58 @@
+name: Foundation history traversal smoke
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'foundation.html'
+      - 'foundation-president.html'
+      - 'foundation-shell-user-v018.html'
+      - 'foundation-shell-president-v018.html'
+      - 'foundation-user-v012.html'
+      - 'foundation-user-v013.html'
+      - 'foundation-user-v014.html'
+      - 'foundation-user-v015.html'
+      - 'foundation-user-v016.html'
+      - 'foundation-user-v017.html'
+      - 'foundation-user-v018.html'
+      - 'foundation-admin-v012.html'
+      - 'foundation-admin-v013.html'
+      - 'foundation-admin-v014.html'
+      - 'foundation-admin-v015.html'
+      - 'foundation-admin-v016.html'
+      - 'foundation-admin-v017.html'
+      - 'foundation-admin-v018.html'
+      - 'foundation-control-context-v018.js'
+      - 'tests/foundation-history-traversal.mjs'
+      - '.github/workflows/history-traversal-smoke.yml'
+  workflow_dispatch:
+
+jobs:
+  traversal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax
+        run: node --check tests/foundation-history-traversal.mjs
+      - name: Install Playwright core
+        run: npm install --no-save playwright-core@1.55.0
+      - name: Wait for GitHub Pages artifacts
+        run: |
+          for i in $(seq 1 45); do
+            ok=1
+            curl -fsS "https://misskogut.github.io/Setka-web/foundation-president.html" | grep -q 'foundation-control-context-v018.js' || ok=0
+            for v in 012 013 014 015 016 017 018; do
+              curl -fsS "https://misskogut.github.io/Setka-web/foundation-admin-v${v}.html" >/dev/null || ok=0
+              curl -fsS "https://misskogut.github.io/Setka-web/foundation-user-v${v}.html" >/dev/null || ok=0
+            done
+            if [ "$ok" = 1 ]; then exit 0; fi
+            sleep 5
+          done
+          exit 1
+      - name: Traverse history and return intact
+        env:
+          CHROME_PATH: /usr/bin/chromium
+        run: node tests/foundation-history-traversal.mjs

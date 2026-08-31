@@ -1,0 +1,44 @@
+name: Temporary apply Yandex unfreeze admission
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/temp-apply-yandex-admission.yml'
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Append exact admission
+        run: |
+          python - <<'PY'
+          import json
+          p='foundation-architecture-gate-v018.json'
+          with open(p,encoding='utf-8') as f: d=json.load(f)
+          key='president-yandex-unfreeze-transform-v018'
+          admission={
+            'key':key,'status':'admitted','classification':'structural','complete':True,
+            'titleRu':'Президентский UI · устранение resize-feedback и безопасный transform-scale в Yandex/iOS',
+            'rationaleRu':'Исправляет подтверждённый после успешной President-session клиентский freeze: прежний zoom-контур мог менять CSS zoom внутри ResizeObserver-измерения, повторно менять размеры shell и создавать feedback-loop. Новый контур не использует CSS zoom, не наблюдает собственные resize-эффекты и масштабирует фиксированный workspace через transform с отдельным extent; cache-key обновлён, чтобы мобильный браузер не воскресил аварийную сборку.',
+            'touchedConstants':['PRESIDENT','PRESIDENT_CABINET','SURFACE','SESSION_TRACE','VERSION'],
+            'assessments':{'PRESIDENT':'compatible','PRESIDENT_CABINET':'compatible','SURFACE':'compatible','SESSION_TRACE':'compatible','VERSION':'compatible'},
+            'files':[
+              {'path':'foundation-control-zoom-v018.js','sha256':'6cd63d45ae5f9f8edc3feccfb029e26fa6bb90df06a66bad63be384ba845ddbd'},
+              {'path':'foundation-control-build-v018.js','sha256':'d624217389e0611f042cbab025f6f53a7943b5b70f7441a425f41c168949c76d'},
+              {'path':'foundation-president.html','sha256':'796e0a19c8cb1eadd56aea9ffa417d8f76e89fcab8eb8cb359ef9cdf4354a76a'}
+            ]
+          }
+          if not any(x.get('key')==key for x in d.get('admissions',[])):
+              d.setdefault('admissions',[]).append(admission)
+          with open(p,'w',encoding='utf-8') as f: json.dump(d,f,ensure_ascii=False,indent=2); f.write('\n')
+          PY
+          git config user.name 'SETKA CI'
+          git config user.email 'setka-ci@users.noreply.github.com'
+          git add foundation-architecture-gate-v018.json
+          if git diff --cached --quiet; then echo 'Admission already present'; exit 0; fi
+          git commit -m 'arch: admit Yandex President unfreeze fix'
+          git push

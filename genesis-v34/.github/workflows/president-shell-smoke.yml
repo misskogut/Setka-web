@@ -1,0 +1,31 @@
+name: SETKA President Shell Smoke
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'diamond-president-v*.html'
+      - 'president-shell-smoke.mjs'
+      - '.github/workflows/president-shell-smoke.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright core
+        run: npm install --no-save playwright-core@1.55.0
+      - name: Wait for Pages propagation
+        run: sleep 12
+      - name: Smoke President v0.7.3 shell
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+          PRESIDENT_URL: https://misskogut.github.io/Setka-web/diamond-president-v073.html
+        run: node president-shell-smoke.mjs
