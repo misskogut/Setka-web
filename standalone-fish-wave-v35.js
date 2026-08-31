@@ -565,17 +565,27 @@
 
   function ensureFavoriteTiles() {
     if (!favoritesPanel) return;
-    favoritesPanel.querySelectorAll('[data-fish-wave-v35="1"][data-kind="favorite"]').forEach(x => x.remove());
+    const desired = new Set(favorites.map(f => String(f.id)));
+    const nodes = [...favoritesPanel.querySelectorAll('[data-fish-wave-v35="1"][data-kind="favorite"]')];
+    for (const node of nodes) if (!desired.has(String(node.dataset.itemId || ""))) node.remove();
+    const existing = new Set([...favoritesPanel.querySelectorAll('[data-fish-wave-v35="1"][data-kind="favorite"]')].map(x => String(x.dataset.itemId || "")));
     if (favorites.length) favoritesPanel.querySelector(".empty-favorites")?.remove();
-    for (const fav of favorites) favoritesPanel.appendChild(makeTile({ kind: "favorite", id: fav.id, favorite: fav, config: fav.config, previewFrame: fav.previewFrame, communityId: fav.communityId }));
+    for (const fav of favorites) {
+      if (existing.has(String(fav.id))) continue;
+      favoritesPanel.appendChild(makeTile({ kind: "favorite", id: fav.id, favorite: fav, config: fav.config, previewFrame: fav.previewFrame, communityId: fav.communityId }));
+    }
   }
 
   function ensureCommunityTiles() {
     if (!communityPanel) return;
-    communityPanel.querySelectorAll('[data-fish-wave-v35="1"][data-kind="community"]').forEach(x => x.remove());
+    const desired = new Set(community.map(item => String(item.id)));
+    const nodes = [...communityPanel.querySelectorAll('[data-fish-wave-v35="1"][data-kind="community"]')];
+    for (const node of nodes) if (!desired.has(String(node.dataset.itemId || ""))) node.remove();
+    const existing = new Set([...communityPanel.querySelectorAll('[data-fish-wave-v35="1"][data-kind="community"]')].map(x => String(x.dataset.itemId || "")));
     if (community.length) communityPanel.querySelector(".empty-favorites")?.remove();
     for (const item of community) {
       const id = String(item.id);
+      if (existing.has(id)) continue;
       communityPanel.appendChild(makeTile({ kind: "community", id, communityId: id, config: cloneFish(item.config), previewFrame: Number(item.preview_frame ?? item.previewFrame ?? 44), saveCount: Number(item.saveCount) || 0 }));
     }
   }
