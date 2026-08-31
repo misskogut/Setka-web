@@ -1,0 +1,19 @@
+(() => {
+  "use strict";
+  const FISH_ID="fish-wave";
+  const priorFetch=window.fetch.bind(window);
+  let latest=null,raf=0;
+  const n=(v,d=0)=>Number.isFinite(Number(v))?Number(v):d;
+  const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+  function actionOf(args){try{const raw=args[1]?.body;return typeof raw==="string"?JSON.parse(raw)?.action:null}catch(_){return null}}
+  window.fetch=async function(...args){const action=actionOf(args),res=await priorFetch(...args);if(action==="admin-session")res.clone().json().then(d=>{latest=d;loop()}).catch(()=>{});return res};
+  const style=document.createElement("style");style.textContent='.fish35-replay-canvas{position:absolute;inset:0;width:100%;height:100%;background:#000;display:none;pointer-events:none;z-index:2}';document.head.appendChild(style);
+  function stateAt(data,ms){const events=(data?.events||[]).filter(e=>e.event_type==="app_state"&&e.payload?.config).sort((a,b)=>n(a.t_ms)-n(b.t_ms)),snaps=(data?.snapshots||[]).slice().sort((a,b)=>n(a.t_ms)-n(b.t_ms));let best=null,bestT=-1;for(const e of events){const t=n(e.t_ms);if(t<=ms&&t>=bestT){best=e.payload;bestT=t}else if(t>ms)break}if(!best)for(const s of snaps){const t=n(s.t_ms);if(t<=ms&&t>=bestT){best=s.app_state;bestT=t}else if(t>ms)break}return{state:best,tMs:Math.max(0,bestT)}}
+  function cfg(raw){return{numLayers:clamp(n(raw?.numLayers,40),5,100),baseRadius:clamp(n(raw?.baseRadius,10),1,100),ringSpacing:clamp(n(raw?.ringSpacing,9),1,80),waveSpeed:clamp(n(raw?.waveSpeed,.08),.001,.2),waveAmplitude:clamp(n(raw?.waveAmplitude,5),0,200),glitchEnabled:raw?.glitchEnabled!==false,glitchOffset:clamp(n(raw?.glitchOffset,.5),0,20),ringAlpha:clamp(n(raw?.ringAlpha,180),0,255),strokeW:clamp(n(raw?.strokeW,1),.3,8),colorModeIndex:clamp(Math.round(n(raw?.colorModeIndex,0)),0,2)}}
+  function circle(ctx,x,d){if(!(d>0))return;ctx.beginPath();ctx.arc(x,0,d/2,0,Math.PI*2);ctx.stroke()}
+  function render(ctx,w,h,raw,frame){const c=cfg(raw),tt=frame*c.waveSpeed,a=c.ringAlpha/255;ctx.save();ctx.fillStyle="#000";ctx.fillRect(0,0,w,h);ctx.translate(w/2,h/2);ctx.lineWidth=c.strokeW;for(let i=0;i<c.numLayers;i++){const side=Math.sin(tt-i*.2)*c.waveAmplitude,d=c.baseRadius+i*c.ringSpacing;if(c.glitchEnabled){ctx.strokeStyle=`rgba(255,0,0,${a})`;circle(ctx,side,d);ctx.strokeStyle=`rgba(0,255,0,${a})`;circle(ctx,c.glitchOffset+side,d);ctx.strokeStyle=`rgba(0,100,255,${a})`;circle(ctx,c.glitchOffset*2+side,d)}ctx.strokeStyle=c.colorModeIndex===1?`rgba(255,255,255,${a})`:c.colorModeIndex===2?`hsla(${((tt*100+i*5)%360+360)%360},100%,50%,${a})`:`rgba(90,200,255,${a})`;circle(ctx,side,d)}ctx.restore()}
+  function overlay(phone){let c=phone.querySelector('.fish35-replay-canvas');if(!c){c=document.createElement('canvas');c.className='fish35-replay-canvas';const base=phone.querySelector('.f34-canvas');base?base.insertAdjacentElement('afterend',c):phone.prepend(c)}return c}
+  function tick(){raf=requestAnimationFrame(tick);if(!latest?.session)return;const root=document.querySelector(`.f34-replay[data-session-id="${CSS.escape(String(latest.session.id||""))}"]`);if(!root)return;const phone=root.querySelector('.f34-phone'),timeline=root.querySelector('.f34-timeline'),base=root.querySelector('.f34-canvas');if(!phone||!timeline||!base)return;const c=overlay(phone);if(c.width!==base.width||c.height!==base.height){c.width=base.width;c.height=base.height}const ms=n(timeline.value),{state,tMs}=stateAt(latest,ms),pid=state?.patternId||state?.config?.patternId;if(state?.view!=="game"||pid!==FISH_ID){c.style.display='none';return}c.style.display='block';render(c.getContext('2d'),c.width,c.height,state.config||{},n(state.frame)+Math.max(0,ms-tMs)/16.6667)}
+  function loop(){if(!raf)raf=requestAnimationFrame(tick)}
+  new MutationObserver(loop).observe(document.documentElement,{childList:true,subtree:true});loop();window.__SETKA_ADMIN_FISH_WAVE_REPLAY_V35__=true;
+})();
