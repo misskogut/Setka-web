@@ -6,22 +6,30 @@
 <meta name="robots" content="noindex,nofollow,noarchive">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none';script-src 'unsafe-inline' 'self';connect-src 'self' https://gfchgaphzhxufwdhrcis.supabase.co;style-src 'unsafe-inline' 'self';img-src 'self' data:;font-src 'self' data:;base-uri 'none';form-action 'none'">
 <title>SETKA Diamond · President v0.8.7</title>
-<style>html,body{margin:0;background:#000;color:#fff}#boot{height:100vh;display:grid;place-items:center;font:800 12px/1.2 -apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue",Arial,sans-serif;letter-spacing:.12em}</style>
+<style>html,body{margin:0;background:#000;color:#fff}#boot{height:100vh;display:grid;place-items:center;padding:24px;text-align:center;font:800 12px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue",Arial,sans-serif;letter-spacing:.12em}</style>
 </head>
 <body><div id="boot">SETKA · ЗАГРУЖАЮ PRESIDENT v0.8.7</div>
 <script>
 (async()=>{
+  const safe=new URLSearchParams(location.search).get('safe')==='1';
   const base=await fetch('./diamond-president-v071.html',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('base_'+r.status);return r.text()});
   let html=base.replace(/<meta[^>]+http-equiv=["']Content-Security-Policy["'][^>]*>/gi,'');
-  html=html.replace(/<title>[^<]*<\/title>/i,'<title>SETKA Diamond · President v0.8.7</title>');
+  html=html.replace(/<title>[^<]*<\/title>/i,`<title>SETKA Diamond · President ${safe?'SAFE':'v0.8.7'}</title>`);
   const policy='<meta http-equiv="Content-Security-Policy" content="default-src \'none\';script-src \'unsafe-inline\' \'self\';connect-src \'self\' https://gfchgaphzhxufwdhrcis.supabase.co;style-src \'unsafe-inline\' \'self\';img-src \'self\' data:;font-src \'self\' data:;base-uri \'none\';form-action \'none\'">';
-  html=html.replace(/<\/head>/i,policy+'<link rel="stylesheet" href="./president-v087.css"></head>');
-  const research='<div id="r87bar"><div class="r87brand">SETKA · DIAMOND<span>РАБОЧАЯ ВЕРСИЯ · v0.8.7</span></div><div class="r87note">История версий находится во вкладке «Версии»</div><button id="r87pencil">✎ Записать путь</button></div><div id="r87modal"><div class="r87modalCard"><h2>Что ты показала?</h2><p>Запись пути сохраняется без рисунков, точек и линий на экране.</p><label>Название</label><input id="r87title" maxlength="240"><label>Комментарий</label><textarea id="r87comment" maxlength="6000"></textarea><div class="r87modalActions"><button id="r87continue">Продолжить</button><button id="r87save" class="primary">Сохранить запись</button></div></div></div>';
-  html=html.replace(/<body([^>]*)>/i,m=>m+research);
-  const prelude='<script>(function(){const N=window.MutationObserver;window.MutationObserver=class{constructor(){}observe(){}disconnect(){}};setTimeout(function(){window.MutationObserver=N},2500)})()</scr'+'ipt>';
-  const runtime='<script src="./president-v087-runtime.js"></scr'+'ipt>';
-  html=html.replace(/<\/body>/i,prelude+runtime+'</body>');
+  const watchdog='<script>(function(){const nativeFetch=window.fetch.bind(window);window.fetch=function(input,init){const url=String(typeof input===\"string\"?input:(input&&input.url)||\"\");if(!url.includes(\"setka-diamond-president-v3\"))return nativeFetch(input,init);const own=!init?.signal,controller=own?new AbortController():null,t=own?setTimeout(()=>controller.abort(),20000):0;const cfg=own?Object.assign({},init||{},{signal:controller.signal}):init;return nativeFetch(input,cfg).finally(()=>{if(t)clearTimeout(t)})}})()</scr'+'ipt>';
+  const mobile='<style>@media(max-width:899px){.login{min-width:0!important;width:min(520px,calc(100% - 24px))!important;margin:4vh auto!important}.login h1{font-size:36px!important}.shell{min-width:960px}}</style>';
+  html=html.replace(/<\/head>/i,policy+watchdog+mobile+(safe?'':'<link rel="stylesheet" href="./president-v087.css">')+'</head>');
+  if(safe){
+    const badge='<div style="position:fixed;z-index:999999;right:10px;top:10px;padding:6px 9px;border:1px solid rgba(255,255,255,.25);border-radius:999px;background:#050505;color:#fff;font:700 9px -apple-system,BlinkMacSystemFont,Arial,sans-serif;letter-spacing:.08em">PRESIDENT SAFE</div>';
+    html=html.replace(/<body([^>]*)>/i,m=>m+badge);
+  }else{
+    const research='<div id="r87bar"><div class="r87brand">SETKA · DIAMOND<span>РАБОЧАЯ ВЕРСИЯ · v0.8.7</span></div><div class="r87note">История версий находится во вкладке «Версии»</div><button id="r87pencil">✎ Записать путь</button></div><div id="r87modal"><div class="r87modalCard"><h2>Что ты показала?</h2><p>Запись пути сохраняется без рисунков, точек и линий на экране.</p><label>Название</label><input id="r87title" maxlength="240"><label>Комментарий</label><textarea id="r87comment" maxlength="6000"></textarea><div class="r87modalActions"><button id="r87continue">Продолжить</button><button id="r87save" class="primary">Сохранить запись</button></div></div></div>';
+    html=html.replace(/<body([^>]*)>/i,m=>m+research);
+    const prelude='<script>(function(){const N=window.MutationObserver;window.MutationObserver=class{constructor(){}observe(){}disconnect(){}};setTimeout(function(){window.MutationObserver=N},2500)})()</scr'+'ipt>';
+    const runtime='<script src="./president-v087-runtime.js"></scr'+'ipt>';
+    html=html.replace(/<\/body>/i,prelude+runtime+'</body>');
+  }
   document.open();document.write(html);document.close();
-})().catch(e=>{document.getElementById('boot').textContent='SETKA · ОШИБКА v0.8.7 · '+e.message;console.error(e)});
+})().catch(e=>{const b=document.getElementById('boot');if(b)b.textContent='SETKA · ОШИБКА ЗАГРУЗКИ · '+e.message;console.error(e)});
 </script>
 </body></html>
