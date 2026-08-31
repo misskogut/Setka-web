@@ -1,0 +1,35 @@
+name: SETKA Foundation 0.1.5 Control Smoke
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check control shell syntax
+        run: node --check foundation-control-shell.js
+      - name: Check user runtime syntax
+        run: node --check foundation-user-v015.js
+      - name: Check admin runtime syntax
+        run: node --check foundation-admin-v015.js
+      - name: Check smoke syntax
+        run: node --check foundation-v015-smoke.mjs
+      - name: Install Playwright core
+        run: npm install --no-save playwright-core@1.55.0
+      - name: Wait for permanent doors
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS "https://misskogut.github.io/Setka-web/foundation.html" | grep -q "foundation-control-shell.js" && curl -fsS "https://misskogut.github.io/Setka-web/foundation-president.html" | grep -q "foundation-control-shell.js"; then exit 0; fi
+            sleep 5
+          done
+          exit 1
+      - name: Version sync + control guard smoke
+        env:
+          CHROME_PATH: /usr/bin/chromium
+        run: node foundation-v015-smoke.mjs

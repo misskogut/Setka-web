@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="theme-color" content="#000" />
+<title>SETKA Research Admin</title>
+<link rel="stylesheet" href="admin-v3.css?v=2" />
+</head>
+<body>
+<div id="login" class="login hidden" aria-hidden="true" style="display:none!important"><input id="keyInput" type="hidden"><button id="loginBtn" type="button" hidden></button><div id="loginError" hidden></div></div>
+<div id="dashboard" class="shell hidden">
+  <div class="top"><div><div class="brand">SETKA RESEARCH</div><div class="sub">ПОЛНЫЙ ПУТЬ · ДО ID · СЕССИИ · ПУЛЬС · ТАЙМЕР · REPLAY · СИМПТОМЫ · ЗАМЕТКИ · ИНВАЙТЫ · СООБЩЕСТВО</div></div><div class="spacer"></div><button id="createCodeBtn" class="btn primary">+ ID</button><button id="refreshBtn" class="btn">Обновить</button><button id="logoutBtn" class="btn">Выйти</button></div>
+  <div class="tabs">
+    <button class="tab active" data-tab="overview">Обзор</button>
+    <button class="tab" data-tab="journey">Путь по приложению</button>
+    <button class="tab" data-tab="participants">Участники</button>
+    <button class="tab" data-tab="timing">Таймер / удержание</button>
+    <button class="tab" data-tab="symptoms">Симптомы</button>
+    <button class="tab" data-tab="notes">Заметки</button>
+    <button class="tab" data-tab="invites">Инвайты</button>
+    <button class="tab" data-tab="insights">Запросы / эффект</button>
+    <button class="tab" data-tab="community">Сообщество</button>
+  </div>
+  <section id="tab-overview" class="tab-page"></section>
+  <section id="tab-journey" class="tab-page hidden"></section>
+  <section id="tab-participants" class="tab-page hidden"></section>
+  <section id="tab-timing" class="tab-page hidden"></section>
+  <section id="tab-symptoms" class="tab-page hidden"></section>
+  <section id="tab-notes" class="tab-page hidden"></section>
+  <section id="tab-invites" class="tab-page hidden"></section>
+  <section id="tab-insights" class="tab-page hidden"></section>
+  <section id="tab-community" class="tab-page hidden"></section>
+  <section id="detail" class="hidden" style="margin-top:16px"></section>
+</div>
+<script src="admin-v3.js?v=2"></script>
+<script src="admin-v4-extra.js?v=2"></script>
+<script src="admin-v5-extra.js?v=1"></script>
+<script src="admin-guest-v12.js?v=1"></script>
+<script src="admin-sensors-v13.js?v=2"></script>
+<script>localStorage.setItem("setka-research:admin-key:v1","b115f89e1b35139f437c7be36d777a713e9da53e1b789dba");window.addEventListener("DOMContentLoaded",()=>{const b=document.getElementById("loginBtn");if(b)b.click();});</script>
+</body>
+</html>

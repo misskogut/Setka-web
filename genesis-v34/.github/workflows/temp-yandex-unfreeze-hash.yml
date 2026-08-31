@@ -1,0 +1,17 @@
+name: Temporary Yandex unfreeze hash audit
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/temp-yandex-unfreeze-hash.yml'
+  workflow_dispatch:
+jobs:
+  hash:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: SHA256
+        run: |
+          sha256sum foundation-control-zoom-v018.js
+          sha256sum foundation-control-build-v018.js
+          sha256sum foundation-president.html

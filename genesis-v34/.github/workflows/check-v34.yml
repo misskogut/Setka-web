@@ -1,0 +1,74 @@
+name: Check SETKA Standalone v34
+on:
+  push:
+    paths:
+      - 'app-v3-multipattern.js'
+      - 'standalone-multipattern-bridge-v34.js'
+      - 'standalone-core-v34.js'
+      - 'standalone-runtime-v34.js'
+      - 'standalone-favorites-repair-v34.js'
+      - 'standalone-favorite-native-guard-v34.js'
+      - 'standalone-methodology-v34.js'
+      - 'standalone-advanced-v34.js'
+      - 'standalone-analysis-v34.js'
+      - 'standalone-user-ui-v34.js'
+      - 'standalone-session-patterns-v34.js'
+      - 'standalone-states-v34.js'
+      - 'standalone-state-timeline-v34.js'
+      - 'standalone-session-states-v34.js'
+      - 'standalone-explore-v34.js'
+      - 'standalone-bootstrap-v34.js'
+      - 'standalone-config-links-v34.js'
+      - 'standalone-controls-v34.js'
+      - 'standalone-sync-v34.js'
+      - 'standalone-navigation-v34.js'
+      - 'standalone-admin-bridge-v34b.js'
+      - 'standalone-admin-participants-v34.js'
+      - 'standalone-admin-activity-v34.js'
+      - 'standalone-admin-retention-v34.js'
+      - 'standalone-admin-participant-modal-v34.js'
+      - 'standalone-admin-evolution-login-v35.js'
+      - 'standalone-admin-evolution-v35.js'
+      - 'standalone-admin-evolution-pattern-lab-v35.js'
+      - 'admin-replay-first-v34.js'
+      - 'standalone-admin-v34.html'
+      - 'standalone-admin-evolution-v35.html'
+      - 'standalone-v34.html'
+      - '.github/workflows/check-v34.yml'
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check app-v3-multipattern.js
+      - run: node --check standalone-multipattern-bridge-v34.js
+      - run: node --check standalone-core-v34.js
+      - run: node --check standalone-runtime-v34.js
+      - run: node --check standalone-favorites-repair-v34.js
+      - run: node --check standalone-favorite-native-guard-v34.js
+      - run: node --check standalone-methodology-v34.js
+      - run: node --check standalone-advanced-v34.js
+      - run: node --check standalone-analysis-v34.js
+      - run: node --check standalone-user-ui-v34.js
+      - run: node --check standalone-session-patterns-v34.js
+      - run: node --check standalone-states-v34.js
+      - run: node --check standalone-state-timeline-v34.js
+      - run: node --check standalone-session-states-v34.js
+      - run: node --check standalone-explore-v34.js
+      - run: node --check standalone-bootstrap-v34.js
+      - run: node --check standalone-config-links-v34.js
+      - run: node --check standalone-controls-v34.js
+      - run: node --check standalone-sync-v34.js
+      - run: node --check standalone-navigation-v34.js
+      - run: node --check standalone-admin-bridge-v34b.js
+      - run: node --check standalone-admin-participants-v34.js
+      - run: node --check standalone-admin-activity-v34.js
+      - run: node --check standalone-admin-retention-v34.js
+      - run: node --check standalone-admin-participant-modal-v34.js
+      - run: node --check standalone-admin-evolution-login-v35.js
+      - run: node --check standalone-admin-evolution-v35.js
+      - run: node --check standalone-admin-evolution-pattern-lab-v35.js
+      - run: node --check admin-replay-first-v34.js

@@ -1,0 +1,19 @@
+(()=>{
+'use strict';
+const ENDPOINT='https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-verstak-onboard';
+const SESSION='setka:foundation:president:session';
+const $=s=>document.querySelector(s);
+const button=document.createElement('button');
+button.id='onboardChatButton';button.className='onboardChatButton';button.type='button';button.title='Бортовой компьютер';button.setAttribute('aria-label','Открыть Бортовой компьютер');button.textContent='⌁';
+const panel=document.createElement('section');panel.id='onboardChatPanel';panel.className='onboardChatPanel';panel.setAttribute('aria-label','Бортовой компьютер VERSTAK');
+panel.innerHTML='<div class="onboardChatHead"><div><strong>Бортовой компьютер</strong><small>VERSTAK · deterministic navigator v1 · без автопилота</small></div><button class="onboardChatClose" type="button" aria-label="Закрыть">×</button></div><div class="onboardChatBody"><div class="onboardMsg computer">Я вижу состояние VERSTAK и могу показать текущую позицию и безопасные маршруты. Не выполняю необратимые действия без твоего выбора.</div></div><div class="onboardChatError" hidden></div><form class="onboardChatForm"><input class="onboardChatInput" autocomplete="off" maxlength="1200" placeholder="Что сейчас лучше сделать?"><button class="onboardChatSend" type="submit">Отправить</button></form>';
+document.body.append(button,panel);
+const body=$('#onboardChatPanel .onboardChatBody'),input=$('#onboardChatPanel .onboardChatInput'),send=$('#onboardChatPanel .onboardChatSend'),error=$('#onboardChatPanel .onboardChatError');
+function esc(v){return String(v??'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]))}
+function add(kind,text,routes=[]){const m=document.createElement('div');m.className=`onboardMsg ${kind}`;m.textContent=text||'';if(kind==='computer'&&Array.isArray(routes)&&routes.length){const box=document.createElement('div');box.className='onboardRoutes';for(const r of routes){const item=document.createElement('div');item.className='onboardRoute';item.innerHTML=`<b>${esc(r.title||r.ref||'Маршрут')}</b>${esc(r.whyNow||'')}${r.risk?` · риск ${esc(r.risk)}`:''}`;box.append(item)}m.append(box)}body.append(m);body.scrollTop=body.scrollHeight}
+async function ask(message){const token=localStorage.getItem(SESSION)||'';if(!token)throw new Error('Нужна активная Президентская сессия');const r=await fetch(ENDPOINT,{method:'POST',headers:{'content-type':'application/json','x-setka-session':token},body:JSON.stringify({message})});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.detail||d.error||'Не удалось получить ответ');return d}
+button.addEventListener('click',()=>{panel.classList.toggle('open');if(panel.classList.contains('open'))setTimeout(()=>input.focus(),0)});
+panel.querySelector('.onboardChatClose').addEventListener('click',()=>panel.classList.remove('open'));
+panel.querySelector('.onboardChatForm').addEventListener('submit',async e=>{e.preventDefault();const message=input.value.trim();if(!message)return;error.hidden=true;add('user',message);input.value='';send.disabled=true;input.disabled=true;try{const d=await ask(message);add('computer',d.response||'Ответ получен.',d.routes||[]);window.dispatchEvent(new CustomEvent('setka:verstak-onboard-turn',{detail:{turnId:d.turnId||null,intent:d.intent||null,aiUsed:Boolean(d.aiUsed),routeCount:Array.isArray(d.routes)?d.routes.length:0}}))}catch(err){error.textContent=String(err?.message||err);error.hidden=false}finally{send.disabled=false;input.disabled=false;input.focus()}});
+window.VerstakOnboardChat={open:()=>{panel.classList.add('open');input.focus()},close:()=>panel.classList.remove('open'),ask};
+})();

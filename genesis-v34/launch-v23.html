@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#000000" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <title>SETKA Web Prototype</title>
+  <link rel="stylesheet" href="styles.css?v=23-launch" />
+  <link rel="stylesheet" href="experience-v2.css?v=23-launch" />
+</head>
+<body>
+<main id="app">
+  <section id="libraryScreen" class="screen active" aria-label="Библиотека паттернов">
+    <div class="library-pager" aria-label="Разделы библиотеки">
+      <button id="libraryPagerButton" class="pager-button active" type="button" aria-label="Исходные паттерны"><span class="pager-dot-mark"></span></button>
+      <button id="communityPagerButton" class="pager-button" type="button" aria-label="Библиотека сообщества"><span class="community-mark"><span></span><i></i></span></button>
+      <button id="favoritesPagerButton" class="pager-button" type="button" aria-label="Мои сохраненные конфигурации"><span class="pager-heart">♥</span></button>
+    </div>
+    <div id="libraryTitle" class="library-title">Паттерны</div>
+    <div id="librarySwipeArea" class="panel-wrap">
+      <div id="allPatternsPanel" class="pattern-panel" aria-label="Исходные паттерны"></div>
+      <div id="communityPanel" class="pattern-panel hidden-right" aria-label="Конфигурации сообщества"></div>
+      <div id="favoritesPanel" class="pattern-panel hidden-right" aria-label="Мои сохраненные конфигурации"></div>
+    </div>
+    <div class="swipe-hint">СВАЙП ← → МЕЖДУ ПАНЕЛЯМИ</div>
+  </section>
+  <section id="gameScreen" class="screen" aria-label="Паттерн">
+    <canvas id="patternCanvas"></canvas>
+    <div class="game-ui">
+      <button id="favoriteButton" class="game-button" type="button" aria-label="Сохранить текущую конфигурацию">♡</button>
+      <button id="libraryButton" class="game-button" type="button" aria-label="Вернуться в библиотеку"><svg viewBox="0 0 30 30" aria-hidden="true"><g fill="#fff"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="12" y="3" width="6" height="6" rx="1"/><rect x="21" y="3" width="6" height="6" rx="1"/><rect x="3" y="12" width="6" height="6" rx="1"/><rect x="12" y="12" width="6" height="6" rx="1"/><rect x="21" y="12" width="6" height="6" rx="1"/><rect x="3" y="21" width="6" height="6" rx="1"/><rect x="12" y="21" width="6" height="6" rx="1"/><rect x="21" y="21" width="6" height="6" rx="1"/></g></svg></button>
+      <button id="prevButton" class="side-arrow" type="button" aria-label="Предыдущий паттерн"><svg viewBox="0 0 30 60" aria-hidden="true"><path d="M23 6 L8 30 L23 54" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button id="nextButton" class="side-arrow" type="button" aria-label="Следующий паттерн"><svg viewBox="0 0 30 60" aria-hidden="true"><path d="M7 6 L22 30 L7 54" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <div id="modeLabel" class="mode-label"></div>
+      <div class="bottom-controls">
+        <button id="colorButton" class="round-control" type="button" aria-label="Следующий цветовой режим"><div id="colorDots" aria-hidden="true"></div><span class="droplet" aria-hidden="true"></span></button>
+        <button id="instructionsButton" class="round-control" type="button" aria-label="Инструкция по свайпам"><svg class="key-icon" viewBox="0 0 36 36" aria-hidden="true"><circle cx="12" cy="13" r="7" fill="none" stroke="#fff" stroke-width="2.5"/><path d="M17 18 L31 32 M25 26 L29 22 M21 22 L25 18" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      </div>
+      <div id="instructionsModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="instructionsTitle"><div class="instructions"><h2 id="instructionsTitle">Управление паттерном</h2><div class="gesture-group"><strong>1 палец</strong><div class="gesture-row"><span>Слева ↑↓</span><span>Количество щупалец: вверх больше, вниз меньше</span></div><div class="gesture-row"><span>Справа ↑↓</span><span>Размер кругов: вверх больше, вниз меньше</span></div><div class="gesture-row"><span>Сверху ←→</span><span>Толщина линий</span></div><div class="gesture-row"><span>Снизу ←→</span><span>Скорость движения</span></div></div><div class="gesture-group"><strong>2 пальца</strong><div class="gesture-row"><span>Слева ↑↓</span><span>Длина щупалец: вверх длиннее, вниз короче</span></div><div class="gesture-row"><span>Справа ↑↓</span><span>Плотность кругов: вверх плотнее, вниз реже</span></div><div class="gesture-row"><span>Снизу ←→</span><span>Скорость перелива цвета</span></div></div><button id="closeInstructionsButton" class="close-modal" type="button">Понятно</button></div></div>
+      <div id="toast" class="toast" aria-live="polite"></div>
+    </div>
+  </section>
+</main>
+<script src="preboot-v23.js?v=23-launch"></script>
+<script src="app-v2.js?v=23-launch"></script>
+<script src="startup-v10.js?v=23-launch"></script>
+<script src="journey-v7.js?v=23-launch"></script>
+<script src="guest-full-v11.js?v=23-launch"></script>
+<script src="guest-copy-v12.js?v=23-launch"></script>
+<script src="guest-features-v12.js?v=23-launch"></script>
+<script src="guest-timer-guard-v11.js?v=23-launch"></script>
+<script src="guest-trial.js?v=23-launch"></script>
+<script src="guest-sync-v12.js?v=23-launch"></script>
+<script src="ui-v7.js?v=23-launch"></script>
+<script src="boot-v8.js?v=23-launch"></script>
+<script src="community-sync-v10.js?v=23-launch"></script>
+<script src="pattern-info-v11.js?v=23-launch"></script>
+<script src="sensor-v13.js?v=23-launch"></script>
+</body>
+</html>

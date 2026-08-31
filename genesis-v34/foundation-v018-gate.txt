@@ -1,0 +1,3 @@
+Foundation 0.1.8 release gate trigger.
+Parent: 0.1.7
+Scope: pin workflow + pin board + carried ID/synthetic-admin corrections.

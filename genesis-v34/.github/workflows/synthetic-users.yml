@@ -1,0 +1,29 @@
+name: SETKA Synthetic User Lab
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '37 * * * *'
+  push:
+    paths:
+      - 'synthetic-browser-runner.mjs'
+      - '.github/workflows/synthetic-users.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  run-synthetic-users:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright core
+        run: npm install --no-save playwright-core@1.55.0
+      - name: Run synthetic users against current front
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+        run: node synthetic-browser-runner.mjs

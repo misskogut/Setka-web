@@ -1,0 +1,37 @@
+name: SETKA Foundation 0.1.2 Pair Smoke
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'foundation.html'
+      - 'foundation-president.html'
+      - 'foundation-user-v012.html'
+      - 'foundation-user-v012.css'
+      - 'foundation-user-v012.js'
+      - 'foundation-admin-v012.html'
+      - 'foundation-admin-v012.css'
+      - 'foundation-admin-v012.js'
+      - 'foundation-v012-smoke.mjs'
+      - '.github/workflows/foundation-v012-smoke.yml'
+  workflow_dispatch:
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check user runtime syntax
+        run: node --check foundation-user-v012.js
+      - name: Check admin runtime syntax
+        run: node --check foundation-admin-v012.js
+      - name: Check smoke syntax
+        run: node --check foundation-v012-smoke.mjs
+      - run: npm install --no-save playwright-core@1.55.0
+      - name: Wait for Pages
+        run: sleep 35
+      - name: Pair + stable entry E2E
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+        run: node foundation-v012-smoke.mjs

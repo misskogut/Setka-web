@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#000000" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <title>SETKA reset</title>
+  <style>
+    html,body{margin:0;min-height:100%;background:#000;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue",Arial,sans-serif}
+    body{display:grid;place-items:center;padding:24px}.box{text-align:center}.mark{width:56px;height:56px;border:1px solid rgba(255,255,255,.5);border-radius:50%;display:grid;place-items:center;margin:0 auto 16px;font-size:9px;letter-spacing:.13em}.txt{font-size:12px;color:rgba(255,255,255,.55)}
+  </style>
+</head>
+<body>
+  <div class="box"><div class="mark">SETKA</div><div class="txt">Сбрасываем пробный режим…</div></div>
+  <script>
+  (() => {
+    const remove = [
+      "setka-research:guest-trial-start:v1",
+      "setka-research:guest-trial-clock:v24",
+      "setka-research:guest-trial-clock:v27",
+      "setka-research:access-code:v1",
+      "setka-research:access-verified:v26",
+      "setka-research:access-prefill:v26",
+      "setka-research:access-verified:v27",
+      "setka-research:access-prefill:v27",
+      "setka-research:guest-active-session:v11",
+      "setka-research:active-session:v5",
+      "setka-research:sensor-guest-archive:v13"
+    ];
+    for (const key of remove) { try { localStorage.removeItem(key); } catch (_) {} }
+    try { sessionStorage.removeItem("setka-research:journey-start:v1"); } catch (_) {}
+
+    // Preserve notes/symptoms/session archive, but make the guest archive belong to
+    // this new trial window so old timestamps cannot make telemetry look expired.
+    try {
+      const key = "setka-research:guest-archive:v11";
+      const a = JSON.parse(localStorage.getItem(key) || "null");
+      if (a && typeof a === "object") {
+        a.startedAt = new Date().toISOString();
+        localStorage.setItem(key, JSON.stringify(a));
+      }
+    } catch (_) {}
+
+    // Clear stale pre-ID event queue only; this is telemetry, not user content.
+    try { localStorage.removeItem("setka-research:guest-events:v12"); } catch (_) {}
+
+    setTimeout(() => location.replace("./launch-v27.html?fresh=1"), 120);
+  })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+name: SETKA Foundation 0.1.2 Synthetic Users
+on:
+  schedule:
+    - cron: '23 * * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'foundation-user-v012.html'
+      - 'foundation-user-v012.css'
+      - 'foundation-user-v012.js'
+      - 'foundation-v012-synthetic-runner.mjs'
+      - '.github/workflows/foundation-v012-synthetics.yml'
+jobs:
+  synthetic-browser-run:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check runner syntax
+        run: node --check foundation-v012-synthetic-runner.mjs
+      - run: npm install --no-save playwright-core@1.55.0
+      - name: Wait for Pages
+        if: github.event_name == 'push'
+        run: sleep 40
+      - name: Run five synthetic users through Foundation 0.1.2
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+          URL: https://misskogut.github.io/Setka-web/foundation-user-v012.html
+        run: node foundation-v012-synthetic-runner.mjs

@@ -1,0 +1,45 @@
+import fs from 'node:fs';
+import { chromium } from 'playwright-core';
+const base='https://misskogut.github.io/Setka-web/';
+const control='https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-foundation-control';
+function assert(v,m){if(!v)throw new Error(m)}
+for(const f of ['foundation-control-shell.js','foundation-user-v015.js','foundation-admin-v015.js']) assert(fs.existsSync(f),`missing ${f}`);
+const manifestRes=await fetch(control,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'manifest'})});
+assert(manifestRes.ok,`manifest ${manifestRes.status}`);const manifest=(await manifestRes.json()).manifest;
+assert(manifest.versions.some(v=>v.version==='0.1.5'),'0.1.5 missing from manifest');
+for(const action of ['pin_list','set_pointer','trace_start']){const r=await fetch(control,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action,version:'0.1.5',surface:'president',pointer:'working'})});assert(r.status===401,`${action} must reject anonymous: ${r.status}`)}
+const executablePath=process.env.CHROME_PATH||'/usr/bin/chromium';
+const browser=await chromium.launch({headless:true,executablePath,args:['--no-sandbox']});
+const context=await browser.newContext({viewport:{width:430,height:932},deviceScaleFactor:3,isMobile:true,hasTouch:true});
+const errors=[];
+function watch(page,label){page.on('pageerror',e=>errors.push(`${label} pageerror ${e.message}`));page.on('console',m=>{if(m.type()==='error')errors.push(`${label} console ${m.text()}`)});page.on('response',r=>{if(r.status()>=400)errors.push(`${label} response ${r.status()} ${r.url()}`)});page.on('requestfailed',r=>{const t=r.failure()?.errorText||'';if(!t.includes('ERR_ABORTED'))errors.push(`${label} requestfailed ${r.url()} ${t}`)})}
+const user=await context.newPage();watch(user,'user');
+await user.goto(base+'foundation.html?view=0.1.5&synthetic=max_sprinter',{waitUntil:'domcontentloaded'});
+await user.waitForFunction(()=>document.querySelector('#versionSelect')?.value==='0.1.5');
+await user.waitForFunction(()=>document.querySelector('#appFrame')?.contentWindow?.FoundationV015?.version==='0.1.5');
+const uframe=user.frameLocator('#appFrame');
+await uframe.locator('#patterns .patternCard').first().waitFor();
+assert(await uframe.locator('#patterns .patternCard').count()===2,'user 0.1.5 must show exactly 2 patterns');
+await user.selectOption('#versionSelect','0.1.4');
+await user.waitForFunction(()=>document.querySelector('#appFrame')?.contentWindow?.FoundationV014?.version==='0.1.4');
+assert(await user.evaluate(()=>localStorage.getItem('setka:foundation:viewing:version'))==='0.1.4','viewing version not persisted');
+const admin=await context.newPage();watch(admin,'admin');
+await admin.goto(base+'foundation-president.html',{waitUntil:'domcontentloaded'});
+await admin.waitForFunction(()=>document.querySelector('#versionSelect')?.value==='0.1.4');
+assert((await admin.getAttribute('#appFrame','src')).includes('foundation-admin-v014.html'),'President permanent door did not inherit shared viewing 0.1.4');
+await admin.selectOption('#versionSelect','0.1.5');
+await admin.waitForFunction(()=>document.querySelector('#appFrame')?.getAttribute('src')?.includes('foundation-admin-v015.html'));
+await user.waitForFunction(()=>document.querySelector('#versionSelect')?.value==='0.1.5');
+await user.waitForFunction(()=>document.querySelector('#appFrame')?.contentWindow?.FoundationV015?.version==='0.1.5');
+const workingBefore=manifest.pointers.working;
+await admin.click('#followWorking');
+await admin.waitForFunction(w=>document.querySelector('#versionSelect')?.value===w,workingBefore);
+const manifest2=(await (await fetch(control,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'manifest'})})).json()).manifest;
+assert(manifest2.pointers.working===workingBefore,'VIEWING changed WORKING pointer');
+assert(manifest2.pointers.canon===manifest.pointers.canon,'VIEWING changed CANON pointer');
+assert(await admin.locator('#pinTool').count()===1,'pin tool missing');
+assert(await admin.locator('#eyeTool').count()===1,'eye tool missing');
+assert(await admin.locator('#recordTool').count()===1,'record tool missing');
+assert(errors.length===0,errors.join('\n'));
+await browser.close();
+console.log(JSON.stringify({ok:true,version:'0.1.5',working:workingBefore,canon:manifest.pointers.canon,sync:'front-president',permanentDoors:true,pins:'guarded',errors:0},null,2));
