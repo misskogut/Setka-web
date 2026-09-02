@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://setka.local/contracts/setka-causal-event-v1.schema.json",
+  "title": "SETKA Causal Event v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "eventType", "entityId", "sequence", "tick", "payload", "provenance"],
+  "properties": {
+    "schemaVersion": { "const": "SETKA_CAUSAL_EVENT_V1" },
+    "eventType": {
+      "enum": ["GENESIS", "PARAM_CHANGE", "EXTERNAL_INPUT", "MODE_CHANGE", "CAUSAL_EVENT", "CHECKPOINT", "CAPSULE", "RUN_END"]
+    },
+    "entityId": { "type": "string", "minLength": 1 },
+    "sequence": { "type": "integer", "minimum": 0 },
+    "tick": { "type": "integer", "minimum": 0 },
+    "wallTime": { "type": ["string", "null"], "format": "date-time" },
+    "payload": { "type": "object", "additionalProperties": true },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source"],
+      "properties": {
+        "source": { "type": "string", "minLength": 1 },
+        "reason": { "type": ["string", "null"] },
+        "sourceRef": { "type": ["string", "null"] },
+        "determinism": { "enum": ["DETERMINISTIC", "NON_REPRODUCIBLE", "EXTERNAL", "MIXED"] }
+      }
+    },
+    "evidenceHash": { "type": ["string", "null"] }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "eventType": { "const": "PARAM_CHANGE" } } },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": ["path", "to"],
+            "properties": {
+              "path": { "type": "string", "minLength": 1 },
+              "from": {},
+              "to": {},
+              "effectiveBoundary": { "enum": ["BEFORE_STEP", "AT_TICK"] }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "eventType": { "const": "MODE_CHANGE" } } },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": ["mode"],
+            "properties": {
+              "mode": { "enum": ["ACTIVE", "CAUSAL_IDLE", "AUTOPILOT", "SLEEP", "PAUSED", "CRYOSLEEP", "COMPUTE_ONLY"] }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "eventType": { "const": "CHECKPOINT" } } },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": ["stateHash"],
+            "properties": {
+              "stateHash": { "type": "string", "minLength": 16 },
+              "rootHash": { "type": ["string", "null"] }
+            }
+          }
+        }
+      }
+    }
+  ]
+}
