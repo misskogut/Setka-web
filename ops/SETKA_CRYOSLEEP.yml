@@ -1,0 +1,17 @@
+state: ON
+mode: EMERGENCY_CRYOSLEEP
+project_ref: gfchgaphzhxufwdhrcis
+reason: PostgreSQL disk full / recovery loop
+set_at_utc: 2026-09-02T11:12:42Z
+policy:
+  scheduled_external_writes: DENY
+  synthetic_runs: DENY
+  simulation_runs: DENY
+  autonomous_runs: DENY
+  manual_recovery_reads: ALLOW
+  postgres_recovery: PLATFORM_ONLY
+resume_requires:
+  - successful SELECT 1
+  - full emergency backup before cleanup
+  - storage size audit
+  - explicit President decision
