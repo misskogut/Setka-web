@@ -14,7 +14,7 @@ function fail(message) {
 
 function validateManifest(manifest) {
   if (manifest?.schemaVersion !== 'SETKA_KERNEL_RELEASE_MANIFEST_V1') fail('unsupported manifest schema');
-  if (!manifest.releaseId || !manifest.acceptedBaselineCommit) fail('manifest release identity is incomplete');
+  if (!manifest.releaseId || !manifest.dbRelevantSourceBaselineCommit) fail('manifest release identity is incomplete');
   if (!manifest.components || typeof manifest.components !== 'object') fail('manifest components are missing');
   for (const [name, component] of Object.entries(manifest.components)) {
     if (!/^[a-f0-9]{64}$/.test(component?.fingerprint ?? '')) fail(`invalid fingerprint for ${name}`);
@@ -64,7 +64,7 @@ export function reconcileKernel(manifest, databaseState) {
   const base = {
     schemaVersion: 'SETKA_KERNEL_HANDSHAKE_RESULT_V1',
     releaseId: manifest.releaseId,
-    acceptedBaselineCommit: manifest.acceptedBaselineCommit,
+    dbRelevantSourceBaselineCommit: manifest.dbRelevantSourceBaselineCommit,
     automaticMigrationEligible: false,
     componentDelta,
     pendingMigrations: pendingMigrations.map((migration) => ({ id: migration.id, contentHash: migration.contentHash })),
