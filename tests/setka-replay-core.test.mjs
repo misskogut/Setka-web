@@ -1,0 +1,107 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+
+import { replayToTick } from '../core/replay/replay-engine.mjs';
+import { materializeRange } from '../core/replay/materializer.mjs';
+import { buildCausalCapsule } from '../core/replay/capsule-builder.mjs';
+import { classifyWrite, createWriteBudget, admitCanonicalWrite } from '../core/storage/write-admission.mjs';
+
+function contract() {
+  return {
+    schemaVersion: 'SETKA_REPLAY_CONTRACT_V1',
+    entity: { id: 'SHIP-TEST-0001', lineage: ['FLEET-TEST'], kind: 'ship' },
+    law: {
+      family: 'LOGISTIC_MAP',
+      version: 'LOGISTIC_MAP_JS_V1',
+      contentHash: 'test-law-hash-0001',
+      parameters: { r: 3.7 },
+      behaviorAdapterVersion: null
+    },
+    genesis: { tick: 0, wallTime: '2026-09-02T12:00:00.000Z', state: { x: 0.2 }, seed: null, rootSeed: null },
+    variables: { curiosity: 0.42 },
+    numerics: { mode: 'FLOAT64_JS_V1', runtimeContract: 'node20-v8-js-number', rounding: 'IEEE754', operationOrderVersion: 'LOGISTIC_JS_V1' },
+    clock: { contractVersion: 'CLOCK_V1', tickSemantics: 'one logistic iteration', nominalTickMs: 1000, pointsPerTick: 1 },
+    checkpoints: []
+  };
+}
+
+function event({ sequence, tick, eventType, payload, wallTime }) {
+  return {
+    schemaVersion: 'SETKA_CAUSAL_EVENT_V1',
+    eventType,
+    entityId: 'SHIP-TEST-0001',
+    sequence,
+    tick,
+    wallTime: wallTime ?? null,
+    payload: payload ?? {},
+    provenance: { source: 'offline-test', determinism: 'DETERMINISTIC' },
+    evidenceHash: null
+  };
+}
+
+test('same contract + causal events reproduces identical state and trajectory hashes', () => {
+  const events = [event({ sequence: 1, tick: 0, eventType: 'GENESIS' })];
+  const a = replayToTick(contract(), events, 100);
+  const b = replayToTick(contract(), events, 100);
+  assert.equal(a.stateHash, b.stateHash);
+  assert.equal(a.trajectoryRootHash, b.trajectoryRootHash);
+  assert.deepEqual(a.runtime.state, b.runtime.state);
+});
+
+test('parameter patch at an exact tick changes only the replay branch after that boundary', () => {
+  const baseEvents = [event({ sequence: 1, tick: 0, eventType: 'GENESIS' })];
+  const mutatedEvents = [
+    ...baseEvents,
+    event({
+      sequence: 2,
+      tick: 5,
+      eventType: 'PARAM_CHANGE',
+      payload: { path: 'law.parameters.r', from: 3.7, to: 3.9, effectiveBoundary: 'AT_TICK' }
+    }),
+    event({
+      sequence: 3,
+      tick: 5,
+      eventType: 'PARAM_CHANGE',
+      payload: { path: 'variables.curiosity', from: 0.42, to: 0.61, effectiveBoundary: 'AT_TICK' }
+    })
+  ];
+
+  const beforeA = replayToTick(contract(), baseEvents, 4);
+  const beforeB = replayToTick(contract(), mutatedEvents, 4);
+  assert.equal(beforeA.stateHash, beforeB.stateHash);
+
+  const afterA = replayToTick(contract(), baseEvents, 20);
+  const afterB = replayToTick(contract(), mutatedEvents, 20);
+  assert.notEqual(afterA.stateHash, afterB.stateHash);
+  assert.equal(afterB.runtime.law.parameters.r, 3.9);
+  assert.equal(afterB.runtime.variables.curiosity, 0.61);
+});
+
+test('dense coordinates can be materialized on demand without persistent storage', () => {
+  const materialized = materializeRange(contract(), [], { startTick: 10, endTick: 20, stride: 2, maxPoints: 10 });
+  assert.equal(materialized.disposable, true);
+  assert.equal(materialized.pointCount, 6);
+  assert.deepEqual(materialized.rows.map((row) => row.tick), [10, 12, 14, 16, 18, 20]);
+});
+
+test('capsule stores time and mathematical distance between causal events', () => {
+  const events = [
+    event({ sequence: 1, tick: 100, eventType: 'CAUSAL_EVENT', wallTime: '2026-09-02T12:00:00.000Z' }),
+    event({ sequence: 2, tick: 160, eventType: 'PARAM_CHANGE', wallTime: '2026-09-02T12:01:30.000Z', payload: { path: 'variables.curiosity', to: 0.5 } })
+  ];
+  const capsule = buildCausalCapsule({ entityId: 'SHIP-TEST-0001', events, pointsPerTick: 1 });
+  assert.equal(capsule.intervals[0].generatedSteps, 60);
+  assert.equal(capsule.intervals[0].generatedPoints, 60);
+  assert.equal(capsule.intervals[0].elapsedMs, 90000);
+  assert.equal(typeof capsule.capsuleHash, 'string');
+});
+
+test('write admission rejects dense deterministic traces and budgets canonical writes', () => {
+  assert.equal(classifyWrite({ kind: 'AUTOPILOT_COORDINATE' }).decision, 'DERIVE_OR_CACHE');
+  assert.equal(classifyWrite({ kind: 'NO_ACTIVITY' }).decision, 'DERIVE_OR_CACHE');
+
+  const budget = createWriteBudget({ maxCanonicalEventsPerRun: 1, maxCanonicalBytesPerRun: 100000, maxSingleEventBytes: 100000 });
+  const causal = event({ sequence: 1, tick: 10, eventType: 'CAUSAL_EVENT', payload: { action: 'observe' } });
+  assert.equal(admitCanonicalWrite(causal, budget).allowed, true);
+  assert.equal(admitCanonicalWrite(causal, budget).allowed, false);
+});
