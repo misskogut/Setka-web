@@ -33,7 +33,7 @@ When sources disagree, use this order:
 
 1. **Current live reality** — deployed code, active database schema/data contracts, active Edge Functions, current checkpoint/release pointers.
 2. **Versioned migrations and immutable commits/checkpoints** — what was intentionally installed.
-3. **Canonical architecture documents** — this file, `docs/DIAMOND_ARCHITECTURE.md`, `docs/VERSION_INHERITANCE_LAW.md`, `docs/FOUNDATION_OPERATING_SYSTEM.md`, `docs/SETKA_PROCEDURAL_STORAGE_V1.md`, `SETKA_DATA_MODEL_V1.md`, version-line docs and ADR/decision log.
+3. **Canonical architecture documents** — this file, `SETKA_KERNEL_MISSION.md`, `docs/DIAMOND_ARCHITECTURE.md`, `docs/VERSION_INHERITANCE_LAW.md`, `docs/FOUNDATION_OPERATING_SYSTEM.md`, `docs/SETKA_PROCEDURAL_STORAGE_V1.md`, `SETKA_DATA_MODEL_V1.md`, version-line docs and ADR/decision log.
 4. **Conversation/history** — useful for intent, never sufficient proof of current implementation.
 
 A Work review MUST resolve mismatches instead of silently choosing one source.
@@ -43,18 +43,21 @@ A Work review MUST resolve mismatches instead of silently choosing one source.
 Read these before changing anything:
 
 1. `SETKA_START_HERE.md`
-2. `docs/FOUNDATION_OPERATING_SYSTEM.md` when touching Foundation 0.1.x.
-3. `docs/DIAMOND_ARCHITECTURE.md`
-4. `docs/VERSION_INHERITANCE_LAW.md`
-5. `SETKA_DATA_MODEL_V1.md`
-6. `docs/SETKA_PROCEDURAL_STORAGE_V1.md` when touching synthetics, fleets, iterative mathematics, transcript/event storage, replay, archival or compaction.
-7. `ADMIN_VERSIONS.md`
-8. `NEW_CHAT_ADMIN_VERSIONS.md`
-9. `docs/DECISIONS_LOG.md`
-10. `docs/WORK_REVIEW_PROTOCOL.md`
-11. Latest `docs/VERSION_HANDOFF_DIAMOND_*.md` handoff.
-12. Latest Diamond President front file and its parent version.
-13. Relevant migrations / Edge Functions for the layer being changed.
+2. `SETKA_KERNEL_MISSION.md` — mission axis, Causal Irreducibility Boundary, Pre-scale Gate, portability/sovereignty and capability-assimilation law.
+3. `docs/FOUNDATION_OPERATING_SYSTEM.md` when touching Foundation 0.1.x.
+4. `docs/DIAMOND_ARCHITECTURE.md`
+5. `docs/VERSION_INHERITANCE_LAW.md`
+6. `SETKA_DATA_MODEL_V1.md`
+7. `docs/SETKA_PROCEDURAL_STORAGE_V1.md` when touching synthetics, fleets, iterative mathematics, transcript/event storage, replay, archival or compaction.
+8. `ADMIN_VERSIONS.md`
+9. `NEW_CHAT_ADMIN_VERSIONS.md`
+10. `docs/DECISIONS_LOG.md`
+11. `docs/WORK_REVIEW_PROTOCOL.md`
+12. Latest `docs/VERSION_HANDOFF_DIAMOND_*.md` handoff.
+13. Latest Diamond President front file and its parent version.
+14. Relevant migrations / Edge Functions for the layer being changed.
+
+Before adding a major feature or subsystem, apply the mission's **Pre-scale Gate**. The current priority is to prove the information/replay/portability/connector spine before adding architectural mass.
 
 ## 3. Mandatory cold-start verification
 
@@ -145,6 +148,16 @@ Canonical replay law:
 Time and mathematical distance are separate axes. The transcript records meaningful causal boundaries, elapsed causal silence and step/point distance between boundaries; it does not write one row merely because time passed or an equation advanced one deterministic tick.
 
 Machine contracts live under `contracts/`; the offline replay implementation lives under `core/replay/` and must remain independent of PostgreSQL so reconstruction can be tested during a database outage.
+
+### Kernel mission / future-axis line
+
+The kernel now has an explicit mission in `SETKA_KERNEL_MISSION.md`:
+
+`causal sufficiency -> exact replay -> small portable capsule -> sovereignty -> replaceable compute/connectors -> verified sync -> append-only proof`.
+
+The key storage boundary is **Causal Irreducibility**: preserve genuinely new information; derive consequences that exact replay can prove; fail closed when uncertain.
+
+The key scaling rule is **prove the spine before adding mass**. New features, models and external systems should first be tested as connectors or bounded capabilities unless their permanent inclusion is justified by measurable mission value.
 
 Always verify this snapshot against the current checkpoint before relying on it.
 
