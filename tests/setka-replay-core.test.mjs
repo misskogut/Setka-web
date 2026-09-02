@@ -1,10 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { replayToTick } from '../core/replay/replay-engine.mjs';
+import { replayToTick, createCheckpointRecord } from '../core/replay/replay-engine.mjs';
 import { materializeRange } from '../core/replay/materializer.mjs';
 import { buildCausalCapsule } from '../core/replay/capsule-builder.mjs';
 import { classifyWrite, createWriteBudget, admitCanonicalWrite } from '../core/storage/write-admission.mjs';
+import { createCanonicalEventWriter } from '../core/storage/canonical-event-writer.mjs';
 
 function contract() {
   return {
@@ -46,6 +47,7 @@ test('same contract + causal events reproduces identical state and trajectory ha
   assert.equal(a.stateHash, b.stateHash);
   assert.equal(a.trajectoryRootHash, b.trajectoryRootHash);
   assert.deepEqual(a.runtime.state, b.runtime.state);
+  assert.equal(a.rootScope, 'FULL_FROM_GENESIS');
 });
 
 test('parameter patch at an exact tick changes only the replay branch after that boundary', () => {
@@ -77,11 +79,32 @@ test('parameter patch at an exact tick changes only the replay branch after that
   assert.equal(afterB.runtime.variables.curiosity, 0.61);
 });
 
-test('dense coordinates can be materialized on demand without persistent storage', () => {
+test('sparse checkpoint snapshot restores the same future state without replaying from Genesis', () => {
+  const events = [
+    event({ sequence: 1, tick: 0, eventType: 'GENESIS' }),
+    event({ sequence: 2, tick: 5, eventType: 'PARAM_CHANGE', payload: { path: 'law.parameters.r', to: 3.9 } }),
+    event({ sequence: 3, tick: 12, eventType: 'PARAM_CHANGE', payload: { path: 'variables.curiosity', to: 0.77 } })
+  ];
+  const base = contract();
+  const at20 = replayToTick(base, events, 20);
+  const checkpoint = createCheckpointRecord(at20, 3);
+  const acceleratedContract = contract();
+  acceleratedContract.checkpoints = [checkpoint];
+
+  const full = replayToTick(base, events, 80);
+  const accelerated = replayToTick(acceleratedContract, events, 80, { useCheckpoints: true });
+  assert.equal(accelerated.stateHash, full.stateHash);
+  assert.deepEqual(accelerated.runtime.state, full.runtime.state);
+  assert.equal(accelerated.checkpointTick, 20);
+  assert.equal(accelerated.rootScope, 'SEGMENT_FROM_CHECKPOINT');
+});
+
+test('dense coordinates materialize in one bounded replay pass and remain disposable', () => {
   const materialized = materializeRange(contract(), [], { startTick: 10, endTick: 20, stride: 2, maxPoints: 10 });
   assert.equal(materialized.disposable, true);
   assert.equal(materialized.pointCount, 6);
   assert.deepEqual(materialized.rows.map((row) => row.tick), [10, 12, 14, 16, 18, 20]);
+  assert.throws(() => materializeRange(contract(), [], { startTick: 0, endTick: 1000, stride: 1, maxPoints: 10 }), /maxPoints/);
 });
 
 test('capsule stores time and mathematical distance between causal events', () => {
@@ -104,4 +127,23 @@ test('write admission rejects dense deterministic traces and budgets canonical w
   const causal = event({ sequence: 1, tick: 10, eventType: 'CAUSAL_EVENT', payload: { action: 'observe' } });
   assert.equal(admitCanonicalWrite(causal, budget).allowed, true);
   assert.equal(admitCanonicalWrite(causal, budget).allowed, false);
+});
+
+test('guarded writer never calls persistence for derived coordinate rows', async () => {
+  const receipts = [];
+  const writer = createCanonicalEventWriter({
+    persist: async (candidate) => {
+      receipts.push(candidate);
+      return { id: `stored-${receipts.length}` };
+    },
+    budget: createWriteBudget({ maxCanonicalEventsPerRun: 10, maxCanonicalBytesPerRun: 100000, maxSingleEventBytes: 100000 })
+  });
+
+  const dense = await writer.write({ kind: 'AUTOPILOT_COORDINATE', tick: 1, x: 0.123 });
+  assert.equal(dense.persisted, false);
+  assert.equal(receipts.length, 0);
+
+  const canonical = await writer.write(event({ sequence: 1, tick: 10, eventType: 'CAUSAL_EVENT', payload: { action: 'observe' } }));
+  assert.equal(canonical.persisted, true);
+  assert.equal(receipts.length, 1);
 });
