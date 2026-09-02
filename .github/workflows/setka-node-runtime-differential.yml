@@ -1,17 +1,9 @@
 name: SETKA Node Runtime Differential
 
-# This workflow is proof-oriented: runtime migration is accepted only after exact replay fingerprint equality.
+# Migration proof only. Run manually when the numeric runtime contract changes.
+# The Node 20 -> 24 transition was already proven by exact replay fingerprint equality.
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - 'core/replay/**'
-      - 'contracts/setka-*-v1.schema.json'
-      - 'tests/setka-replay-core.test.mjs'
-      - 'tests/setka-replay-properties.test.mjs'
-      - 'ops/setka-runtime-fingerprint.mjs'
-      - '.github/workflows/setka-node-runtime-differential.yml'
 
 permissions:
   contents: read
