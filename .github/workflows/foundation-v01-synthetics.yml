@@ -1,8 +1,20 @@
 name: SETKA Foundation 0.1 Synthetic Users (archive)
 on:
   workflow_dispatch:
+permissions:
+  contents: read
 jobs:
+  safety-gate:
+    runs-on: ubuntu-24.04
+    outputs:
+      allowed: ${{ steps.gate.outputs.allowed }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: gate
+        uses: ./.github/actions/setka-cryo-gate
   synthetic-browser-run:
+    needs: safety-gate
+    if: needs.safety-gate.outputs.allowed == 'true'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
