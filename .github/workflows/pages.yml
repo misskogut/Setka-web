@@ -3,6 +3,13 @@ name: Deploy SETKA Web to GitHub Pages
 on:
   push:
     branches: ["main"]
+    paths-ignore:
+      - '**/*.md'
+      - 'core/**'
+      - 'contracts/**'
+      - 'tests/**'
+      - 'ops/**'
+      - '.github/**'
   workflow_dispatch:
 
 permissions:
