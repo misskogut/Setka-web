@@ -12,7 +12,7 @@ When sources disagree, use this order:
 
 1. **Current live reality** — deployed code, active database schema/data contracts, active Edge Functions, current checkpoint/release pointers.
 2. **Versioned migrations and immutable commits/checkpoints** — what was intentionally installed.
-3. **Canonical architecture documents** — this file, `docs/DIAMOND_ARCHITECTURE.md`, `docs/VERSION_INHERITANCE_LAW.md`, `docs/FOUNDATION_OPERATING_SYSTEM.md`, `SETKA_DATA_MODEL_V1.md`, version-line docs and ADR/decision log.
+3. **Canonical architecture documents** — this file, `docs/DIAMOND_ARCHITECTURE.md`, `docs/VERSION_INHERITANCE_LAW.md`, `docs/FOUNDATION_OPERATING_SYSTEM.md`, `docs/SETKA_PROCEDURAL_STORAGE_V1.md`, `SETKA_DATA_MODEL_V1.md`, version-line docs and ADR/decision log.
 4. **Conversation/history** — useful for intent, never sufficient proof of current implementation.
 
 A Work review MUST resolve mismatches instead of silently choosing one source.
@@ -26,13 +26,14 @@ Read these before changing anything:
 3. `docs/DIAMOND_ARCHITECTURE.md`
 4. `docs/VERSION_INHERITANCE_LAW.md`
 5. `SETKA_DATA_MODEL_V1.md`
-6. `ADMIN_VERSIONS.md`
-7. `NEW_CHAT_ADMIN_VERSIONS.md`
-8. `docs/DECISIONS_LOG.md`
-9. `docs/WORK_REVIEW_PROTOCOL.md`
-10. Latest `docs/VERSION_HANDOFF_DIAMOND_*.md` handoff.
-11. Latest Diamond President front file and its parent version.
-12. Relevant migrations / Edge Functions for the layer being changed.
+6. `docs/SETKA_PROCEDURAL_STORAGE_V1.md` when touching synthetics, fleets, iterative mathematics, transcript/event storage, replay, archival or compaction.
+7. `ADMIN_VERSIONS.md`
+8. `NEW_CHAT_ADMIN_VERSIONS.md`
+9. `docs/DECISIONS_LOG.md`
+10. `docs/WORK_REVIEW_PROTOCOL.md`
+11. Latest `docs/VERSION_HANDOFF_DIAMOND_*.md` handoff.
+12. Latest Diamond President front file and its parent version.
+13. Relevant migrations / Edge Functions for the layer being changed.
 
 ## 3. Mandatory cold-start verification
 
@@ -58,6 +59,17 @@ For Foundation 0.1.x also verify:
 - current constants registry;
 - unresolved President pins and approved synthetic pins;
 - parent capability parity before accepting a child as WORKING.
+
+For fleet/synthetic/iterative storage also verify:
+
+- current replay-contract and causal-event schema versions;
+- numerical/runtime contract used for exact replay;
+- write-admission budgets and storage-fuse state;
+- which data are CANONICAL_CAUSE / IRREVERSIBLE_INPUT / TIME_INTERVAL / STEP_INTERVAL / CHECKPOINT versus DERIVED / CACHE / ARCHIVE_CANDIDATE;
+- that dense deterministic coordinates are not being persisted merely because a law advanced one tick;
+- that parameter changes are anchored to exact logical/time boundaries;
+- that materialized trajectories are bounded and disposable;
+- that checkpoint/root hashes can verify replay before any compaction.
 
 Before writing, produce a short current-state statement:
 
@@ -100,6 +112,18 @@ Foundation 0.1.x follows an explicit carving law:
 `child = accepted parent + additive delta`
 
 Existing entities, analytics, reports, actions and relationships are protected parent capabilities. A child may move or redesign them, but may not silently remove or recreate them. The machine-readable guard is `foundation-lineage-check.mjs`; the human operating law is `docs/FOUNDATION_OPERATING_SYSTEM.md`.
+
+### Procedural storage / causal replay line
+
+For deterministic or seed-reproducible systems, permanent memory stores the minimum complete set of causes needed to reproduce the world. Dense mathematical trajectories are views/materializations, not canonical memory by default.
+
+Canonical replay law:
+
+`STATE(t) = GENESIS + LAW + VARIABLES + CAUSAL_PATCHES<=t + IRREVERSIBLE_INPUTS<=t + REPLAY_CONTRACT`
+
+Time and mathematical distance are separate axes. The transcript records meaningful causal boundaries, elapsed causal silence and step/point distance between boundaries; it does not write one row merely because time passed or an equation advanced one deterministic tick.
+
+Machine contracts live under `contracts/`; the offline replay implementation lives under `core/replay/` and must remain independent of PostgreSQL so reconstruction can be tested during a database outage.
 
 Always verify this snapshot against the current checkpoint before relying on it.
 
@@ -172,6 +196,14 @@ Always verify this snapshot against the current checkpoint before relying on it.
 - Favorites are the canonical current saved relation.
 - RAW Replay is reconstruction/UX evidence, not canonical product-time truth.
 - Save facts, formulas and meaning; derived opinions should be recalculable.
+- Preserve causality, not every reproducible intermediate coordinate.
+- A deterministic tick with no causal change is not automatically a transcript event.
+- Parameter/behavior changes that can alter future evolution are canonical causal patches and must be anchored to their exact replay boundary.
+- External/non-reproducible inputs must be retained; replay must never guess them later.
+- Elapsed inactive/autopilot time is stored as interval semantics, not one `NO_ACTIVITY` row per second.
+- Mathematical step/point distance between meaningful events must be reconstructable without storing every point.
+- Dense trajectories may be materialized for inspection/proof and discarded only after replay/hash evidence is sufficient.
+- Unknown write semantics fail closed to review; writers must use event/byte budgets and storage guards.
 
 ### Localization
 
@@ -201,6 +233,7 @@ Historical lines must remain distinguishable:
 - New Chat v1.x / v36 — social/Cruise experimental line.
 - Diamond v0.x — President/root architecture, access, release, recovery and system-control line.
 - Foundation 0.1.x — additive Front/President research pair with ID, synthetics, pins, traces and constants registry.
+- Procedural Storage / Causal Replay v1 — post-incident deterministic reconstruction and storage-efficiency kernel.
 
 Do not flatten these histories into one fake linear version number.
 
@@ -221,6 +254,7 @@ After every meaningful version it should leave a handoff trail:
 - known debt / questions for Work review;
 - rollback/checkpoint information;
 - regression/lineage test result where applicable;
+- replay/storage impact where applicable;
 - relevant President Trace IDs when the user explicitly created/referenced them.
 
 ### Work mode
@@ -236,8 +270,9 @@ Work should:
 5. inspect user-referenced President traces as evidence;
 6. identify architectural debt and accidental complexity;
 7. improve reliability, security, clarity, testability and human ergonomics;
-8. create a **new immutable version**, not rewrite history;
-9. update this documentation package after the review.
+8. for iterative/autonomous storage, verify causal replay, write admission, bounded materialization and deletion safety;
+9. create a **new immutable version**, not rewrite history;
+10. update this documentation package after the review.
 
 Work is not allowed to “clean up” by deleting historical evidence or silently redefining canonical semantics.
 
@@ -258,12 +293,13 @@ Every substantial future Diamond version should leave:
 - security/data implications;
 - tests performed / tests still missing;
 - version-lineage health impact;
+- replay/storage-contract impact where applicable;
 - documentation updates.
 
 Foundation versions additionally leave or update their machine-readable regression contract.
 
 ## 9. Work review gate
 
-Before a Work run promotes its result as the next stable checkpoint, it must review the rubric in `docs/WORK_REVIEW_PROTOCOL.md` and the inheritance laws in `docs/VERSION_INHERITANCE_LAW.md`. Foundation 0.1.x work must also pass `docs/FOUNDATION_OPERATING_SYSTEM.md` and its lineage guard.
+Before a Work run promotes its result as the next stable checkpoint, it must review the rubric in `docs/WORK_REVIEW_PROTOCOL.md` and the inheritance laws in `docs/VERSION_INHERITANCE_LAW.md`. Foundation 0.1.x work must also pass `docs/FOUNDATION_OPERATING_SYSTEM.md` and its lineage guard. Iterative/fleet/synthetic storage changes must also satisfy `docs/SETKA_PROCEDURAL_STORAGE_V1.md` and the machine replay/causal-event contracts.
 
 The goal is not maximum cleverness. The goal is a system that becomes **more correct, more recoverable, more understandable and more valuable as an asset with every version**.
