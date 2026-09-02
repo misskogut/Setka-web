@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://setka.local/contracts/setka-replay-contract-v1.schema.json",
+  "title": "SETKA Replay Contract v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "entity", "law", "genesis", "variables", "numerics", "clock"],
+  "properties": {
+    "schemaVersion": { "const": "SETKA_REPLAY_CONTRACT_V1" },
+    "entity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "lineage": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "kind": { "type": "string" }
+      }
+    },
+    "law": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["family", "version", "contentHash", "parameters"],
+      "properties": {
+        "family": { "enum": ["LOGISTIC_MAP", "MANDELBROT_ORBIT"] },
+        "version": { "type": "string", "minLength": 1 },
+        "contentHash": { "type": "string", "minLength": 8 },
+        "parameters": { "type": "object", "additionalProperties": true },
+        "behaviorAdapterVersion": { "type": ["string", "null"] }
+      }
+    },
+    "genesis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tick", "state"],
+      "properties": {
+        "tick": { "type": "integer", "minimum": 0 },
+        "wallTime": { "type": ["string", "null"], "format": "date-time" },
+        "state": { "type": "object", "additionalProperties": true },
+        "seed": { "type": ["string", "integer", "null"] },
+        "rootSeed": { "type": ["string", "integer", "null"] }
+      }
+    },
+    "variables": {
+      "type": "object",
+      "description": "All behavior/personality/control variables capable of affecting choices or dynamics, including curiosity.",
+      "additionalProperties": true
+    },
+    "numerics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "runtimeContract"],
+      "properties": {
+        "mode": { "enum": ["FLOAT64_JS_V1"] },
+        "runtimeContract": { "type": "string", "minLength": 1 },
+        "rounding": { "type": "string" },
+        "operationOrderVersion": { "type": "string" }
+      }
+    },
+    "clock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "tickSemantics"],
+      "properties": {
+        "contractVersion": { "type": "string", "minLength": 1 },
+        "tickSemantics": { "type": "string", "minLength": 1 },
+        "nominalTickMs": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+        "pointsPerTick": { "type": ["integer", "null"], "minimum": 1 }
+      }
+    },
+    "checkpoints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["tick", "stateHash"],
+        "properties": {
+          "tick": { "type": "integer", "minimum": 0 },
+          "stateHash": { "type": "string", "minLength": 16 },
+          "rootHash": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}
