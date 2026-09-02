@@ -5,6 +5,7 @@ on:
   push:
     branches: [main]
     paths:
+      - 'SETKA_KERNEL_MISSION.md'
       - 'core/replay/**'
       - 'core/storage/**'
       - 'contracts/setka-*-v1.schema.json'
@@ -26,9 +27,11 @@ on:
       - 'ops/setka-kernel-pulse.mjs'
       - 'ops/setka-kernel-baseline-guard.mjs'
       - 'ops/setka-kernel-handshake.mjs'
+      - 'ops/setka-mission-gate.mjs'
       - 'ops/setka-runtime-fingerprint.mjs'
       - 'ops/SETKA_CRYOSLEEP.yml'
       - 'ops/SETKA_KERNEL_MAP.json'
+      - 'ops/SETKA_KERNEL_MISSION_POLICY.json'
       - 'ops/SETKA_KERNEL_BASELINE_ACCEPTANCE.json'
       - 'ops/SETKA_KERNEL_RELEASE_MANIFEST.json'
       - 'ops/SETKA_SUPABASE_KERNEL_SYNC_TODO.md'
