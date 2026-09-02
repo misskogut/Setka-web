@@ -33,6 +33,7 @@ jobs:
           node --check core/replay/materializer.mjs
           node --check core/replay/capsule-builder.mjs
           node --check core/storage/write-admission.mjs
+          node --check core/storage/canonical-event-writer.mjs
       - name: Run deterministic replay tests
         run: node --test tests/setka-replay-core.test.mjs
 
