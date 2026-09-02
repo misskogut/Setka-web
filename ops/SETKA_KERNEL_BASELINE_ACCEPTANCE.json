@@ -1,34 +1,42 @@
 {
   "schemaVersion": "SETKA_KERNEL_BASELINE_ACCEPTANCE_V1",
   "mode": "REVIEWED_TRANSITION",
-  "previousBaselineCommit": "6b6478a19ca73b78e4c1b54a3c030720a206b0a8",
-  "acceptedBaselineCommit": "fffa7c2e0a6341bb5a1876f195cc6f463ae01275",
+  "previousBaselineCommit": "fffa7c2e0a6341bb5a1876f195cc6f463ae01275",
+  "acceptedBaselineCommit": "81b8557a4cbd57ead4003037f9ecd4bb25b7e1cc",
   "reviewedBy": "SETKA-S-0001-0001",
-  "reviewContext": "President-authorized integration of structural irreducibility, procedural structure compression, law-plus-residual representation, deterministic fleet partitioning and on-demand logical-world materialization into the existing kernel governance and procedural storage architecture without creating a new runtime component or touching live Supabase",
-  "reviewRunId": 33689865072,
+  "reviewContext": "President-authorized integration of Computational Irreducibility, incremental/delta computation, content-addressed structural sharing, probabilistic prefilters, Merkle integrity proofs, structural/dictionary compression candidates, multidimensional locality/indexing candidates, deterministic fleet placement, sparse representations, change-point sensing, adaptive checkpointing, memoized result reuse and cost-based execution planning into existing kernel governance and the self-diagnostic roadmap without creating live runtime services or touching Supabase",
+  "reviewRunId": 33691697850,
   "reviewedComponents": [
     "kernel_governance"
   ],
   "reviewedFiles": [
     "ops/SETKA_KERNEL_MISSION_POLICY.json",
     "ops/setka-mission-gate.mjs",
-    "docs/SETKA_PROCEDURAL_STORAGE_V1.md"
+    "ops/SETKA_SELF_DIAGNOSTIC_ROADMAP.md"
   ],
   "reviewedSemantics": [
-    "the kernel now distinguishes Structural Irreducibility from Causal Irreducibility: a large graph, address map, work schedule or logical world may be procedural-derived when every required element is exactly reconstructable from a smaller generator contract",
-    "the canonical structural representation is GENERATOR_LAW + PARAMETERS + DOMAIN_BOUNDARIES + RESIDUAL_EXCEPTIONS + VERIFICATION_PROOF rather than a claim that every explicit relation can be discarded",
-    "a modular mapping such as (k*x+b) mod N is only one candidate operator family and receives no priority from visual or mathematical elegance",
-    "candidate uses include derived graph edges, deterministic addressing/sharding, fleet work partitioning, reproducible traversal/search order, structural signatures/prefilters and on-demand world materialization",
-    "procedural fleet work generation must prove required coverage, non-overlap or explicitly declared overlap, collision behavior and exact replay before replacing explicit assignments",
-    "custom procedural indexing/addressing must be benchmarked against mature hashing, indexing, compression and partitioning baselines before adoption",
-    "logical world size may exceed canonical stored size only by materializing deterministic derived structure on demand; this is explicitly not physical RAM or compute creation",
-    "the required benchmark compares EXPLICIT STRUCTURE vs conventional compression/mature index or partition baseline vs PROCEDURAL GENERATOR + RESIDUAL EXCEPTIONS using canonical bytes, writes, residual ratio, exactness, reconstruction/query cost, branch cost, materialization amplification and collision/coverage behavior",
-    "Mission Gate now hard-blocks destructive removal of explicit structure without exact reconstruction proof",
-    "Mission Gate now requires review for unknown generator reconstruction or unknown coverage/collision semantics and emits optimization guidance for explicit reproducible structures, full fleet assignment lists, custom procedural indexes without baseline comparison and unnecessary persistence of materialized worlds",
-    "Mission Gate self-test expands from 8 to 11 cases to cover unproven structural deletion, unknown generator coverage and a verified-generator optimization candidate",
-    "Kernel Pulse review run 33689865072 executed syntax, KERNEL_HANDSHAKE and MISSION_GATE checks; manual review was required because protected kernel-governance semantics changed, with zero added/deleted protected files and zero unclassified executable files",
-    "no new runtime service, database schema, live graph compressor, live partitioner or live structural generator was created by this transition; this is kernel policy plus procedural design direction",
+    "the kernel now distinguishes Computational Irreducibility from Causal and Structural Irreducibility: a result should not be fully recomputed when a verified causal delta, immutable shared prefix, content-addressed prior result, safe candidate reduction or smaller equivalent computation is sufficient",
+    "the four optimization questions are now memory irreducibility, structural irreducibility, computational irreducibility and minimum sufficient disclosure",
+    "incremental computation is permitted only when dependency and invalidation semantics are mechanically proven for the affected result",
+    "counterfactual branches and other immutable worlds should share identical content-addressed prefixes/substructures rather than duplicate them, while semantic identity includes all required law/state/version/runtime meaning",
+    "deterministic memoization/result reuse requires complete law, state, input, runtime/numeric-contract and algorithm-version identity plus correct invalidation",
+    "probabilistic sketches such as Bloom/Count-Min/HyperLogLog/quantile sketches are treated as sensors, prefilters or explicitly approximate outputs rather than canonical truth where exactness is required",
+    "Merkle roots/proofs are treated as commitment or membership/integrity evidence and explicitly not as proof that the underlying fact is semantically true",
+    "delta, dictionary and grammar compression are candidate representations for repeated structures but must preserve exact reconstruction and beat mature compression baselines before canonical replacement",
+    "Hilbert/Morton space-filling curves, LSH/MinHash/ANN candidate generation and other locality indexes are candidate optimizations only after workload benchmarks and declared recall/false-negative semantics",
+    "consistent/rendezvous hashing may derive placement/partition without giant maps but does not define canonical entity identity",
+    "sparse matrices, compressed bitmaps and succinct exact sets are preferred candidates where dense empty/false state is wasteful, subject to benchmark against mature storage/index baselines",
+    "streaming change-point methods are sensors for possible information boundaries and cannot justify loss of required irreversible evidence until missed-change behavior is bounded for that information class",
+    "checkpoint density becomes a measured storage-versus-replay/recovery/latency trade-off rather than a blind fixed interval",
+    "the approximate-first exact-last pattern is allowed for candidate reduction only under an explicit recall/error contract and exact final verification where exactness is required",
+    "the future execution planner must enforce correctness, causal/replay, privacy/disclosure, provenance and recoverability constraints before minimizing CPU, storage IO, network, latency, energy, money or AI calls",
+    "Mission Gate now hard-blocks lossy probabilistic sketches or undeclared approximate outputs being used as canonical truth where exactness is required",
+    "Mission Gate now requires review for unknown incremental dependency semantics, cache identity/invalidation, approximate-prefilter false-negative behavior, change-point false-negative risk or misuse of Merkle proof semantics",
+    "Mission Gate now emits optimization guidance for unnecessary full recomputation, duplicate immutable branch prefixes, repeated deterministic computation despite a valid content-addressed result, full exact scans before safe high-recall prefilters, dense set storage, blind fixed checkpoint intervals, unbenchmarked custom locality/sketch methods and resource-ignorant execution plans",
+    "Mission Gate self-test expanded from 11 to 16 cases and review run 33691697850 executed syntax, KERNEL_HANDSHAKE and MISSION_GATE checks with zero added/deleted protected files and zero unclassified executable files; MANUAL_REVIEW_REQUIRED was the expected governance response to protected semantic drift",
+    "the self-diagnostic roadmap preserves all discussed candidate algorithms as future organs/comparison baselines rather than claiming they are implemented or superior to mature database/cache/index/compression/distributed-system techniques",
+    "no new production algorithm service, database schema, live dependency graph, cache, sketch, index, change-point detector, execution planner or Supabase write path was created by this transition",
     "PostgreSQL/Supabase was not modified; cryosleep and all post-recovery backup, audit and handshake gates remain authoritative"
   ],
-  "acceptedAtSourceTime": "2026-09-02T22:20:28Z"
+  "acceptedAtSourceTime": "2026-09-02T22:44:00Z"
 }
