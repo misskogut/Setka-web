@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "SETKA_KERNEL_RESOURCE_BUDGETS_V1",
+  "replay": {
+    "benchmarkTargetTick": 5000,
+    "maxWallMs": 5000,
+    "maxHeapDeltaBytes": 67108864
+  },
+  "materialization": {
+    "points": 1000,
+    "maxSerializedBytes": 2000000,
+    "minDenseToCausalByteRatio": 10
+  },
+  "notes": {
+    "wallTime": "Gross regression alarm only; not a deterministic performance proof.",
+    "heap": "Gross process-level regression alarm only; allocator noise is expected.",
+    "bytes": "Deterministic serialized-size guard for representative derived materialization."
+  }
+}
