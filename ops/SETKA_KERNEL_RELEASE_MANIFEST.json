@@ -1,0 +1,57 @@
+{
+  "schemaVersion": "SETKA_KERNEL_RELEASE_MANIFEST_V1",
+  "releaseId": "SETKA-KERNEL-2026-09-02-R1",
+  "repository": "misskogut/Setka-web",
+  "acceptedBaselineCommit": "54c77e00fcaa839752f9c62d475855f76e5d9640",
+  "trustBoundary": "GITHUB_OFFLINE_KERNEL_ONLY",
+  "components": {
+    "replay_math": {
+      "fingerprint": "8293c25077c5a235d5f7a4f23a3b76549fd93649b157637cdcee30388bc010ae"
+    },
+    "storage_write": {
+      "fingerprint": "9ccd5a5f25bb735192885d51f514218bd69f9fc5a19e1d9dd87983387916fd7b"
+    },
+    "runtime_safety": {
+      "fingerprint": "33bef28a61c4ee5688211027c3af23c249da44d26c6232a783937cddd8c655c1"
+    }
+  },
+  "contracts": {
+    "replayContract": {
+      "path": "contracts/setka-replay-contract-v1.schema.json",
+      "blobSha": "0f6468ac6a4e5f89de58523ac51560729495515c",
+      "schemaVersion": "SETKA_REPLAY_CONTRACT_V1"
+    },
+    "causalEvent": {
+      "path": "contracts/setka-causal-event-v1.schema.json",
+      "blobSha": "621340a9fe904953c53dfb6a801c47dcd35b00e1",
+      "schemaVersion": "SETKA_CAUSAL_EVENT_V1"
+    },
+    "numericRuntimeProof": {
+      "node20Node24ExactSemanticFingerprint": "4d64fbd1f57f8147a289471d14f26ac8bf97579df1fd9193f70fb1a13872fc3",
+      "proofRunId": 33648807781
+    }
+  },
+  "database": {
+    "stateSchemaVersion": "SETKA_DB_KERNEL_STATE_V1",
+    "requiredSchemaVersion": null,
+    "requiredMigrations": [],
+    "firstRecoveryMode": "READ_ONLY_RECONCILIATION_ONLY"
+  },
+  "reconciliationPolicy": {
+    "matchingFingerprint": "NOOP",
+    "missingOrUnknownFingerprint": "MANUAL_REVIEW_REQUIRED",
+    "unknownMigration": "DENY",
+    "destructiveOperation": "DENY",
+    "autoApplyRequiresAllRecoveryGates": true,
+    "autoApplyRequiresAllowlistedIdempotentMigration": true,
+    "githubDoesNotReceiveArbitrarySqlAuthority": true
+  },
+  "recoveryGates": [
+    "sqlReady",
+    "cryosleepOn",
+    "fullBackupComplete",
+    "storageAuditComplete",
+    "relation62753Mapped"
+  ],
+  "currentLiveDatabaseClaim": "NOT_YET_VERIFIED"
+}
