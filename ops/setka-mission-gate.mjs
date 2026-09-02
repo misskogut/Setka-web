@@ -225,6 +225,31 @@ function selftest(policy) {
       name: 'explicit structure optimize',
       proposal: { schemaVersion: 'SETKA_CHANGE_PROPOSAL_V1', title: 'Procedural graph candidate', changeClass: 'STORAGE', impacts: { ...baseImpacts, resourceEfficiency: 'IMPROVE' }, signals: ['EXPLICIT_STRUCTURE_WHERE_VERIFIED_GENERATOR_SUFFICES'], addsMandatoryVendorDependencies: 0, addsPermanentKernelFiles: 0, benchmarkDefined: true },
       expected: 'OPTIMIZE'
+    },
+    {
+      name: 'lossy sketch canonical hard block',
+      proposal: { schemaVersion: 'SETKA_CHANGE_PROPOSAL_V1', title: 'Sketch as truth', changeClass: 'STORAGE', impacts: baseImpacts, signals: ['PROBABILISTIC_SKETCH_AS_CANONICAL_TRUTH_WHERE_EXACTNESS_REQUIRED'], addsMandatoryVendorDependencies: 0, addsPermanentKernelFiles: 0, benchmarkDefined: true },
+      expected: 'BLOCK'
+    },
+    {
+      name: 'unknown approximate recall review',
+      proposal: { schemaVersion: 'SETKA_CHANGE_PROPOSAL_V1', title: 'Approximate prefilter', changeClass: 'RUNTIME', impacts: baseImpacts, signals: ['APPROXIMATE_PREFILTER_FALSE_NEGATIVE_SEMANTICS_UNKNOWN'], addsMandatoryVendorDependencies: 0, addsPermanentKernelFiles: 0, benchmarkDefined: true },
+      expected: 'REVIEW_REQUIRED'
+    },
+    {
+      name: 'unknown cache identity review',
+      proposal: { schemaVersion: 'SETKA_CHANGE_PROPOSAL_V1', title: 'Reusable result', changeClass: 'RUNTIME', impacts: baseImpacts, signals: ['CACHE_IDENTITY_OR_INVALIDATION_UNKNOWN'], addsMandatoryVendorDependencies: 0, addsPermanentKernelFiles: 0, benchmarkDefined: true },
+      expected: 'REVIEW_REQUIRED'
+    },
+    {
+      name: 'verified delta optimize',
+      proposal: { schemaVersion: 'SETKA_CHANGE_PROPOSAL_V1', title: 'Incremental recompute', changeClass: 'RUNTIME', impacts: { ...baseImpacts, resourceEfficiency: 'IMPROVE' }, signals: ['FULL_RECOMPUTE_WHERE_VERIFIED_DELTA_SUFFICES'], addsMandatoryVendorDependencies: 0, addsPermanentKernelFiles: 0, benchmarkDefined: true },
+      expected: 'OPTIMIZE'
+    },
+    {
+      name: 'duplicate branch prefix optimize',
+      proposal: { schemaVersion: 'SETKA_CHANGE_PROPOSAL_V1', title: 'Shared branch history', changeClass: 'STORAGE', impacts: { ...baseImpacts, resourceEfficiency: 'IMPROVE' }, signals: ['DUPLICATE_IMMUTABLE_PREFIX_ACROSS_BRANCHES'], addsMandatoryVendorDependencies: 0, addsPermanentKernelFiles: 0, benchmarkDefined: true },
+      expected: 'OPTIMIZE'
     }
   ];
 
