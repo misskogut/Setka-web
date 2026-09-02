@@ -92,6 +92,47 @@ If these questions do not have good answers, scaling is deferred.
 
 This is deliberate. The current phase should prioritize **laying the future path before adding mass**: prove the information model, replay, portability, connector abstraction, validation and resource physics first; then let future capabilities grow on top of that spine.
 
+## Automated self-diagnostic / Mission Compiler
+
+The mission must live in the system as executable policy, not only in human memory or chat context.
+
+Machine-readable policy:
+
+`ops/SETKA_KERNEL_MISSION_POLICY.json`
+
+Deterministic evaluator:
+
+`ops/setka-mission-gate.mjs`
+
+Kernel Pulse routes every protected kernel drift through `MISSION_GATE`. The gate returns one of:
+
+`ALIGNED / OPTIMIZE / REVIEW_REQUIRED / BLOCK`
+
+and emits concrete signals plus optimization hints. The purpose is not to auto-delete ideas or replace human judgment. The purpose is to make known rules automatic and cheap, so human/AI attention is spent only on ambiguity or genuinely new architecture.
+
+For a proposed feature, a temporary `SETKA_CHANGE_PROPOSAL_V1` descriptor can be evaluated before implementation:
+
+`node ops/setka-mission-gate.mjs --proposal <proposal.json>`
+
+The proposal preflight considers mission impacts, new vendor dependencies, permanent kernel mass, replay/recovery impact, benchmark readiness and known hard-block signals. Unknown impact fails closed to review rather than being silently approved.
+
+The automatic drift path runs:
+
+`node ops/setka-mission-gate.mjs --check`
+
+which executes the self-test and diagnoses the actual Git diff against the accepted kernel baseline.
+
+AI policy is **deterministic first**:
+
+- fingerprints, hashes, budgets, dependency/file deltas and known policy rules should not consume AI reasoning;
+- AI is reserved for ambiguous semantics, optimization alternatives and novel capability abstraction;
+- an `OPTIMIZE` result is a compiler hint, not a rejection: try connector, hybrid, smaller primitive, causal derivation or benchmark clarification before adding mass;
+- `BLOCK` is reserved for known prohibited semantics such as silently rewriting history, bypassing recovery/cryosleep gates or persisting proven derived noise as canonical data.
+
+Future measurement should include deterministic mission checks resolved without AI, AI escalation rate, repeat reasoning eliminated, and cost/tokens avoided per verified architectural decision where those values can be measured reliably.
+
+This self-diagnostic is currently GitHub/offline only. It does not write to PostgreSQL/Supabase. After SQL recovery and the existing reconciliation gates, accepted live mission-relevant changes can be connected to canonical transcript provenance rather than inferred from chat.
+
 ## Portable-world target architecture
 
 The long-term shape is:
@@ -175,7 +216,9 @@ This mission becomes real only through measurable progress. Track at least:
 - capability-assimilation ratio: capabilities gained without equivalent growth in canonical kernel complexity;
 - native-equivalent efficiency when a connector capability is replaced or hybridized: cost/latency/storage/privacy/provenance before vs after;
 - causal irreducibility ratio: irreducible canonical information versus total materialized/derived world state for a fixed reproducible workload;
-- feature-mass efficiency: verified capabilities gained per unit of permanent kernel/storage/dependency growth.
+- feature-mass efficiency: verified capabilities gained per unit of permanent kernel/storage/dependency growth;
+- deterministic mission-check resolution rate versus AI-escalated reviews;
+- repeat reasoning eliminated by machine-readable mission/policy checks.
 
 The strategic goal is not to claim universal superiority. It is to make SETKA increasingly difficult to obsolete because stronger future systems can be connected rather than requiring the SETKA world to migrate into them.
 
