@@ -1,7 +1,5 @@
 name: SETKA Foundation 0.2.0 Synthetic Users
 on:
-  schedule:
-    - cron: '23 * * * *'
   workflow_dispatch:
   push:
     branches: [main]
@@ -11,8 +9,28 @@ on:
       - 'foundation-user-v020.js'
       - 'foundation-v020-synthetic-runner.mjs'
       - '.github/workflows/foundation-v020-synthetics.yml'
+      - 'ops/SETKA_CRYOSLEEP.yml'
+permissions:
+  contents: read
 jobs:
+  safety-gate:
+    runs-on: ubuntu-24.04
+    outputs:
+      allowed: ${{ steps.gate.outputs.allowed }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: gate
+        name: External cryosleep gate
+        run: |
+          if grep -Eq '^state:[[:space:]]*ON[[:space:]]*$' ops/SETKA_CRYOSLEEP.yml; then
+            echo 'allowed=false' >> "$GITHUB_OUTPUT"
+            echo 'SETKA EMERGENCY CRYOSLEEP: synthetic run blocked before any Supabase call.'
+          else
+            echo 'allowed=true' >> "$GITHUB_OUTPUT"
+          fi
   synthetic-browser-run:
+    needs: safety-gate
+    if: needs.safety-gate.outputs.allowed == 'true'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
