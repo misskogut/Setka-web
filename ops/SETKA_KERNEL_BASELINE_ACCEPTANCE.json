@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "SETKA_KERNEL_BASELINE_ACCEPTANCE_V1",
+  "mode": "BOOTSTRAP",
+  "previousBaselineCommit": null,
+  "acceptedBaselineCommit": "59c54bc7e257043f988a6ba8b0f0545376c8cb59",
+  "reviewedBy": "SETKA-S-0001-0001",
+  "reviewContext": "President-directed Kernel Pulse hardening session",
+  "reviewRunId": 33643855136,
+  "reviewedComponents": [
+    "kernel_governance"
+  ],
+  "reviewedFiles": [
+    ".github/workflows/setka-kernel-pulse.yml",
+    "ops/SETKA_KERNEL_MAP.json",
+    "ops/setka-kernel-pulse.mjs"
+  ],
+  "reviewedSemantics": [
+    "component fingerprinting",
+    "manual review gate",
+    "baseline semantics"
+  ],
+  "acceptedAtSourceTime": "2026-09-02T14:45:00Z"
+}
