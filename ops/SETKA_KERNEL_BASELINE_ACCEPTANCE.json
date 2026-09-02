@@ -4,12 +4,10 @@
   "previousBaselineCommit": "1c79ead98c75f1f77fac398bbcf05ec336f84645",
   "acceptedBaselineCommit": "54c77e00fcaa839752f9c62d475855f76e5d9640",
   "reviewedBy": "SETKA-S-0001-0001",
-  "reviewContext": "President-authorized lean cleanup: no green fast-path artifacts, redundant safety self-test removed, Node cross-runtime differential made migration-only",
+  "reviewContext": "President-authorized lean cleanup: no green artifacts, redundant workflow safety self-test removed, Node 20/24 differential retained as manual migration proof only",
   "reviewRunId": 33653108570,
-  "runtimeDifferentialEvidenceRunId": 33648807781,
   "reviewedComponents": [
     "replay_math",
-    "runtime_safety",
     "kernel_governance"
   ],
   "reviewedFiles": [
@@ -20,16 +18,15 @@
     "ops/SETKA_KERNEL_QUICKSTART.md"
   ],
   "reviewedSemantics": [
-    "green FAST PATH results remain visible in workflow logs and are not persisted as 14-day artifacts when no attention is required",
-    "diagnostic artifacts are retained on failure or manual-review drift only",
-    "the separate workflow safety self-test was deleted because Kernel Pulse already routes runtime_safety changes through the shared setka-workflow-safety-audit.mjs check group",
-    "no synthetic runner, cryosleep gate or external-write workflow semantics were changed by deleting the redundant self-test workflow",
-    "Node 20 to Node 24 exact semantic fingerprint equality was previously proven in run 33648807781, so the cross-runtime workflow is now migration-only via workflow_dispatch",
-    "the runtime differential must be rerun when the numeric runtime contract changes; it is no longer a permanent per-replay-change tax",
-    "run 33653108570 reran REPLAY_CORE with 9/9 passing, REPLAY_PROPERTIES across 1024 generated worlds with 0 failures, and RESOURCE_PHYSICS within budget",
-    "run 33653108570 found zero unclassified core executables and required manual review only because protected replay/governance fingerprints intentionally moved",
-    "the cleanup removes one complete workflow and reduces automatic CI/artifact churn without weakening fail-closed manual baseline acceptance",
-    "PostgreSQL integration and historical G1/G2 replay equivalence remain outside this GitHub/offline acceptance boundary"
+    "GREEN_BASELINE_MATCH no longer uploads a diagnostic artifact; attention evidence is retained only for failure or manual review",
+    "the standalone workflow-safety self-test workflow was deleted because WORKFLOW_SAFETY is already routed by Kernel Pulse when runtime_safety drifts",
+    "the workflow safety audit algorithm itself remains intact and monitored",
+    "Node 20/24 differential no longer runs automatically on replay changes and is preserved as workflow_dispatch migration proof",
+    "the previously proven Node 20/24 semantic fingerprint equality remains evidence; runtime migration proof is not repeated without runtime-contract change",
+    "no replay implementation, storage implementation, contracts, write budgets or cryosleep semantics were changed",
+    "run 33653108570 reran replay core, 1024 generated replay worlds and resource physics successfully because the runtime differential workflow remained inside replay_math membership",
+    "run 33653108570 detected no unclassified executables and failed only at the expected manual-review gate before this acceptance",
+    "PostgreSQL integration and G1/G2 historical equivalence remain outside the GitHub/offline trust boundary"
   ],
-  "acceptedAtSourceTime": "2026-09-02T16:12:00Z"
+  "acceptedAtSourceTime": "2026-09-02T16:10:00Z"
 }
