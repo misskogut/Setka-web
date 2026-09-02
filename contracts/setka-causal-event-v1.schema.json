@@ -8,7 +8,7 @@
   "properties": {
     "schemaVersion": { "const": "SETKA_CAUSAL_EVENT_V1" },
     "eventType": {
-      "enum": ["GENESIS", "PARAM_CHANGE", "EXTERNAL_INPUT", "MODE_CHANGE", "CAUSAL_EVENT", "CHECKPOINT", "CAPSULE", "RUN_END"]
+      "enum": ["GENESIS", "PARAM_CHANGE", "EXTERNAL_INPUT", "HUMAN_INPUT", "LLM_OUTPUT", "MESSAGE", "MODE_CHANGE", "CAUSAL_EVENT", "CHECKPOINT", "CAPSULE", "SEAL", "RUN_END"]
     },
     "entityId": { "type": "string", "minLength": 1 },
     "sequence": { "type": "integer", "minimum": 0 },
@@ -23,10 +23,11 @@
         "source": { "type": "string", "minLength": 1 },
         "reason": { "type": ["string", "null"] },
         "sourceRef": { "type": ["string", "null"] },
+        "fleetId": { "type": ["string", "null"] },
         "determinism": { "enum": ["DETERMINISTIC", "NON_REPRODUCIBLE", "EXTERNAL", "MIXED"] }
       }
     },
-    "evidenceHash": { "type": ["string", "null"] }
+    "evidenceHash": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" }
   },
   "allOf": [
     {
@@ -68,8 +69,8 @@
             "type": "object",
             "required": ["stateHash"],
             "properties": {
-              "stateHash": { "type": "string", "minLength": 16 },
-              "rootHash": { "type": ["string", "null"] }
+              "stateHash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+              "rootHash": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" }
             }
           }
         }
