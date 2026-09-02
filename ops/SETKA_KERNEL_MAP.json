@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "SETKA_KERNEL_MAP_V1",
+  "schemaVersion": "SETKA_KERNEL_MAP_V2",
   "policy": {
     "kernelDrift": "MANUAL_REVIEW_REQUIRED",
     "automaticTestsDoNotClearManualReview": true,
@@ -11,6 +11,12 @@
     "postgresIntegrationState": "NOT_YET_VERIFIED",
     "denseCompactionState": "FORBIDDEN_UNTIL_POST_RECOVERY_PROOF"
   },
+  "complexityPolicy": {
+    "preferDeleteMergeOrComputeBeforeCreate": true,
+    "newProtectedFileRequiresReview": true,
+    "newComponentRequiresReview": true,
+    "greenDiagnosticsAreDerivedNotCanonicalHistory": true
+  },
   "coverage": {
     "candidatePatterns": [
       "core/**/*.mjs",
@@ -21,6 +27,20 @@
       "core/*.cjs"
     ],
     "ignorePatterns": []
+  },
+  "checkGroups": {
+    "REPLAY_CORE": {
+      "argv": ["--test", "tests/setka-replay-core.test.mjs"]
+    },
+    "REPLAY_PROPERTIES": {
+      "argv": ["--test", "tests/setka-replay-properties.test.mjs"]
+    },
+    "RESOURCE_PHYSICS": {
+      "argv": ["--test", "tests/setka-resource-physics.test.mjs"]
+    },
+    "WORKFLOW_SAFETY": {
+      "argv": ["ops/setka-workflow-safety-audit.mjs"]
+    }
   },
   "components": {
     "replay_math": {
@@ -39,12 +59,12 @@
         "core/replay/*.md",
         "core/replay/**/*.md"
       ],
-      "automaticChecks": [
-        "REPLAY_CORE_TESTS",
-        "PROPERTY_FUZZ_INVARIANTS",
-        "GOLDEN_HASHES",
-        "CHECKPOINT_RESTORE",
-        "MATERIALIZATION_BOUNDS",
+      "checkGroups": [
+        "REPLAY_CORE",
+        "REPLAY_PROPERTIES",
+        "RESOURCE_PHYSICS"
+      ],
+      "externalChecks": [
         "NODE20_NODE24_DIFFERENTIAL"
       ],
       "manualReviewTargets": [
@@ -66,10 +86,8 @@
         "core/storage/*.md",
         "core/storage/**/*.md"
       ],
-      "automaticChecks": [
-        "WRITE_CLASSIFICATION",
-        "WRITE_BUDGETS",
-        "PERSIST_VS_VERIFIED_READBACK",
+      "checkGroups": [
+        "REPLAY_CORE",
         "RESOURCE_PHYSICS"
       ],
       "manualReviewTargets": [
@@ -94,9 +112,8 @@
         "ops/setka-workflow-safety-audit.mjs",
         "ops/SETKA_CRYOSLEEP.yml"
       ],
-      "automaticChecks": [
-        "CRYOSLEEP_GATE_AUDIT",
-        "AUTOMATIC_TRIGGER_AUDIT"
+      "checkGroups": [
+        "WORKFLOW_SAFETY"
       ],
       "manualReviewTargets": [
         "NO_UNINTENDED_EXTERNAL_WRITES",
@@ -113,17 +130,13 @@
         ".github/workflows/setka-kernel-pulse.yml",
         ".github/workflows/setka-kernel-pulse.yaml"
       ],
-      "automaticChecks": [
-        "PULSE_SELF_CHECK",
-        "BASELINE_TRANSITION_GUARD",
-        "CORE_COVERAGE_GUARD",
-        "STRUCTURAL_FINGERPRINT_ROUTING"
-      ],
+      "checkGroups": [],
       "manualReviewTargets": [
         "DRIFT_DETECTION_RULES",
         "COMPONENT_BOUNDARIES",
         "BASELINE_SEMANTICS",
-        "UNCLASSIFIED_KERNEL_SURFACE"
+        "UNCLASSIFIED_KERNEL_SURFACE",
+        "COMPLEXITY_BUDGET"
       ]
     }
   }
