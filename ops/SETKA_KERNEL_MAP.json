@@ -12,11 +12,14 @@
     "replay_math": {
       "criticality": "HIGH",
       "patterns": [
-        "core/replay/*.mjs",
-        "core/replay/**/*.mjs",
+        "core/replay/**",
         "contracts/setka-replay-contract-v1.schema.json",
         "contracts/setka-causal-event-v1.schema.json",
         "tests/setka-replay-core.test.mjs"
+      ],
+      "excludePatterns": [
+        "core/replay/*.md",
+        "core/replay/**/*.md"
       ],
       "automaticChecks": [
         "REPLAY_CORE_TESTS",
@@ -33,10 +36,13 @@
     "storage_write": {
       "criticality": "HIGH",
       "patterns": [
-        "core/storage/*.mjs",
-        "core/storage/**/*.mjs",
+        "core/storage/**",
         "contracts/setka-causal-event-v1.schema.json",
         "tests/setka-replay-core.test.mjs"
+      ],
+      "excludePatterns": [
+        "core/storage/*.md",
+        "core/storage/**/*.md"
       ],
       "automaticChecks": [
         "WRITE_CLASSIFICATION",
@@ -54,9 +60,13 @@
       "patterns": [
         ".github/actions/setka-cryo-gate/**",
         ".github/workflows/*synthetic*.yml",
+        ".github/workflows/*synthetic*.yaml",
         ".github/workflows/*simulation*.yml",
+        ".github/workflows/*simulation*.yaml",
         ".github/workflows/_setka-synthetic-runner.yml",
+        ".github/workflows/_setka-synthetic-runner.yaml",
         ".github/workflows/setka-workflow-safety-selftest.yml",
+        ".github/workflows/setka-workflow-safety-selftest.yaml",
         "ops/setka-workflow-safety-audit.mjs",
         "ops/SETKA_CRYOSLEEP.yml"
       ],
@@ -75,7 +85,8 @@
       "patterns": [
         "ops/setka-kernel-pulse.mjs",
         "ops/SETKA_KERNEL_MAP.json",
-        ".github/workflows/setka-kernel-pulse.yml"
+        ".github/workflows/setka-kernel-pulse.yml",
+        ".github/workflows/setka-kernel-pulse.yaml"
       ],
       "automaticChecks": [
         "PULSE_SELF_CHECK"
