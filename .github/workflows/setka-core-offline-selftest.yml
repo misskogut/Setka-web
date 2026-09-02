@@ -1,0 +1,40 @@
+name: SETKA Core Offline Replay Self-Test
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'core/replay/**'
+      - 'core/storage/**'
+      - 'contracts/setka-*-v1.schema.json'
+      - 'tests/setka-replay-core.test.mjs'
+      - '.github/workflows/setka-core-offline-selftest.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  offline-replay-selftest:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Parse machine contracts
+        run: |
+          node -e "JSON.parse(require('fs').readFileSync('contracts/setka-replay-contract-v1.schema.json','utf8')); JSON.parse(require('fs').readFileSync('contracts/setka-causal-event-v1.schema.json','utf8')); console.log('machine contracts: OK')"
+      - name: Syntax check replay core
+        run: |
+          node --check core/replay/stable-json.mjs
+          node --check core/replay/replay-engine.mjs
+          node --check core/replay/materializer.mjs
+          node --check core/replay/capsule-builder.mjs
+          node --check core/storage/write-admission.mjs
+      - name: Run deterministic replay tests
+        run: node --test tests/setka-replay-core.test.mjs
+
+      # Deliberately no Supabase secrets, HTTP calls or database access.
+      # This workflow must remain runnable during total PostgreSQL outage.
