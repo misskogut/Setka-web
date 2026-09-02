@@ -3,13 +3,33 @@
   "quickstartPath": "ops/SETKA_KERNEL_QUICKSTART.md",
   "pulseCommand": "node ops/setka-kernel-pulse.mjs",
   "lastVerification": {
-    "state": "REVIEWED_BASELINE_PENDING_GREEN_RECHECK",
-    "verifiedHeadCommit": "ebd77e6f6be51ab9a80c7d28158f27322364d1fe",
+    "state": "GREEN_BASELINE_MATCH",
+    "verifiedHeadCommit": "c80ff9e1799c7aaa42dbbc72e562f296f5ac2f04",
     "baselineCommit": "ebd77e6f6be51ab9a80c7d28158f27322364d1fe",
-    "reviewRunId": 33648807792,
-    "runtimeDifferentialRunId": 33648807781,
-    "manualReviewRequired": false,
-    "note": "Protected drift was manually reviewed and accepted; next Kernel Pulse must return GREEN_BASELINE_MATCH before this becomes the latest green verification."
+    "runId": 33649025837,
+    "driftedComponentCount": 0,
+    "changedProtectedFileCount": 0,
+    "unclassifiedExecutableCount": 0,
+    "baselineTransitionGuard": "REVIEWED_BASELINE_TRANSITION",
+    "replayTests": { "passed": 9, "failed": 0, "durationMs": 74.145067 },
+    "propertyWorlds": { "generated": 1024, "failed": 0, "durationMs": 1187.497589 },
+    "resourceSample": {
+      "targetTick": 5000,
+      "elapsedMs": 63.158371,
+      "heapDeltaBytes": 1663072,
+      "denseBytes": 233420,
+      "causalBytes": 975,
+      "denseToCausalRatio": 239.4051282051282
+    },
+    "workflowSafety": { "checked": 5, "violations": 0 },
+    "runtimeDifferential": {
+      "runId": 33648807781,
+      "node20": "v20.20.2",
+      "node24": "v24.20.0",
+      "semanticFingerprint": "4d64fbd1f57f8147a289471d14f26ac8bf97579df1fd9193f70fb1a13872fc3",
+      "exactMatch": true
+    },
+    "manualReviewRequired": false
   },
   "baseline": {
     "commit": "ebd77e6f6be51ab9a80c7d28158f27322364d1fe",
@@ -70,6 +90,13 @@
         "node24": "v24.20.0",
         "semanticFingerprint": "4d64fbd1f57f8147a289471d14f26ac8bf97579df1fd9193f70fb1a13872fc3",
         "exactMatch": true
+      },
+      {
+        "kind": "KERNEL_DIAGNOSTICS_V2_GREEN",
+        "commit": "c80ff9e1799c7aaa42dbbc72e562f296f5ac2f04",
+        "runId": 33649025837,
+        "conclusion": "success",
+        "state": "GREEN_BASELINE_MATCH"
       }
     ]
   },
