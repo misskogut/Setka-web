@@ -1,6 +1,8 @@
 import { sha256Object } from './stable-json.mjs';
 
 const SAFE_SEGMENT = /^[A-Za-z0-9_-]+$/;
+const PATCH_EVENT_TYPES = new Set(['EXTERNAL_INPUT', 'HUMAN_INPUT', 'LLM_OUTPUT', 'MESSAGE', 'CAUSAL_EVENT']);
+const PASSIVE_EVENT_TYPES = new Set(['GENESIS', 'CHECKPOINT', 'CAPSULE', 'SEAL', 'RUN_END']);
 
 function clone(value) {
   return structuredClone(value);
@@ -20,23 +22,34 @@ function assertReplayContract(contract) {
   if (contract.numerics?.mode !== 'FLOAT64_JS_V1') {
     throw new Error(`Unsupported numeric mode: ${contract.numerics?.mode}`);
   }
+  if (!contract.numerics?.runtimeContract || !contract.numerics?.rounding || !contract.numerics?.operationOrderVersion) {
+    throw new Error('Replay contract requires explicit runtime, rounding and operation-order semantics');
+  }
 }
 
-function assertEvent(event, entityId) {
+function assertEvent(event, entityId, genesisTick) {
   if (event.schemaVersion !== 'SETKA_CAUSAL_EVENT_V1') throw new Error('Unsupported causal event');
   if (event.entityId !== entityId) throw new Error(`Event entity mismatch: ${event.entityId}`);
   if (!Number.isInteger(event.tick) || event.tick < 0) throw new Error('Event tick must be a non-negative integer');
+  if (event.tick < genesisTick) throw new Error(`Event tick ${event.tick} precedes genesis tick ${genesisTick}`);
   if (!Number.isInteger(event.sequence) || event.sequence < 0) throw new Error('Event sequence must be a non-negative integer');
 }
 
-function sortedEvents(events, entityId) {
-  return [...events]
+function sortedEvents(events, entityId, genesisTick) {
+  const ordered = [...events]
     .filter((event) => event.entityId === entityId)
     .map((event) => {
-      assertEvent(event, entityId);
+      assertEvent(event, entityId, genesisTick);
       return event;
     })
     .sort((a, b) => a.tick - b.tick || a.sequence - b.sequence);
+
+  const seenSequences = new Set();
+  for (const event of ordered) {
+    if (seenSequences.has(event.sequence)) throw new Error(`Duplicate causal event sequence ${event.sequence}`);
+    seenSequences.add(event.sequence);
+  }
+  return ordered;
 }
 
 function setPath(root, path, value) {
@@ -64,27 +77,29 @@ function applyPatches(runtime, patches = []) {
 }
 
 function applyEvent(runtime, event) {
-  switch (event.eventType) {
-    case 'GENESIS':
-      return;
-    case 'PARAM_CHANGE':
-      setPath(runtime, event.payload.path, event.payload.to);
-      return;
-    case 'MODE_CHANGE':
-      runtime.mode = event.payload.mode;
-      return;
-    case 'EXTERNAL_INPUT':
-    case 'CAUSAL_EVENT':
-      applyPatches(runtime, event.payload?.patches ?? []);
-      runtime.lastInput = clone(event.payload ?? {});
-      return;
-    case 'CHECKPOINT':
-    case 'CAPSULE':
-    case 'RUN_END':
-      return;
-    default:
-      throw new Error(`Unknown causal event type: ${event.eventType}`);
+  if (event.eventType === 'PARAM_CHANGE') {
+    const boundary = event.payload?.effectiveBoundary ?? 'AT_TICK';
+    if (!['AT_TICK', 'BEFORE_STEP'].includes(boundary)) throw new Error(`Unsupported parameter boundary: ${boundary}`);
+    setPath(runtime, event.payload.path, event.payload.to);
+    return;
   }
+  if (event.eventType === 'MODE_CHANGE') {
+    runtime.mode = event.payload.mode;
+    return;
+  }
+  if (PATCH_EVENT_TYPES.has(event.eventType)) {
+    applyPatches(runtime, event.payload?.patches ?? []);
+    runtime.lastInput = clone({
+      eventType: event.eventType,
+      sequence: event.sequence,
+      tick: event.tick,
+      payload: event.payload ?? {},
+      provenance: event.provenance ?? {}
+    });
+    return;
+  }
+  if (PASSIVE_EVENT_TYPES.has(event.eventType)) return;
+  throw new Error(`Unknown causal event type: ${event.eventType}`);
 }
 
 function logisticStep(runtime) {
@@ -95,15 +110,22 @@ function logisticStep(runtime) {
 }
 
 function mandelbrotStep(runtime) {
+  if (runtime.state.escaped === true) return;
   const zRe = Number(runtime.state.zRe ?? 0);
   const zIm = Number(runtime.state.zIm ?? 0);
   const cRe = Number(runtime.law.parameters.cRe);
   const cIm = Number(runtime.law.parameters.cIm);
-  if (![zRe, zIm, cRe, cIm].every(Number.isFinite)) {
-    throw new Error('MANDELBROT_ORBIT requires finite zRe/zIm and cRe/cIm');
+  const escapeRadius = Number(runtime.law.parameters.escapeRadius ?? 2);
+  if (![zRe, zIm, cRe, cIm, escapeRadius].every(Number.isFinite) || escapeRadius <= 0) {
+    throw new Error('MANDELBROT_ORBIT requires finite zRe/zIm/cRe/cIm and positive escapeRadius');
   }
-  runtime.state.zRe = zRe * zRe - zIm * zIm + cRe;
-  runtime.state.zIm = 2 * zRe * zIm + cIm;
+  const nextRe = zRe * zRe - zIm * zIm + cRe;
+  const nextIm = 2 * zRe * zIm + cIm;
+  const magnitudeSquared = nextRe * nextRe + nextIm * nextIm;
+  runtime.state.zRe = nextRe;
+  runtime.state.zIm = nextIm;
+  runtime.state.escaped = magnitudeSquared > escapeRadius * escapeRadius;
+  if (runtime.state.escaped) runtime.state.escapeMagnitudeSquared = magnitudeSquared;
 }
 
 function advanceLaw(runtime) {
@@ -204,9 +226,16 @@ export function* replayRange(contract, events = [], options = {}) {
   }
   if (!Number.isInteger(stride) || stride < 1) throw new Error('stride must be a positive integer');
 
-  const timeline = sortedEvents(events, contract.entity.id);
+  const timeline = sortedEvents(events, contract.entity.id, contract.genesis.tick);
   const checkpoint = options.useCheckpoints ? selectCheckpoint(contract, startTick) : null;
   const runtime = checkpoint ? runtimeFromCheckpoint(contract, checkpoint) : createRuntime(contract);
+  const maxReplaySteps = options.maxReplaySteps ?? Number.POSITIVE_INFINITY;
+  if (!Number.isFinite(maxReplaySteps) && maxReplaySteps !== Number.POSITIVE_INFINITY) throw new Error('maxReplaySteps must be finite or Infinity');
+  const replaySpan = endTick - runtime.tick;
+  if (replaySpan > maxReplaySteps) {
+    throw new Error(`Replay span ${replaySpan} exceeds maxReplaySteps=${maxReplaySteps}`);
+  }
+
   let eventCursor = cursorAfterCheckpoint(timeline, checkpoint);
   let appliedEventCount = 0;
   const checkpointEvents = options.verifyCheckpoints ? checkpointEventsByTick(timeline) : null;
@@ -226,16 +255,15 @@ export function* replayRange(contract, events = [], options = {}) {
       eventCursor += 1;
     }
 
+    const stateHash = hashRuntime(runtime);
     if (options.verifyCheckpoints) {
       for (const event of checkpointEvents.get(runtime.tick) ?? []) {
-        const actual = hashRuntime(runtime);
-        if (event.payload?.stateHash && event.payload.stateHash !== actual) {
+        if (event.payload?.stateHash && event.payload.stateHash !== stateHash) {
           throw new Error(`Checkpoint mismatch at tick ${runtime.tick}`);
         }
       }
     }
 
-    const stateHash = hashRuntime(runtime);
     trajectoryRootHash = sha256Object({ previous: trajectoryRootHash, tick: runtime.tick, stateHash });
 
     if (runtime.tick >= startTick && (runtime.tick - startTick) % stride === 0) {
@@ -264,7 +292,8 @@ export function replayToTick(contract, events = [], targetTick, options = {}) {
     endTick: targetTick,
     stride: 1,
     useCheckpoints: options.useCheckpoints ?? false,
-    verifyCheckpoints: options.verifyCheckpoints ?? false
+    verifyCheckpoints: options.verifyCheckpoints ?? false,
+    maxReplaySteps: options.maxReplaySteps ?? Number.POSITIVE_INFINITY
   });
   const result = iterator.next();
   if (result.done || !result.value) throw new Error('Replay terminated unexpectedly');
