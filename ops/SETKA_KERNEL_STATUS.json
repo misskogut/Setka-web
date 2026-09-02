@@ -2,6 +2,17 @@
   "schemaVersion": "SETKA_KERNEL_STATUS_V1",
   "quickstartPath": "ops/SETKA_KERNEL_QUICKSTART.md",
   "pulseCommand": "node ops/setka-kernel-pulse.mjs",
+  "lastVerification": {
+    "state": "GREEN_BASELINE_MATCH",
+    "verifiedHeadCommit": "89d171dd0ddfa1617d8067c288530fdceec5642b",
+    "baselineCommit": "59c54bc7e257043f988a6ba8b0f0545376c8cb59",
+    "runId": 33644084357,
+    "driftedComponentCount": 0,
+    "changedProtectedFileCount": 0,
+    "replayTests": { "passed": 9, "failed": 0, "durationMs": 98.938861 },
+    "workflowSafety": { "checked": 5, "violations": 0 },
+    "manualReviewRequired": false
+  },
   "baseline": {
     "commit": "59c54bc7e257043f988a6ba8b0f0545376c8cb59",
     "state": "VERIFIED_OFFLINE",
