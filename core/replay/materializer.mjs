@@ -1,4 +1,4 @@
-import { replayToTick } from './replay-engine.mjs';
+import { replayRange } from './replay-engine.mjs';
 
 export function materializeRange(contract, events, options = {}) {
   const startTick = options.startTick ?? contract.genesis.tick;
@@ -17,11 +17,20 @@ export function materializeRange(contract, events, options = {}) {
   }
 
   const rows = [];
-  for (let tick = startTick; tick <= endTick; tick += stride) {
-    const replay = replayToTick(contract, events, tick);
+  let rootScope = null;
+  let checkpointTick = null;
+  for (const replay of replayRange(contract, events, {
+    startTick,
+    endTick,
+    stride,
+    useCheckpoints: options.useCheckpoints ?? true,
+    verifyCheckpoints: options.verifyCheckpoints ?? false
+  })) {
+    rootScope = replay.rootScope;
+    checkpointTick = replay.checkpointTick;
     rows.push({
       entityId: contract.entity.id,
-      tick,
+      tick: replay.runtime.tick,
       state: replay.runtime.state,
       lawParameters: replay.runtime.law.parameters,
       variables: replay.runtime.variables,
@@ -38,6 +47,8 @@ export function materializeRange(contract, events, options = {}) {
     stride,
     pointCount: rows.length,
     disposable: true,
+    replayRootScope: rootScope,
+    restoredFromCheckpointTick: checkpointTick,
     rows
   };
 }
