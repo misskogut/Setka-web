@@ -1,16 +1,6 @@
 name: SETKA Foundation 0.2.0 Synthetic Users
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - 'foundation-user-v020.html'
-      - 'foundation-user-v020.css'
-      - 'foundation-user-v020.js'
-      - 'foundation-v020-synthetic-runner.mjs'
-      - '.github/workflows/foundation-v020-synthetics.yml'
-      - '.github/actions/setka-cryo-gate/action.yml'
-      - 'ops/SETKA_CRYOSLEEP.yml'
 permissions:
   contents: read
 jobs:
@@ -34,9 +24,6 @@ jobs:
       - name: Check runner syntax
         run: node --check foundation-v020-synthetic-runner.mjs
       - run: npm install --no-save playwright-core@1.55.0
-      - name: Wait for Pages
-        if: github.event_name == 'push'
-        run: sleep 40
       - name: Run five synthetic users through Foundation 0.2.0
         env:
           CHROME_PATH: /usr/bin/google-chrome
