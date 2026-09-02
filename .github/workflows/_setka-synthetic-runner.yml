@@ -1,0 +1,65 @@
+name: SETKA Reusable Synthetic Browser Runner
+
+on:
+  workflow_call:
+    inputs:
+      runner_file:
+        description: Repository-relative Node runner file
+        required: true
+        type: string
+      target_url:
+        description: Optional target URL exposed as URL
+        required: false
+        default: ''
+        type: string
+      label:
+        description: Human-readable run label
+        required: true
+        type: string
+      timeout_minutes:
+        description: Maximum browser-run job time
+        required: false
+        default: 15
+        type: number
+
+permissions:
+  contents: read
+
+jobs:
+  safety-gate:
+    runs-on: ubuntu-24.04
+    outputs:
+      allowed: ${{ steps.gate.outputs.allowed }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: gate
+        uses: ./.github/actions/setka-cryo-gate
+
+  synthetic-browser-run:
+    needs: safety-gate
+    if: needs.safety-gate.outputs.allowed == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: ${{ inputs.timeout_minutes }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check runner syntax
+        env:
+          RUNNER_FILE: ${{ inputs.runner_file }}
+        run: node --check "$RUNNER_FILE"
+      - name: Install Playwright core
+        run: npm install --no-save playwright-core@1.55.0
+      - name: Run synthetic browser scenario
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+          URL: ${{ inputs.target_url }}
+          RUNNER_FILE: ${{ inputs.runner_file }}
+          RUN_LABEL: ${{ inputs.label }}
+        run: |
+          echo "SETKA_SYNTHETIC_RUN=$RUN_LABEL"
+          node "$RUNNER_FILE"
+
+# No schedule/push trigger is permitted here. Callers are manual-only during the post-incident era,
+# and this reusable workflow still fails closed through ops/SETKA_CRYOSLEEP.yml before runtime work.
