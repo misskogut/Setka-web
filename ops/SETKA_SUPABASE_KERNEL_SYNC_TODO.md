@@ -245,3 +245,83 @@ Use together with `ops/SETKA_POST_RECOVERY_BOOTSTRAP_V1.md`:
 `SQL READY -> BACKUP -> STORAGE AUDIT -> relation 62753 mapping -> outage backfill -> verify transcript writer -> build DB state adapter -> READ-ONLY HANDSHAKE -> shadow proof -> only then consider automatic allowlisted sync`.
 
 Cryosleep remains ON until the existing resume gates and explicit President decision are satisfied.
+
+## 15. Post-incident information law — do not lose this lesson
+
+The 2026-09-02 incident must not be treated merely as “disk full, add space and continue”. The architectural lesson to preserve is:
+
+`GitHub = reproducible law / PostgreSQL = living state + irreversible history / Transcript = proof of what actually happened / Derived deterministic consequences = compute or materialize on demand`.
+
+For iterative mathematics, fleets and autonomous systems, a coordinate/state that can be reproduced exactly from Genesis + law + parameters + seed + causal patches + irreversible inputs is not automatically an independent canonical fact.
+
+Before adding any new persistent write after recovery, classify it as one of:
+
+`CANONICAL_CAUSE / IRREVERSIBLE_INPUT / TIME_INTERVAL / STEP_INTERVAL / CHECKPOINT / DERIVED / CACHE / ARCHIVE_CANDIDATE / TECH_GARBAGE`.
+
+Unknown semantics fail closed to review.
+
+The purpose is not “store less at any cost”. The purpose is to preserve the minimum complete causal information needed to reconstruct and prove the world without losing non-reproducible facts.
+
+## 16. Treat the pre-incident database as evidence, not as the target architecture
+
+The recovered database is an archaeological specimen of the previous SETKA implementation. Do not assume every existing table, log, snapshot or dense coordinate stream deserves to survive in hot PostgreSQL simply because it already exists.
+
+Before compaction or redesign:
+
+- identify which relations contain causes versus reproducible consequences;
+- identify duplicated full-state JSON/context copying;
+- identify dense per-tick/per-coordinate persistence;
+- identify caches/materializations that can be rebuilt;
+- preserve raw scientific evidence externally when required;
+- prove replay equivalence before deleting any deterministic consequence;
+- record discrepancies instead of forcing the new kernel to agree with undocumented historical behavior.
+
+In particular, map `base/5/62753` before making causal claims about what filled the disk. The incident confirms a persistent relation ran out of device space; it does not by itself prove which application-level writer was solely responsible.
+
+## 17. Capture a real BEFORE -> AFTER optimization record
+
+Once SQL is available, measure the old system before changing it so the architectural gain can be demonstrated rather than guessed.
+
+Capture at minimum BEFORE values for:
+
+- total PostgreSQL database size;
+- free/storage headroom available from platform metrics where obtainable;
+- top relations by total size, including heap/index/TOAST split;
+- transcript/event/log table sizes and row counts;
+- dense fleet/G2/coordinate/snapshot relations if present;
+- duplicate/large JSONB candidates;
+- write volume/event count for representative autonomous runs where measurable;
+- WAL/storage growth for a bounded representative run if it can be measured safely;
+- current recovery/runtime schema and kernel-reconciliation state.
+
+After replay proof, write-admission integration and any separately approved compaction, capture matching AFTER values.
+
+Report both absolute and relative changes, and keep distinct:
+
+- source-code size reduction;
+- CI/AI compute reduction;
+- canonical event/write reduction;
+- PostgreSQL disk reduction;
+- WAL/write-rate reduction;
+- replay/materialization expansion ratio.
+
+The existing resource test showing roughly 233 KB dense materialization versus roughly 975 bytes causal representation (about 239x for that test scenario) is proof of the principle for that fixture only. It must **not** be presented as the predicted compression ratio of the live Supabase database until the live audit measures it.
+
+## 18. Success condition for the post-recovery upgrade
+
+The upgrade is not complete merely when PostgreSQL accepts connections again.
+
+A successful transition requires evidence that:
+
+1. the old database was backed up and measured before modification;
+2. canonical history and irreversible inputs survived;
+3. the new offline replay reproduces approved historical segments/checkpoints;
+4. write admission rejects deterministic noise without losing causal information;
+5. the database can identify its GitHub kernel state via the deterministic handshake;
+6. every real kernel-caused state change is recorded and read back through `KERNEL_RECONCILIATION`;
+7. revert/reapply preserves append-only history;
+8. storage guards stop dense writers before physical exhaustion rather than trying to recover after zero headroom;
+9. BEFORE/AFTER measurements show the actual effect on storage/write/compute cost;
+10. cryosleep is lifted only by explicit President decision after canary proof.
+
+At that point the incident can be considered an architectural transition from an evolutionarily accumulated SETKA to a measured, causal, reproducible and guarded SETKA.
