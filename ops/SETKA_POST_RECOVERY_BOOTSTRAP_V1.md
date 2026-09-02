@@ -47,6 +47,27 @@ Classify each large object:
 
 `CANONICAL_CAUSE / IRREVERSIBLE_INPUT / TIME_INTERVAL / STEP_INTERVAL / CHECKPOINT / DERIVED / CACHE / ARCHIVE_CANDIDATE / TECH_GARBAGE`.
 
+## Phase B.5 — Read-only GitHub kernel handshake
+
+After the hard gates are true, construct a small `SETKA_DB_KERNEL_STATE_V1` snapshot from the audited live database and compare it with:
+
+`ops/SETKA_KERNEL_RELEASE_MANIFEST.json`
+
+using:
+
+`node ops/setka-kernel-handshake.mjs --db-state <snapshot.json>`
+
+The planner is deterministic and does not need an AI to rediscover the delta. Expected outcomes:
+
+- `SYNCED_NOOP` — database already represents the accepted kernel state; do nothing;
+- `KNOWN_DELTA_READY` — only predeclared, allowlisted, idempotent migrations are pending;
+- `MANUAL_REVIEW_REQUIRED` — an unknown component/schema difference exists; do not write;
+- `BLOCKED_BY_RECOVERY_GATES` — remain read-only.
+
+For the first post-incident recovery, `SETKA_KERNEL_RELEASE_MANIFEST_V1` currently declares no automatic migrations and `firstRecoveryMode = READ_ONLY_RECONCILIATION_ONLY`. Therefore this handshake may reduce investigation work, but it may not modify PostgreSQL.
+
+GitHub must never receive arbitrary SQL authority. Future automatic migration execution is permitted only for an exact migration id/hash already present in a reviewed release manifest, marked idempotent and auto-apply-allowed, with all recovery gates true.
+
 ## Phase C — Canonical outage backfill
 
 Append the GitHub outage session at the then-current mother-transcript tail using:
