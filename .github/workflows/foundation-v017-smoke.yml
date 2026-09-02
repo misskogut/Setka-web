@@ -1,7 +1,5 @@
 name: SETKA Foundation 0.1.7 Smoke
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 jobs:
   smoke:
