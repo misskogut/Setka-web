@@ -30,6 +30,7 @@ For every ship / synthetic / experiment, preserve the complete replay contract:
 - every external or otherwise non-reproducible input;
 - every branch-changing endogenous decision if it is not fully derivable from the replay contract;
 - timestamps / logical ticks at which causal changes occur;
+- causal inactivity/autopilot intervals and the clock/tick mapping needed to measure them;
 - sparse checkpoints;
 - checkpoint hashes and trajectory/root hashes;
 - final summaries/capsules and evidence metadata.
@@ -51,7 +52,7 @@ These may exist temporarily while a computation, visualization, audit or experim
 
 ## 4. Transcript semantics
 
-The mother transcript is an append-only **minimal sufficient causal history**, not a dump of every mathematical step.
+The mother transcript is an append-only **minimal sufficient causal history**, not a dump of every mathematical step or every second of elapsed time.
 
 A transcript event is required when something information-bearing occurs, for example:
 
@@ -63,12 +64,44 @@ A transcript event is required when something information-bearing occurs, for ex
 - newly observed non-reproducible environmental fact;
 - branch/choice that changes future evolution and is not derivable from deterministic replay;
 - role/task/state transition with semantic meaning;
+- start/end of sleep, pause, cryosleep or another time-mode change;
 - checkpoint / seal / root-hash commitment;
 - experiment completion / capsule creation.
 
 A transcript event is **not** required merely because the deterministic equation advanced from tick `n` to `n+1` with no causal change.
 
-## 5. Sparse checkpoints
+## 5. Causal inactivity and autopilot time
+
+Elapsed time with no semantic activity is still analytically valuable, but it must be stored as an **interval**, not as one row per second/tick.
+
+The system must be able to answer questions such as:
+
+- how long a ship remained on pure autopilot before the next endogenous activity;
+- latency between two meaningful actions;
+- distribution of active vs inactive time;
+- whether activity frequency changes with ship variables such as curiosity;
+- whether sleep/wake or environmental changes alter the timing of activity.
+
+Canonical representation should use interval boundaries and mode, for example:
+
+`AUTOPILOT_INTERVAL { ship_id, start_tick, end_tick, start_time, end_time, elapsed_ms, mode, clock_contract_version }`
+
+or derive the interval from two adjacent causal events when the clock mapping is unambiguous.
+
+Do **not** emit one `NO_ACTIVITY` event per second or per deterministic tick.
+
+Important distinction:
+
+- `CAUSAL_IDLE` = no new semantic action while deterministic autopilot continues;
+- `SLEEP` = active WILL/exploration disabled under an explicit sleep regime;
+- `PAUSED/CRYOSLEEP` = progression may be externally stopped or governed by a different clock contract;
+- `COMPUTE_ONLY` = calculations continue but no information-bearing event is emitted.
+
+For exact replay, preserve the mapping between wall-clock time and logical ticks whenever it is not fixed by the law itself. If tick cadence changes, pauses occur, or batches are executed faster/slower than simulated time, the timing rule/version and interval boundaries become part of the replay contract.
+
+The transcript therefore preserves **when meaningful change happened and how much causal silence separated changes**, without storing the passage of time second by second.
+
+## 6. Sparse checkpoints
 
 Store sparse checkpoints to reduce replay cost.
 
@@ -80,7 +113,7 @@ To inspect tick 27,431, restore checkpoint 20,000 and replay only the remaining 
 
 Checkpoint frequency must be selected from a storage-vs-replay-cost budget, not fixed blindly.
 
-## 6. Exact replay requirement for chaotic systems
+## 7. Exact replay requirement for chaotic systems
 
 Chaotic systems are sensitive to tiny numerical differences. Therefore `equation + r + x0` alone is not sufficient for forensic-grade reproduction.
 
@@ -95,7 +128,7 @@ The replay contract must also fix the numerical semantics needed for exact repro
 
 After replay, verify the regenerated segment against stored checkpoint/root hashes.
 
-## 7. Data temperature model
+## 8. Data temperature model
 
 ### LIVE
 Current state required for normal operation.
@@ -104,14 +137,14 @@ Current state required for normal operation.
 Recent detailed causal events and temporary working trace.
 
 ### CAPSULE
-Compressed summaries, checkpoints, hashes and indexes.
+Compressed summaries, checkpoints, hashes, timing intervals and indexes.
 
 ### ARCHIVE
 Immutable cold raw evidence outside the primary PostgreSQL database when raw history must be retained.
 
 Cold archive should be compressed and hash-verified. PostgreSQL retains an archive pointer, event/tick range, manifest and cryptographic root.
 
-## 8. Materialize on demand
+## 9. Materialize on demand
 
 Dense databases/coordinate series should be generated only when required for:
 
@@ -128,15 +161,15 @@ Conceptually:
 
 `compact causal record -> MATERIALIZE -> inspect/compute/prove -> SEAL -> DROP CACHE`
 
-## 9. Ship memory model
+## 10. Ship memory model
 
 Each ship needs only a small persistent operational brain:
 
-`IDENTITY + GENESIS + LAW + CURRENT_STATE + VARIABLES + IRREVERSIBLE_EVENTS + CHECKPOINT_CURSOR + HASHES`
+`IDENTITY + GENESIS + LAW + CURRENT_STATE + VARIABLES + IRREVERSIBLE_EVENTS + TIME_INTERVALS + CHECKPOINT_CURSOR + HASHES`
 
 The complete dense historical trajectory is not the ship's permanent brain. It is a reproducible view of that brain through time.
 
-## 10. Safety rule for deletion / compaction
+## 11. Safety rule for deletion / compaction
 
 No raw or dense history may be deleted merely because it appears reproducible.
 
@@ -146,27 +179,31 @@ Before disposal, prove all of the following:
 2. the relevant range can be regenerated;
 3. regenerated checkpoint/root hash matches the committed evidence;
 4. all non-reproducible inputs are preserved;
-5. any required scientific/legal/raw archive has been copied and independently hash-verified;
-6. deletion target is derived/materialized data, not canonical causal evidence.
+5. all timing-mode changes and required inactivity interval boundaries are preserved;
+6. any required scientific/legal/raw archive has been copied and independently hash-verified;
+7. deletion target is derived/materialized data, not canonical causal evidence.
 
-## 11. Implementation objective after recovery
+## 12. Implementation objective after recovery
 
 After PostgreSQL becomes available:
 
 1. perform full backup before cleanup;
 2. identify largest relations and relation `base/5/62753`;
-3. classify data as CANONICAL_CAUSE / IRREVERSIBLE_INPUT / CHECKPOINT / DERIVED / CACHE / ARCHIVE_CANDIDATE / TECH_GARBAGE;
+3. classify data as CANONICAL_CAUSE / IRREVERSIBLE_INPUT / TIME_INTERVAL / CHECKPOINT / DERIVED / CACHE / ARCHIVE_CANDIDATE / TECH_GARBAGE;
 4. redesign fleet/G2 writers so autopilot does not append every coordinate;
-5. persist causal events + sparse checkpoints only;
+5. persist causal events + causal inactivity intervals + sparse checkpoints only;
 6. introduce on-demand trajectory materialization;
 7. introduce cold immutable archive for raw scientific evidence;
 8. add storage watchdog and write-budget guards;
-9. test exact replay on known G1/G2 segments before any destructive compaction.
+9. test exact replay on known G1/G2 segments before any destructive compaction;
+10. verify that activity timing statistics can be reconstructed without per-second/per-tick idle rows.
 
-## 12. Canonical formulation
+## 13. Canonical formulation
 
 **The transcript stores the minimum complete set of causes needed to reproduce the world. Reproducible consequences are computed on demand.**
 
+**Time is recorded at meaningful boundaries: the system stores the duration of causal silence, not a row for every silent second.**
+
 Or, operationally:
 
-**Do not store the universe when the universe can be unfolded from its law, variables, irreversible events and proof hashes.**
+**Do not store the universe when the universe can be unfolded from its law, variables, irreversible events, timing intervals and proof hashes.**
