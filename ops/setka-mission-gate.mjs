@@ -205,6 +205,22 @@ function selftest(policy) {
   return { schemaVersion: 'SETKA_MISSION_GATE_SELFTEST_V1', state: 'PASS', cases: tests.length };
 }
 
+function emitAnnotation(result) {
+  const diagnostic = result.diagnostic ?? result;
+  if (!diagnostic?.state || diagnostic.mode === undefined && result.schemaVersion?.includes('SELFTEST')) return;
+  const signals = (diagnostic.signals ?? []).join(', ') || 'none';
+  const hintText = (diagnostic.optimizationHints ?? [])[0] ?? 'No optimization hint required.';
+  if (diagnostic.state === 'OPTIMIZE') {
+    console.log(`::warning title=SETKA Mission Gate::OPTIMIZE — ${signals}. ${hintText}`);
+  } else if (diagnostic.state === 'REVIEW_REQUIRED') {
+    console.log(`::warning title=SETKA Mission Gate::REVIEW_REQUIRED — ${signals}. ${hintText}`);
+  } else if (diagnostic.state === 'BLOCK') {
+    console.log(`::error title=SETKA Mission Gate::BLOCK — ${signals}. ${hintText}`);
+  } else if (process.env.GITHUB_ACTIONS) {
+    console.log('::notice title=SETKA Mission Gate::ALIGNED — no known mission regression signal detected.');
+  }
+}
+
 const policy = readJson(POLICY_PATH);
 validatePolicy(policy);
 const args = process.argv.slice(2);
@@ -228,6 +244,7 @@ if (args.includes('--check')) {
 }
 
 console.log(JSON.stringify(result, null, 2));
+emitAnnotation(result);
 
 const decisionState = result.diagnostic?.state ?? result.state;
 if (args.includes('--verify') && ['REVIEW_REQUIRED', 'BLOCK'].includes(decisionState)) process.exit(2);
