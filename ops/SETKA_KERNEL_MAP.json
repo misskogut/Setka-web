@@ -29,21 +29,11 @@
     "ignorePatterns": []
   },
   "checkGroups": {
-    "REPLAY_CORE": {
-      "argv": ["--test", "tests/setka-replay-core.test.mjs"]
-    },
-    "REPLAY_PROPERTIES": {
-      "argv": ["--test", "tests/setka-replay-properties.test.mjs"]
-    },
-    "RESOURCE_PHYSICS": {
-      "argv": ["--test", "tests/setka-resource-physics.test.mjs"]
-    },
-    "WORKFLOW_SAFETY": {
-      "argv": ["ops/setka-workflow-safety-audit.mjs"]
-    },
-    "KERNEL_HANDSHAKE": {
-      "argv": ["ops/setka-kernel-handshake.mjs", "--selftest"]
-    }
+    "REPLAY_CORE": { "argv": ["--test", "tests/setka-replay-core.test.mjs"] },
+    "REPLAY_PROPERTIES": { "argv": ["--test", "tests/setka-replay-properties.test.mjs"] },
+    "RESOURCE_PHYSICS": { "argv": ["--test", "tests/setka-resource-physics.test.mjs"] },
+    "WORKFLOW_SAFETY": { "argv": ["ops/setka-workflow-safety-audit.mjs"] },
+    "KERNEL_HANDSHAKE": { "argv": ["ops/setka-kernel-handshake.mjs", "--selftest"] }
   },
   "components": {
     "replay_math": {
@@ -58,23 +48,10 @@
         ".github/workflows/setka-node-runtime-differential.yml",
         ".github/workflows/setka-node-runtime-differential.yaml"
       ],
-      "excludePatterns": [
-        "core/replay/*.md",
-        "core/replay/**/*.md"
-      ],
-      "checkGroups": [
-        "REPLAY_CORE",
-        "REPLAY_PROPERTIES",
-        "RESOURCE_PHYSICS"
-      ],
-      "externalChecks": [
-        "NODE_RUNTIME_DIFFERENTIAL_ON_RUNTIME_CONTRACT_CHANGE"
-      ],
-      "manualReviewTargets": [
-        "NUMERIC_SEMANTICS",
-        "EVENT_BOUNDARIES",
-        "HISTORICAL_REPLAY_COMPATIBILITY"
-      ]
+      "excludePatterns": ["core/replay/*.md", "core/replay/**/*.md"],
+      "checkGroups": ["REPLAY_CORE", "REPLAY_PROPERTIES", "RESOURCE_PHYSICS"],
+      "externalChecks": ["NODE_RUNTIME_DIFFERENTIAL_ON_RUNTIME_CONTRACT_CHANGE"],
+      "manualReviewTargets": ["NUMERIC_SEMANTICS", "EVENT_BOUNDARIES", "HISTORICAL_REPLAY_COMPATIBILITY"]
     },
     "storage_write": {
       "criticality": "HIGH",
@@ -85,20 +62,9 @@
         "tests/setka-resource-physics.test.mjs",
         "ops/SETKA_KERNEL_RESOURCE_BUDGETS.json"
       ],
-      "excludePatterns": [
-        "core/storage/*.md",
-        "core/storage/**/*.md"
-      ],
-      "checkGroups": [
-        "REPLAY_CORE",
-        "RESOURCE_PHYSICS"
-      ],
-      "manualReviewTargets": [
-        "CANONICAL_CAUSE_BOUNDARY",
-        "FAIL_CLOSED_BEHAVIOR",
-        "DATABASE_WRITER_MIGRATION_IMPACT",
-        "RESOURCE_BUDGET_SEMANTICS"
-      ]
+      "excludePatterns": ["core/storage/*.md", "core/storage/**/*.md"],
+      "checkGroups": ["REPLAY_CORE", "RESOURCE_PHYSICS"],
+      "manualReviewTargets": ["CANONICAL_CAUSE_BOUNDARY", "FAIL_CLOSED_BEHAVIOR", "DATABASE_WRITER_MIGRATION_IMPACT", "RESOURCE_BUDGET_SEMANTICS"]
     },
     "runtime_safety": {
       "criticality": "CRITICAL",
@@ -113,14 +79,8 @@
         "ops/setka-workflow-safety-audit.mjs",
         "ops/SETKA_CRYOSLEEP.yml"
       ],
-      "checkGroups": [
-        "WORKFLOW_SAFETY"
-      ],
-      "manualReviewTargets": [
-        "NO_UNINTENDED_EXTERNAL_WRITES",
-        "FAIL_CLOSED_CRYOSLEEP",
-        "RESUME_POLICY"
-      ]
+      "checkGroups": ["WORKFLOW_SAFETY"],
+      "manualReviewTargets": ["NO_UNINTENDED_EXTERNAL_WRITES", "FAIL_CLOSED_CRYOSLEEP", "RESUME_POLICY"]
     },
     "kernel_governance": {
       "criticality": "HIGH",
@@ -129,20 +89,20 @@
         "ops/setka-kernel-baseline-guard.mjs",
         "ops/setka-kernel-handshake.mjs",
         "ops/SETKA_KERNEL_RELEASE_MANIFEST.json",
+        "ops/SETKA_SUPABASE_KERNEL_SYNC_TODO.md",
         "ops/SETKA_KERNEL_MAP.json",
         ".github/workflows/setka-kernel-pulse.yml",
         ".github/workflows/setka-kernel-pulse.yaml"
       ],
-      "checkGroups": [
-        "KERNEL_HANDSHAKE"
-      ],
+      "checkGroups": ["KERNEL_HANDSHAKE"],
       "manualReviewTargets": [
         "DRIFT_DETECTION_RULES",
         "COMPONENT_BOUNDARIES",
         "BASELINE_SEMANTICS",
         "UNCLASSIFIED_KERNEL_SURFACE",
         "COMPLEXITY_BUDGET",
-        "POSTGRES_RECONCILIATION_POLICY"
+        "POSTGRES_RECONCILIATION_POLICY",
+        "TRANSCRIPT_PROVENANCE_AND_REVERSAL_POLICY"
       ]
     }
   }
