@@ -247,7 +247,113 @@ Each ship needs only a small persistent operational brain:
 
 The complete dense historical trajectory is not the ship's permanent brain. It is a reproducible view of that brain through time.
 
-## 13. Safety rule for deletion / compaction
+## 13. Recursive knowledge capsules / hierarchy of memory
+
+A large SETKA installation must not scale by copying every descendant transcript into one parent database.
+
+Canonical hierarchy:
+
+`ship life -> ship capsule -> fleet capsule -> company capsule -> domain capsule -> mother knowledge`
+
+Each level applies the same information rule:
+
+> **Preserve what is new and irreducible at this level; derive, aggregate or reference what is already represented below.**
+
+A child is authoritative for its detailed local causal history. A parent normally receives a compact **knowledge delta**, not the child's life.
+
+A future hierarchical capsule should be able to carry fields equivalent to:
+
+`KNOWLEDGE_CAPSULE { scope, interval, law_version, novelty_type, semantic_result, conditions, effect_metrics, confidence_or_uncertainty, source_count, independent_source_count, child_evidence_roots, provenance_root, disclosure_class, parent_knowledge_relation }`
+
+Useful `novelty_type` values may include:
+
+- `DISCOVERY`;
+- `HYPOTHESIS_SUPPORT`;
+- `HYPOTHESIS_REFUTATION`;
+- `HYPOTHESIS_REFINEMENT`;
+- `ANOMALY`;
+- `CAPABILITY_DELTA`;
+- `RISK`;
+- `OUTCOME`.
+
+Useful parent relations may include:
+
+- `NOVEL`;
+- `CONFIRMS`;
+- `REFUTES`;
+- `REFINES`;
+- `DUPLICATE`.
+
+If many children report semantically equivalent evidence, the parent should consolidate rather than duplicate:
+
+`N child observations of pattern X -> one parent knowledge object {support_count, independent_sources, effect_distribution, conditions, provenance_roots}`
+
+The parent's canonical memory should therefore grow primarily with **new knowledge**, not with raw child count or raw event count.
+
+Target metric:
+
+`VERIFIED_KNOWLEDGE_GAIN_PER_CANONICAL_BYTE`
+
+A parent may request/materialize deeper detail only when necessary and permitted. Within one owner domain, provenance may permit drill-down to local evidence. Across company/owner boundaries, privacy policy may intentionally expose only a proof/aggregate root and forbid access to underlying private source rows.
+
+Kernel/law changes distributed from a mother/parent are not retroactive rewrites. They must use versioned handshake and append-only lineage:
+
+`child LAW vN -> approved/compatible handshake -> child LAW vN+1`
+
+## 14. Minimum sufficient disclosure / cross-owner privacy
+
+The storage boundary and the disclosure boundary are different.
+
+Storage asks:
+
+> **What must survive because it cannot be reconstructed?**
+
+Disclosure asks:
+
+> **What is the minimum information another scope must receive to perform an allowed function or understand an allowed result?**
+
+Canonical law:
+
+**Minimum sufficient memory + minimum sufficient disclosure.**
+
+Disclosure classes:
+
+### PRIVATE_RAW
+Raw/source data stays inside the owner's local/company contour by default. It is not copied upward merely because a mother/fleet/global model exists.
+
+### LOCAL_CAUSAL
+The local causal representation may still contain confidential or indirectly identifying context. Common SETKA semantics do not make it automatically safe to share.
+
+### SHAREABLE_DERIVED
+A bounded causal/statistical result compiled locally for an allowed upstream recipient. It should not require raw source rows or direct identifiers.
+
+### GLOBAL_KNOWLEDGE
+A parent/mother knowledge object aggregated across permitted worlds, with allowed provenance and no direct identifiers.
+
+A shared SETKA schema/law/version lets a mother interpret a child's result without reading the child's raw database. This interoperability is valuable, but **semantic normalization is not anonymity**. Exact timestamps, rare combinations, excessive precision, tiny samples, unique trajectories and unusual events can permit re-identification.
+
+Target local boundary:
+
+`PRIVATE_RAW / LOCAL_CAUSAL`
+`-> purpose + disclosure classification`
+`-> retain only required causal result`
+`-> remove direct identifiers`
+`-> bound unnecessary precision/timing/rarity exposure`
+`-> assess re-identification risk`
+`-> attach permitted aggregate evidence/provenance`
+`-> SHAREABLE_DERIVED / GLOBAL_KNOWLEDGE`
+
+Working name for this target layer: **Privacy Compiler**.
+
+The full Privacy Compiler is not yet implemented by this document. Until a real runtime contract and tests exist, unknown disclosure/re-identification semantics must fail closed to review.
+
+Future implementations may optionally use secure aggregation or zero-knowledge proofs when they materially reduce disclosure while preserving useful verification. These mechanisms are tools, not automatic requirements.
+
+Hard architectural rule:
+
+> **A child should be able to tell the mother what it learned without being required to send the mother its private life.**
+
+## 15. Safety rule for deletion / compaction
 
 No raw or dense history may be deleted merely because it appears reproducible.
 
@@ -261,9 +367,11 @@ Before disposal, prove all of the following:
 6. mathematical step/coordinate distance between causal events can be reconstructed exactly;
 7. every parameter mutation can be restored at the exact historical boundary where it became effective;
 8. any required scientific/legal/raw archive has been copied and independently hash-verified;
-9. deletion target is derived/materialized data, not canonical causal evidence.
+9. deletion target is derived/materialized data, not canonical causal evidence;
+10. any upstream knowledge capsule that depends on the data retains sufficient permitted provenance/evidence roots after compaction;
+11. privacy/disclosure requirements do not require retaining or centralizing data that the owner intended to remain local.
 
-## 14. Implementation objective after recovery
+## 16. Implementation objective after recovery
 
 After PostgreSQL becomes available:
 
@@ -277,9 +385,12 @@ After PostgreSQL becomes available:
 8. add storage watchdog and write-budget guards;
 9. test exact replay on known G1/G2 segments before any destructive compaction;
 10. verify that both activity timing statistics and mathematical-distance statistics can be reconstructed without per-second/per-tick raw rows;
-11. verify that a replay can re-apply every historical parameter change at the exact original tick/time boundary.
+11. verify that a replay can re-apply every historical parameter change at the exact original tick/time boundary;
+12. only after the core replay/storage path is proven, define a reviewed hierarchical knowledge-capsule runtime contract instead of bulk-copying child transcripts upward;
+13. only after privacy semantics are explicit, define a reviewed local disclosure/Privacy Compiler path for cross-owner/company knowledge sharing;
+14. benchmark mother-memory growth against child count and verified knowledge gain rather than assuming hierarchical compression works.
 
-## 15. Canonical formulation
+## 17. Canonical formulation
 
 **The transcript stores the minimum complete set of causes needed to reproduce the world. Reproducible consequences are computed on demand.**
 
@@ -289,6 +400,10 @@ After PostgreSQL becomes available:
 
 **Parameter history is stored as an ordered causal patch stream: replay applies the same changes at the same historical boundaries.**
 
+**Children store life; fleets and organizations capsule experience; parents store novel knowledge with permitted provenance.**
+
+**The system discloses the minimum sufficient result, not the maximum available private context.**
+
 Or, operationally:
 
-**Do not store the universe when the universe can be unfolded from its law, variables, parameter patches, irreversible events, timing/step intervals and proof hashes.**
+**Do not store the universe when the universe can be unfolded from its law, variables, parameter patches, irreversible events, timing/step intervals and proof hashes. Do not centralize a child's private universe when the parent only needs the child's verified discovery.**
