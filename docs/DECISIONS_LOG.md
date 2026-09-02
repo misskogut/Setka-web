@@ -214,6 +214,34 @@ Consequence:
 - only a stable/accepted draft becomes the next immutable numbered checkpoint;
 - legacy control-plane fields named `WORKING` that still point to numbered versions are transitional implementation debt and must not override this semantic law.
 
+## ADR-024 — Preserve causal information; rematerialize deterministic consequences
+
+Decision: for deterministic or seed-reproducible SETKA systems, permanent storage preserves the minimum complete causal replay contract rather than every intermediate mathematical coordinate.
+
+Canonical replay model:
+
+`STATE(t) = GENESIS + LAW + VARIABLES + CAUSAL_PATCHES<=t + IRREVERSIBLE_INPUTS<=t + REPLAY_CONTRACT`
+
+A canonical transcript event is required when new information appears or future evolution changes/proves: Genesis, parameter mutation, external/non-reproducible input, meaningful endogenous action, time-mode change, checkpoint/capsule or run completion. A deterministic equation advancing one tick with no causal change is not by itself a canonical event.
+
+Reason: dense autopilot traces can expand a very small mathematical law into large PostgreSQL/WAL/index/JSON storage without adding equivalent information. SETKA already treats time causally in the mother transcript: it records meaningful changes and their timestamps rather than one event per silent second. The same law should govern mathematical trajectories.
+
+Consequence:
+
+- replay contracts must include exact law/version/hash, Genesis, variables, seeds, numerical/runtime semantics and clock semantics;
+- behavior/control variables such as curiosity are replay variables whenever they can affect choices/dynamics;
+- parameter mutations are append-only causal patches anchored to exact tick/time boundaries;
+- elapsed causal silence and mathematical distance are represented by interval boundaries, not dense `NO_ACTIVITY`/coordinate rows;
+- external or otherwise non-reproducible inputs are preserved and never guessed during replay;
+- dense trajectory tables are bounded, disposable materializations for analysis/visualization/proof;
+- checkpoint/root hashes prove regenerated history before any destructive compaction;
+- future writers pass through semantic write admission and explicit byte/event budgets;
+- unknown semantic write classes fail closed to review;
+- PostgreSQL cleanup/compaction is never authorized solely by this ADR; backup, audit, exact replay proof and evidence/archive requirements apply first;
+- machine contracts and the offline replay core remain versioned in GitHub and independent of database availability.
+
+Primary design: `docs/SETKA_PROCEDURAL_STORAGE_V1.md`.
+
 ---
 
 ## Adding a decision
