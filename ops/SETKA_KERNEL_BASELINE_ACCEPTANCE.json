@@ -1,35 +1,34 @@
 {
   "schemaVersion": "SETKA_KERNEL_BASELINE_ACCEPTANCE_V1",
   "mode": "REVIEWED_TRANSITION",
-  "previousBaselineCommit": "8cc028250dcdc4b3aa5a10375327b78deb1ceac2",
-  "acceptedBaselineCommit": "6b6478a19ca73b78e4c1b54a3c030720a206b0a8",
+  "previousBaselineCommit": "6b6478a19ca73b78e4c1b54a3c030720a206b0a8",
+  "acceptedBaselineCommit": "fffa7c2e0a6341bb5a1876f195cc6f463ae01275",
   "reviewedBy": "SETKA-S-0001-0001",
-  "reviewContext": "President-authorized integration of hierarchical causal memory, mother-child knowledge compression, minimum sufficient disclosure and cross-company privacy rules into the existing kernel mission and Mission Gate without creating a new runtime component or relaxing recovery gates",
-  "reviewRunId": 33680628948,
+  "reviewContext": "President-authorized integration of structural irreducibility, procedural structure compression, law-plus-residual representation, deterministic fleet partitioning and on-demand logical-world materialization into the existing kernel governance and procedural storage architecture without creating a new runtime component or touching live Supabase",
+  "reviewRunId": 33689865072,
   "reviewedComponents": [
     "kernel_governance"
   ],
   "reviewedFiles": [
-    "SETKA_KERNEL_MISSION.md",
     "ops/SETKA_KERNEL_MISSION_POLICY.json",
     "ops/setka-mission-gate.mjs",
     "docs/SETKA_PROCEDURAL_STORAGE_V1.md"
   ],
   "reviewedSemantics": [
-    "children remain authoritative for detailed local causal life while fleets, companies and higher scopes recursively capsule experience",
-    "parent and mother canonical memory should grow primarily with new irreducible knowledge rather than raw child event count",
-    "equivalent child discoveries are consolidated into one knowledge object with support, conditions, effect distribution and permitted provenance roots rather than duplicated once per child",
-    "the kernel now distinguishes PRIVATE_RAW, LOCAL_CAUSAL, SHAREABLE_DERIVED and GLOBAL_KNOWLEDGE disclosure classes",
-    "the cross-owner rule is minimum sufficient memory plus minimum sufficient disclosure: a child should be able to tell the mother what it learned without sending its private life",
-    "common SETKA semantic language enables machine interpretation but is explicitly not treated as proof of anonymity; indirect re-identification through timing, rarity, precision, tiny cohorts or unique trajectories remains a review concern",
-    "Mission Gate now recognizes cross-tenant PRIVATE_RAW disclosure and direct identifiers in GLOBAL_KNOWLEDGE as hard-block semantics",
-    "Mission Gate now recognizes unresolved re-identification risk, unknown disclosure classification and missing global-knowledge provenance as review semantics",
-    "Mission Gate now emits optimization guidance for full child-history uplink, duplicate mother discoveries and unnecessary parent recomputation of child-local state",
-    "Mission Gate self-test was expanded from 5 to 8 cases to cover private-raw hard block, re-identification review and full-child-history optimization; the workflow executed MISSION_GATE and syntax checks in review run 33680628948",
-    "no new runtime component, workflow, database schema, Supabase write path or live Privacy Compiler was created by this transition",
-    "mother law updates remain versioned handshake transitions and must never silently rewrite child history",
-    "the Privacy Compiler, secure aggregation and zero-knowledge mechanisms remain future implementation targets rather than claimed live capabilities",
-    "PostgreSQL/Supabase was not modified; cryosleep and all post-recovery backup/audit/handshake gates remain authoritative"
+    "the kernel now distinguishes Structural Irreducibility from Causal Irreducibility: a large graph, address map, work schedule or logical world may be procedural-derived when every required element is exactly reconstructable from a smaller generator contract",
+    "the canonical structural representation is GENERATOR_LAW + PARAMETERS + DOMAIN_BOUNDARIES + RESIDUAL_EXCEPTIONS + VERIFICATION_PROOF rather than a claim that every explicit relation can be discarded",
+    "a modular mapping such as (k*x+b) mod N is only one candidate operator family and receives no priority from visual or mathematical elegance",
+    "candidate uses include derived graph edges, deterministic addressing/sharding, fleet work partitioning, reproducible traversal/search order, structural signatures/prefilters and on-demand world materialization",
+    "procedural fleet work generation must prove required coverage, non-overlap or explicitly declared overlap, collision behavior and exact replay before replacing explicit assignments",
+    "custom procedural indexing/addressing must be benchmarked against mature hashing, indexing, compression and partitioning baselines before adoption",
+    "logical world size may exceed canonical stored size only by materializing deterministic derived structure on demand; this is explicitly not physical RAM or compute creation",
+    "the required benchmark compares EXPLICIT STRUCTURE vs conventional compression/mature index or partition baseline vs PROCEDURAL GENERATOR + RESIDUAL EXCEPTIONS using canonical bytes, writes, residual ratio, exactness, reconstruction/query cost, branch cost, materialization amplification and collision/coverage behavior",
+    "Mission Gate now hard-blocks destructive removal of explicit structure without exact reconstruction proof",
+    "Mission Gate now requires review for unknown generator reconstruction or unknown coverage/collision semantics and emits optimization guidance for explicit reproducible structures, full fleet assignment lists, custom procedural indexes without baseline comparison and unnecessary persistence of materialized worlds",
+    "Mission Gate self-test expands from 8 to 11 cases to cover unproven structural deletion, unknown generator coverage and a verified-generator optimization candidate",
+    "Kernel Pulse review run 33689865072 executed syntax, KERNEL_HANDSHAKE and MISSION_GATE checks; manual review was required because protected kernel-governance semantics changed, with zero added/deleted protected files and zero unclassified executable files",
+    "no new runtime service, database schema, live graph compressor, live partitioner or live structural generator was created by this transition; this is kernel policy plus procedural design direction",
+    "PostgreSQL/Supabase was not modified; cryosleep and all post-recovery backup, audit and handshake gates remain authoritative"
   ],
-  "acceptedAtSourceTime": "2026-09-02T20:40:06Z"
+  "acceptedAtSourceTime": "2026-09-02T22:20:28Z"
 }
