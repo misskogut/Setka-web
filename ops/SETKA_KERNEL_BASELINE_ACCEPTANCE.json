@@ -1,32 +1,36 @@
 {
   "schemaVersion": "SETKA_KERNEL_BASELINE_ACCEPTANCE_V1",
   "mode": "REVIEWED_TRANSITION",
-  "previousBaselineCommit": "1c79ead98c75f1f77fac398bbcf05ec336f84645",
-  "acceptedBaselineCommit": "54c77e00fcaa839752f9c62d475855f76e5d9640",
+  "previousBaselineCommit": "54c77e00fcaa839752f9c62d475855f76e5d9640",
+  "acceptedBaselineCommit": "00472e2c1f0f465f094e20a81f31bcb10a3011b6",
   "reviewedBy": "SETKA-S-0001-0001",
-  "reviewContext": "President-authorized lean cleanup: no green artifacts, redundant workflow safety self-test removed, Node 20/24 differential retained as manual migration proof only",
-  "reviewRunId": 33653108570,
+  "reviewContext": "President-authorized preparation of a minimal deterministic GitHub-to-PostgreSQL release handshake without touching live Supabase",
+  "reviewRunId": 33655338937,
   "reviewedComponents": [
-    "replay_math",
     "kernel_governance"
   ],
   "reviewedFiles": [
     ".github/workflows/setka-kernel-pulse.yml",
-    ".github/workflows/setka-node-runtime-differential.yml",
-    ".github/workflows/setka-workflow-safety-selftest.yml",
     "ops/SETKA_KERNEL_MAP.json",
-    "ops/SETKA_KERNEL_QUICKSTART.md"
+    "ops/SETKA_KERNEL_RELEASE_MANIFEST.json",
+    "ops/setka-kernel-handshake.mjs"
   ],
   "reviewedSemantics": [
-    "GREEN_BASELINE_MATCH no longer uploads a diagnostic artifact; attention evidence is retained only for failure or manual review",
-    "the standalone workflow-safety self-test workflow was deleted because WORKFLOW_SAFETY is already routed by Kernel Pulse when runtime_safety drifts",
-    "the workflow safety audit algorithm itself remains intact and monitored",
-    "Node 20/24 differential no longer runs automatically on replay changes and is preserved as workflow_dispatch migration proof",
-    "the previously proven Node 20/24 semantic fingerprint equality remains evidence; runtime migration proof is not repeated without runtime-contract change",
-    "no replay implementation, storage implementation, contracts, write budgets or cryosleep semantics were changed",
-    "run 33653108570 reran replay core, 1024 generated replay worlds and resource physics successfully because the runtime differential workflow remained inside replay_math membership",
-    "run 33653108570 detected no unclassified executables and failed only at the expected manual-review gate before this acceptance",
-    "PostgreSQL integration and G1/G2 historical equivalence remain outside the GitHub/offline trust boundary"
+    "the release manifest is a compact DB-facing passport, not a second kernel registry",
+    "the manifest carries only DB-relevant replay/storage/runtime fingerprints plus exact contract blob identities and prior numeric runtime proof",
+    "dbRelevantSourceBaselineCommit intentionally identifies the baseline from which those DB-relevant fingerprints were proven and does not recursively fingerprint governance",
+    "the handshake is a deterministic planner and performs no network or PostgreSQL writes",
+    "all five recovery gates must be true before any automatic migration can even become eligible",
+    "missing or drifted component fingerprints fail closed to MANUAL_REVIEW_REQUIRED",
+    "an applied migration with a mismatched content hash fails closed",
+    "future automatic migrations must have an exact 64-hex contentHash, be explicitly allowlisted and marked idempotent",
+    "KNOWN_DELTA_READY only declares eligibility and exact migration identity; it does not execute SQL",
+    "the current release manifest declares zero required migrations and firstRecoveryMode READ_ONLY_RECONCILIATION_ONLY",
+    "GitHub is never granted arbitrary SQL authority and destructive operations remain DENY",
+    "Kernel Pulse now routes handshake changes through the existing kernel_governance organ instead of adding a new component/workflow",
+    "run 33655338937 passed syntax validation and all five handshake self-test cases, found zero unclassified executables, and failed only at the expected manual-review gate",
+    "replay_math, storage_write and runtime_safety fingerprints remained unchanged",
+    "PostgreSQL remains untouched; live integration and G1/G2 historical equivalence remain NOT_YET_VERIFIED/NOT_YET_PROVEN"
   ],
-  "acceptedAtSourceTime": "2026-09-02T16:10:00Z"
+  "acceptedAtSourceTime": "2026-09-02T16:32:00Z"
 }
