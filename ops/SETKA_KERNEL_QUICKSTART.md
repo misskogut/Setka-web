@@ -33,18 +33,26 @@ The Node cross-runtime differential is a migration proof, not a permanent per-ch
 
 ## GitHub -> PostgreSQL handshake
 
-`ops/SETKA_KERNEL_RELEASE_MANIFEST.json` is the compact machine passport presented to the database after recovery. It contains the accepted release identity, DB-relevant component fingerprints, contract blob SHAs, runtime proof and reconciliation policy.
+`ops/SETKA_KERNEL_RELEASE_MANIFEST.json` is the compact machine passport presented to the database after recovery. It contains the accepted release identity, DB-relevant component fingerprints, contract blob SHAs, runtime proof, reconciliation policy and transcript-safe kernel activity semantics.
 
 `ops/setka-kernel-handshake.mjs` is a deterministic planner. Given a future `SETKA_DB_KERNEL_STATE_V1` snapshot, it returns one of four useful states:
 
-- `SYNCED_NOOP` — known state already matches; do nothing;
-- `KNOWN_DELTA_READY` — only explicitly allowlisted, idempotent migrations are pending and all recovery gates are true;
-- `MANUAL_REVIEW_REQUIRED` — unknown component/schema drift exists; no automatic write;
+- `SYNCED_NOOP` — known state already matches; do nothing and do not create canonical transcript noise;
+- `KNOWN_DELTA_READY` — only exact, allowlisted, idempotent migrations are pending and all recovery gates are true; this is eligibility, not SQL execution authority;
+- `MANUAL_REVIEW_REQUIRED` — unknown component/schema/migration-hash drift exists; no automatic write;
 - `BLOCKED_BY_RECOVERY_GATES` — SQL/backup/audit/cryosleep gates are incomplete; read-only only.
+
+The result also contains a `transcriptPlan`. A future state-changing executor must use activity `KERNEL_RECONCILIATION` / `Автообновление системы по ядру`, one stable `operation_id`, STARTED/COMPLETED or FAILED causal boundaries, before/after state hashes, and transcript read-back as the final verification boundary.
+
+Revert and reapply are never edits of old history. They are new append-only causal events linked to the original operation. Rollback classes are `REVERSIBLE`, `FORWARD_FIX_ONLY`, and `IRREVERSIBLE`.
 
 Self-test: `node ops/setka-kernel-handshake.mjs --selftest`.
 
 The first post-incident handshake is deliberately read-only. GitHub is never granted arbitrary SQL authority.
+
+Full Supabase implementation order after SQL recovery:
+
+`ops/SETKA_SUPABASE_KERNEL_SYNC_TODO.md`
 
 ## Single registry
 
