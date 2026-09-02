@@ -1,0 +1,94 @@
+{
+  "schemaVersion": "SETKA_POST_INCIDENT_KERNEL_MANIFEST_V1",
+  "status": "GITHUB_ONLY_NOT_SUPABASE",
+  "incidentDate": "2026-09-02",
+  "projectRef": "gfchgaphzhxufwdhrcis",
+  "sourceHead": "7295272cea6f5a480e717ef8e08948277bd5ba4d",
+  "productionDatabaseIntegrated": false,
+  "productionDatabaseWritableVerified": false,
+  "emergencyCryosleepRequired": true,
+  "coreLaw": "STATE(t) = GENESIS + LAW + VARIABLES + CAUSAL_PATCHES<=t + IRREVERSIBLE_INPUTS<=t + REPLAY_CONTRACT",
+  "architecture": {
+    "primary": "docs/SETKA_PROCEDURAL_STORAGE_V1.md",
+    "coldStart": "SETKA_START_HERE.md",
+    "dataModel": "SETKA_DATA_MODEL_V1.md",
+    "decisionLog": "docs/DECISIONS_LOG.md",
+    "outageBackfill": "ops/SETKA_EMERGENCY_TRANSCRIPT_BACKFILL_2026-09-02.md",
+    "postRecoveryRunbook": "ops/SETKA_POST_RECOVERY_BOOTSTRAP_V1.md"
+  },
+  "machineContracts": [
+    "contracts/setka-replay-contract-v1.schema.json",
+    "contracts/setka-causal-event-v1.schema.json"
+  ],
+  "offlineKernel": [
+    "core/replay/stable-json.mjs",
+    "core/replay/replay-engine.mjs",
+    "core/replay/materializer.mjs",
+    "core/replay/capsule-builder.mjs",
+    "core/storage/write-admission.mjs",
+    "core/storage/canonical-event-writer.mjs",
+    "core/replay/README.md",
+    "tests/setka-replay-core.test.mjs"
+  ],
+  "implementedCapabilities": [
+    "logistic-map deterministic replay",
+    "Mandelbrot orbit deterministic replay with finite escape sealing",
+    "exact numeric replay contract",
+    "causal parameter patches at exact tick boundaries",
+    "irreversible input classes including human, LLM, external and message events",
+    "sparse hash-verified checkpoint restore",
+    "single-pass bounded trajectory materialization",
+    "causal capsules with elapsed time and mathematical step/point distance",
+    "semantic canonical-write admission",
+    "per-event/per-run/per-entity/per-fleet/per-hour write budgets",
+    "persistence versus independent read-back verification distinction",
+    "fail-closed causal event ordering and unknown-write review",
+    "offline deterministic regression tests with golden hashes"
+  ],
+  "safety": {
+    "cryosleepFile": "ops/SETKA_CRYOSLEEP.yml",
+    "cryosleepGate": ".github/actions/setka-cryo-gate/action.yml",
+    "storageFuse": ".github/workflows/setka-storage-fuse.yml",
+    "storageFuseMode": "MANUAL_PREPARED_NOT_PERIODICALLY_ACTIVE",
+    "workflowSafetyAudit": "ops/setka-workflow-safety-audit.mjs",
+    "workflowSafetyCI": ".github/workflows/setka-workflow-safety-selftest.yml",
+    "syntheticRunner": ".github/workflows/_setka-synthetic-runner.yml",
+    "syntheticExecutionPolicy": "MANUAL_ONLY_AND_CRYOSLEEP_GATED_DURING_RECOVERY"
+  },
+  "offlineEvidence": [
+    {
+      "kind": "CORE_REPLAY_SELFTEST",
+      "head": "f0ce14e3ca4435eb82ab84d4d9c33a79dba1c761",
+      "runId": 33640592496,
+      "conclusion": "success"
+    },
+    {
+      "kind": "WORKFLOW_SAFETY_SELFTEST",
+      "head": "033e2b47c77a1b1df1e4787457077421dac008fb",
+      "runId": 33641255315,
+      "conclusion": "success"
+    }
+  ],
+  "databaseIntegrationGates": [
+    "real SELECT 1 succeeds",
+    "emergency cryosleep remains ON",
+    "full PostgreSQL emergency backup completes before cleanup",
+    "schema-only dump and migration history are preserved",
+    "read-only storage/relation audit is captured",
+    "relation base/5/62753 is identified",
+    "outage transcript session is appended as temporal backfill and read back",
+    "known scientific G1/G2 ranges pass shadow replay/hash verification",
+    "write admission runs in shadow mode before writer replacement",
+    "compaction targets are proven derived/cache/materialized/technical garbage",
+    "storage fuse is validated against real post-recovery metrics",
+    "explicit President resume decision is recorded"
+  ],
+  "resumeStrategy": "ONE_SMALL_DETERMINISTIC_CANARY_THEN_STORAGE_DELTA_VERIFY_THEN_SMALL_FLEET_THEN_GRADUAL_RESUME",
+  "prohibitions": [
+    "do not claim this GitHub kernel is already connected to Supabase",
+    "do not delete existing PostgreSQL history based only on offline replay tests",
+    "do not rewrite historical mother-transcript event numbers",
+    "do not resume synthetic/simulation/autonomous workloads before recovery gates",
+    "do not treat control-plane ACTIVE_HEALTHY as SQL health proof"
+  ]
+}
