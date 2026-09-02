@@ -49,12 +49,12 @@
     "numerics": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["mode", "runtimeContract"],
+      "required": ["mode", "runtimeContract", "rounding", "operationOrderVersion"],
       "properties": {
         "mode": { "enum": ["FLOAT64_JS_V1"] },
         "runtimeContract": { "type": "string", "minLength": 1 },
-        "rounding": { "type": "string" },
-        "operationOrderVersion": { "type": "string" }
+        "rounding": { "type": "string", "minLength": 1 },
+        "operationOrderVersion": { "type": "string", "minLength": 1 }
       }
     },
     "clock": {
@@ -78,8 +78,8 @@
         "properties": {
           "tick": { "type": "integer", "minimum": 0 },
           "throughSequence": { "type": ["integer", "null"], "minimum": 0 },
-          "stateHash": { "type": "string", "minLength": 16 },
-          "trajectoryRootHash": { "type": ["string", "null"] },
+          "stateHash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "trajectoryRootHash": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
           "snapshot": {
             "type": ["object", "null"],
             "additionalProperties": false,
