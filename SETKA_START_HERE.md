@@ -6,6 +6,27 @@ Purpose: let a fresh ChatGPT Work run reconstruct SETKA quickly, verify the curr
 
 > This document is a map, not the database. Never trust documentation over current code, migrations, live schema, active checkpoints, or deployed services.
 
+## 0. If PostgreSQL/Supabase has just become SQL-ready after the 2026-09-02 incident
+
+Do **not** reconstruct the recovery plan from chat history.
+
+Read these two files first, in this order:
+
+1. `ops/SETKA_POST_RECOVERY_BOOTSTRAP_V1.md` — preservation-first recovery gates and phased bootstrap.
+2. `ops/SETKA_SUPABASE_KERNEL_SYNC_TODO.md` — exact GitHub ↔ PostgreSQL handshake, transcript integration, revert/reapply rules, information law and BEFORE/AFTER measurement plan.
+
+Then verify live reality before any write:
+
+`SELECT 1 -> cryosleep ON -> full backup -> schema/migration preservation -> read-only storage audit -> relation base/5/62753 mapping -> outage backfill -> transcript writer/read-back verification -> DB state adapter -> READ-ONLY kernel handshake`.
+
+Do not enable automatic migration, compaction, dense-writer changes or resume fleet/synthetic activity merely because the control plane says `ACTIVE_HEALTHY`.
+
+The post-incident architecture rule to preserve is:
+
+`GitHub = reproducible law / PostgreSQL = living state + irreversible history / Transcript = proof / deterministic consequences = derive or materialize on demand`.
+
+The recovered pre-incident database is evidence to measure and classify, not an architecture to preserve blindly. Capture real BEFORE metrics before any approved compaction so the final storage/write/compute improvement can be measured rather than guessed.
+
 ## 1. Truth hierarchy
 
 When sources disagree, use this order:
