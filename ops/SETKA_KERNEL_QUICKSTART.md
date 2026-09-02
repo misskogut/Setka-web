@@ -16,18 +16,20 @@ If protected fingerprints match the accepted baseline, the result is:
 
 `GREEN_BASELINE_MATCH / FAST PATH`
 
-No replay/property/resource/safety deep suites are rerun. Unchanged proof is reused.
+No replay/property/resource/safety deep suites are rerun. Unchanged proof is reused. A green fast path is kept in the workflow log only; it does not create a persistent CI artifact merely to say that nothing changed.
 
-If protected drift exists, the pulse runs only the check groups attached to the changed component(s), syntax-checks changed executable files and reports the exact manual semantic review targets. Automatic tests never self-accept drift.
+If protected drift exists, the pulse runs only the check groups attached to the changed component(s), syntax-checks changed executable files and reports the exact manual semantic review targets. Automatic tests never self-accept drift. Diagnostic artifacts are preserved only when attention is required.
 
 Examples:
 
 - documentation-only change outside protected paths -> no kernel run;
-- `replay_math` drift -> replay core + property invariants + resource physics; Node runtime differential remains a separate cross-runtime CI proof;
+- `replay_math` drift -> replay core + property invariants + resource physics;
 - `storage_write` drift -> replay/storage core + resource physics;
-- `runtime_safety` drift -> workflow safety audit;
+- `runtime_safety` drift -> the shared workflow safety audit through Kernel Pulse;
 - `kernel_governance` drift -> baseline/coverage/pulse self-behavior plus manual governance review;
 - unknown executable under `core/` -> `UNCLASSIFIED_KERNEL_SURFACE` and manual review.
+
+The Node cross-runtime differential is a migration proof, not a permanent per-change tax. Run it manually when the numeric runtime contract changes. The historical Node 20 -> 24 transition already has exact fingerprint evidence.
 
 ## Single registry
 
@@ -46,7 +48,7 @@ Do not create a second registry for the same facts.
 
 `ops/SETKA_KERNEL_BASELINE_ACCEPTANCE.json` is the sole authority for the accepted baseline. A baseline transition must name the previous baseline, the reviewed target commit, reviewer, reviewed components/files/semantics and CI evidence.
 
-Green pulse outputs are derived evidence and belong in CI artifacts/logs. They are not committed back into the repository merely to say that nothing changed. This prevents the loop `verification -> status commit -> verification`.
+Green pulse outputs are derived evidence. They are not committed back into the repository merely to say that nothing changed. This prevents the loop `verification -> status commit -> verification`.
 
 ## Complexity rule
 
