@@ -4,6 +4,10 @@ Status: PREPARED_IN_GITHUB / DO_NOT_EXECUTE UNTIL POSTGRESQL IS SQL-READY.
 
 Purpose: bring the new causal-replay/storage kernel into SETKA safely after the 2026-09-02 PostgreSQL disk-full incident.
 
+Detailed Supabase execution order for kernel sync + transcript provenance:
+
+`ops/SETKA_SUPABASE_KERNEL_SYNC_TODO.md`
+
 ## Hard gates
 
 No integration/cleanup/resume may begin until all are true:
@@ -47,9 +51,9 @@ Classify each large object:
 
 `CANONICAL_CAUSE / IRREVERSIBLE_INPUT / TIME_INTERVAL / STEP_INTERVAL / CHECKPOINT / DERIVED / CACHE / ARCHIVE_CANDIDATE / TECH_GARBAGE`.
 
-## Phase B.5 — Read-only GitHub kernel handshake
+## Phase B.5 — Optional read-only kernel preview
 
-After the hard gates are true, construct a small `SETKA_DB_KERNEL_STATE_V1` snapshot from the audited live database and compare it with:
+After hard gates are true, a small `SETKA_DB_KERNEL_STATE_V1` snapshot may be built from audited live facts and compared with:
 
 `ops/SETKA_KERNEL_RELEASE_MANIFEST.json`
 
@@ -57,16 +61,14 @@ using:
 
 `node ops/setka-kernel-handshake.mjs --db-state <snapshot.json>`
 
-The planner is deterministic and does not need an AI to rediscover the delta. Expected outcomes:
+This preview is read-only. Expected outcomes:
 
-- `SYNCED_NOOP` — database already represents the accepted kernel state; do nothing;
-- `KNOWN_DELTA_READY` — only predeclared, allowlisted, idempotent migrations are pending;
-- `MANUAL_REVIEW_REQUIRED` — an unknown component/schema difference exists; do not write;
+- `SYNCED_NOOP` — no causal change, no canonical transcript row;
+- `KNOWN_DELTA_READY` — exact known delta plan only;
+- `MANUAL_REVIEW_REQUIRED` — stop and inspect reported delta;
 - `BLOCKED_BY_RECOVERY_GATES` — remain read-only.
 
-For the first post-incident recovery, `SETKA_KERNEL_RELEASE_MANIFEST_V1` currently declares no automatic migrations and `firstRecoveryMode = READ_ONLY_RECONCILIATION_ONLY`. Therefore this handshake may reduce investigation work, but it may not modify PostgreSQL.
-
-GitHub must never receive arbitrary SQL authority. Future automatic migration execution is permitted only for an exact migration id/hash already present in a reviewed release manifest, marked idempotent and auto-apply-allowed, with all recovery gates true.
+For first post-incident recovery, the manifest declares zero automatic migrations and `firstRecoveryMode = READ_ONLY_RECONCILIATION_ONLY`.
 
 ## Phase C — Canonical outage backfill
 
@@ -81,6 +83,32 @@ Rules:
 - original source time/provenance preserved;
 - no historical event numbers rewritten;
 - read back canonical event id/event_no before marking complete.
+
+## Phase C.5 — Verify transcript-bound kernel reconciliation
+
+Before any future kernel-caused state-changing operation:
+
+1. verify the live canonical transcript writer/read-back path;
+2. implement or reuse the smallest DB-facing kernel release state/ledger;
+3. implement the read-only `SETKA_DB_KERNEL_STATE_V1` adapter;
+4. follow `ops/SETKA_SUPABASE_KERNEL_SYNC_TODO.md`;
+5. prove transcript semantics in shadow/disposable mode.
+
+Kernel activity identity:
+
+- activity code: `KERNEL_RECONCILIATION`;
+- label: `Автообновление системы по ядру`;
+- actor: `SYSTEM_KERNEL_SYNC`.
+
+A real state-changing operation must preserve a causal boundary:
+
+`STARTED -> known change transaction -> COMPLETED/FAILED -> transcript read-back -> VERIFIED`.
+
+`SYNCED_NOOP` remains causal silence and must not generate canonical transcript noise.
+
+Revert/reapply never rewrites the earlier update. They are new append-only causal events linked to the original operation. Whole-database rollback is not an acceptable substitute for reverting one kernel change when later independent canonical data would be lost.
+
+GitHub never receives arbitrary SQL authority.
 
 ## Phase D — Shadow replay integration
 
