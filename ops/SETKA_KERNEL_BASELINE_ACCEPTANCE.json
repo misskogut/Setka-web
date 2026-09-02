@@ -1,23 +1,41 @@
 {
   "schemaVersion": "SETKA_KERNEL_BASELINE_ACCEPTANCE_V1",
-  "mode": "BOOTSTRAP",
-  "previousBaselineCommit": null,
-  "acceptedBaselineCommit": "59c54bc7e257043f988a6ba8b0f0545376c8cb59",
+  "mode": "REVIEWED_TRANSITION",
+  "previousBaselineCommit": "59c54bc7e257043f988a6ba8b0f0545376c8cb59",
+  "acceptedBaselineCommit": "ebd77e6f6be51ab9a80c7d28158f27322364d1fe",
   "reviewedBy": "SETKA-S-0001-0001",
-  "reviewContext": "President-directed Kernel Pulse hardening session",
-  "reviewRunId": 33643855136,
+  "reviewContext": "President-authorized GitHub kernel optimization: baseline guard, executable coverage, structural attention routing, Node runtime differential, deterministic property testing and resource physics",
+  "reviewRunId": 33648807792,
+  "runtimeDifferentialRunId": 33648807781,
   "reviewedComponents": [
+    "replay_math",
+    "storage_write",
     "kernel_governance"
   ],
   "reviewedFiles": [
     ".github/workflows/setka-kernel-pulse.yml",
+    ".github/workflows/setka-node-runtime-differential.yml",
     "ops/SETKA_KERNEL_MAP.json",
-    "ops/setka-kernel-pulse.mjs"
+    "ops/SETKA_KERNEL_RESOURCE_BUDGETS.json",
+    "ops/setka-kernel-baseline-guard.mjs",
+    "ops/setka-kernel-pulse.mjs",
+    "ops/setka-runtime-fingerprint.mjs",
+    "tests/setka-replay-properties.test.mjs",
+    "tests/setka-resource-physics.test.mjs"
   ],
   "reviewedSemantics": [
-    "component fingerprinting",
-    "manual review gate",
-    "baseline semantics"
+    "baseline movement is fail-closed and requires separate reviewed transition evidence",
+    "new executable files under core must be classified or the pulse requires manual review",
+    "exact Git blob fingerprints remain authoritative",
+    "comment/whitespace-normalized structural hashes and exported-symbol segments are attention-routing heuristics, not formal semantic equivalence proofs",
+    "replay and storage implementation modules themselves were not changed by this transition",
+    "1024 deterministic generated replay worlds passed determinism, no-change-to-past, checkpoint equivalence and sampled materialization invariants",
+    "unsafe patch paths and duplicate causal sequences fail closed",
+    "resource physics is a gross regression alarm, with deterministic serialized-size expansion measurement and non-deterministic wall/heap envelopes",
+    "Node v20.20.2 and Node v24.20.0 produced exactly the same replay semantic fingerprint 4d64fbd1f57f8147a289471d14f26ac8bf97579df1fd9193f70fb1a13872fc3",
+    "runtime_safety fingerprint remained unchanged",
+    "no unclassified core executable was detected",
+    "automatic checks do not self-accept protected drift"
   ],
-  "acceptedAtSourceTime": "2026-09-02T14:45:00Z"
+  "acceptedAtSourceTime": "2026-09-02T15:30:00Z"
 }
