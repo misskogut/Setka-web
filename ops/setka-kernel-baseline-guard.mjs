@@ -1,7 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 
-const STATUS_PATH = 'ops/SETKA_KERNEL_STATUS.json';
 const ACCEPTANCE_PATH = 'ops/SETKA_KERNEL_BASELINE_ACCEPTANCE.json';
 
 function git(...argv) {
@@ -29,28 +28,26 @@ function isAncestor(ancestor, descendant) {
   }
 }
 
-const status = JSON.parse(readFileSync(STATUS_PATH, 'utf8'));
 const acceptance = JSON.parse(readFileSync(ACCEPTANCE_PATH, 'utf8'));
 const head = git('rev-parse', 'HEAD');
-const currentBaseline = status.baseline?.commit;
+const currentBaseline = acceptance.acceptedBaselineCommit;
 
-if (status.schemaVersion !== 'SETKA_KERNEL_STATUS_V1') throw new Error('Unsupported kernel status schema');
 if (acceptance.schemaVersion !== 'SETKA_KERNEL_BASELINE_ACCEPTANCE_V1') throw new Error('Unsupported baseline acceptance schema');
-if (!currentBaseline) throw new Error('Kernel status has no baseline commit');
+if (!currentBaseline) throw new Error('Baseline acceptance has no acceptedBaselineCommit');
 assertCommit(currentBaseline, 'Current baseline');
 if (!isAncestor(currentBaseline, head)) throw new Error('Kernel baseline is not an ancestor of HEAD');
 
-let priorStatusCommit = '';
+let priorAcceptanceCommit = '';
 try {
-  priorStatusCommit = git('log', '-1', '--format=%H', 'HEAD^', '--', STATUS_PATH);
+  priorAcceptanceCommit = git('log', '-1', '--format=%H', 'HEAD^', '--', ACCEPTANCE_PATH);
 } catch {
-  priorStatusCommit = '';
+  priorAcceptanceCommit = '';
 }
 
-let previousBaseline = currentBaseline;
-if (priorStatusCommit) {
-  const priorStatus = parseJsonAt(priorStatusCommit, STATUS_PATH);
-  previousBaseline = priorStatus.baseline?.commit ?? null;
+let previousBaseline = null;
+if (priorAcceptanceCommit) {
+  const priorAcceptance = parseJsonAt(priorAcceptanceCommit, ACCEPTANCE_PATH);
+  previousBaseline = priorAcceptance.acceptedBaselineCommit ?? null;
 }
 
 const moved = Boolean(previousBaseline && previousBaseline !== currentBaseline);
@@ -59,9 +56,6 @@ if (moved) {
   if (acceptance.mode !== 'REVIEWED_TRANSITION') throw new Error('Baseline moved without REVIEWED_TRANSITION evidence');
   if (acceptance.previousBaselineCommit !== previousBaseline) {
     throw new Error(`Acceptance previous baseline mismatch: expected ${previousBaseline}`);
-  }
-  if (acceptance.acceptedBaselineCommit !== currentBaseline) {
-    throw new Error(`Acceptance target mismatch: expected ${currentBaseline}`);
   }
   if (!acceptance.reviewedBy || !acceptance.reviewContext || !acceptance.reviewRunId) {
     throw new Error('Baseline transition requires reviewer, review context and CI run evidence');
@@ -72,17 +66,18 @@ if (moved) {
   if (!Array.isArray(acceptance.reviewedFiles) || acceptance.reviewedFiles.length === 0) {
     throw new Error('Baseline transition requires reviewedFiles evidence');
   }
+  if (!Array.isArray(acceptance.reviewedSemantics) || acceptance.reviewedSemantics.length === 0) {
+    throw new Error('Baseline transition requires reviewedSemantics evidence');
+  }
   if (!isAncestor(previousBaseline, currentBaseline)) {
     throw new Error('Accepted baseline does not advance from the previous baseline');
   }
-} else {
-  if (acceptance.acceptedBaselineCommit !== currentBaseline) {
-    throw new Error('Acceptance evidence does not name the active baseline');
-  }
+} else if (acceptance.mode !== 'BOOTSTRAP' && acceptance.mode !== 'REVIEWED_TRANSITION') {
+  throw new Error(`Unsupported acceptance mode: ${acceptance.mode}`);
 }
 
 console.log(JSON.stringify({
-  schemaVersion: 'SETKA_KERNEL_BASELINE_GUARD_RESULT_V1',
+  schemaVersion: 'SETKA_KERNEL_BASELINE_GUARD_RESULT_V2',
   state: moved ? 'REVIEWED_BASELINE_TRANSITION' : 'BASELINE_UNCHANGED',
   head,
   previousBaseline,
