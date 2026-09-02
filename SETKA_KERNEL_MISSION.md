@@ -49,6 +49,32 @@ and to external organs:
 
 The external organ may be vastly stronger than SETKA at its specialty. SETKA remains responsible for the causal role of that organ inside the world.
 
+## Capability assimilation law
+
+SETKA should treat an external system as a capability source, not as a permanent architectural dependency.
+
+Preferred progression:
+
+`DISCOVER -> CONNECT -> OBSERVE -> BENCHMARK -> ABSTRACT CAPABILITY -> DECIDE: KEEP CONNECTOR / HYBRIDIZE / IMPLEMENT NATIVE EQUIVALENT`
+
+The objective is not to copy a vendor or reproduce proprietary internals. The objective is to understand the **general capability contract** well enough that SETKA can choose the cheapest, safest and most sovereign execution path for that capability.
+
+Three valid outcomes exist:
+
+1. **Keep connector** — the external system remains clearly superior or cheaper at its specialty.
+2. **Hybridize** — SETKA keeps identity/history/provenance locally while delegating only the expensive specialist operation.
+3. **Native equivalent** — when a capability can be reproduced from SETKA's own causal model substantially more simply, cheaply or portably, implement only the minimum equivalent capability inside SETKA.
+
+A native equivalent is accepted only when benchmarked against the external capability on the relevant contract. Measure at least correctness/utility, latency, storage, compute, energy, monetary cost, portability, privacy exposure and provenance completeness.
+
+The strategic asymmetry is:
+
+> **External systems can increase SETKA's capability immediately through connectors, while repeated use can reveal which parts are commodity and which can later collapse into a lighter native SETKA primitive.**
+
+This allows SETKA to gain capability faster than it grows in architectural weight.
+
+Do not confuse this with universal replacement. Some external systems may remain permanently better organs. SETKA wins only if the world remains sovereign and the capability remains replaceable.
+
 ## Hardware path — optional, not required for the mission
 
 Do not make custom hardware a prerequisite.
@@ -84,7 +110,10 @@ This mission becomes real only through measurable progress. Track at least:
 - connector replacement success without loss of canonical identity/history;
 - percentage of connector calls using minimum scoped disclosure;
 - recovery success after simulated phone/cloud/connector loss;
-- storage/energy/AI-call cost per verified outcome.
+- storage/energy/AI-call cost per verified outcome;
+- number of external capabilities available through connectors versus mandatory dependencies;
+- capability-assimilation ratio: capabilities gained without equivalent growth in canonical kernel complexity;
+- native-equivalent efficiency when a connector capability is replaced or hybridized: cost/latency/storage/privacy/provenance before vs after.
 
 The strategic goal is not to claim universal superiority. It is to make SETKA increasingly difficult to obsolete because stronger future systems can be connected rather than requiring the SETKA world to migrate into them.
 
@@ -100,7 +129,11 @@ For any substantial kernel proposal, ask:
 
 > **Does this make the world more causally complete, reproducible, portable, sovereign, connector-neutral, safe or resource-efficient — and can we measure the improvement?**
 
-If the answer is no, it is not automatically a kernel priority.
+For any proposed external capability, also ask:
+
+> **Should SETKA connect it, hybridize it, or collapse it into a lighter native primitive — and what benchmark proves the choice?**
+
+If the answer cannot be measured, it is not automatically a kernel priority.
 
 Related strategy/evidence:
 - `docs/SETKA_WORLD_LANDSCAPE_2026-09-02.md`
