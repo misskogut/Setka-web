@@ -1,0 +1,69 @@
+name: SETKA External Storage Fuse
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  storage-fuse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Read Supabase disk metrics without writing to PostgreSQL
+        id: probe
+        continue-on-error: true
+        env:
+          SUPABASE_PROJECT_REF: gfchgaphzhxufwdhrcis
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SETKA_DISK_WARN_AT: '0.75'
+          SETKA_DISK_BRAKE_AT: '0.85'
+        run: |
+          set +e
+          node ops/setka-storage-fuse.mjs
+          rc=$?
+          echo "exit_code=$rc" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Engage external cryosleep at critical disk usage
+        if: steps.probe.outputs.exit_code == '42'
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from datetime import datetime, timezone
+          p=Path('ops/SETKA_CRYOSLEEP.yml')
+          text=p.read_text()
+          text=text.replace('state: OFF','state: ON')
+          lines=[]
+          for line in text.splitlines():
+              if line.startswith('reason:'):
+                  line='reason: automatic storage fuse tripped at >=85% filesystem usage'
+              if line.startswith('set_at_utc:'):
+                  line='set_at_utc: '+datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00','Z')
+              lines.append(line)
+          p.write_text('\n'.join(lines)+'\n')
+          PY
+          if git diff --quiet -- ops/SETKA_CRYOSLEEP.yml; then
+            echo 'Cryosleep already ON; no commit needed.'
+            exit 0
+          fi
+          git config user.name 'SETKA Safety Fuse'
+          git config user.email 'actions@users.noreply.github.com'
+          git add ops/SETKA_CRYOSLEEP.yml
+          git commit -m 'safety: auto-engage SETKA cryosleep on disk pressure'
+          git push
+      - name: Fail closed when metrics are unavailable
+        if: steps.probe.outputs.exit_code != '0' && steps.probe.outputs.exit_code != '10' && steps.probe.outputs.exit_code != '42'
+        run: |
+          echo 'Storage metrics could not be verified. No SETKA process is authorized to resume from this workflow.'
+          exit 1
+      - name: Warning band
+        if: steps.probe.outputs.exit_code == '10'
+        run: echo 'SETKA disk warning >=75%; do not start large batches.'
+      - name: Healthy band
+        if: steps.probe.outputs.exit_code == '0'
+        run: echo 'SETKA disk usage below warning threshold.'
