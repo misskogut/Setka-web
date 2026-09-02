@@ -21,8 +21,8 @@ function validateManifest(manifest) {
   }
   if (!Array.isArray(manifest.database?.requiredMigrations)) fail('requiredMigrations must be an array');
   for (const migration of manifest.database.requiredMigrations) {
-    if (!migration?.id || migration.autoApplyAllowed !== true || migration.idempotent !== true) {
-      fail('every automatic migration must be explicitly allowlisted and idempotent');
+    if (!migration?.id || !/^[a-f0-9]{64}$/.test(migration?.contentHash ?? '') || migration.autoApplyAllowed !== true || migration.idempotent !== true) {
+      fail('every automatic migration must have an exact contentHash and be explicitly allowlisted + idempotent');
     }
   }
 }
@@ -51,7 +51,12 @@ export function reconcileKernel(manifest, databaseState) {
   });
 
   const requiredMigrations = manifest.database.requiredMigrations ?? [];
-  const applied = new Set(databaseState.appliedMigrations);
+  const applied = new Map(databaseState.appliedMigrations.map((migration) =>
+    typeof migration === 'string' ? [migration, null] : [migration.id, migration.contentHash ?? null]
+  ));
+  const migrationIntegrityErrors = requiredMigrations.filter((migration) =>
+    applied.has(migration.id) && applied.get(migration.id) !== null && applied.get(migration.id) !== migration.contentHash
+  );
   const pendingMigrations = requiredMigrations.filter((migration) => !applied.has(migration.id));
   const schemaMatches = manifest.database.requiredSchemaVersion === null ||
     databaseState.databaseSchemaVersion === manifest.database.requiredSchemaVersion;
@@ -60,10 +65,11 @@ export function reconcileKernel(manifest, databaseState) {
     schemaVersion: 'SETKA_KERNEL_HANDSHAKE_RESULT_V1',
     releaseId: manifest.releaseId,
     acceptedBaselineCommit: manifest.acceptedBaselineCommit,
-    writesAllowed: false,
+    automaticMigrationEligible: false,
     componentDelta,
-    pendingMigrations: pendingMigrations.map((migration) => migration.id),
+    pendingMigrations: pendingMigrations.map((migration) => ({ id: migration.id, contentHash: migration.contentHash })),
     blockedGates,
+    migrationIntegrityErrors: migrationIntegrityErrors.map((migration) => migration.id),
     databaseSchemaMatches: schemaMatches,
     actions: []
   };
@@ -72,19 +78,21 @@ export function reconcileKernel(manifest, databaseState) {
     return { ...base, state: 'BLOCKED_BY_RECOVERY_GATES', actions: ['READ_ONLY_ONLY'] };
   }
 
+  if (migrationIntegrityErrors.length) {
+    return { ...base, state: 'MANUAL_REVIEW_REQUIRED', actions: ['MIGRATION_HASH_MISMATCH', 'DO_NOT_AUTO_WRITE'] };
+  }
+
   const unknownComponentDelta = componentDelta.filter((item) => item.state !== 'MATCH');
   if (unknownComponentDelta.length) {
     return { ...base, state: 'MANUAL_REVIEW_REQUIRED', actions: ['COMPARE_LIVE_STATE', 'DO_NOT_AUTO_WRITE'] };
   }
 
   if (pendingMigrations.length) {
-    const safe = pendingMigrations.every((migration) => migration.autoApplyAllowed === true && migration.idempotent === true);
-    if (!safe) return { ...base, state: 'MANUAL_REVIEW_REQUIRED', actions: ['DO_NOT_AUTO_WRITE'] };
     return {
       ...base,
       state: 'KNOWN_DELTA_READY',
-      writesAllowed: true,
-      actions: pendingMigrations.map((migration) => `APPLY_ALLOWLISTED_MIGRATION:${migration.id}`)
+      automaticMigrationEligible: true,
+      actions: pendingMigrations.map((migration) => `APPLY_EXACT_ALLOWLISTED_MIGRATION:${migration.id}:${migration.contentHash}`)
     };
   }
 
@@ -118,15 +126,25 @@ function runSelfTest() {
   strictEqual(reconcileKernel(manifest, blockedState).state, 'BLOCKED_BY_RECOVERY_GATES');
 
   const migrationManifest = structuredClone(manifest);
-  migrationManifest.database.requiredMigrations = [{ id: 'M_TEST_001', autoApplyAllowed: true, idempotent: true }];
+  migrationManifest.database.requiredMigrations = [{
+    id: 'M_TEST_001',
+    contentHash: '1'.repeat(64),
+    autoApplyAllowed: true,
+    idempotent: true
+  }];
   const migrationResult = reconcileKernel(migrationManifest, baseState);
   strictEqual(migrationResult.state, 'KNOWN_DELTA_READY');
-  deepStrictEqual(migrationResult.actions, ['APPLY_ALLOWLISTED_MIGRATION:M_TEST_001']);
+  strictEqual(migrationResult.automaticMigrationEligible, true);
+  deepStrictEqual(migrationResult.actions, [`APPLY_EXACT_ALLOWLISTED_MIGRATION:M_TEST_001:${'1'.repeat(64)}`]);
+
+  const badAppliedState = structuredClone(baseState);
+  badAppliedState.appliedMigrations = [{ id: 'M_TEST_001', contentHash: '2'.repeat(64) }];
+  strictEqual(reconcileKernel(migrationManifest, badAppliedState).state, 'MANUAL_REVIEW_REQUIRED');
 
   console.log(JSON.stringify({
     schemaVersion: 'SETKA_KERNEL_HANDSHAKE_SELFTEST_V1',
     state: 'PASS',
-    cases: 4
+    cases: 5
   }, null, 2));
 }
 
