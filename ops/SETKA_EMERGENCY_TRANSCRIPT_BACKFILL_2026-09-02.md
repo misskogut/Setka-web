@@ -41,10 +41,14 @@ The emergency session established the **Procedural Storage / Causal Replay** arc
 - preserve/derive `generated_steps` / `generated_points` between event boundaries;
 - parameter mutations are canonical causal patches anchored to exact logical tick/coordinate boundary and wall/simulated time;
 - during replay, the engine applies each historical parameter patch at the exact original boundary rather than guessing it again;
+- human input, LLM output, external input and entity messages are explicit irreversible/non-reproducible causal classes;
 - on-demand materialization reconstructs dense trajectories for visualization, scientific inspection, forensic proof or export;
 - destructive compaction is prohibited until replay is proven and checkpoint/root hashes match;
 - all future canonical fleet/synthetic writers must pass through semantic write admission plus event/byte budgets;
-- shared external-runtime safety gating must fail closed while emergency cryosleep is ON.
+- write budgets are scoped to run, entity, fleet and hour, not only one process invocation;
+- a write receipt and a verified read-back are separate facts (`persisted != verified`);
+- shared external-runtime safety gating must fail closed while emergency cryosleep is ON;
+- synthetic workflows are manual-only during the recovery era and active browser runners share one reusable guarded workflow.
 
 Canonical conceptual replay:
 
@@ -77,20 +81,47 @@ Machine/executable kernel created during the same outage:
 - `1247a427c498c465817477702dec71de842d15e7` — causal capsule builder with time/step intervals;
 - `98a1f1217db75972949dbde24ea009b43dda2212` — semantic write admission + per-run event/byte budgets;
 - `c994326b382ee2f06761fed92761f3bd1e7b31bb` — offline deterministic replay test suite;
-- `676d742d929113fbd4d41eb33122c5c1af71a39d` — offline GitHub Actions self-test, no Supabase access; first run completed successfully;
+- `676d742d929113fbd4d41eb33122c5c1af71a39d` — offline GitHub Actions self-test, no Supabase access;
 - `95115ea68357ca43e431cef54be4255e9473c3fe` — centralized fail-closed cryosleep composite action;
 - `d01a3788adde5b10b9fb475dca8b5cbbb20f2935` — guarded canonical-event writer adapter;
 - `e76018e003ec4d4bae1910459b7dea2a4f1a615f` — executable replay-core operating documentation;
 - `2dfc7c4eaa2e5a4bcae4308c1b9a1d23ef615c69` — causal replay wired into `SETKA_START_HERE.md` cold-start law;
 - `dccf24e6eedadd3cf46676096fcef5a4455b1aaf` — causal replay semantics wired into `SETKA_DATA_MODEL_V1.md`;
-- `de83c386dc97f7c5a276579c121e252b7b840405` — ADR-024 added to canonical decision log.
+- `de83c386dc97f7c5a276579c121e252b7b840405` — ADR-024 added to canonical decision log;
+- `fd6ebb2b65d7e507801f4b6146a27350d400a07b` — sparse checkpoints made restorable with hash-verified snapshots;
+- `7f0a006256e51b4093a22ed4cec341da35849bde` — checkpoint restore + single-pass replay ranges;
+- `f02a7197c444bc0c799cac241c944d95d4f0bee9` — one-pass materialized ranges;
+- `8f70d350fb4b02e1c82e788facd3a74f16debdcf` — checkpoint/writer tests;
+- `82f2b055af2a770adc430e64e74b9420bf640edc` — fail-closed event ordering, exact numeric semantics enforcement path and finite Mandelbrot escape sealing;
+- `017d999d7af5ece44f219c315e12b73c4ca90c3c` — checkpoint-aware materialization bounded by point count and replay-step budget;
+- `9d879484dd834243892dd9072a0b29513de532d8` — per-run/per-entity/per-fleet/per-hour causal write budgets;
+- `092921d5bc3fa685028bab861e5b74dd6435d134` — persistence/read-back proof separated as `persisted` and `verified`;
+- `df4016a210180254e4327c8a83ef06c2b3615bfa` — causal-event contract expanded for HUMAN_INPUT / LLM_OUTPUT / MESSAGE / SEAL;
+- `fc674a85b92f783a80b4d1f8f22c59eb1cc42d84` — replay contract requires explicit runtime/rounding/operation-order semantics;
+- `f0ce14e3ca4435eb82ab84d4d9c33a79dba1c761` — hardened deterministic golden-hash, checkpoint, escape, budget and read-back tests;
+- `6d699313efa7d3a15b10d0cd55e9f742da245aaa` — offline CI includes canonical writer syntax/readiness;
+- `e1b4a5216570fe66ffb6999dd5f8e5f93133761c` — hardened replay-core operating rules.
 
 Workflow consolidation/safety updates:
 
 - `a40443e3d2fa35e2a4f730f43a468303c72ba3a9` — Foundation 0.1.2 synthetic workflow moved to shared cryosleep gate;
 - `79b68b0bff08ff9f2119c34c56089e86643bca48` — Foundation 0.2.0 synthetic workflow moved to shared cryosleep gate;
 - `5616a696acb5178b33fbe007a18381b0ecb2144b` — Synthetic User Lab moved to shared cryosleep gate;
-- `ecbfabc2ec4d94d59126142c00b83b32c7d669f3` — archived Foundation 0.1 synthetic workflow guarded by shared cryosleep gate.
+- `ecbfabc2ec4d94d59126142c00b83b32c7d669f3` — archived Foundation 0.1 synthetic workflow guarded by shared cryosleep gate;
+- `a7869ba187ebf0cc5d02434f1e972ae38533e672` / `487760d9ff588a7549676535b04f991d3a8a9ae3` — offline workflow safety audit created and hardened to reject automatic synthetic/simulation triggers or unguarded runtime paths;
+- `8d2a104ae6f86327f09b7c834ca13af628caeee7` — synthetic workflows enforced against central cryosleep gate;
+- `7b7745a25b9acf7a064a70bda4292c898ca9a886` — Foundation 0.1.2 synthetic workflow made manual-only;
+- `cb2632e35bd169f47d1c87b25e3b5a5d62ae815d` — Foundation 0.2.0 synthetic workflow made manual-only;
+- `2a8666701796f7fd9687361e64815c867bc6db6d` — Synthetic User Lab made manual-only;
+- `6ec1f66c7bb35bf18fb05eedc8cb6d372f4c6d46` — reusable guarded synthetic browser runner created;
+- `bdd021629f2e5404838fabfe277d01cd34938fb7` — Foundation 0.1.2 wrapper routed through reusable runner;
+- `2f21d8a58bd2d7081fcd3ec8b622edbf02e50c06` — Foundation 0.2.0 wrapper routed through reusable runner;
+- `06a23fd56fdde56e23e6834df6136b627016b5f4` — Synthetic User Lab wrapper routed through reusable runner;
+- `dd10c9b40f21f1dbb8387a0c3eb90d36e46bb4cf` — Pages deploy skips kernel/docs/ops-only changes so emergency maintenance does not cause unnecessary front deployments.
+
+Recovery sequencing artifact:
+
+- `fd19d08e1e1d5d1577911025629bb13819458d8e` — `ops/SETKA_POST_RECOVERY_BOOTSTRAP_V1.md`, explicit gates from SQL recovery through backup/audit/shadow replay/write admission/compaction/canary resume.
 
 This file is the outage-side manifest that tells recovery tooling what still needs to be appended to canonical SETKA once PostgreSQL is writable.
 
@@ -107,7 +138,7 @@ At minimum the future canonical event should contain:
 - machine contract/core paths and commit provenance;
 - summary of the causal-replay rules above;
 - implementation state: `GITHUB_OFFLINE_CORE_IMPLEMENTED / SUPABASE_INTEGRATION_NOT_YET_APPLIED`;
-- offline CI evidence for deterministic replay core;
+- offline CI and workflow-safety evidence;
 - explicit statement that no old transcript rows are rewritten;
 - read-back verification fields after insertion.
 
@@ -118,5 +149,7 @@ This backfill does **not** authorize immediate cleanup. Correct order remains:
 `SQL RECOVERY -> FULL BACKUP -> READ-ONLY SIZE/RELATION AUDIT -> CANONICAL BACKFILL -> REPLAY INTEGRATION/TEST -> HASH VERIFICATION -> COMPACTION`
 
 Before any writer migration, compare the current PostgreSQL schema/functions/Edge Functions against the GitHub contracts. Do not assume that the offline kernel is already connected to production merely because its tests pass.
+
+Follow `ops/SETKA_POST_RECOVERY_BOOTSTRAP_V1.md` and keep external cryosleep ON until the explicit resume gate is satisfied.
 
 The architecture session and its GitHub provenance must survive even if the database cannot yet accept the canonical write.
