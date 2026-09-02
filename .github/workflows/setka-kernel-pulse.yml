@@ -18,6 +18,7 @@ on:
       - 'ops/setka-workflow-safety-audit.mjs'
       - 'ops/setka-kernel-pulse.mjs'
       - 'ops/SETKA_CRYOSLEEP.yml'
+      - 'ops/SETKA_KERNEL_MAP.json'
       - 'ops/SETKA_KERNEL_STATUS.json'
 
 permissions:
@@ -39,9 +40,9 @@ jobs:
         id: pulse
         run: node ops/setka-kernel-pulse.mjs --out kernel-pulse-result.json
 
-      - name: Parse machine replay contracts
+      - name: Parse machine contracts and pulse metadata
         run: |
-          node -e "JSON.parse(require('fs').readFileSync('contracts/setka-replay-contract-v1.schema.json','utf8')); JSON.parse(require('fs').readFileSync('contracts/setka-causal-event-v1.schema.json','utf8')); console.log('machine contracts: OK')"
+          node -e "for (const f of ['contracts/setka-replay-contract-v1.schema.json','contracts/setka-causal-event-v1.schema.json','ops/SETKA_KERNEL_MAP.json','ops/SETKA_KERNEL_STATUS.json']) JSON.parse(require('fs').readFileSync(f,'utf8')); console.log('machine contracts + kernel metadata: OK')"
 
       - name: Syntax check kernel machinery
         run: |
