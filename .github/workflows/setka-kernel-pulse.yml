@@ -1,0 +1,76 @@
+name: SETKA Kernel Pulse
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'core/replay/**'
+      - 'core/storage/**'
+      - 'contracts/setka-*-v1.schema.json'
+      - 'tests/setka-replay-core.test.mjs'
+      - '.github/actions/setka-cryo-gate/**'
+      - '.github/workflows/*synthetic*.yml'
+      - '.github/workflows/*simulation*.yml'
+      - '.github/workflows/_setka-synthetic-runner.yml'
+      - '.github/workflows/setka-workflow-safety-selftest.yml'
+      - '.github/workflows/setka-kernel-pulse.yml'
+      - 'ops/setka-workflow-safety-audit.mjs'
+      - 'ops/setka-kernel-pulse.mjs'
+      - 'ops/SETKA_CRYOSLEEP.yml'
+      - 'ops/SETKA_KERNEL_STATUS.json'
+
+permissions:
+  contents: read
+
+jobs:
+  pulse:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Compute component fingerprints and drift
+        id: pulse
+        run: node ops/setka-kernel-pulse.mjs --out kernel-pulse-result.json
+
+      - name: Parse machine replay contracts
+        run: |
+          node -e "JSON.parse(require('fs').readFileSync('contracts/setka-replay-contract-v1.schema.json','utf8')); JSON.parse(require('fs').readFileSync('contracts/setka-causal-event-v1.schema.json','utf8')); console.log('machine contracts: OK')"
+
+      - name: Syntax check kernel machinery
+        run: |
+          node --check ops/setka-kernel-pulse.mjs
+          node --check core/replay/stable-json.mjs
+          node --check core/replay/replay-engine.mjs
+          node --check core/replay/materializer.mjs
+          node --check core/replay/capsule-builder.mjs
+          node --check core/storage/write-admission.mjs
+          node --check core/storage/canonical-event-writer.mjs
+          node --check ops/setka-workflow-safety-audit.mjs
+
+      - name: Run deterministic replay/storage proof suite
+        run: node --test tests/setka-replay-core.test.mjs
+
+      - name: Audit synthetic/simulation safety surface
+        run: node ops/setka-workflow-safety-audit.mjs
+
+      - name: Preserve pulse result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: setka-kernel-pulse-${{ github.sha }}
+          path: kernel-pulse-result.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Require manual review when a protected fingerprint moved
+        if: steps.pulse.outputs.review_required == 'true'
+        run: |
+          echo '::error title=SETKA Kernel Manual Review::Protected kernel fingerprint changed. Automated checks passed/ran, but the baseline must not advance until a human/assistant review confirms the affected semantics.'
+          exit 1
