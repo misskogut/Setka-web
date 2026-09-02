@@ -1,13 +1,16 @@
 {
   "schemaVersion": "SETKA_KERNEL_STATUS_V1",
   "baseline": {
-    "commit": "7295272cea6f5a480e717ef8e08948277bd5ba4d",
+    "commit": "7e89071c100c426dafdc9cb54afef514ef21becd",
     "state": "VERIFIED_OFFLINE",
     "scope": [
       "replay_math",
       "storage_write",
-      "runtime_safety"
+      "runtime_safety",
+      "kernel_governance"
     ],
+    "reviewedBy": "SETKA-S-0001-0001",
+    "reviewContext": "President-directed GitHub kernel optimization session",
     "evidence": [
       {
         "kind": "REPLAY_CORE_CI",
@@ -20,6 +23,20 @@
         "commit": "033e2b47c77a1b1df1e4787457077421dac008fb",
         "runId": 33641255315,
         "conclusion": "success"
+      },
+      {
+        "kind": "KERNEL_PULSE_BOOTSTRAP_REVIEW",
+        "commit": "7e89071c100c426dafdc9cb54afef514ef21becd",
+        "runId": 33643221301,
+        "automaticChecks": "success",
+        "expectedGateResult": "failure_until_manual_review",
+        "reviewedDrift": [
+          "kernel_governance"
+        ],
+        "reviewedFiles": [
+          ".github/workflows/setka-kernel-pulse.yml",
+          "ops/setka-kernel-pulse.mjs"
+        ]
       }
     ]
   },
