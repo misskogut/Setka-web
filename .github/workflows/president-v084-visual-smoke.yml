@@ -1,7 +1,5 @@
 name: SETKA President v0.8.4 Visual Smoke
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 jobs:
   smoke:
