@@ -70,14 +70,27 @@
     },
     "checkpoints": {
       "type": "array",
+      "description": "Sparse derived restore points. A snapshot is optional but required for fast restart from that checkpoint.",
       "items": {
         "type": "object",
         "additionalProperties": false,
         "required": ["tick", "stateHash"],
         "properties": {
           "tick": { "type": "integer", "minimum": 0 },
+          "throughSequence": { "type": ["integer", "null"], "minimum": 0 },
           "stateHash": { "type": "string", "minLength": 16 },
-          "rootHash": { "type": ["string", "null"] }
+          "trajectoryRootHash": { "type": ["string", "null"] },
+          "snapshot": {
+            "type": ["object", "null"],
+            "additionalProperties": false,
+            "required": ["state", "lawParameters", "variables", "mode"],
+            "properties": {
+              "state": { "type": "object", "additionalProperties": true },
+              "lawParameters": { "type": "object", "additionalProperties": true },
+              "variables": { "type": "object", "additionalProperties": true },
+              "mode": { "enum": ["ACTIVE", "CAUSAL_IDLE", "AUTOPILOT", "SLEEP", "PAUSED", "CRYOSLEEP", "COMPUTE_ONLY"] }
+            }
+          }
         }
       }
     },
