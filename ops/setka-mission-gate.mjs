@@ -195,6 +195,21 @@ function selftest(policy) {
       name: 'mass optimize',
       proposal: { schemaVersion: 'SETKA_CHANGE_PROPOSAL_V1', title: 'Mass', changeClass: 'FEATURE', impacts: baseImpacts, addsMandatoryVendorDependencies: 0, addsPermanentKernelFiles: 2, benchmarkDefined: true },
       expected: 'OPTIMIZE'
+    },
+    {
+      name: 'cross-tenant private raw hard block',
+      proposal: { schemaVersion: 'SETKA_CHANGE_PROPOSAL_V1', title: 'Private raw uplink', changeClass: 'SECURITY', impacts: baseImpacts, signals: ['CROSS_TENANT_PRIVATE_RAW_DISCLOSURE'], addsMandatoryVendorDependencies: 0, addsPermanentKernelFiles: 0, benchmarkDefined: true },
+      expected: 'BLOCK'
+    },
+    {
+      name: 'reidentification risk review',
+      proposal: { schemaVersion: 'SETKA_CHANGE_PROPOSAL_V1', title: 'Derived disclosure', changeClass: 'SECURITY', impacts: baseImpacts, signals: ['REIDENTIFICATION_RISK_UNRESOLVED'], addsMandatoryVendorDependencies: 0, addsPermanentKernelFiles: 0, benchmarkDefined: true },
+      expected: 'REVIEW_REQUIRED'
+    },
+    {
+      name: 'full child history uplink optimize',
+      proposal: { schemaVersion: 'SETKA_CHANGE_PROPOSAL_V1', title: 'Child history uplink', changeClass: 'STORAGE', impacts: baseImpacts, signals: ['FULL_CHILD_HISTORY_UPLINK_WHERE_CAPSULE_SUFFICES'], addsMandatoryVendorDependencies: 0, addsPermanentKernelFiles: 0, benchmarkDefined: true },
+      expected: 'OPTIMIZE'
     }
   ];
 
