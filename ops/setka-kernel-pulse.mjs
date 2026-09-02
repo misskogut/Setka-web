@@ -2,12 +2,13 @@ import { execFileSync } from 'node:child_process';
 import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 
-const STATUS_PATH = 'ops/SETKA_KERNEL_STATUS.json';
 const MAP_PATH = 'ops/SETKA_KERNEL_MAP.json';
+const ACCEPTANCE_PATH = 'ops/SETKA_KERNEL_BASELINE_ACCEPTANCE.json';
 const args = new Set(process.argv.slice(2));
 const outIndex = process.argv.indexOf('--out');
 const outputPath = outIndex >= 0 ? process.argv[outIndex + 1] : null;
-const failOnReview = args.has('--fail-on-review');
+const verify = args.has('--verify');
+const failOnReview = args.has('--fail-on-review') || verify;
 
 function git(...argv) {
   return execFileSync('git', argv, { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }).trim();
@@ -178,18 +179,27 @@ function unique(items) {
   return [...new Set(items)].sort();
 }
 
-const status = JSON.parse(readFileSync(STATUS_PATH, 'utf8'));
-const kernelMap = JSON.parse(readFileSync(MAP_PATH, 'utf8'));
-if (status.schemaVersion !== 'SETKA_KERNEL_STATUS_V1') throw new Error('Unsupported SETKA kernel status schema');
-if (kernelMap.schemaVersion !== 'SETKA_KERNEL_MAP_V1') throw new Error('Unsupported SETKA kernel map schema');
+function runNode(argv, label) {
+  const started = process.hrtime.bigint();
+  console.log(`\n[SETKA check] ${label}`);
+  execFileSync(process.execPath, argv, { stdio: 'inherit', maxBuffer: 32 * 1024 * 1024 });
+  return Number(process.hrtime.bigint() - started) / 1e6;
+}
 
-const baselineRef = status.baseline?.commit;
-if (!baselineRef) throw new Error('SETKA kernel status has no baseline commit');
+const acceptance = JSON.parse(readFileSync(ACCEPTANCE_PATH, 'utf8'));
+const kernelMap = JSON.parse(readFileSync(MAP_PATH, 'utf8'));
+if (acceptance.schemaVersion !== 'SETKA_KERNEL_BASELINE_ACCEPTANCE_V1') throw new Error('Unsupported SETKA baseline acceptance schema');
+if (kernelMap.schemaVersion !== 'SETKA_KERNEL_MAP_V2') throw new Error('Unsupported SETKA kernel map schema');
+
+const baselineRef = acceptance.acceptedBaselineCommit;
+if (!baselineRef) throw new Error('SETKA baseline acceptance has no acceptedBaselineCommit');
 try {
   git('cat-file', '-e', `${baselineRef}^{commit}`);
 } catch {
   throw new Error(`Kernel baseline commit ${baselineRef} is unavailable. Use a full git checkout (fetch-depth: 0).`);
 }
+
+if (verify) runNode(['ops/setka-kernel-baseline-guard.mjs'], 'baseline transition guard');
 
 const headRef = git('rev-parse', 'HEAD');
 const baselineTree = tree(baselineRef);
@@ -210,7 +220,8 @@ for (const [name, config] of Object.entries(kernelMap.components ?? {})) {
     currentFileCount: after.files.length,
     changedFileCount: changes.length,
     changes,
-    automaticChecks: config.automaticChecks ?? [],
+    checkGroups: config.checkGroups ?? [],
+    externalChecks: config.externalChecks ?? [],
     manualReviewTargets: config.manualReviewTargets ?? []
   });
 }
@@ -229,30 +240,60 @@ const changedFiles = unique([
   ...drifted.flatMap((component) => component.changes.map((change) => change.path)),
   ...unclassifiedFiles
 ]);
-const automaticChecks = unique([
-  ...drifted.flatMap((component) => component.automaticChecks),
-  ...(unclassifiedFiles.length ? ['CORE_COVERAGE_GUARD'] : [])
-]);
+const checkGroups = unique(drifted.flatMap((component) => component.checkGroups));
+const externalChecks = unique(drifted.flatMap((component) => component.externalChecks));
 const manualReviewTargets = unique([
   ...drifted.flatMap((component) => component.manualReviewTargets),
   ...(unclassifiedFiles.length ? ['UNCLASSIFIED_KERNEL_SURFACE'] : [])
 ]);
+const addedProtectedFiles = unique(drifted.flatMap((component) => component.changes.filter((change) => change.change === 'ADDED').map((change) => change.path)));
+const deletedProtectedFiles = unique(drifted.flatMap((component) => component.changes.filter((change) => change.change === 'DELETED').map((change) => change.path)));
+if (addedProtectedFiles.length > 0 && kernelMap.complexityPolicy?.newProtectedFileRequiresReview) {
+  manualReviewTargets.push('COMPLEXITY_BUDGET');
+}
 const totalBaselineFiles = components.reduce((sum, component) => sum + component.baselineFileCount, 0);
 const totalChangedMemberships = components.reduce((sum, component) => sum + component.changedFileCount, 0);
 const reviewRequired = drifted.length > 0 || unclassifiedFiles.length > 0;
 const state = reviewRequired ? 'MANUAL_REVIEW_REQUIRED' : 'GREEN_BASELINE_MATCH';
 
+const checksExecuted = [];
+if (verify && reviewRequired) {
+  const syntaxTargets = changedFiles.filter((path) => isCodePath(path) && currentTree.has(path));
+  for (const path of syntaxTargets) {
+    const durationMs = runNode(['--check', path], `syntax ${path}`);
+    checksExecuted.push({ id: `SYNTAX:${path}`, durationMs });
+  }
+  for (const group of checkGroups) {
+    const config = kernelMap.checkGroups?.[group];
+    if (!config?.argv) throw new Error(`Unknown kernel check group: ${group}`);
+    const durationMs = runNode(config.argv, group);
+    checksExecuted.push({ id: group, durationMs });
+  }
+} else if (verify) {
+  console.log('\n[SETKA fast path] protected fingerprints match baseline; deep proof suites skipped.');
+}
+
 const result = {
-  schemaVersion: 'SETKA_KERNEL_PULSE_RESULT_V2',
+  schemaVersion: 'SETKA_KERNEL_PULSE_RESULT_V3',
   state,
   reviewRequired,
+  fastPath: !reviewRequired,
   baselineCommit: baselineRef,
   currentCommit: headRef,
   driftedComponents: drifted.map((component) => component.name),
   changedFiles,
   unclassifiedFiles,
-  automaticChecksRequired: automaticChecks,
-  manualReviewTargets,
+  checkGroupsRequired: checkGroups,
+  externalChecksRequired: externalChecks,
+  manualReviewTargets: unique(manualReviewTargets),
+  checksExecuted,
+  complexity: {
+    addedProtectedFileCount: addedProtectedFiles.length,
+    deletedProtectedFileCount: deletedProtectedFiles.length,
+    netProtectedFileDelta: addedProtectedFiles.length - deletedProtectedFiles.length,
+    addedProtectedFiles,
+    deletedProtectedFiles
+  },
   metrics: {
     componentCount: components.length,
     driftedComponentCount: drifted.length,
@@ -267,10 +308,10 @@ const result = {
 
 const json = `${JSON.stringify(result, null, 2)}\n`;
 if (outputPath) writeFileSync(outputPath, json);
-console.log(json.trim());
+console.log(`\n${json.trim()}`);
 
 if (process.env.GITHUB_OUTPUT) {
-  appendFileSync(process.env.GITHUB_OUTPUT, `state=${state}\nreview_required=${result.reviewRequired}\n`);
+  appendFileSync(process.env.GITHUB_OUTPUT, `state=${state}\nreview_required=${result.reviewRequired}\nfast_path=${result.fastPath}\n`);
 }
 
 if (process.env.GITHUB_STEP_SUMMARY) {
@@ -278,9 +319,9 @@ if (process.env.GITHUB_STEP_SUMMARY) {
     `| ${component.name} | ${component.criticality} | ${component.drifted ? 'DRIFT' : 'MATCH'} | ${component.changedFileCount} |`
   ).join('\n');
   const changed = changedFiles.length ? changedFiles.map((path) => `- \`${path}\``).join('\n') : '- none';
-  const unclassified = unclassifiedFiles.length ? unclassifiedFiles.map((path) => `- \`${path}\``).join('\n') : '- none';
+  const routed = checkGroups.length ? checkGroups.map((id) => `- \`${id}\``).join('\n') : '- none';
   appendFileSync(process.env.GITHUB_STEP_SUMMARY,
-    `## SETKA Kernel Pulse\n\n**${state}**\n\nBaseline: \`${baselineRef}\`  \nCurrent: \`${headRef}\`\n\n| Component | Criticality | Fingerprint | Changed files |\n|---|---|---:|---:|\n${rows}\n\n### Changed monitored files\n${changed}\n\n### Unclassified core executables\n${unclassified}\n`
+    `## SETKA Kernel Pulse\n\n**${state}**${result.fastPath ? ' · FAST PATH' : ''}\n\nBaseline: \`${baselineRef}\`  \nCurrent: \`${headRef}\`\n\n| Component | Criticality | Fingerprint | Changed files |\n|---|---|---:|---:|\n${rows}\n\n### Changed monitored files\n${changed}\n\n### Routed proof groups\n${routed}\n\n### Complexity delta\nAdded: ${addedProtectedFiles.length} · Deleted: ${deletedProtectedFiles.length} · Net: ${result.complexity.netProtectedFileDelta}\n`
   );
 }
 
