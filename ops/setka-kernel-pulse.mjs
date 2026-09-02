@@ -51,9 +51,9 @@ function tree(ref) {
   return result;
 }
 
-function componentSnapshot(sourceTree, patterns) {
+function componentSnapshot(sourceTree, patterns, excludePatterns = []) {
   const files = [...sourceTree.entries()]
-    .filter(([path]) => matchesAny(path, patterns))
+    .filter(([path]) => matchesAny(path, patterns) && !matchesAny(path, excludePatterns))
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([path, blob]) => ({ path, blob }));
   const fingerprint = sha256(files.map(({ path, blob }) => `${path}:${blob}`).join('\n'));
@@ -98,8 +98,8 @@ const currentTree = tree(headRef);
 const components = [];
 
 for (const [name, config] of Object.entries(kernelMap.components ?? {})) {
-  const before = componentSnapshot(baselineTree, config.patterns ?? []);
-  const after = componentSnapshot(currentTree, config.patterns ?? []);
+  const before = componentSnapshot(baselineTree, config.patterns ?? [], config.excludePatterns ?? []);
+  const after = componentSnapshot(currentTree, config.patterns ?? [], config.excludePatterns ?? []);
   const changes = diffSnapshots(before, after);
   components.push({
     name,
