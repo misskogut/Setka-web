@@ -1,0 +1,125 @@
+{
+  "schemaVersion": "SETKA_KERNEL_MISSION_POLICY_V1",
+  "mission": "SOVEREIGN_PORTABLE_WORLD",
+  "runtimeCategory": "PROVABLE_CAUSAL_WORLD_RUNTIME",
+  "principle": "KEEP_ONLY_IRREDUCIBLE_INFORMATION_AND_IRREDUCIBLE_NATIVE_CAPABILITY; DERIVE, MATERIALIZE, CONNECT_OR_RENT_THE_REST",
+  "decisionStates": [
+    "ALIGNED",
+    "OPTIMIZE",
+    "REVIEW_REQUIRED",
+    "BLOCK"
+  ],
+  "missionDimensions": [
+    "CAUSAL_COMPLETENESS",
+    "REPLAY_EXACTNESS",
+    "PORTABILITY",
+    "SOVEREIGNTY",
+    "CONNECTOR_NEUTRALITY",
+    "SELECTIVE_DISCLOSURE",
+    "CRYPTOGRAPHIC_PROVENANCE",
+    "RESOURCE_EFFICIENCY",
+    "RECOVERABILITY"
+  ],
+  "aiPolicy": {
+    "default": "DETERMINISTIC_FIRST",
+    "useAIFor": [
+      "AMBIGUOUS_SEMANTICS",
+      "OPTIMIZATION_ALTERNATIVES",
+      "NOVEL_CAPABILITY_ABSTRACTION"
+    ],
+    "doNotUseAIFor": [
+      "KNOWN_POLICY_CHECKS",
+      "KNOWN_BUDGET_CHECKS",
+      "KNOWN_HASH_OR_REPLAY_VERIFICATION",
+      "KNOWN_DEPENDENCY_OR_FILE_COUNT_DELTAS"
+    ]
+  },
+  "proposalContract": {
+    "schemaVersion": "SETKA_CHANGE_PROPOSAL_V1",
+    "allowedChangeClasses": [
+      "FEATURE",
+      "CONNECTOR",
+      "STORAGE",
+      "KERNEL",
+      "RUNTIME",
+      "EXPERIMENT",
+      "SECURITY",
+      "RECOVERY"
+    ],
+    "allowedImpactValues": [
+      "IMPROVE",
+      "NEUTRAL",
+      "DEGRADE",
+      "UNKNOWN"
+    ],
+    "requiredImpactFields": [
+      "causalCompleteness",
+      "replayExactness",
+      "portability",
+      "sovereignty",
+      "connectorNeutrality",
+      "resourceEfficiency",
+      "recoverability"
+    ]
+  },
+  "hardBlockSignals": [
+    "PERSIST_DERIVED_AS_CANON_WITHOUT_PROOF",
+    "SILENT_HISTORY_REWRITE",
+    "BYPASS_CRYOSLEEP_OR_RECOVERY_GATES",
+    "UNBOUNDED_DENSE_DETERMINISTIC_WRITES"
+  ],
+  "reviewSignals": [
+    "UNKNOWN_CAUSAL_CLASSIFICATION",
+    "REPLAY_SEMANTICS_DEGRADE",
+    "RECOVERABILITY_DEGRADE",
+    "SAFETY_SEMANTICS_CHANGE",
+    "UNKNOWN_MISSION_IMPACT"
+  ],
+  "optimizationSignals": [
+    "NEW_MANDATORY_VENDOR_DEPENDENCY",
+    "NEW_PERMANENT_KERNEL_MASS",
+    "FULL_STATE_WHERE_CAUSAL_REPLAY_EXISTS",
+    "AI_USED_FOR_DETERMINISTIC_REDISCOVERY",
+    "NATIVE_BUILD_BEFORE_CONNECTOR_TEST",
+    "CAPABILITY_WITHOUT_BENCHMARK"
+  ],
+  "diffPolicy": {
+    "massRoots": [
+      "core/",
+      "contracts/",
+      "ops/",
+      ".github/actions/",
+      ".github/workflows/"
+    ],
+    "documentationSuffixes": [
+      ".md"
+    ],
+    "storageRiskPrefixes": [
+      "core/storage/"
+    ],
+    "replayRiskPrefixes": [
+      "core/replay/",
+      "contracts/setka-replay-contract",
+      "contracts/setka-causal-event"
+    ],
+    "safetyRiskPrefixes": [
+      ".github/actions/setka-cryo-gate/",
+      "ops/SETKA_CRYOSLEEP.yml"
+    ],
+    "dependencyFiles": [
+      "package.json",
+      "package-lock.json",
+      "pnpm-lock.yaml",
+      "yarn.lock"
+    ]
+  },
+  "optimizationHints": {
+    "NEW_MANDATORY_VENDOR_DEPENDENCY": "Prefer connector-neutral or hybrid execution; keep canonical identity/history outside the vendor.",
+    "NEW_PERMANENT_KERNEL_MASS": "Apply the Pre-scale Gate: merge, derive, connect, or use a smaller primitive before accepting permanent mass.",
+    "FULL_STATE_WHERE_CAUSAL_REPLAY_EXISTS": "Store sufficient causes and sparse checkpoints; materialize deterministic state on demand.",
+    "AI_USED_FOR_DETERMINISTIC_REDISCOVERY": "Replace repeat AI reasoning with manifest, fingerprint, replay, deterministic query, or cached proof.",
+    "NATIVE_BUILD_BEFORE_CONNECTOR_TEST": "Connect and benchmark the external capability before deciding to implement a native equivalent.",
+    "CAPABILITY_WITHOUT_BENCHMARK": "Define correctness, utility, latency, storage, compute, energy, cost, portability, privacy, and provenance metrics first.",
+    "UNKNOWN_MISSION_IMPACT": "Do not delete the idea; compile it into a smaller proposal whose mission impacts can be measured."
+  }
+}
