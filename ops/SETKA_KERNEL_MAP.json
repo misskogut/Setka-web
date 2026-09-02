@@ -5,8 +5,22 @@
     "automaticTestsDoNotClearManualReview": true,
     "baselineUpdateRequiresReviewedEvidence": true,
     "unknownComponent": "REVIEW_REQUIRED",
+    "unclassifiedCoreExecutable": "REVIEW_REQUIRED",
+    "structuralHashPurpose": "ATTENTION_ROUTING_ONLY",
+    "exactBlobHashRemainsAuthoritative": true,
     "postgresIntegrationState": "NOT_YET_VERIFIED",
     "denseCompactionState": "FORBIDDEN_UNTIL_POST_RECOVERY_PROOF"
+  },
+  "coverage": {
+    "candidatePatterns": [
+      "core/**/*.mjs",
+      "core/**/*.js",
+      "core/**/*.cjs",
+      "core/*.mjs",
+      "core/*.js",
+      "core/*.cjs"
+    ],
+    "ignorePatterns": []
   },
   "components": {
     "replay_math": {
@@ -15,7 +29,11 @@
         "core/replay/**",
         "contracts/setka-replay-contract-v1.schema.json",
         "contracts/setka-causal-event-v1.schema.json",
-        "tests/setka-replay-core.test.mjs"
+        "tests/setka-replay-core.test.mjs",
+        "tests/setka-replay-properties.test.mjs",
+        "ops/setka-runtime-fingerprint.mjs",
+        ".github/workflows/setka-node-runtime-differential.yml",
+        ".github/workflows/setka-node-runtime-differential.yaml"
       ],
       "excludePatterns": [
         "core/replay/*.md",
@@ -23,9 +41,11 @@
       ],
       "automaticChecks": [
         "REPLAY_CORE_TESTS",
+        "PROPERTY_FUZZ_INVARIANTS",
         "GOLDEN_HASHES",
         "CHECKPOINT_RESTORE",
-        "MATERIALIZATION_BOUNDS"
+        "MATERIALIZATION_BOUNDS",
+        "NODE20_NODE24_DIFFERENTIAL"
       ],
       "manualReviewTargets": [
         "NUMERIC_SEMANTICS",
@@ -38,7 +58,9 @@
       "patterns": [
         "core/storage/**",
         "contracts/setka-causal-event-v1.schema.json",
-        "tests/setka-replay-core.test.mjs"
+        "tests/setka-replay-core.test.mjs",
+        "tests/setka-resource-physics.test.mjs",
+        "ops/SETKA_KERNEL_RESOURCE_BUDGETS.json"
       ],
       "excludePatterns": [
         "core/storage/*.md",
@@ -47,12 +69,14 @@
       "automaticChecks": [
         "WRITE_CLASSIFICATION",
         "WRITE_BUDGETS",
-        "PERSIST_VS_VERIFIED_READBACK"
+        "PERSIST_VS_VERIFIED_READBACK",
+        "RESOURCE_PHYSICS"
       ],
       "manualReviewTargets": [
         "CANONICAL_CAUSE_BOUNDARY",
         "FAIL_CLOSED_BEHAVIOR",
-        "DATABASE_WRITER_MIGRATION_IMPACT"
+        "DATABASE_WRITER_MIGRATION_IMPACT",
+        "RESOURCE_BUDGET_SEMANTICS"
       ]
     },
     "runtime_safety": {
@@ -84,17 +108,22 @@
       "criticality": "HIGH",
       "patterns": [
         "ops/setka-kernel-pulse.mjs",
+        "ops/setka-kernel-baseline-guard.mjs",
         "ops/SETKA_KERNEL_MAP.json",
         ".github/workflows/setka-kernel-pulse.yml",
         ".github/workflows/setka-kernel-pulse.yaml"
       ],
       "automaticChecks": [
-        "PULSE_SELF_CHECK"
+        "PULSE_SELF_CHECK",
+        "BASELINE_TRANSITION_GUARD",
+        "CORE_COVERAGE_GUARD",
+        "STRUCTURAL_FINGERPRINT_ROUTING"
       ],
       "manualReviewTargets": [
         "DRIFT_DETECTION_RULES",
         "COMPONENT_BOUNDARIES",
-        "BASELINE_SEMANTICS"
+        "BASELINE_SEMANTICS",
+        "UNCLASSIFIED_KERNEL_SURFACE"
       ]
     }
   }
