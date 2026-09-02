@@ -26,10 +26,25 @@ Examples:
 - `replay_math` drift -> replay core + property invariants + resource physics;
 - `storage_write` drift -> replay/storage core + resource physics;
 - `runtime_safety` drift -> the shared workflow safety audit through Kernel Pulse;
-- `kernel_governance` drift -> baseline/coverage/pulse self-behavior plus manual governance review;
+- `kernel_governance` drift -> baseline/coverage/pulse self-behavior + kernel-handshake self-test + manual governance review;
 - unknown executable under `core/` -> `UNCLASSIFIED_KERNEL_SURFACE` and manual review.
 
 The Node cross-runtime differential is a migration proof, not a permanent per-change tax. Run it manually when the numeric runtime contract changes. The historical Node 20 -> 24 transition already has exact fingerprint evidence.
+
+## GitHub -> PostgreSQL handshake
+
+`ops/SETKA_KERNEL_RELEASE_MANIFEST.json` is the compact machine passport presented to the database after recovery. It contains the accepted release identity, DB-relevant component fingerprints, contract blob SHAs, runtime proof and reconciliation policy.
+
+`ops/setka-kernel-handshake.mjs` is a deterministic planner. Given a future `SETKA_DB_KERNEL_STATE_V1` snapshot, it returns one of four useful states:
+
+- `SYNCED_NOOP` — known state already matches; do nothing;
+- `KNOWN_DELTA_READY` — only explicitly allowlisted, idempotent migrations are pending and all recovery gates are true;
+- `MANUAL_REVIEW_REQUIRED` — unknown component/schema drift exists; no automatic write;
+- `BLOCKED_BY_RECOVERY_GATES` — SQL/backup/audit/cryosleep gates are incomplete; read-only only.
+
+Self-test: `node ops/setka-kernel-handshake.mjs --selftest`.
+
+The first post-incident handshake is deliberately read-only. GitHub is never granted arbitrary SQL authority.
 
 ## Single registry
 
