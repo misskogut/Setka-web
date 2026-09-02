@@ -1,0 +1,109 @@
+{
+  "schemaVersion": "SETKA_KERNEL_STATUS_V1",
+  "baseline": {
+    "commit": "7295272cea6f5a480e717ef8e08948277bd5ba4d",
+    "state": "VERIFIED_OFFLINE",
+    "scope": [
+      "replay_math",
+      "storage_write",
+      "runtime_safety"
+    ],
+    "evidence": [
+      {
+        "kind": "REPLAY_CORE_CI",
+        "commit": "e1b4a5216570fe66ffb6999dd5f8e5f93133761c",
+        "runId": 33640777798,
+        "conclusion": "success"
+      },
+      {
+        "kind": "WORKFLOW_SAFETY_CI",
+        "commit": "033e2b47c77a1b1df1e4787457077421dac008fb",
+        "runId": 33641255315,
+        "conclusion": "success"
+      }
+    ]
+  },
+  "policy": {
+    "kernelDrift": "MANUAL_REVIEW_REQUIRED",
+    "automaticTestsDoNotClearManualReview": true,
+    "baselineUpdateRequiresReviewedEvidence": true,
+    "unknownComponent": "REVIEW_REQUIRED",
+    "postgresIntegrationState": "NOT_YET_VERIFIED",
+    "denseCompactionState": "FORBIDDEN_UNTIL_POST_RECOVERY_PROOF"
+  },
+  "components": {
+    "replay_math": {
+      "criticality": "HIGH",
+      "patterns": [
+        "core/replay/**",
+        "contracts/setka-replay-contract-v1.schema.json",
+        "contracts/setka-causal-event-v1.schema.json",
+        "tests/setka-replay-core.test.mjs"
+      ],
+      "automaticChecks": [
+        "REPLAY_CORE_TESTS",
+        "GOLDEN_HASHES",
+        "CHECKPOINT_RESTORE",
+        "MATERIALIZATION_BOUNDS"
+      ],
+      "manualReviewTargets": [
+        "NUMERIC_SEMANTICS",
+        "EVENT_BOUNDARIES",
+        "HISTORICAL_REPLAY_COMPATIBILITY"
+      ]
+    },
+    "storage_write": {
+      "criticality": "HIGH",
+      "patterns": [
+        "core/storage/**",
+        "contracts/setka-causal-event-v1.schema.json",
+        "tests/setka-replay-core.test.mjs"
+      ],
+      "automaticChecks": [
+        "WRITE_CLASSIFICATION",
+        "WRITE_BUDGETS",
+        "PERSIST_VS_VERIFIED_READBACK"
+      ],
+      "manualReviewTargets": [
+        "CANONICAL_CAUSE_BOUNDARY",
+        "FAIL_CLOSED_BEHAVIOR",
+        "DATABASE_WRITER_MIGRATION_IMPACT"
+      ]
+    },
+    "runtime_safety": {
+      "criticality": "CRITICAL",
+      "patterns": [
+        ".github/actions/setka-cryo-gate/**",
+        ".github/workflows/*synthetic*.yml",
+        ".github/workflows/*simulation*.yml",
+        ".github/workflows/_setka-synthetic-runner.yml",
+        ".github/workflows/setka-workflow-safety-selftest.yml",
+        "ops/setka-workflow-safety-audit.mjs",
+        "ops/SETKA_CRYOSLEEP.yml"
+      ],
+      "automaticChecks": [
+        "CRYOSLEEP_GATE_AUDIT",
+        "AUTOMATIC_TRIGGER_AUDIT"
+      ],
+      "manualReviewTargets": [
+        "NO_UNINTENDED_EXTERNAL_WRITES",
+        "FAIL_CLOSED_CRYOSLEEP",
+        "RESUME_POLICY"
+      ]
+    },
+    "kernel_governance": {
+      "criticality": "HIGH",
+      "patterns": [
+        "ops/setka-kernel-pulse.mjs",
+        ".github/workflows/setka-kernel-pulse.yml"
+      ],
+      "automaticChecks": [
+        "PULSE_SELF_CHECK"
+      ],
+      "manualReviewTargets": [
+        "DRIFT_DETECTION_RULES",
+        "BASELINE_SEMANTICS"
+      ]
+    }
+  }
+}
