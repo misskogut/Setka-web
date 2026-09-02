@@ -1,37 +1,31 @@
 {
   "schemaVersion": "SETKA_KERNEL_BASELINE_ACCEPTANCE_V1",
   "mode": "REVIEWED_TRANSITION",
-  "previousBaselineCommit": "00472e2c1f0f465f094e20a81f31bcb10a3011b6",
-  "acceptedBaselineCommit": "a3233a8181eb8d887c45bd700f1fece1b0ad51f1",
+  "previousBaselineCommit": "a3233a8181eb8d887c45bd700f1fece1b0ad51f1",
+  "acceptedBaselineCommit": "b5c05d5f54438ab0f18b42b736fe3f4a80ce03e1",
   "reviewedBy": "SETKA-S-0001-0001",
-  "reviewContext": "President-authorized transcript-safe kernel reconciliation: automatic system update activity, read-back completion proof, append-only revert/reapply semantics, and a protected Supabase implementation order for post-recovery execution",
-  "reviewRunId": 33657144844,
+  "reviewContext": "President-authorized consolidation of the post-incident Supabase wakeup knowledge so a future run can recover from GitHub without re-reading chat history",
+  "reviewRunId": 33660388971,
   "reviewedComponents": [
     "kernel_governance"
   ],
   "reviewedFiles": [
-    ".github/workflows/setka-kernel-pulse.yml",
-    "ops/SETKA_KERNEL_MAP.json",
-    "ops/SETKA_KERNEL_RELEASE_MANIFEST.json",
     "ops/SETKA_SUPABASE_KERNEL_SYNC_TODO.md",
-    "ops/setka-kernel-handshake.mjs"
+    "SETKA_START_HERE.md"
   ],
   "reviewedSemantics": [
-    "kernel-caused system activity is represented by KERNEL_RECONCILIATION with human label Автообновление системы по ядру and system actor SYSTEM_KERNEL_SYNC",
-    "SYNCED_NOOP remains causal silence and must not create a canonical transcript row merely to say nothing changed",
-    "a real state-changing execution is planned as STARTED -> known change -> COMPLETED or FAILED with one stable operation_id",
-    "state-changing execution requires before/after state evidence, a recovery checkpoint, and transcript read-back before VERIFIED completion",
-    "revert and reapply never rewrite prior transcript history; each is a new linked causal event",
-    "rollback classes are REVERSIBLE, FORWARD_FIX_ONLY and IRREVERSIBLE; automatic revert requires reversible class, exact inverse proof, recovery checkpoint and safety gates",
-    "whole-database rollback for a single kernel change is denied when later independent canonical data would be lost",
-    "the detailed Supabase execution order is protected by Kernel Pulse because it controls future PostgreSQL reconciliation behavior",
-    "the Supabase order requires live inspection and reuse of the actual canonical transcript writer/path before adding any new DB object",
-    "first post-incident reconciliation remains READ_ONLY_RECONCILIATION_ONLY and the release manifest still declares zero automatic migrations",
-    "GitHub has no arbitrary SQL authority; KNOWN_DELTA_READY remains an eligibility plan, not execution authority",
-    "run 33657144844 passed syntax validation and all 8 handshake self-test cases, including NOOP silence, state-change causal plan, transcript read-back completion, and append-only revert/reapply guarantees",
-    "run 33657144844 found zero unclassified executables and failed only at the expected manual-review gate before acceptance",
-    "replay_math, storage_write and runtime_safety fingerprints remained unchanged",
-    "PostgreSQL/Supabase was not touched; live integration and historical G1/G2 equivalence remain unverified"
+    "the 2026-09-02 incident is preserved as an information-architecture lesson, not merely a disk-capacity incident",
+    "GitHub remains reproducible law, PostgreSQL remains living state plus irreversible history, the Transcript remains proof, and deterministic consequences should be derived or bounded-materialized by default",
+    "the recovered pre-incident database is evidence to measure and classify rather than an architecture to preserve blindly",
+    "relation base/5/62753 must be mapped before assigning application-level causal responsibility for the disk-full failure",
+    "the post-recovery plan now requires a real BEFORE measurement before any approved compaction and a matching AFTER measurement after replay/write-admission integration",
+    "source-code size, CI/AI compute, canonical writes, PostgreSQL disk, WAL/write rate and materialization expansion are kept as separate optimization metrics",
+    "the approximately 239x dense-vs-causal ratio from the existing resource fixture is explicitly scoped to that fixture and is not a prediction for live Supabase compression",
+    "success after recovery requires backup, replay proof, write-admission proof, deterministic GitHub-to-DB handshake, transcript read-back for kernel changes, storage guards and explicit President resume",
+    "SETKA_START_HERE now points a fresh run directly to the recovery bootstrap and Supabase kernel-sync execution order before any post-incident write",
+    "run 33660388971 passed the 8-case kernel-handshake self-test, found zero unclassified executables, showed replay_math/storage_write/runtime_safety unchanged, and failed only at the expected manual-review gate for the protected TODO documentation change",
+    "the subsequent SETKA_START_HERE change is onboarding-only documentation and does not alter protected kernel fingerprints or live PostgreSQL behavior",
+    "PostgreSQL/Supabase was not modified by this acceptance; cryosleep and all recovery gates remain authoritative"
   ],
-  "acceptedAtSourceTime": "2026-09-02T16:50:00Z"
+  "acceptedAtSourceTime": "2026-09-02T17:22:00Z"
 }
