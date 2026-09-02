@@ -36,7 +36,7 @@
     "RESOURCE_PHYSICS": { "argv": ["--test", "tests/setka-resource-physics.test.mjs"] },
     "WORKFLOW_SAFETY": { "argv": ["ops/setka-workflow-safety-audit.mjs"] },
     "KERNEL_HANDSHAKE": { "argv": ["ops/setka-kernel-handshake.mjs", "--selftest"] },
-    "MISSION_GATE": { "argv": ["ops/setka-mission-gate.mjs", "--selftest"] }
+    "MISSION_GATE": { "argv": ["ops/setka-mission-gate.mjs", "--check"] }
   },
   "components": {
     "replay_math": {
@@ -88,6 +88,7 @@
     "kernel_governance": {
       "criticality": "HIGH",
       "patterns": [
+        "SETKA_KERNEL_MISSION.md",
         "ops/setka-kernel-pulse.mjs",
         "ops/setka-kernel-baseline-guard.mjs",
         "ops/setka-kernel-handshake.mjs",
