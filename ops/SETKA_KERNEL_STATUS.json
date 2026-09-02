@@ -3,7 +3,7 @@
   "quickstartPath": "ops/SETKA_KERNEL_QUICKSTART.md",
   "pulseCommand": "node ops/setka-kernel-pulse.mjs",
   "baseline": {
-    "commit": "7e89071c100c426dafdc9cb54afef514ef21becd",
+    "commit": "59c54bc7e257043f988a6ba8b0f0545376c8cb59",
     "state": "VERIFIED_OFFLINE",
     "scope": [
       "replay_math",
@@ -38,6 +38,29 @@
         "reviewedFiles": [
           ".github/workflows/setka-kernel-pulse.yml",
           "ops/setka-kernel-pulse.mjs"
+        ]
+      },
+      {
+        "kind": "KERNEL_PULSE_HARDENED_REVIEW",
+        "commit": "59c54bc7e257043f988a6ba8b0f0545376c8cb59",
+        "runId": 33643855136,
+        "automaticChecks": "success",
+        "expectedGateResult": "failure_until_manual_review",
+        "reviewedDrift": [
+          "kernel_governance"
+        ],
+        "reviewedFiles": [
+          ".github/workflows/setka-kernel-pulse.yml",
+          "ops/SETKA_KERNEL_MAP.json",
+          "ops/setka-kernel-pulse.mjs"
+        ],
+        "reviewedSemantics": [
+          "baseline state separated from protected component map",
+          "kernel map is itself protected governance",
+          "component fingerprints are SHA-256 over sorted repository path plus git blob SHA",
+          "broad code-path monitoring excludes documentation-only markdown noise",
+          "synthetic and simulation YAML/YML variants are covered",
+          "automatic checks do not advance a moved baseline without manual review"
         ]
       }
     ]
