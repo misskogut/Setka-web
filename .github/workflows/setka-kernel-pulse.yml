@@ -9,6 +9,8 @@ on:
       - 'core/storage/**'
       - 'contracts/setka-*-v1.schema.json'
       - 'tests/setka-replay-core.test.mjs'
+      - 'tests/setka-replay-properties.test.mjs'
+      - 'tests/setka-resource-physics.test.mjs'
       - '.github/actions/setka-cryo-gate/**'
       - '.github/workflows/*synthetic*.yml'
       - '.github/workflows/*synthetic*.yaml'
@@ -20,11 +22,17 @@ on:
       - '.github/workflows/setka-workflow-safety-selftest.yaml'
       - '.github/workflows/setka-kernel-pulse.yml'
       - '.github/workflows/setka-kernel-pulse.yaml'
+      - '.github/workflows/setka-node-runtime-differential.yml'
+      - '.github/workflows/setka-node-runtime-differential.yaml'
       - 'ops/setka-workflow-safety-audit.mjs'
       - 'ops/setka-kernel-pulse.mjs'
+      - 'ops/setka-kernel-baseline-guard.mjs'
+      - 'ops/setka-runtime-fingerprint.mjs'
       - 'ops/SETKA_CRYOSLEEP.yml'
       - 'ops/SETKA_KERNEL_MAP.json'
       - 'ops/SETKA_KERNEL_STATUS.json'
+      - 'ops/SETKA_KERNEL_BASELINE_ACCEPTANCE.json'
+      - 'ops/SETKA_KERNEL_RESOURCE_BUDGETS.json'
 
 permissions:
   contents: read
@@ -32,7 +40,7 @@ permissions:
 jobs:
   pulse:
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
         with:
@@ -41,17 +49,22 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Compute component fingerprints and drift
+      - name: Guard baseline transition evidence
+        run: node ops/setka-kernel-baseline-guard.mjs
+
+      - name: Compute component fingerprints coverage and structural drift
         id: pulse
         run: node ops/setka-kernel-pulse.mjs --out kernel-pulse-result.json
 
       - name: Parse machine contracts and pulse metadata
         run: |
-          node -e "for (const f of ['contracts/setka-replay-contract-v1.schema.json','contracts/setka-causal-event-v1.schema.json','ops/SETKA_KERNEL_MAP.json','ops/SETKA_KERNEL_STATUS.json']) JSON.parse(require('fs').readFileSync(f,'utf8')); console.log('machine contracts + kernel metadata: OK')"
+          node -e "for (const f of ['contracts/setka-replay-contract-v1.schema.json','contracts/setka-causal-event-v1.schema.json','ops/SETKA_KERNEL_MAP.json','ops/SETKA_KERNEL_STATUS.json','ops/SETKA_KERNEL_BASELINE_ACCEPTANCE.json','ops/SETKA_KERNEL_RESOURCE_BUDGETS.json']) JSON.parse(require('fs').readFileSync(f,'utf8')); console.log('machine contracts + kernel metadata: OK')"
 
       - name: Syntax check kernel machinery
         run: |
           node --check ops/setka-kernel-pulse.mjs
+          node --check ops/setka-kernel-baseline-guard.mjs
+          node --check ops/setka-runtime-fingerprint.mjs
           node --check core/replay/stable-json.mjs
           node --check core/replay/replay-engine.mjs
           node --check core/replay/materializer.mjs
@@ -62,6 +75,12 @@ jobs:
 
       - name: Run deterministic replay/storage proof suite
         run: node --test tests/setka-replay-core.test.mjs
+
+      - name: Run deterministic property/fuzz invariants
+        run: node --test tests/setka-replay-properties.test.mjs
+
+      - name: Run resource physics regression guards
+        run: node --test tests/setka-resource-physics.test.mjs
 
       - name: Audit synthetic/simulation safety surface
         run: node ops/setka-workflow-safety-audit.mjs
@@ -78,5 +97,5 @@ jobs:
       - name: Require manual review when a protected fingerprint moved
         if: steps.pulse.outputs.review_required == 'true'
         run: |
-          echo '::error title=SETKA Kernel Manual Review::Protected kernel fingerprint changed. Automated checks passed/ran, but the baseline must not advance until a human/assistant review confirms the affected semantics.'
+          echo '::error title=SETKA Kernel Manual Review::Protected kernel drift or unclassified executable detected. Automated checks ran, but the baseline must not advance until the reported semantic targets are reviewed.'
           exit 1
