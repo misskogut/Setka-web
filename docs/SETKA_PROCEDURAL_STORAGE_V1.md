@@ -32,6 +32,7 @@ For every ship / synthetic / experiment, preserve the complete replay contract:
 - timestamps / logical ticks at which causal changes occur;
 - causal inactivity/autopilot intervals and the clock/tick mapping needed to measure them;
 - logical step / generated-coordinate counts between causal events, or enough boundaries to derive those counts exactly;
+- every parameter mutation with its exact causal boundary;
 - sparse checkpoints;
 - checkpoint hashes and trajectory/root hashes;
 - final summaries/capsules and evidence metadata.
@@ -140,7 +141,45 @@ This creates a compact two-dimensional chronology:
 
 Thus SETKA can answer not only **"how long until the ship acted?"** but also **"how far through its mathematical trajectory did it travel before acting?"**
 
-## 7. Sparse checkpoints
+## 7. Parameter mutation schedule / causal patches
+
+A parameter change is itself a canonical causal event and must be anchored to the exact replay boundary where it becomes effective.
+
+For every mutation preserve at least:
+
+- `ship_id` / entity id;
+- parameter name or parameter-set id;
+- previous value when needed for audit;
+- new value;
+- effective logical tick / coordinate boundary;
+- effective wall/simulated time when relevant;
+- source/reason of the change;
+- whether the change was external, endogenous-deterministic, or endogenous-nonreproducible;
+- rule/version used to apply the change;
+- evidence/hash as required.
+
+Canonical example:
+
+`PARAM_CHANGE { ship_id: 437, tick: 55_680, time: 17:18:12, parameter: curiosity, from: 0.42, to: 0.61, source: experiment_control }`
+
+Replay must **not guess or infer** historical parameter changes. The replay engine re-runs the original law and applies the exact recorded parameter patch at the exact recorded boundary.
+
+Conceptually:
+
+`GENESIS + LAW(P0)`
+`-> replay to tick A`
+`-> APPLY PATCH P1`
+`-> replay to tick B`
+`-> APPLY PATCH P2`
+`-> ...`
+
+This means a ship can reconstruct its own dense historical trajectory from a compact causal program: equation + initial variables + ordered parameter/event schedule + timing/step boundaries + replay contract.
+
+The stored mutation schedule is therefore analogous to a patch stream over the equation. It allows the ship to restore the historical configuration of the mathematical system at every meaningful point without keeping the full coordinate database permanently materialized.
+
+If a parameter change is itself deterministically derivable from an earlier canonical rule, it may be regenerated, but its boundary and proof must still be recoverable. For forensic and scientific use, important experiment-control changes should normally be persisted explicitly.
+
+## 8. Sparse checkpoints
 
 Store sparse checkpoints to reduce replay cost.
 
@@ -152,7 +191,7 @@ To inspect tick 27,431, restore checkpoint 20,000 and replay only the remaining 
 
 Checkpoint frequency must be selected from a storage-vs-replay-cost budget, not fixed blindly.
 
-## 8. Exact replay requirement for chaotic systems
+## 9. Exact replay requirement for chaotic systems
 
 Chaotic systems are sensitive to tiny numerical differences. Therefore `equation + r + x0` alone is not sufficient for forensic-grade reproduction.
 
@@ -167,7 +206,7 @@ The replay contract must also fix the numerical semantics needed for exact repro
 
 After replay, verify the regenerated segment against stored checkpoint/root hashes.
 
-## 9. Data temperature model
+## 10. Data temperature model
 
 ### LIVE
 Current state required for normal operation.
@@ -176,14 +215,14 @@ Current state required for normal operation.
 Recent detailed causal events and temporary working trace.
 
 ### CAPSULE
-Compressed summaries, checkpoints, hashes, timing intervals, step/point counts and indexes.
+Compressed summaries, checkpoints, hashes, timing intervals, step/point counts, parameter mutation schedule and indexes.
 
 ### ARCHIVE
 Immutable cold raw evidence outside the primary PostgreSQL database when raw history must be retained.
 
 Cold archive should be compressed and hash-verified. PostgreSQL retains an archive pointer, event/tick range, manifest and cryptographic root.
 
-## 10. Materialize on demand
+## 11. Materialize on demand
 
 Dense databases/coordinate series should be generated only when required for:
 
@@ -200,15 +239,15 @@ Conceptually:
 
 `compact causal record -> MATERIALIZE -> inspect/compute/prove -> SEAL -> DROP CACHE`
 
-## 11. Ship memory model
+## 12. Ship memory model
 
 Each ship needs only a small persistent operational brain:
 
-`IDENTITY + GENESIS + LAW + CURRENT_STATE + VARIABLES + IRREVERSIBLE_EVENTS + TIME_INTERVALS + STEP_BOUNDARIES + CHECKPOINT_CURSOR + HASHES`
+`IDENTITY + GENESIS + LAW + CURRENT_STATE + VARIABLES + PARAMETER_PATCHES + IRREVERSIBLE_EVENTS + TIME_INTERVALS + STEP_BOUNDARIES + CHECKPOINT_CURSOR + HASHES`
 
 The complete dense historical trajectory is not the ship's permanent brain. It is a reproducible view of that brain through time.
 
-## 12. Safety rule for deletion / compaction
+## 13. Safety rule for deletion / compaction
 
 No raw or dense history may be deleted merely because it appears reproducible.
 
@@ -220,25 +259,27 @@ Before disposal, prove all of the following:
 4. all non-reproducible inputs are preserved;
 5. all timing-mode changes and required inactivity interval boundaries are preserved;
 6. mathematical step/coordinate distance between causal events can be reconstructed exactly;
-7. any required scientific/legal/raw archive has been copied and independently hash-verified;
-8. deletion target is derived/materialized data, not canonical causal evidence.
+7. every parameter mutation can be restored at the exact historical boundary where it became effective;
+8. any required scientific/legal/raw archive has been copied and independently hash-verified;
+9. deletion target is derived/materialized data, not canonical causal evidence.
 
-## 13. Implementation objective after recovery
+## 14. Implementation objective after recovery
 
 After PostgreSQL becomes available:
 
 1. perform full backup before cleanup;
 2. identify largest relations and relation `base/5/62753`;
-3. classify data as CANONICAL_CAUSE / IRREVERSIBLE_INPUT / TIME_INTERVAL / STEP_INTERVAL / CHECKPOINT / DERIVED / CACHE / ARCHIVE_CANDIDATE / TECH_GARBAGE;
+3. classify data as CANONICAL_CAUSE / IRREVERSIBLE_INPUT / PARAMETER_PATCH / TIME_INTERVAL / STEP_INTERVAL / CHECKPOINT / DERIVED / CACHE / ARCHIVE_CANDIDATE / TECH_GARBAGE;
 4. redesign fleet/G2 writers so autopilot does not append every coordinate;
-5. persist causal events + time/step interval boundaries + sparse checkpoints only;
+5. persist causal events + parameter patches + time/step interval boundaries + sparse checkpoints only;
 6. introduce on-demand trajectory materialization;
 7. introduce cold immutable archive for raw scientific evidence;
 8. add storage watchdog and write-budget guards;
 9. test exact replay on known G1/G2 segments before any destructive compaction;
-10. verify that both activity timing statistics and mathematical-distance statistics can be reconstructed without per-second/per-tick raw rows.
+10. verify that both activity timing statistics and mathematical-distance statistics can be reconstructed without per-second/per-tick raw rows;
+11. verify that a replay can re-apply every historical parameter change at the exact original tick/time boundary.
 
-## 14. Canonical formulation
+## 15. Canonical formulation
 
 **The transcript stores the minimum complete set of causes needed to reproduce the world. Reproducible consequences are computed on demand.**
 
@@ -246,6 +287,8 @@ After PostgreSQL becomes available:
 
 **Mathematical distance is recorded at the same boundaries: the system preserves how many equation steps/coordinates occurred between events without storing every coordinate.**
 
+**Parameter history is stored as an ordered causal patch stream: replay applies the same changes at the same historical boundaries.**
+
 Or, operationally:
 
-**Do not store the universe when the universe can be unfolded from its law, variables, irreversible events, timing/step intervals and proof hashes.**
+**Do not store the universe when the universe can be unfolded from its law, variables, parameter patches, irreversible events, timing/step intervals and proof hashes.**
