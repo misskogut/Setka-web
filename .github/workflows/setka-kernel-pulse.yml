@@ -49,10 +49,11 @@ jobs:
           node-version: '24'
 
       - name: Route and verify only changed kernel organs
+        id: pulse
         run: node ops/setka-kernel-pulse.mjs --verify --out kernel-pulse-result.json
 
-      - name: Preserve pulse result only as derived CI evidence
-        if: always()
+      - name: Preserve diagnostic evidence only when attention is required
+        if: failure() || steps.pulse.outputs.review_required == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: setka-kernel-pulse-${{ github.sha }}
