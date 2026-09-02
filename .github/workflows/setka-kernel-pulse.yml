@@ -18,8 +18,6 @@ on:
       - '.github/workflows/*simulation*.yaml'
       - '.github/workflows/_setka-synthetic-runner.yml'
       - '.github/workflows/_setka-synthetic-runner.yaml'
-      - '.github/workflows/setka-workflow-safety-selftest.yml'
-      - '.github/workflows/setka-workflow-safety-selftest.yaml'
       - '.github/workflows/setka-kernel-pulse.yml'
       - '.github/workflows/setka-kernel-pulse.yaml'
       - '.github/workflows/setka-node-runtime-differential.yml'
