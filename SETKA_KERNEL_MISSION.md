@@ -28,10 +28,12 @@ The kernel should prefer changes that measurably improve one or more of these di
 4. **Local-first survival** — preserve useful operation and causal recording when the network/cloud is unavailable, then reconcile safely when connectivity returns.
 5. **User/entity sovereignty** — the owner can possess the canonical encrypted capsule and is not dependent on a vendor account being alive in order for the world to exist.
 6. **Connector neutrality** — specialist systems (AI models, Temporal-like durability, Palantir-like enterprise twins, databases, sensors, GPUs, future services) are replaceable organs, not the source of SETKA identity or history.
-7. **Selective disclosure** — a connector receives only the minimum data/capabilities required for its operation; it does not automatically receive the whole world.
+7. **Selective disclosure** — a connector or parent receives only the minimum data/capabilities required for its operation; it does not automatically receive the whole world.
 8. **Cryptographic provenance** — identity, capsule integrity, important events and kernel state can be independently verified.
 9. **Resource physics** — storage, writes, CPU/GPU time, energy, latency and AI calls are first-class costs the kernel measures and minimizes per verified outcome.
 10. **Recoverability** — loss of a phone, cloud outage or connector failure must not imply loss of the world; recovery must be possible from protected independent material without making one physical token the sole copy.
+11. **Hierarchical causal memory** — children keep detailed local life; fleets/organizations recursively capsule experience; parents retain only causally novel knowledge plus permitted provenance.
+12. **Distributed knowledge synthesis** — many independent children may strengthen one shared knowledge object without forcing the mother to duplicate every child event or private source record.
 
 ## Causal irreducibility boundary
 
@@ -64,6 +66,94 @@ This makes the transcript and storage layer act like a causal codec for a dynami
 
 The kernel must never delete or omit data merely because compression is desirable. Derived classification is valid only when reconstruction is proven with the declared numerical/runtime semantics and verification hashes/checkpoints where required.
 
+## Hierarchical causal memory / mother-child knowledge law
+
+SETKA must scale by **information novelty**, not by copying every descendant history into one central transcript.
+
+Canonical hierarchy:
+
+`ship life -> ship capsule -> fleet capsule -> company capsule -> domain knowledge -> mother knowledge`
+
+The levels are recursive. A child may itself be the parent of a lower-level fleet.
+
+Core law:
+
+> **Children store life. Fleets and organizations capsule experience. Parents store discoveries.**
+
+A child remains authoritative for its own detailed causal record. A parent does not need every deterministic step, telemetry point, private source row or local causal event merely because the child experienced it.
+
+An upward capsule should preferentially contain only information that is new or evidentially useful at the parent level, such as:
+
+- a new discovery or pattern;
+- support/refutation/refinement of an existing hypothesis;
+- a meaningful anomaly;
+- a capability delta;
+- a newly observed risk;
+- a causal outcome with conditions/effect metadata;
+- permitted aggregate statistics;
+- evidence/provenance roots sufficient to verify lineage without centralizing the private source world.
+
+If one million children independently support the same pattern, the mother should not create one million semantically duplicate knowledge records. It should consolidate them into a stronger knowledge object with support count, source-independence metadata, condition/effect distribution and permitted provenance roots.
+
+Target growth law:
+
+`mother canonical memory growth ~= new irreducible global knowledge, not number of child events`
+
+This creates **experience compression**, not only byte compression.
+
+The parent may materialize deeper detail only when required and permitted. Cross-owner privacy boundaries may intentionally prevent the parent from drilling down to raw evidence even when a local child can verify it.
+
+A mother-law update must never silently rewrite children. New law versions descend through a versioned handshake and become append-only causal transitions in each affected world:
+
+`LAW vN -> verified update handshake -> LAW vN+1`
+
+The child keeps its own lineage and may reject/defer an update according to its authority, compatibility and safety policy.
+
+Primary efficiency metric:
+
+> **Verified Knowledge Gain / Canonical Byte**
+
+A growing fleet is healthy when validated capability/knowledge grows materially faster than mother canonical storage and coordination cost.
+
+## Minimum sufficient disclosure / privacy compiler law
+
+Causal compression and privacy are related but different questions.
+
+For permanent memory ask:
+
+> **What must survive because it cannot be reconstructed?**
+
+For communication ask:
+
+> **What is the minimum information the recipient must receive to perform the allowed function or understand the allowed discovery?**
+
+Canonical law:
+
+> **Minimum sufficient memory + minimum sufficient disclosure.**
+
+Data/disclosure classes:
+
+- **PRIVATE_RAW** — source data remains inside the owner's local/company contour by default and is never uplinked merely for central learning.
+- **LOCAL_CAUSAL** — local causal history/semantic state may still contain commercially sensitive or indirectly identifying context and remains local unless explicitly compiled for disclosure.
+- **SHAREABLE_DERIVED** — a bounded result compiled from local evidence for an allowed recipient; no raw source data or direct identifiers are required.
+- **GLOBAL_KNOWLEDGE** — aggregated cross-world knowledge suitable for the mother/common layer, retaining allowed provenance while excluding direct identifiers.
+
+A shared SETKA causal language makes interoperability cheaper: the mother can understand a child's typed causal result because both know the schema/law/version. **That shared language does not by itself prove anonymity.** Exact timestamps, rare combinations, excessive precision, tiny cohorts, unique trajectories or unusual events can still make a record re-identifiable.
+
+Therefore the target boundary between a private child and a parent is a local **Privacy Compiler**:
+
+`PRIVATE_RAW / LOCAL_CAUSAL -> classify purpose -> keep only required causal result -> remove direct identifiers -> reduce unnecessary timing/rarity/precision leakage -> check disclosure/re-identification risk -> attach allowed statistics/provenance -> SHAREABLE_DERIVED or GLOBAL_KNOWLEDGE`
+
+This is a target architecture, not a claim that the full compiler already exists.
+
+Where useful, future implementations may use secure aggregation, bounded cohort aggregation and zero-knowledge proofs so a child can contribute a verified statement without exposing the private records from which it was derived.
+
+The strategic target is:
+
+> **Distributed collective experience without centralized raw private memory.**
+
+A child should be able to tell the mother **what it learned** without having to send the mother **its life**.
+
 ## Scarcity as a design advantage
 
 SETKA should treat limited money, storage and compute as useful design pressure rather than an excuse to build a weaker system.
@@ -87,10 +177,12 @@ Before expanding the system with a major new feature, subsystem, model, data str
 5. What new permanent complexity/dependency does it introduce?
 6. Can the same outcome be obtained by a smaller primitive or better abstraction?
 7. Does the change preserve the ability to replace the external model/cloud/database/device later?
+8. If the change moves information between child/parent/company/mother boundaries, is it the minimum sufficient disclosure rather than a convenient bulk copy?
+9. Does the parent need the child's history, or only the child's verified new knowledge?
 
 If these questions do not have good answers, scaling is deferred.
 
-This is deliberate. The current phase should prioritize **laying the future path before adding mass**: prove the information model, replay, portability, connector abstraction, validation and resource physics first; then let future capabilities grow on top of that spine.
+This is deliberate. The current phase should prioritize **laying the future path before adding mass**: prove the information model, replay, portability, connector abstraction, validation, privacy/disclosure boundary and resource physics first; then let future capabilities grow on top of that spine.
 
 ## Automated self-diagnostic / Mission Compiler
 
@@ -124,10 +216,10 @@ which executes the self-test and diagnoses the actual Git diff against the accep
 
 AI policy is **deterministic first**:
 
-- fingerprints, hashes, budgets, dependency/file deltas and known policy rules should not consume AI reasoning;
+- fingerprints, hashes, budgets, dependency/file deltas, known disclosure classes and known policy rules should not consume AI reasoning;
 - AI is reserved for ambiguous semantics, optimization alternatives and novel capability abstraction;
-- an `OPTIMIZE` result is a compiler hint, not a rejection: try connector, hybrid, smaller primitive, causal derivation or benchmark clarification before adding mass;
-- `BLOCK` is reserved for known prohibited semantics such as silently rewriting history, bypassing recovery/cryosleep gates or persisting proven derived noise as canonical data.
+- an `OPTIMIZE` result is a compiler hint, not a rejection: try connector, hybrid, smaller primitive, causal derivation, hierarchical capsule or benchmark clarification before adding mass;
+- `BLOCK` is reserved for known prohibited semantics such as silently rewriting history, bypassing recovery/cryosleep gates, persisting proven derived noise as canonical data, cross-tenant PRIVATE_RAW disclosure or direct identifiers in GLOBAL_KNOWLEDGE.
 
 Future measurement should include deterministic mission checks resolved without AI, AI escalation rate, repeat reasoning eliminated, and cost/tokens avoided per verified architectural decision where those values can be measured reliably.
 
@@ -147,7 +239,11 @@ and to external organs:
 
 `SETKA -> connector -> specialist system -> bounded result -> provenance capture -> causal decision`
 
-The external organ may be vastly stronger than SETKA at its specialty. SETKA remains responsible for the causal role of that organ inside the world.
+Hierarchical knowledge adds another route:
+
+`private child world -> local causal capsule -> privacy/disclosure compiler -> shareable knowledge delta -> fleet/company synthesis -> mother knowledge`
+
+The external organ or child may be vastly stronger than SETKA at its specialty. SETKA remains responsible for the causal role, provenance and disclosure boundary of that result inside the world.
 
 ## Capability assimilation law
 
@@ -193,9 +289,13 @@ A physical key must never be the only copy of the world.
 - storing every deterministic state, coordinate, tick or snapshot;
 - treating generated scenarios as causal truth without validation;
 - making the user upload the whole world merely to access one connector;
+- centralizing every child/company raw history merely because global learning is desired;
+- assuming SETKA semantic normalization automatically anonymizes data;
+- duplicating the same discovery once per child instead of consolidating evidence;
+- silently forcing a new mother law into child worlds without versioned handshake/provenance;
 - custom hardware before the software capsule/replay contract is proven;
 - symbolic use of Mandelbrot, phi, pi or other mathematics without a measurable role;
-- feature accumulation before the causal/replay/portability spine is proven.
+- feature accumulation before the causal/replay/portability/privacy spine is proven.
 
 ## Mission metrics
 
@@ -209,7 +309,7 @@ This mission becomes real only through measurable progress. Track at least:
 - useful offline operating duration and offline event fidelity;
 - number of mandatory vendor dependencies required to reconstruct the world;
 - connector replacement success without loss of canonical identity/history;
-- percentage of connector calls using minimum scoped disclosure;
+- percentage of connector/parent calls using minimum scoped disclosure;
 - recovery success after simulated phone/cloud/connector loss;
 - storage/energy/AI-call cost per verified outcome;
 - number of external capabilities available through connectors versus mandatory dependencies;
@@ -218,9 +318,16 @@ This mission becomes real only through measurable progress. Track at least:
 - causal irreducibility ratio: irreducible canonical information versus total materialized/derived world state for a fixed reproducible workload;
 - feature-mass efficiency: verified capabilities gained per unit of permanent kernel/storage/dependency growth;
 - deterministic mission-check resolution rate versus AI-escalated reviews;
-- repeat reasoning eliminated by machine-readable mission/policy checks.
+- repeat reasoning eliminated by machine-readable mission/policy checks;
+- **verified knowledge gain per mother canonical byte**;
+- mother canonical-byte growth versus number of active child worlds;
+- discovery deduplication ratio: child observations consolidated per global knowledge object;
+- percentage of upward knowledge transfers delivered as SHAREABLE_DERIVED/GLOBAL_KNOWLEDGE rather than raw history;
+- unresolved re-identification-risk rate for proposed cross-owner disclosures;
+- cross-tenant PRIVATE_RAW disclosure incidents (target: zero);
+- global knowledge objects with valid permitted provenance roots/source-independence metadata.
 
-The strategic goal is not to claim universal superiority. It is to make SETKA increasingly difficult to obsolete because stronger future systems can be connected rather than requiring the SETKA world to migrate into them.
+The strategic goal is not to claim universal superiority. It is to make SETKA increasingly difficult to obsolete because stronger future systems can be connected rather than requiring the SETKA world to migrate into them, while child/company worlds can contribute learning without surrendering private source memory.
 
 ## Relationship to current recovery work
 
@@ -228,15 +335,25 @@ The 2026-09-02 Supabase incident is a direct lesson for this mission: the living
 
 The existing PostgreSQL recovery gates, backup/audit plan and GitHub->database handshake remain authoritative. This mission does **not** relax cryosleep or authorize any live Supabase write.
 
+The new hierarchical/privacy laws are GitHub kernel direction only until a later reviewed runtime implementation exists. They must not be backfilled into a live database by assumption.
+
 ## Decision rule for future kernel changes
 
 For any substantial kernel proposal, ask:
 
-> **Does this make the world more causally complete, reproducible, portable, sovereign, connector-neutral, safe or resource-efficient — and can we measure the improvement?**
+> **Does this make the world more causally complete, reproducible, portable, sovereign, connector-neutral, safe, privacy-preserving or resource-efficient — and can we measure the improvement?**
 
 For any proposed persistent data, also ask:
 
 > **Is this genuinely new irreducible information, or is it a consequence the replay contract can prove and regenerate?**
+
+For any proposed upward child/parent/company/mother transfer, ask:
+
+> **Does the parent need the child's life, or only what the child learned? What is the minimum sufficient disclosure?**
+
+For any proposed global knowledge object, ask:
+
+> **Is this genuinely novel/refining evidence, can duplicates be consolidated, and does allowed provenance remain verifiable without importing private raw data?**
 
 For any proposed external capability, also ask:
 
