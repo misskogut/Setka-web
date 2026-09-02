@@ -147,23 +147,78 @@ export function createRuntime(contract) {
   };
 }
 
+function runtimeFromCheckpoint(contract, checkpoint) {
+  const runtime = createRuntime(contract);
+  runtime.tick = checkpoint.tick;
+  runtime.state = clone(checkpoint.snapshot.state);
+  runtime.law.parameters = clone(checkpoint.snapshot.lawParameters);
+  runtime.variables = clone(checkpoint.snapshot.variables);
+  runtime.mode = checkpoint.snapshot.mode;
+  const actual = hashRuntime(runtime);
+  if (actual !== checkpoint.stateHash) {
+    throw new Error(`Stored checkpoint snapshot hash mismatch at tick ${checkpoint.tick}`);
+  }
+  return runtime;
+}
+
+function selectCheckpoint(contract, atOrBeforeTick) {
+  return [...(contract.checkpoints ?? [])]
+    .filter((checkpoint) => checkpoint?.snapshot && Number.isInteger(checkpoint.tick) && checkpoint.tick <= atOrBeforeTick)
+    .sort((a, b) => b.tick - a.tick)[0] ?? null;
+}
+
+function cursorAfterCheckpoint(timeline, checkpoint) {
+  if (!checkpoint) return 0;
+  const throughSequence = checkpoint.throughSequence;
+  const index = timeline.findIndex((event) => {
+    if (event.tick > checkpoint.tick) return true;
+    if (event.tick < checkpoint.tick) return false;
+    if (throughSequence === null || throughSequence === undefined) return false;
+    return event.sequence > throughSequence;
+  });
+  return index === -1 ? timeline.length : index;
+}
+
+function checkpointEventsByTick(timeline) {
+  const map = new Map();
+  for (const event of timeline) {
+    if (event.eventType !== 'CHECKPOINT') continue;
+    const list = map.get(event.tick) ?? [];
+    list.push(event);
+    map.set(event.tick, list);
+  }
+  return map;
+}
+
 export function hashRuntime(runtime) {
   return sha256Object(publicRuntime(runtime));
 }
 
-export function replayToTick(contract, events = [], targetTick, options = {}) {
+export function* replayRange(contract, events = [], options = {}) {
   assertReplayContract(contract);
-  if (!Number.isInteger(targetTick) || targetTick < contract.genesis.tick) {
-    throw new Error('targetTick must be an integer at or after genesis');
+  const startTick = options.startTick ?? contract.genesis.tick;
+  const endTick = options.endTick;
+  const stride = options.stride ?? 1;
+  if (!Number.isInteger(startTick) || !Number.isInteger(endTick) || startTick < contract.genesis.tick || endTick < startTick) {
+    throw new Error('Invalid replay range');
   }
+  if (!Number.isInteger(stride) || stride < 1) throw new Error('stride must be a positive integer');
 
-  const runtime = createRuntime(contract);
   const timeline = sortedEvents(events, contract.entity.id);
-  let eventCursor = 0;
+  const checkpoint = options.useCheckpoints ? selectCheckpoint(contract, startTick) : null;
+  const runtime = checkpoint ? runtimeFromCheckpoint(contract, checkpoint) : createRuntime(contract);
+  let eventCursor = cursorAfterCheckpoint(timeline, checkpoint);
   let appliedEventCount = 0;
-  let trajectoryRootHash = sha256Object({ kind: 'SETKA_TRAJECTORY_ROOT_V1', entityId: runtime.entityId });
+  const checkpointEvents = options.verifyCheckpoints ? checkpointEventsByTick(timeline) : null;
+  const rootScope = checkpoint ? 'SEGMENT_FROM_CHECKPOINT' : 'FULL_FROM_GENESIS';
+  let trajectoryRootHash = sha256Object({
+    kind: checkpoint ? 'SETKA_TRAJECTORY_SEGMENT_V1' : 'SETKA_TRAJECTORY_ROOT_V1',
+    entityId: runtime.entityId,
+    checkpointTick: checkpoint?.tick ?? null,
+    checkpointStateHash: checkpoint?.stateHash ?? null
+  });
 
-  while (runtime.tick <= targetTick) {
+  while (runtime.tick <= endTick) {
     while (eventCursor < timeline.length && timeline[eventCursor].tick === runtime.tick) {
       const event = timeline[eventCursor];
       applyEvent(runtime, event);
@@ -172,8 +227,7 @@ export function replayToTick(contract, events = [], targetTick, options = {}) {
     }
 
     if (options.verifyCheckpoints) {
-      for (const event of timeline) {
-        if (event.tick !== runtime.tick || event.eventType !== 'CHECKPOINT') continue;
+      for (const event of checkpointEvents.get(runtime.tick) ?? []) {
         const actual = hashRuntime(runtime);
         if (event.payload?.stateHash && event.payload.stateHash !== actual) {
           throw new Error(`Checkpoint mismatch at tick ${runtime.tick}`);
@@ -184,22 +238,55 @@ export function replayToTick(contract, events = [], targetTick, options = {}) {
     const stateHash = hashRuntime(runtime);
     trajectoryRootHash = sha256Object({ previous: trajectoryRootHash, tick: runtime.tick, stateHash });
 
-    if (runtime.tick === targetTick) {
-      return {
+    if (runtime.tick >= startTick && (runtime.tick - startTick) % stride === 0) {
+      yield {
         runtime: clone(publicRuntime(runtime)),
         stateHash,
         trajectoryRootHash,
+        rootScope,
+        checkpointTick: checkpoint?.tick ?? null,
         appliedEventCount
       };
     }
 
+    if (runtime.tick === endTick) break;
     advanceLaw(runtime);
     runtime.tick += 1;
   }
-
-  throw new Error('Replay terminated unexpectedly');
 }
 
-export function replayStateHash(contract, events, targetTick) {
-  return replayToTick(contract, events, targetTick).stateHash;
+export function replayToTick(contract, events = [], targetTick, options = {}) {
+  if (!Number.isInteger(targetTick) || targetTick < contract.genesis.tick) {
+    throw new Error('targetTick must be an integer at or after genesis');
+  }
+  const iterator = replayRange(contract, events, {
+    startTick: targetTick,
+    endTick: targetTick,
+    stride: 1,
+    useCheckpoints: options.useCheckpoints ?? false,
+    verifyCheckpoints: options.verifyCheckpoints ?? false
+  });
+  const result = iterator.next();
+  if (result.done || !result.value) throw new Error('Replay terminated unexpectedly');
+  return result.value;
+}
+
+export function createCheckpointRecord(replayResult, throughSequence = null) {
+  const runtime = replayResult.runtime;
+  return {
+    tick: runtime.tick,
+    throughSequence,
+    stateHash: replayResult.stateHash,
+    trajectoryRootHash: replayResult.rootScope === 'FULL_FROM_GENESIS' ? replayResult.trajectoryRootHash : null,
+    snapshot: {
+      state: clone(runtime.state),
+      lawParameters: clone(runtime.law.parameters),
+      variables: clone(runtime.variables),
+      mode: runtime.mode
+    }
+  };
+}
+
+export function replayStateHash(contract, events, targetTick, options = {}) {
+  return replayToTick(contract, events, targetTick, options).stateHash;
 }
