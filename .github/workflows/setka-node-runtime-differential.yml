@@ -1,5 +1,6 @@
 name: SETKA Node Runtime Differential
 
+# This workflow is proof-oriented: runtime migration is accepted only after exact replay fingerprint equality.
 on:
   workflow_dispatch:
   push:
