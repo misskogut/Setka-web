@@ -1,0 +1,25 @@
+name: SETKA Cryosleep Gate
+description: Fail-closed local gate for workflows that may contact Supabase or autonomous runtimes.
+outputs:
+  allowed:
+    description: "true only when emergency cryosleep is explicitly OFF"
+    value: ${{ steps.gate.outputs.allowed }}
+runs:
+  using: composite
+  steps:
+    - id: gate
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [ ! -f ops/SETKA_CRYOSLEEP.yml ]; then
+          echo 'allowed=false' >> "$GITHUB_OUTPUT"
+          echo 'SETKA safety gate: cryosleep file missing; fail closed.'
+          exit 0
+        fi
+        if grep -Eq '^state:[[:space:]]*OFF[[:space:]]*$' ops/SETKA_CRYOSLEEP.yml; then
+          echo 'allowed=true' >> "$GITHUB_OUTPUT"
+          echo 'SETKA safety gate: cryosleep explicitly OFF.'
+        else
+          echo 'allowed=false' >> "$GITHUB_OUTPUT"
+          echo 'SETKA safety gate: cryosleep ON/unknown; external runtime blocked before any Supabase call.'
+        fi
