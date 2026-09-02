@@ -1,31 +1,16 @@
 name: SETKA Foundation 0.2.0 Synthetic Users
+
 on:
   workflow_dispatch:
+
 permissions:
   contents: read
+
 jobs:
-  safety-gate:
-    runs-on: ubuntu-24.04
-    outputs:
-      allowed: ${{ steps.gate.outputs.allowed }}
-    steps:
-      - uses: actions/checkout@v4
-      - id: gate
-        uses: ./.github/actions/setka-cryo-gate
-  synthetic-browser-run:
-    needs: safety-gate
-    if: needs.safety-gate.outputs.allowed == 'true'
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Check runner syntax
-        run: node --check foundation-v020-synthetic-runner.mjs
-      - run: npm install --no-save playwright-core@1.55.0
-      - name: Run five synthetic users through Foundation 0.2.0
-        env:
-          CHROME_PATH: /usr/bin/google-chrome
-          URL: https://misskogut.github.io/Setka-web/foundation-user-v020.html
-        run: node foundation-v020-synthetic-runner.mjs
+  synthetic-users:
+    uses: ./.github/workflows/_setka-synthetic-runner.yml
+    with:
+      runner_file: foundation-v020-synthetic-runner.mjs
+      target_url: https://misskogut.github.io/Setka-web/foundation-user-v020.html
+      label: Foundation 0.2.0 synthetic users
+      timeout_minutes: 15
