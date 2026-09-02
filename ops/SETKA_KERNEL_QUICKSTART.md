@@ -1,54 +1,71 @@
 # SETKA Kernel Quickstart
 
-Purpose: let a future Solai/Work run enter the protected kernel in seconds instead of re-auditing the repository from scratch.
+Purpose: enter the protected GitHub/offline kernel in seconds without re-auditing unchanged territory.
+
+## One entrypoint
+
+Run:
+
+`node ops/setka-kernel-pulse.mjs --verify`
+
+That command is the default route. It reads the accepted baseline from `ops/SETKA_KERNEL_BASELINE_ACCEPTANCE.json`, reads the component/check registry from `ops/SETKA_KERNEL_MAP.json`, verifies baseline-transition evidence, computes exact component fingerprints, checks executable coverage and decides what work is actually necessary.
 
 ## Fast path
 
-1. Read `ops/SETKA_KERNEL_STATUS.json`.
-2. Read `ops/SETKA_KERNEL_MAP.json` only if the task touches protected kernel components or the pulse reports drift.
-3. Run `node ops/setka-kernel-pulse.mjs` from a full repository checkout.
-4. If state is `GREEN_BASELINE_MATCH`, reuse the recorded verification evidence and inspect only the files relevant to the requested change.
-5. If state is `MANUAL_REVIEW_REQUIRED`, inspect exactly `driftedComponents`, `changedFiles`, and `manualReviewTargets`; do not restart a whole-repository audit unless the impact map itself is suspect.
-6. Automated tests may prove implementation properties, but they do not advance the verification baseline. Baseline advancement is a separate reviewed action.
+If protected fingerprints match the accepted baseline, the result is:
 
-## What the pulse computes
+`GREEN_BASELINE_MATCH / FAST PATH`
 
-For each protected component, the pulse builds a deterministic SHA-256 fingerprint over the sorted set:
+No replay/property/resource/safety deep suites are rerun. Unchanged proof is reused.
 
-`repository_path : git_blob_sha`
+If protected drift exists, the pulse runs only the check groups attached to the changed component(s), syntax-checks changed executable files and reports the exact manual semantic review targets. Automatic tests never self-accept drift.
 
-It computes that fingerprint at the reviewed baseline commit and at current `HEAD`. Any mismatch is drift. The result reports exact added/modified/deleted monitored files, affected components, required automatic checks and manual semantic review targets.
+Examples:
 
-This makes unchanged evidence reusable: if a component fingerprint is identical to the reviewed baseline, there is no reason to rediscover its implementation merely because unrelated repository files changed.
+- documentation-only change outside protected paths -> no kernel run;
+- `replay_math` drift -> replay core + property invariants + resource physics; Node runtime differential remains a separate cross-runtime CI proof;
+- `storage_write` drift -> replay/storage core + resource physics;
+- `runtime_safety` drift -> workflow safety audit;
+- `kernel_governance` drift -> baseline/coverage/pulse self-behavior plus manual governance review;
+- unknown executable under `core/` -> `UNCLASSIFIED_KERNEL_SURFACE` and manual review.
 
-## Protected components
+## Single registry
 
-- `replay_math` — deterministic replay, equations, causal contracts and proof tests.
-- `storage_write` — canonical-vs-derived write admission, budgets and read-back semantics.
-- `runtime_safety` — cryosleep, synthetic/simulation workflow safety and automatic-trigger guards.
-- `kernel_governance` — the pulse algorithm, protected component map and its CI gate.
+`ops/SETKA_KERNEL_MAP.json` is the machine-owned registry for:
 
-Exact path patterns and review targets are machine-owned in `ops/SETKA_KERNEL_MAP.json`.
+- protected components and path membership;
+- executable coverage;
+- routed local check groups;
+- external proof requirements;
+- manual review targets;
+- complexity policy.
+
+Do not create a second registry for the same facts.
+
+## Baseline
+
+`ops/SETKA_KERNEL_BASELINE_ACCEPTANCE.json` is the sole authority for the accepted baseline. A baseline transition must name the previous baseline, the reviewed target commit, reviewer, reviewed components/files/semantics and CI evidence.
+
+Green pulse outputs are derived evidence and belong in CI artifacts/logs. They are not committed back into the repository merely to say that nothing changed. This prevents the loop `verification -> status commit -> verification`.
+
+## Complexity rule
+
+Before adding a new protected file, component or control mechanism, prefer in this order:
+
+1. delete something obsolete;
+2. merge with an existing organ;
+3. compute/derive the information on demand;
+4. create new persistent structure only when the first three cannot represent the required independent information.
+
+Any newly added protected file is routed to `COMPLEXITY_BUDGET` manual review. A new executable inside `core/` that is not classified is fail-closed.
 
 ## Trust boundary
 
-`GREEN_BASELINE_MATCH` means the protected **GitHub/offline kernel** matches its reviewed baseline and its CI checks can be rerun quickly. It does **not** mean PostgreSQL integration, historical G1/G2 replay equivalence, live writer migration or dense-data compaction has been proven.
+A green GitHub/offline kernel still does **not** prove live PostgreSQL integration or historical G1/G2 equivalence.
 
 Until post-recovery proof says otherwise:
 
 - PostgreSQL integration = `NOT_YET_VERIFIED`;
+- historical replay equivalence = `NOT_YET_PROVEN`;
 - dense compaction = forbidden;
 - emergency cryosleep/resume policy remains authoritative.
-
-## Baseline acceptance
-
-When drift is intentional:
-
-1. let Kernel Pulse identify the affected files/components;
-2. run/inspect its automatic checks;
-3. manually review only the reported semantic targets;
-4. record the reviewed commit and CI evidence in `ops/SETKA_KERNEL_STATUS.json`;
-5. rerun Kernel Pulse;
-6. accept only when the new run returns `GREEN_BASELINE_MATCH`.
-
-Do not weaken `SETKA_KERNEL_MAP.json` merely to make a red pulse green. Changes to the map itself are protected `kernel_governance` drift and require review.
