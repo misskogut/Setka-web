@@ -3,6 +3,7 @@ import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 
 const STATUS_PATH = 'ops/SETKA_KERNEL_STATUS.json';
+const MAP_PATH = 'ops/SETKA_KERNEL_MAP.json';
 const args = new Set(process.argv.slice(2));
 const outIndex = process.argv.indexOf('--out');
 const outputPath = outIndex >= 0 ? process.argv[outIndex + 1] : null;
@@ -78,6 +79,10 @@ function unique(items) {
 }
 
 const status = JSON.parse(readFileSync(STATUS_PATH, 'utf8'));
+const kernelMap = JSON.parse(readFileSync(MAP_PATH, 'utf8'));
+if (status.schemaVersion !== 'SETKA_KERNEL_STATUS_V1') throw new Error('Unsupported SETKA kernel status schema');
+if (kernelMap.schemaVersion !== 'SETKA_KERNEL_MAP_V1') throw new Error('Unsupported SETKA kernel map schema');
+
 const baselineRef = status.baseline?.commit;
 if (!baselineRef) throw new Error('SETKA kernel status has no baseline commit');
 
@@ -92,7 +97,7 @@ const baselineTree = tree(baselineRef);
 const currentTree = tree(headRef);
 const components = [];
 
-for (const [name, config] of Object.entries(status.components ?? {})) {
+for (const [name, config] of Object.entries(kernelMap.components ?? {})) {
   const before = componentSnapshot(baselineTree, config.patterns ?? []);
   const after = componentSnapshot(currentTree, config.patterns ?? []);
   const changes = diffSnapshots(before, after);
