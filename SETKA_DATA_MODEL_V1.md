@@ -120,6 +120,58 @@ After-feedback and exploration exposures never enter the primary pre→post outc
 
 Historical formal `session.usage` was safe enough to backfill into PatternExposure because it was already recorded only during gameplay. Historical free-Replay config durations were deliberately not backfilled because retained app state could make Library/Today time look like pattern viewing.
 
+## Procedural storage / causal replay data
+
+The same source-of-truth law now applies to deterministic mathematical and synthetic histories: a reproducible intermediate state is not automatically a new canonical fact.
+
+### Replay Contract
+
+A compact machine passport describing everything required to reproduce a deterministic/seed-reproducible entity trajectory. It includes identity/lineage, law family/version/hash, Genesis state, equation variables, seed/root seed, numerical/runtime semantics, behavior/control variables, clock semantics and checkpoint evidence.
+
+Machine schema: `contracts/setka-replay-contract-v1.schema.json`.
+
+### Causal Event
+
+A canonical event exists when new information changes or proves the historical world: Genesis, parameter mutation, external/non-reproducible input, mode change, meaningful endogenous action, checkpoint, capsule or run end.
+
+Machine schema: `contracts/setka-causal-event-v1.schema.json`.
+
+A deterministic equation advancing from tick `n` to `n+1` with no causal change is **not** by itself a canonical event.
+
+### Parameter mutation / causal patch
+
+A parameter change is stored once at the exact logical tick/coordinate and wall/simulated time boundary where it becomes effective. Replay applies that historical patch at the recorded boundary; it never guesses the old decision again.
+
+Behavior/personality/control settings such as curiosity are variables and belong to the replay contract/history whenever they can affect choices or dynamics.
+
+### Time Interval / Step Interval
+
+Between adjacent causal events, the system preserves or can derive:
+
+- elapsed wall/simulated time;
+- start/end logical ticks;
+- generated mathematical steps;
+- generated coordinate count when not trivially derivable;
+- time-mode/clock-contract changes.
+
+Do not store one `NO_ACTIVITY` row per second or one coordinate row per deterministic tick. Causal silence is represented by interval boundaries.
+
+### Materialized Trajectory
+
+A bounded, disposable reconstruction of dense coordinates created on demand for visualization, scientific analysis, forensic proof, comparison or export.
+
+A materialized trajectory is a view/cache, not canonical memory. It may be discarded only when its causal inputs and required proof/archive evidence are preserved.
+
+### Causal Capsule
+
+A compact digest of ordered causal events plus time/step intervals and cryptographic hashes. Capsules are WARM memory/indexes; they do not replace non-reproducible raw evidence that must be archived.
+
+### Write Admission
+
+Before any future fleet/synthetic writer persists a candidate, it must classify the candidate semantically. Canonical causal information may persist within explicit event/byte budgets; deterministic coordinates, no-activity rows, materialized points and rebuildable caches are derived/cache classes by default. Unknown classes fail closed to review.
+
+The initial offline implementation lives under `core/replay/` and `core/storage/`; it has no PostgreSQL dependency.
+
 ## Adding a new analytic
 
 Before adding storage, ask:
@@ -127,5 +179,6 @@ Before adding storage, ask:
 2. Is the requested value a new entity, an observation/relation, or only a metric slice?
 3. Can the metric be derived from existing semantic facts?
 4. Is a new raw event genuinely required, or can an existing event/entity support it?
+5. If the source is deterministic/seed-reproducible, is this value a new cause or merely a rematerializable consequence?
 
 Create a new entity only when a new real-world concept exists. Otherwise add a metric state or relation to the existing model.
