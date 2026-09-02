@@ -1,11 +1,11 @@
 {
   "schemaVersion": "SETKA_KERNEL_BASELINE_ACCEPTANCE_V1",
   "mode": "REVIEWED_TRANSITION",
-  "previousBaselineCommit": "b5c05d5f54438ab0f18b42b736fe3f4a80ce03e1",
-  "acceptedBaselineCommit": "8cc028250dcdc4b3aa5a10375327b78deb1ceac2",
+  "previousBaselineCommit": "8cc028250dcdc4b3aa5a10375327b78deb1ceac2",
+  "acceptedBaselineCommit": "6b6478a19ca73b78e4c1b54a3c030720a206b0a8",
   "reviewedBy": "SETKA-S-0001-0001",
-  "reviewContext": "President-authorized conversion of the kernel mission and Pre-scale Gate from chat-dependent guidance into deterministic machine-readable self-diagnostics that reduce repeated AI reasoning and warn on mission drift before further scaling",
-  "reviewRunId": 33673846509,
+  "reviewContext": "President-authorized integration of hierarchical causal memory, mother-child knowledge compression, minimum sufficient disclosure and cross-company privacy rules into the existing kernel mission and Mission Gate without creating a new runtime component or relaxing recovery gates",
+  "reviewRunId": 33680628948,
   "reviewedComponents": [
     "kernel_governance"
   ],
@@ -13,22 +13,23 @@
     "SETKA_KERNEL_MISSION.md",
     "ops/SETKA_KERNEL_MISSION_POLICY.json",
     "ops/setka-mission-gate.mjs",
-    "ops/SETKA_KERNEL_MAP.json",
-    ".github/workflows/setka-kernel-pulse.yml"
+    "docs/SETKA_PROCEDURAL_STORAGE_V1.md"
   ],
   "reviewedSemantics": [
-    "the kernel mission is now executable policy rather than chat-only memory",
-    "known policy checks are deterministic-first and AI is reserved for ambiguous semantics, optimization alternatives and novel capability abstraction",
-    "proposal preflight uses SETKA_CHANGE_PROPOSAL_V1 and returns ALIGNED, OPTIMIZE, REVIEW_REQUIRED or BLOCK with deterministic signals and optimization hints",
-    "protected kernel drift is routed through MISSION_GATE in Kernel Pulse and the workflow now watches the mission document, mission policy and mission gate implementation",
-    "the mission gate self-test passed all 5 cases in run 33673846509",
-    "the existing kernel handshake self-test remained PASS with 8 cases in run 33673846509",
-    "run 33673846509 produced an OPTIMIZE warning for NEW_PERMANENT_KERNEL_MASS exactly as intended; this review accepts the two new operational files because they replace repeated human/AI mission re-derivation with a reusable deterministic guard",
-    "the mission gate does not automatically delete ideas; OPTIMIZE is a compiler hint toward connector, hybrid, smaller primitive, causal derivation or better benchmark definition",
-    "hard BLOCK remains limited to known prohibited semantics such as silent history rewrite, bypass of cryosleep/recovery gates, unbounded dense deterministic writes or persisting proven derived noise as canonical data",
-    "the mission document itself is now protected kernel governance surface so future mission changes require review",
-    "no replay_math, storage_write or runtime_safety implementation changed in this transition",
-    "PostgreSQL/Supabase was not modified; cryosleep and all recovery gates remain authoritative"
+    "children remain authoritative for detailed local causal life while fleets, companies and higher scopes recursively capsule experience",
+    "parent and mother canonical memory should grow primarily with new irreducible knowledge rather than raw child event count",
+    "equivalent child discoveries are consolidated into one knowledge object with support, conditions, effect distribution and permitted provenance roots rather than duplicated once per child",
+    "the kernel now distinguishes PRIVATE_RAW, LOCAL_CAUSAL, SHAREABLE_DERIVED and GLOBAL_KNOWLEDGE disclosure classes",
+    "the cross-owner rule is minimum sufficient memory plus minimum sufficient disclosure: a child should be able to tell the mother what it learned without sending its private life",
+    "common SETKA semantic language enables machine interpretation but is explicitly not treated as proof of anonymity; indirect re-identification through timing, rarity, precision, tiny cohorts or unique trajectories remains a review concern",
+    "Mission Gate now recognizes cross-tenant PRIVATE_RAW disclosure and direct identifiers in GLOBAL_KNOWLEDGE as hard-block semantics",
+    "Mission Gate now recognizes unresolved re-identification risk, unknown disclosure classification and missing global-knowledge provenance as review semantics",
+    "Mission Gate now emits optimization guidance for full child-history uplink, duplicate mother discoveries and unnecessary parent recomputation of child-local state",
+    "Mission Gate self-test was expanded from 5 to 8 cases to cover private-raw hard block, re-identification review and full-child-history optimization; the workflow executed MISSION_GATE and syntax checks in review run 33680628948",
+    "no new runtime component, workflow, database schema, Supabase write path or live Privacy Compiler was created by this transition",
+    "mother law updates remain versioned handshake transitions and must never silently rewrite child history",
+    "the Privacy Compiler, secure aggregation and zero-knowledge mechanisms remain future implementation targets rather than claimed live capabilities",
+    "PostgreSQL/Supabase was not modified; cryosleep and all post-recovery backup/audit/handshake gates remain authoritative"
   ],
-  "acceptedAtSourceTime": "2026-09-02T19:33:00Z"
+  "acceptedAtSourceTime": "2026-09-02T20:40:06Z"
 }
