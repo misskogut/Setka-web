@@ -210,6 +210,21 @@ function selftest(policy) {
       name: 'full child history uplink optimize',
       proposal: { schemaVersion: 'SETKA_CHANGE_PROPOSAL_V1', title: 'Child history uplink', changeClass: 'STORAGE', impacts: baseImpacts, signals: ['FULL_CHILD_HISTORY_UPLINK_WHERE_CAPSULE_SUFFICES'], addsMandatoryVendorDependencies: 0, addsPermanentKernelFiles: 0, benchmarkDefined: true },
       expected: 'OPTIMIZE'
+    },
+    {
+      name: 'unproven structural deletion hard block',
+      proposal: { schemaVersion: 'SETKA_CHANGE_PROPOSAL_V1', title: 'Drop explicit graph before proof', changeClass: 'STORAGE', impacts: baseImpacts, signals: ['DROP_EXPLICIT_STRUCTURE_WITHOUT_EXACT_RECONSTRUCTION_PROOF'], addsMandatoryVendorDependencies: 0, addsPermanentKernelFiles: 0, benchmarkDefined: true },
+      expected: 'BLOCK'
+    },
+    {
+      name: 'unknown generator coverage review',
+      proposal: { schemaVersion: 'SETKA_CHANGE_PROPOSAL_V1', title: 'Unknown partition coverage', changeClass: 'RUNTIME', impacts: baseImpacts, signals: ['PROCEDURAL_GENERATOR_COVERAGE_OR_COLLISION_UNKNOWN'], addsMandatoryVendorDependencies: 0, addsPermanentKernelFiles: 0, benchmarkDefined: true },
+      expected: 'REVIEW_REQUIRED'
+    },
+    {
+      name: 'explicit structure optimize',
+      proposal: { schemaVersion: 'SETKA_CHANGE_PROPOSAL_V1', title: 'Procedural graph candidate', changeClass: 'STORAGE', impacts: { ...baseImpacts, resourceEfficiency: 'IMPROVE' }, signals: ['EXPLICIT_STRUCTURE_WHERE_VERIFIED_GENERATOR_SUFFICES'], addsMandatoryVendorDependencies: 0, addsPermanentKernelFiles: 0, benchmarkDefined: true },
+      expected: 'OPTIMIZE'
     }
   ];
 
