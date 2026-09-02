@@ -33,6 +33,65 @@ The kernel should prefer changes that measurably improve one or more of these di
 9. **Resource physics** — storage, writes, CPU/GPU time, energy, latency and AI calls are first-class costs the kernel measures and minimizes per verified outcome.
 10. **Recoverability** — loss of a phone, cloud outage or connector failure must not imply loss of the world; recovery must be possible from protected independent material without making one physical token the sole copy.
 
+## Causal irreducibility boundary
+
+SETKA's strongest storage thesis is not merely “use equations” or “use replay”. The kernel should continuously determine the boundary between:
+
+- **new irreducible information** that cannot be reconstructed from already preserved causes; and
+- **reproducible consequence** that can be deterministically regenerated under an explicit replay contract.
+
+Working name:
+
+**Causal Irreducibility Boundary.**
+
+Decision rule:
+
+`CAN PROVE EXACT RECONSTRUCTION -> DERIVED / MATERIALIZE ON DEMAND`
+
+`CANNOT RECONSTRUCT -> CANONICAL / IRREVERSIBLE INPUT`
+
+`UNCERTAIN -> FAIL CLOSED TO REVIEW`
+
+The important distinction is therefore not simply `state vs event`. It is:
+
+`new causal information vs consequence of already-known causal information`.
+
+A deterministic state transition is not automatically a new fact. A human instruction, external observation, nondeterministic model result, sensor measurement, branch-changing decision or law/parameter mutation may be irreducible and must be preserved.
+
+This makes the transcript and storage layer act like a causal codec for a dynamic world:
+
+`Genesis + law + causal patches + irreversible inputs + exact boundaries + replay contract -> reconstructable world`.
+
+The kernel must never delete or omit data merely because compression is desirable. Derived classification is valid only when reconstruction is proven with the declared numerical/runtime semantics and verification hashes/checkpoints where required.
+
+## Scarcity as a design advantage
+
+SETKA should treat limited money, storage and compute as useful design pressure rather than an excuse to build a weaker system.
+
+Large infrastructure budgets can make redundant storage, repeated AI reasoning and oversized context economically tolerable. SETKA should instead ask earlier:
+
+> **How much of this information or capability is actually irreducible?**
+
+The goal is not austerity for its own sake. The goal is to discover lower-information, lower-compute representations that remain exact, useful and provable.
+
+Resource scarcity becomes an advantage only when it produces measurable improvements. It is not evidence of superiority by itself.
+
+## Pre-scale gate — prove the path before adding mass
+
+Before expanding the system with a major new feature, subsystem, model, data stream or autonomous behavior, the kernel/design process should ask:
+
+1. Can the capability be obtained first through a connector instead of becoming permanent kernel mass?
+2. Is the proposed stored data causally irreducible, or can it be derived/materialized later?
+3. Does it strengthen the Provable Causal World Runtime or Sovereign Portable World mission?
+4. What benchmark proves the gain in utility, correctness, cost, replay, portability, sovereignty or safety?
+5. What new permanent complexity/dependency does it introduce?
+6. Can the same outcome be obtained by a smaller primitive or better abstraction?
+7. Does the change preserve the ability to replace the external model/cloud/database/device later?
+
+If these questions do not have good answers, scaling is deferred.
+
+This is deliberate. The current phase should prioritize **laying the future path before adding mass**: prove the information model, replay, portability, connector abstraction, validation and resource physics first; then let future capabilities grow on top of that spine.
+
 ## Portable-world target architecture
 
 The long-term shape is:
@@ -94,7 +153,8 @@ A physical key must never be the only copy of the world.
 - treating generated scenarios as causal truth without validation;
 - making the user upload the whole world merely to access one connector;
 - custom hardware before the software capsule/replay contract is proven;
-- symbolic use of Mandelbrot, phi, pi or other mathematics without a measurable role.
+- symbolic use of Mandelbrot, phi, pi or other mathematics without a measurable role;
+- feature accumulation before the causal/replay/portability spine is proven.
 
 ## Mission metrics
 
@@ -113,7 +173,9 @@ This mission becomes real only through measurable progress. Track at least:
 - storage/energy/AI-call cost per verified outcome;
 - number of external capabilities available through connectors versus mandatory dependencies;
 - capability-assimilation ratio: capabilities gained without equivalent growth in canonical kernel complexity;
-- native-equivalent efficiency when a connector capability is replaced or hybridized: cost/latency/storage/privacy/provenance before vs after.
+- native-equivalent efficiency when a connector capability is replaced or hybridized: cost/latency/storage/privacy/provenance before vs after;
+- causal irreducibility ratio: irreducible canonical information versus total materialized/derived world state for a fixed reproducible workload;
+- feature-mass efficiency: verified capabilities gained per unit of permanent kernel/storage/dependency growth.
 
 The strategic goal is not to claim universal superiority. It is to make SETKA increasingly difficult to obsolete because stronger future systems can be connected rather than requiring the SETKA world to migrate into them.
 
@@ -129,9 +191,17 @@ For any substantial kernel proposal, ask:
 
 > **Does this make the world more causally complete, reproducible, portable, sovereign, connector-neutral, safe or resource-efficient — and can we measure the improvement?**
 
+For any proposed persistent data, also ask:
+
+> **Is this genuinely new irreducible information, or is it a consequence the replay contract can prove and regenerate?**
+
 For any proposed external capability, also ask:
 
 > **Should SETKA connect it, hybridize it, or collapse it into a lighter native primitive — and what benchmark proves the choice?**
+
+For any major expansion, also ask:
+
+> **Are we adding future-proof structure, or merely adding mass before the spine is proven?**
 
 If the answer cannot be measured, it is not automatically a kernel priority.
 
