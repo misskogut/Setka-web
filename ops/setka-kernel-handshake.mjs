@@ -1,5 +1,5 @@
 import { readFileSync, writeFileSync } from 'node:fs';
-import { deepStrictEqual, strictEqual } from 'node:assert';
+import { deepStrictEqual, strictEqual, throws } from 'node:assert';
 
 const args = process.argv.slice(2);
 const has = (flag) => args.includes(flag);
@@ -25,6 +25,23 @@ function validateManifest(manifest) {
       fail('every automatic migration must have an exact contentHash and be explicitly allowlisted + idempotent');
     }
   }
+
+  const transcript = manifest.transcriptIntegration;
+  if (!transcript || transcript.activityCode !== 'KERNEL_RECONCILIATION') fail('kernel transcript integration policy is missing');
+  if (transcript.noopCanonicalWrite !== false) fail('SYNCED_NOOP must remain causal silence');
+  if (transcript.completionRequiresTranscriptReadback !== true) fail('kernel sync completion must require transcript read-back');
+  if (transcript.operationIdRequired !== true) fail('state-changing kernel sync requires operation_id');
+  if (transcript.recoveryCheckpointRequiredBeforeStateChange !== true) fail('state-changing kernel sync requires recovery checkpoint evidence');
+  const requiredSubtypes = ['started', 'completed', 'failed', 'reviewRequired', 'reverted', 'reapplied'];
+  for (const key of requiredSubtypes) if (!transcript.subtypes?.[key]) fail(`missing transcript subtype ${key}`);
+  const rollback = transcript.rollbackPolicy;
+  if (!rollback?.historyIsAppendOnly || !rollback?.revertCreatesNewEvent || !rollback?.reapplyCreatesNewEvent) {
+    fail('rollback/reapply must be append-only new history');
+  }
+  const classes = new Set(rollback.classes ?? []);
+  for (const required of ['REVERSIBLE', 'FORWARD_FIX_ONLY', 'IRREVERSIBLE']) {
+    if (!classes.has(required)) fail(`missing rollback class ${required}`);
+  }
 }
 
 function validateDatabaseState(state) {
@@ -32,6 +49,53 @@ function validateDatabaseState(state) {
   if (!state.gates || typeof state.gates !== 'object') fail('database recovery gates are missing');
   if (!state.components || typeof state.components !== 'object') fail('database component state is missing');
   if (!Array.isArray(state.appliedMigrations)) fail('appliedMigrations must be an array');
+}
+
+function transcriptPlan(manifest, mode, extra = {}) {
+  const t = manifest.transcriptIntegration;
+  const base = {
+    activityCode: t.activityCode,
+    activityNameRu: t.activityNameRu,
+    actor: t.actor,
+    canonicalEventFamily: t.canonicalEventFamily,
+    canonicalWriteRequiredNow: false,
+    completionRequiresTranscriptReadback: t.completionRequiresTranscriptReadback,
+    operationIdRequiredForStateChange: t.operationIdRequired,
+    recoveryCheckpointRequiredBeforeStateChange: t.recoveryCheckpointRequiredBeforeStateChange,
+    mode
+  };
+
+  if (mode === 'NONE') return { ...base, reason: extra.reason ?? 'NO_CAUSAL_CHANGE' };
+  if (mode === 'REVIEW_SIGNAL_IF_NEW') {
+    return {
+      ...base,
+      subtype: t.subtypes.reviewRequired,
+      dedupeRequired: true,
+      reason: extra.reason ?? 'MANUAL_REVIEW_REQUIRED'
+    };
+  }
+  if (mode === 'STATE_CHANGE_PAIR_ON_EXECUTION') {
+    return {
+      ...base,
+      onExecution: {
+        startedSubtype: t.subtypes.started,
+        completedSubtype: t.subtypes.completed,
+        failedSubtype: t.subtypes.failed,
+        requiredLinks: ['operation_id', 'release_id'],
+        requiredStateEvidence: ['before_state_hash', 'after_state_hash'],
+        completionBoundary: 'TRANSCRIPT_COMPLETED_EVENT_READ_BACK'
+      },
+      rollback: {
+        revertedSubtype: t.subtypes.reverted,
+        reappliedSubtype: t.subtypes.reapplied,
+        appendOnly: t.rollbackPolicy.historyIsAppendOnly,
+        classes: t.rollbackPolicy.classes,
+        automaticRevertRequires: t.rollbackPolicy.automaticRevertRequires,
+        wholeDatabaseRollbackRule: t.rollbackPolicy.wholeDatabaseRollbackForSingleKernelUpdate
+      }
+    };
+  }
+  fail(`unsupported transcript plan mode ${mode}`);
 }
 
 export function reconcileKernel(manifest, databaseState) {
@@ -62,7 +126,7 @@ export function reconcileKernel(manifest, databaseState) {
     databaseState.databaseSchemaVersion === manifest.database.requiredSchemaVersion;
 
   const base = {
-    schemaVersion: 'SETKA_KERNEL_HANDSHAKE_RESULT_V1',
+    schemaVersion: 'SETKA_KERNEL_HANDSHAKE_RESULT_V2',
     releaseId: manifest.releaseId,
     dbRelevantSourceBaselineCommit: manifest.dbRelevantSourceBaselineCommit,
     automaticMigrationEligible: false,
@@ -75,16 +139,31 @@ export function reconcileKernel(manifest, databaseState) {
   };
 
   if (blockedGates.length) {
-    return { ...base, state: 'BLOCKED_BY_RECOVERY_GATES', actions: ['READ_ONLY_ONLY'] };
+    return {
+      ...base,
+      state: 'BLOCKED_BY_RECOVERY_GATES',
+      actions: ['READ_ONLY_ONLY'],
+      transcriptPlan: transcriptPlan(manifest, 'NONE', { reason: 'NO_STATE_CHANGE_RECOVERY_BLOCK' })
+    };
   }
 
   if (migrationIntegrityErrors.length) {
-    return { ...base, state: 'MANUAL_REVIEW_REQUIRED', actions: ['MIGRATION_HASH_MISMATCH', 'DO_NOT_AUTO_WRITE'] };
+    return {
+      ...base,
+      state: 'MANUAL_REVIEW_REQUIRED',
+      actions: ['MIGRATION_HASH_MISMATCH', 'DO_NOT_AUTO_WRITE'],
+      transcriptPlan: transcriptPlan(manifest, 'REVIEW_SIGNAL_IF_NEW', { reason: 'MIGRATION_HASH_MISMATCH' })
+    };
   }
 
   const unknownComponentDelta = componentDelta.filter((item) => item.state !== 'MATCH');
   if (unknownComponentDelta.length) {
-    return { ...base, state: 'MANUAL_REVIEW_REQUIRED', actions: ['COMPARE_LIVE_STATE', 'DO_NOT_AUTO_WRITE'] };
+    return {
+      ...base,
+      state: 'MANUAL_REVIEW_REQUIRED',
+      actions: ['COMPARE_LIVE_STATE', 'DO_NOT_AUTO_WRITE'],
+      transcriptPlan: transcriptPlan(manifest, 'REVIEW_SIGNAL_IF_NEW', { reason: 'UNKNOWN_COMPONENT_DRIFT' })
+    };
   }
 
   if (pendingMigrations.length) {
@@ -92,20 +171,31 @@ export function reconcileKernel(manifest, databaseState) {
       ...base,
       state: 'KNOWN_DELTA_READY',
       automaticMigrationEligible: true,
-      actions: pendingMigrations.map((migration) => `APPLY_EXACT_ALLOWLISTED_MIGRATION:${migration.id}:${migration.contentHash}`)
+      actions: pendingMigrations.map((migration) => `APPLY_EXACT_ALLOWLISTED_MIGRATION:${migration.id}:${migration.contentHash}`),
+      transcriptPlan: transcriptPlan(manifest, 'STATE_CHANGE_PAIR_ON_EXECUTION')
     };
   }
 
   if (!schemaMatches) {
-    return { ...base, state: 'MANUAL_REVIEW_REQUIRED', actions: ['DATABASE_SCHEMA_REVIEW', 'DO_NOT_AUTO_WRITE'] };
+    return {
+      ...base,
+      state: 'MANUAL_REVIEW_REQUIRED',
+      actions: ['DATABASE_SCHEMA_REVIEW', 'DO_NOT_AUTO_WRITE'],
+      transcriptPlan: transcriptPlan(manifest, 'REVIEW_SIGNAL_IF_NEW', { reason: 'DATABASE_SCHEMA_MISMATCH' })
+    };
   }
 
-  return { ...base, state: 'SYNCED_NOOP', actions: ['NOOP'] };
+  return {
+    ...base,
+    state: 'SYNCED_NOOP',
+    actions: ['NOOP'],
+    transcriptPlan: transcriptPlan(manifest, 'NONE', { reason: 'SYNCED_NOOP_CAUSAL_SILENCE' })
+  };
 }
 
 function runSelfTest() {
   const manifest = JSON.parse(readFileSync('ops/SETKA_KERNEL_RELEASE_MANIFEST.json', 'utf8'));
-  const matchingComponents = Object.fromEntries(Object.entries(manifest.components).map(([name, value]) => [name, { fingerprint: value.fingerprint }]));
+  const matchingComponents = Object.fromEntries(Object.entries(manifest.components).map(([name, v]) => [name, { fingerprint: v.fingerprint }]));
   const gates = Object.fromEntries((manifest.recoveryGates ?? []).map((gate) => [gate, true]));
   const baseState = {
     schemaVersion: 'SETKA_DB_KERNEL_STATE_V1',
@@ -115,15 +205,22 @@ function runSelfTest() {
     appliedMigrations: []
   };
 
-  strictEqual(reconcileKernel(manifest, baseState).state, 'SYNCED_NOOP');
+  const noop = reconcileKernel(manifest, baseState);
+  strictEqual(noop.state, 'SYNCED_NOOP');
+  strictEqual(noop.transcriptPlan.canonicalWriteRequiredNow, false);
+  strictEqual(noop.transcriptPlan.mode, 'NONE');
 
   const driftState = structuredClone(baseState);
   driftState.components.storage_write.fingerprint = '0'.repeat(64);
-  strictEqual(reconcileKernel(manifest, driftState).state, 'MANUAL_REVIEW_REQUIRED');
+  const drift = reconcileKernel(manifest, driftState);
+  strictEqual(drift.state, 'MANUAL_REVIEW_REQUIRED');
+  strictEqual(drift.transcriptPlan.mode, 'REVIEW_SIGNAL_IF_NEW');
 
   const blockedState = structuredClone(baseState);
   blockedState.gates.fullBackupComplete = false;
-  strictEqual(reconcileKernel(manifest, blockedState).state, 'BLOCKED_BY_RECOVERY_GATES');
+  const blocked = reconcileKernel(manifest, blockedState);
+  strictEqual(blocked.state, 'BLOCKED_BY_RECOVERY_GATES');
+  strictEqual(blocked.transcriptPlan.mode, 'NONE');
 
   const migrationManifest = structuredClone(manifest);
   migrationManifest.database.requiredMigrations = [{
@@ -136,15 +233,36 @@ function runSelfTest() {
   strictEqual(migrationResult.state, 'KNOWN_DELTA_READY');
   strictEqual(migrationResult.automaticMigrationEligible, true);
   deepStrictEqual(migrationResult.actions, [`APPLY_EXACT_ALLOWLISTED_MIGRATION:M_TEST_001:${'1'.repeat(64)}`]);
+  strictEqual(migrationResult.transcriptPlan.mode, 'STATE_CHANGE_PAIR_ON_EXECUTION');
+  strictEqual(migrationResult.transcriptPlan.onExecution.startedSubtype, 'KERNEL_RECONCILIATION_STARTED');
+  strictEqual(migrationResult.transcriptPlan.onExecution.completedSubtype, 'KERNEL_RECONCILIATION_COMPLETED');
+  strictEqual(migrationResult.transcriptPlan.onExecution.completionBoundary, 'TRANSCRIPT_COMPLETED_EVENT_READ_BACK');
+  deepStrictEqual(migrationResult.transcriptPlan.rollback.classes, ['REVERSIBLE', 'FORWARD_FIX_ONLY', 'IRREVERSIBLE']);
 
   const badAppliedState = structuredClone(baseState);
   badAppliedState.appliedMigrations = [{ id: 'M_TEST_001', contentHash: '2'.repeat(64) }];
-  strictEqual(reconcileKernel(migrationManifest, badAppliedState).state, 'MANUAL_REVIEW_REQUIRED');
+  const badApplied = reconcileKernel(migrationManifest, badAppliedState);
+  strictEqual(badApplied.state, 'MANUAL_REVIEW_REQUIRED');
+  strictEqual(badApplied.transcriptPlan.reason, 'MIGRATION_HASH_MISMATCH');
+
+  const unsafeManifest = structuredClone(manifest);
+  unsafeManifest.transcriptIntegration.noopCanonicalWrite = true;
+  throws(() => reconcileKernel(unsafeManifest, baseState), /causal silence/);
+
+  const rewriteManifest = structuredClone(manifest);
+  rewriteManifest.transcriptIntegration.rollbackPolicy.revertCreatesNewEvent = false;
+  throws(() => reconcileKernel(rewriteManifest, baseState), /append-only new history/);
 
   console.log(JSON.stringify({
-    schemaVersion: 'SETKA_KERNEL_HANDSHAKE_SELFTEST_V1',
+    schemaVersion: 'SETKA_KERNEL_HANDSHAKE_SELFTEST_V2',
     state: 'PASS',
-    cases: 5
+    cases: 8,
+    guarantees: [
+      'NOOP_DOES_NOT_WRITE_CANON',
+      'STATE_CHANGE_HAS_STARTED_COMPLETED_FAILED_PLAN',
+      'COMPLETION_REQUIRES_TRANSCRIPT_READBACK',
+      'REVERT_REAPPLY_ARE_APPEND_ONLY_NEW_EVENTS'
+    ]
   }, null, 2));
 }
 
