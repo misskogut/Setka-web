@@ -65,7 +65,7 @@
         "RESOURCE_PHYSICS"
       ],
       "externalChecks": [
-        "NODE20_NODE24_DIFFERENTIAL"
+        "NODE_RUNTIME_DIFFERENTIAL_ON_RUNTIME_CONTRACT_CHANGE"
       ],
       "manualReviewTargets": [
         "NUMERIC_SEMANTICS",
@@ -107,8 +107,6 @@
         ".github/workflows/*simulation*.yaml",
         ".github/workflows/_setka-synthetic-runner.yml",
         ".github/workflows/_setka-synthetic-runner.yaml",
-        ".github/workflows/setka-workflow-safety-selftest.yml",
-        ".github/workflows/setka-workflow-safety-selftest.yaml",
         "ops/setka-workflow-safety-audit.mjs",
         "ops/SETKA_CRYOSLEEP.yml"
       ],
