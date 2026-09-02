@@ -2,12 +2,6 @@ name: SETKA Synthetic User Lab
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - 'synthetic-browser-runner.mjs'
-      - '.github/workflows/synthetic-users.yml'
-      - '.github/actions/setka-cryo-gate/action.yml'
-      - 'ops/SETKA_CRYOSLEEP.yml'
 
 permissions:
   contents: read
