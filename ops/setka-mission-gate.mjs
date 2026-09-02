@@ -82,17 +82,18 @@ function assessProposal(proposal, policy) {
   }
 
   const deduped = unique(signals);
+  const state = worstState(states);
   return {
     schemaVersion: 'SETKA_MISSION_GATE_RESULT_V1',
     mode: 'PROPOSAL_PREFLIGHT',
-    state: worstState(states),
+    state,
     title: proposal.title ?? null,
     changeClass: proposal.changeClass,
     signals: deduped,
     optimizationHints: deduped.map((signal) => hint(policy, signal)).filter(Boolean),
     impacts,
     deterministicDecision: true,
-    aiEscalation: worstState(states) === 'ALIGNED' ? 'NOT_NEEDED' : 'ONLY_IF_STATIC_EVIDENCE_OR_HUMAN_REVIEW_CANNOT_RESOLVE'
+    aiEscalation: state === 'ALIGNED' ? 'NOT_NEEDED' : 'ONLY_IF_STATIC_EVIDENCE_OR_HUMAN_REVIEW_CANNOT_RESOLVE'
   };
 }
 
@@ -143,10 +144,11 @@ function assessDiff(policy) {
   }
 
   const deduped = unique(signals);
+  const state = worstState(states);
   return {
     schemaVersion: 'SETKA_MISSION_GATE_RESULT_V1',
     mode: 'KERNEL_DIFF_DIAGNOSTIC',
-    state: worstState(states),
+    state,
     baselineCommit: baseline,
     currentCommit: head,
     changedFileCount: changes.length,
@@ -154,7 +156,7 @@ function assessDiff(policy) {
     signals: deduped,
     optimizationHints: deduped.map((signal) => hint(policy, signal)).filter(Boolean),
     deterministicDecision: true,
-    aiEscalation: worstState(states) === 'ALIGNED' ? 'NOT_NEEDED' : 'ONLY_IF_STATIC_EVIDENCE_OR_HUMAN_REVIEW_CANNOT_RESOLVE'
+    aiEscalation: state === 'ALIGNED' ? 'NOT_NEEDED' : 'ONLY_IF_STATIC_EVIDENCE_OR_HUMAN_REVIEW_CANNOT_RESOLVE'
   };
 }
 
@@ -208,7 +210,13 @@ validatePolicy(policy);
 const args = process.argv.slice(2);
 
 let result;
-if (args.includes('--selftest')) {
+if (args.includes('--check')) {
+  result = {
+    schemaVersion: 'SETKA_MISSION_GATE_CHECK_V1',
+    selftest: selftest(policy),
+    diagnostic: assessDiff(policy)
+  };
+} else if (args.includes('--selftest')) {
   result = selftest(policy);
 } else if (args.includes('--proposal')) {
   const index = args.indexOf('--proposal');
@@ -221,4 +229,5 @@ if (args.includes('--selftest')) {
 
 console.log(JSON.stringify(result, null, 2));
 
-if (args.includes('--verify') && ['REVIEW_REQUIRED', 'BLOCK'].includes(result.state)) process.exit(2);
+const decisionState = result.diagnostic?.state ?? result.state;
+if (args.includes('--verify') && ['REVIEW_REQUIRED', 'BLOCK'].includes(decisionState)) process.exit(2);
