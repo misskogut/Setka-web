@@ -1,0 +1,72 @@
+name: SETKA Node Runtime Differential
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'core/replay/**'
+      - 'contracts/setka-*-v1.schema.json'
+      - 'tests/setka-replay-core.test.mjs'
+      - 'tests/setka-replay-properties.test.mjs'
+      - 'ops/setka-runtime-fingerprint.mjs'
+      - '.github/workflows/setka-node-runtime-differential.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  fingerprint:
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['20', '24']
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Run fixed golden replay tests
+        run: node --test tests/setka-replay-core.test.mjs
+      - name: Run deterministic property suite
+        run: node --test tests/setka-replay-properties.test.mjs
+      - name: Produce semantic runtime fingerprint
+        run: node ops/setka-runtime-fingerprint.mjs --out runtime-fingerprint.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: setka-runtime-node-${{ matrix.node }}
+          path: runtime-fingerprint.json
+          retention-days: 14
+
+  compare:
+    needs: fingerprint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v4
+        with:
+          name: setka-runtime-node-20
+          path: runtime/node20
+      - uses: actions/download-artifact@v4
+        with:
+          name: setka-runtime-node-24
+          path: runtime/node24
+      - name: Require exact semantic fingerprint equality
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const a = JSON.parse(fs.readFileSync('runtime/node20/runtime-fingerprint.json', 'utf8'));
+          const b = JSON.parse(fs.readFileSync('runtime/node24/runtime-fingerprint.json', 'utf8'));
+          console.log(JSON.stringify({ node20: a.observedRuntime, node24: b.observedRuntime, fingerprint20: a.semanticFingerprint, fingerprint24: b.semanticFingerprint }, null, 2));
+          if (a.semanticFingerprint !== b.semanticFingerprint) {
+            console.error('::error title=SETKA Numeric Runtime Drift::Node 20 and Node 24 produced different semantic replay fingerprints.');
+            process.exit(1);
+          }
+          console.log('SETKA_NODE_RUNTIME_DIFFERENTIAL=PASS');
+          NODE
