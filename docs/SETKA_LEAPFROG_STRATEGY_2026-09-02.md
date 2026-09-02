@@ -193,3 +193,145 @@ The realistic quantum leap is not 'be better than every large platform at everyt
 6. let mature infrastructure supply everything outside the differentiating kernel.
 
 If successful, SETKA would not need to outgrow Palantir, Temporal, NVIDIA or DeepMind. It would become a new substrate that can sit beside or underneath systems like them whenever exact causal provenance, replay, branching and system self-history matter.
+
+## 10. Incumbent trajectory scan — where SETKA is moving differently
+
+This section records **divergent architectural trajectories**, not claims that incumbent products are obsolete. A divergence becomes a SETKA advantage only if the benchmark proves better information efficiency, replay fidelity, provenance, cost, or decision quality.
+
+### A. Snapshot-heavy agent memory vs causal-sufficiency memory
+
+LangGraph currently persists graph state as checkpoints and documents that a snapshot is saved at every super-step. Its own documentation now explicitly warns that default checkpoints can write the full value of every state channel at each super-step and can create significant storage growth for long-running threads. LangGraph has introduced `DeltaChannel` to store only incremental deltas for append-heavy channels, currently in beta.
+
+Public source:
+- https://docs.langchain.com/oss/python/langgraph/persistence
+
+This is the clearest public signal that a mainstream agent platform is already encountering a problem SETKA's post-incident law addresses one level deeper.
+
+LangGraph optimization direction:
+
+`full state snapshots -> deltas where useful`
+
+SETKA target direction:
+
+`causal causes + irreversible inputs + sparse checkpoints -> derive deterministic state`
+
+The difference matters if a state delta itself is still a deterministic consequence that need not be canonical. SETKA should benchmark this rather than merely assert superiority.
+
+### B. Scenario sandboxes vs durable historical world lineage
+
+Palantir Ontology Scenarios are strong what-if tools, but Palantir explicitly documents that Ontology scenarios are **not data versioning tools** and cannot provide a snapshot of the Ontology at a historical point in time. Persisted scenarios are collaborative/auditable decision artifacts, while scenario data has lifecycle limits; current beta documentation describes default scenario expiration after 30 days, and temporary scenarios can disappear with the session.
+
+Public sources:
+- https://www.palantir.com/docs/foundry/ontology/overview-ontology-scenario
+- https://www.palantir.com/docs/foundry/ontology/temporary-scenario
+- https://www.palantir.com/docs/foundry/ontology/persisted-scenario
+
+Palantir direction is optimized for enterprise decision sandboxes over a current Ontology.
+
+SETKA's intended direction is different:
+
+`append-only causal lineage -> reconstruct historical world -> fork from verified boundary -> preserve branch provenance`
+
+If SETKA proves this cheaply, the advantage is not a nicer scenario UI; it is treating historical world lineage itself as a first-class computational object.
+
+### C. Scale-the-model world generation vs explicit-law/provenance worlds
+
+World Labs Atlas describes a multimodal autoregressive diffusion-transformer world model whose performance is expected to improve with increased training compute. NVIDIA Cosmos similarly focuses on foundation models that predict/generate future physical-world states from multimodal inputs.
+
+Public sources:
+- https://www.worldlabs.ai/blog/atlas
+- https://docs.nvidia.com/cosmos/latest/introduction.html
+
+Their direction:
+
+`more learned world capacity + more training/inference compute -> higher world-generation fidelity`
+
+SETKA's differentiating direction:
+
+`explicit law + causal record + bounded nondeterministic inputs -> exact replay/provenance where possible`
+
+Neither supersedes the other. In fact, the stronger strategic position is to make Atlas/Cosmos-like models **connectable nondeterministic organs inside SETKA**, while SETKA owns the provenance, irreversible output capture, branch lineage and system history around them.
+
+This is the concrete meaning of “incumbents become connectors”: not that SETKA reproduces their capability, but that it can orchestrate and remember the causal role of their capability without surrendering its own source of truth.
+
+### D. Context accumulation vs causal compression
+
+Celonis Context Model is moving toward a dynamic real-time twin containing current operational state plus the full backstory of steps, interactions and decisions, enriched with business knowledge and decision intelligence.
+
+Public source:
+- https://www.celonis.com/platform/context-model
+
+This is directionally close to SETKA, not an opposite path. The open question is **representation physics**: how much of that backstory must remain hot canonical data versus how much can be reconstructed from smaller causes and formulas.
+
+SETKA should not assume Celonis is storage-inefficient; public material does not establish that. Instead SCWB should test the general question:
+
+`Does causal-sufficiency representation preserve the same decision/replay value with materially fewer canonical writes/bytes?`
+
+If yes, SETKA has a structural advantage. If no, the claimed advantage is weakened.
+
+### E. Durable workflow replay is convergence, not an obsolete direction
+
+Temporal's core direction — crash-proof durable execution and deterministic replay of long-running processes — is strongly aligned with SETKA's reliability goals rather than opposed to them.
+
+Public source:
+- https://docs.temporal.io/
+
+Do not compete with this. Treat durable workflow engines as potential infrastructure/connectors underneath SETKA when needed.
+
+SETKA must remain differentiated on the **information model of worlds** rather than reimplementing durable workflow infrastructure.
+
+### F. Counterfactual simulation without validation is the actual future trap
+
+The strongest scientific warning in the landscape does not come from a competitor product but from current causal digital-twin research. The Digital Twin Counterfactual Framework (2026) formalizes that generating a simulated counterfactual does not make it causally true; validation must be hierarchical and some individual-level claims remain assumption-dependent.
+
+Public source:
+- https://arxiv.org/abs/2604.01325
+
+A newer 2026 paper on equilibrium causal digital twins further shows that systems can agree on finite observed experiments yet disagree on target counterfactuals without structural assumptions.
+
+Public source:
+- https://arxiv.org/abs/2607.21667
+
+Any industry trajectory that markets “what-if” generation as causal truth without falsifiable validation can become scientifically stale. SETKA can get ahead by building validation discipline into the runtime now:
+
+`simulated branch != causal truth`
+
+and scoring separately:
+- replay fidelity;
+- predictive validity;
+- intervention validity;
+- causal identification strength;
+- uncertainty.
+
+## 11. What could genuinely become outdated if SETKA's thesis is proven
+
+These are **conditional forecasts**, not current facts.
+
+Potentially outdated patterns:
+
+1. **Persist-every-state by default** when most state is exactly derivable.
+2. **Treating a what-if scenario as disposable UI state** rather than a branch with durable causal lineage where scientific/audit value requires persistence.
+3. **Treating model output as the world itself** instead of an input/evidence-generating organ with explicit provenance and uncertainty.
+4. **Using AI repeatedly to rediscover system state** when deterministic manifests, fingerprints and replay can answer the question exactly.
+5. **Rollback by restoring the whole database** instead of append-only compensation/revert of the specific causal change.
+6. **Equating simulation with causality** without validation against observable interventions.
+7. **Scaling storage and compute before reducing information redundancy.**
+
+SETKA should attempt to prove that the next-generation pattern is:
+
+`store causes -> derive consequences -> validate worlds -> branch cheaply -> preserve provenance -> integrate stronger external organs as connectors`
+
+If that thesis wins a reproducible benchmark, SETKA can be architecturally “above” many specialized systems in the limited but meaningful sense that those systems can be used as organs/connectors while SETKA remains the layer that owns identity, causal history, branch lineage, validation boundaries and kernel self-history.
+
+It must not claim universal superiority: a connector may still be vastly better at its specialty, and another platform can independently adopt the same meta-runtime ideas.
+
+## 12. Documentation hygiene
+
+Do not create a new strategy document for each research conversation.
+
+Keep the world-positioning material consolidated into two files:
+
+- `docs/SETKA_WORLD_LANDSCAPE_2026-09-02.md` — evidence / prior-art landscape;
+- `docs/SETKA_LEAPFROG_STRATEGY_2026-09-02.md` — top-one wedge, leapfrog plan, divergent trajectories and conditional forecasts.
+
+When a hypothesis becomes implemented and canonical elsewhere, remove or compress the corresponding TODO/strategy prose instead of allowing documentation to grow indefinitely.
