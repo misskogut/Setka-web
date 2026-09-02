@@ -5,11 +5,13 @@ export function materializeRange(contract, events, options = {}) {
   const endTick = options.endTick;
   const stride = options.stride ?? 1;
   const maxPoints = options.maxPoints ?? 100000;
+  const maxReplaySteps = options.maxReplaySteps ?? 10_000_000;
 
   if (!Number.isInteger(startTick) || !Number.isInteger(endTick) || startTick < contract.genesis.tick || endTick < startTick) {
     throw new Error('Invalid materialization range');
   }
   if (!Number.isInteger(stride) || stride < 1) throw new Error('stride must be a positive integer');
+  if (!Number.isInteger(maxReplaySteps) || maxReplaySteps < 1) throw new Error('maxReplaySteps must be a positive integer');
 
   const estimated = Math.floor((endTick - startTick) / stride) + 1;
   if (estimated > maxPoints) {
@@ -24,7 +26,8 @@ export function materializeRange(contract, events, options = {}) {
     endTick,
     stride,
     useCheckpoints: options.useCheckpoints ?? true,
-    verifyCheckpoints: options.verifyCheckpoints ?? false
+    verifyCheckpoints: options.verifyCheckpoints ?? false,
+    maxReplaySteps
   })) {
     rootScope = replay.rootScope;
     checkpointTick = replay.checkpointTick;
