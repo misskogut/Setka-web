@@ -2,7 +2,7 @@
   "schemaVersion": "SETKA_KERNEL_RELEASE_MANIFEST_V1",
   "releaseId": "SETKA-KERNEL-2026-09-02-R1",
   "repository": "misskogut/Setka-web",
-  "acceptedBaselineCommit": "54c77e00fcaa839752f9c62d475855f76e5d9640",
+  "dbRelevantSourceBaselineCommit": "54c77e00fcaa839752f9c62d475855f76e5d9640",
   "trustBoundary": "GITHUB_OFFLINE_KERNEL_ONLY",
   "components": {
     "replay_math": {
@@ -43,6 +43,7 @@
     "unknownMigration": "DENY",
     "destructiveOperation": "DENY",
     "autoApplyRequiresAllRecoveryGates": true,
+    "autoApplyRequiresExactMigrationContentHash": true,
     "autoApplyRequiresAllowlistedIdempotentMigration": true,
     "githubDoesNotReceiveArbitrarySqlAuthority": true
   },
