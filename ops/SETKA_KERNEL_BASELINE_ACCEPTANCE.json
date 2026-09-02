@@ -1,31 +1,34 @@
 {
   "schemaVersion": "SETKA_KERNEL_BASELINE_ACCEPTANCE_V1",
   "mode": "REVIEWED_TRANSITION",
-  "previousBaselineCommit": "a3233a8181eb8d887c45bd700f1fece1b0ad51f1",
-  "acceptedBaselineCommit": "b5c05d5f54438ab0f18b42b736fe3f4a80ce03e1",
+  "previousBaselineCommit": "b5c05d5f54438ab0f18b42b736fe3f4a80ce03e1",
+  "acceptedBaselineCommit": "8cc028250dcdc4b3aa5a10375327b78deb1ceac2",
   "reviewedBy": "SETKA-S-0001-0001",
-  "reviewContext": "President-authorized consolidation of the post-incident Supabase wakeup knowledge so a future run can recover from GitHub without re-reading chat history",
-  "reviewRunId": 33660388971,
+  "reviewContext": "President-authorized conversion of the kernel mission and Pre-scale Gate from chat-dependent guidance into deterministic machine-readable self-diagnostics that reduce repeated AI reasoning and warn on mission drift before further scaling",
+  "reviewRunId": 33673846509,
   "reviewedComponents": [
     "kernel_governance"
   ],
   "reviewedFiles": [
-    "ops/SETKA_SUPABASE_KERNEL_SYNC_TODO.md",
-    "SETKA_START_HERE.md"
+    "SETKA_KERNEL_MISSION.md",
+    "ops/SETKA_KERNEL_MISSION_POLICY.json",
+    "ops/setka-mission-gate.mjs",
+    "ops/SETKA_KERNEL_MAP.json",
+    ".github/workflows/setka-kernel-pulse.yml"
   ],
   "reviewedSemantics": [
-    "the 2026-09-02 incident is preserved as an information-architecture lesson, not merely a disk-capacity incident",
-    "GitHub remains reproducible law, PostgreSQL remains living state plus irreversible history, the Transcript remains proof, and deterministic consequences should be derived or bounded-materialized by default",
-    "the recovered pre-incident database is evidence to measure and classify rather than an architecture to preserve blindly",
-    "relation base/5/62753 must be mapped before assigning application-level causal responsibility for the disk-full failure",
-    "the post-recovery plan now requires a real BEFORE measurement before any approved compaction and a matching AFTER measurement after replay/write-admission integration",
-    "source-code size, CI/AI compute, canonical writes, PostgreSQL disk, WAL/write rate and materialization expansion are kept as separate optimization metrics",
-    "the approximately 239x dense-vs-causal ratio from the existing resource fixture is explicitly scoped to that fixture and is not a prediction for live Supabase compression",
-    "success after recovery requires backup, replay proof, write-admission proof, deterministic GitHub-to-DB handshake, transcript read-back for kernel changes, storage guards and explicit President resume",
-    "SETKA_START_HERE now points a fresh run directly to the recovery bootstrap and Supabase kernel-sync execution order before any post-incident write",
-    "run 33660388971 passed the 8-case kernel-handshake self-test, found zero unclassified executables, showed replay_math/storage_write/runtime_safety unchanged, and failed only at the expected manual-review gate for the protected TODO documentation change",
-    "the subsequent SETKA_START_HERE change is onboarding-only documentation and does not alter protected kernel fingerprints or live PostgreSQL behavior",
-    "PostgreSQL/Supabase was not modified by this acceptance; cryosleep and all recovery gates remain authoritative"
+    "the kernel mission is now executable policy rather than chat-only memory",
+    "known policy checks are deterministic-first and AI is reserved for ambiguous semantics, optimization alternatives and novel capability abstraction",
+    "proposal preflight uses SETKA_CHANGE_PROPOSAL_V1 and returns ALIGNED, OPTIMIZE, REVIEW_REQUIRED or BLOCK with deterministic signals and optimization hints",
+    "protected kernel drift is routed through MISSION_GATE in Kernel Pulse and the workflow now watches the mission document, mission policy and mission gate implementation",
+    "the mission gate self-test passed all 5 cases in run 33673846509",
+    "the existing kernel handshake self-test remained PASS with 8 cases in run 33673846509",
+    "run 33673846509 produced an OPTIMIZE warning for NEW_PERMANENT_KERNEL_MASS exactly as intended; this review accepts the two new operational files because they replace repeated human/AI mission re-derivation with a reusable deterministic guard",
+    "the mission gate does not automatically delete ideas; OPTIMIZE is a compiler hint toward connector, hybrid, smaller primitive, causal derivation or better benchmark definition",
+    "hard BLOCK remains limited to known prohibited semantics such as silent history rewrite, bypass of cryosleep/recovery gates, unbounded dense deterministic writes or persisting proven derived noise as canonical data",
+    "the mission document itself is now protected kernel governance surface so future mission changes require review",
+    "no replay_math, storage_write or runtime_safety implementation changed in this transition",
+    "PostgreSQL/Supabase was not modified; cryosleep and all recovery gates remain authoritative"
   ],
-  "acceptedAtSourceTime": "2026-09-02T17:22:00Z"
+  "acceptedAtSourceTime": "2026-09-02T19:33:00Z"
 }
