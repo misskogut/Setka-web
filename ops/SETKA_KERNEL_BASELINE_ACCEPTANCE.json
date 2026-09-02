@@ -1,40 +1,35 @@
 {
   "schemaVersion": "SETKA_KERNEL_BASELINE_ACCEPTANCE_V1",
   "mode": "REVIEWED_TRANSITION",
-  "previousBaselineCommit": "ebd77e6f6be51ab9a80c7d28158f27322364d1fe",
-  "acceptedBaselineCommit": "1c79ead98c75f1f77fac398bbcf05ec336f84645",
+  "previousBaselineCommit": "1c79ead98c75f1f77fac398bbcf05ec336f84645",
+  "acceptedBaselineCommit": "54c77e00fcaa839752f9c62d475855f76e5d9640",
   "reviewedBy": "SETKA-S-0001-0001",
-  "reviewContext": "President-authorized simplification: one routed kernel entrypoint, zero-drift fast path, one machine registry, derived green evidence and removal of self-triggering committed status",
-  "reviewRunId": 33651836507,
-  "runtimeDifferentialRunId": 33648807781,
+  "reviewContext": "President-authorized lean cleanup: no green fast-path artifacts, redundant safety self-test removed, Node cross-runtime differential made migration-only",
+  "reviewRunId": 33653108570,
+  "runtimeDifferentialEvidenceRunId": 33648807781,
   "reviewedComponents": [
+    "replay_math",
+    "runtime_safety",
     "kernel_governance"
   ],
   "reviewedFiles": [
     ".github/workflows/setka-kernel-pulse.yml",
+    ".github/workflows/setka-node-runtime-differential.yml",
+    ".github/workflows/setka-workflow-safety-selftest.yml",
     "ops/SETKA_KERNEL_MAP.json",
-    "ops/setka-kernel-baseline-guard.mjs",
-    "ops/setka-kernel-pulse.mjs",
-    "ops/SETKA_KERNEL_QUICKSTART.md",
-    "ops/SETKA_KERNEL_STATUS.json"
+    "ops/SETKA_KERNEL_QUICKSTART.md"
   ],
   "reviewedSemantics": [
-    "baseline authority now lives only in SETKA_KERNEL_BASELINE_ACCEPTANCE.json; baseline guard validates acceptance history directly",
-    "green verification output is derived CI evidence and is no longer committed back as a status file",
-    "removing SETKA_KERNEL_STATUS.json eliminates the verification-to-status-to-verification feedback loop",
-    "SETKA_KERNEL_MAP.json is the single component, coverage, check-routing and complexity registry",
-    "node ops/setka-kernel-pulse.mjs --verify is the single operator entrypoint",
-    "zero protected drift takes the FAST PATH and skips deep proof suites",
-    "protected drift runs only syntax checks plus check groups mapped to changed components",
-    "replay_math routes REPLAY_CORE, REPLAY_PROPERTIES and RESOURCE_PHYSICS; cross-runtime differential remains separate CI evidence",
-    "storage_write routes REPLAY_CORE and RESOURCE_PHYSICS",
-    "runtime_safety routes WORKFLOW_SAFETY",
-    "kernel_governance does not rerun unrelated mathematical suites and remains manual-review gated",
-    "new unclassified core executables fail closed and new protected files add COMPLEXITY_BUDGET review",
-    "the reviewed change added zero protected files, deleted no protected files, and changed only kernel_governance fingerprints",
-    "run 33651836507 confirmed baseline guard success, syntax success for changed governance executables, zero unclassified executables, unchanged replay_math/storage_write/runtime_safety fingerprints, then failed intentionally only because manual review was required",
-    "Node 24 is used for the pulse workflow only after the earlier Node 20/24 exact semantic fingerprint proof succeeded",
+    "green FAST PATH results remain visible in workflow logs and are not persisted as 14-day artifacts when no attention is required",
+    "diagnostic artifacts are retained on failure or manual-review drift only",
+    "the separate workflow safety self-test was deleted because Kernel Pulse already routes runtime_safety changes through the shared setka-workflow-safety-audit.mjs check group",
+    "no synthetic runner, cryosleep gate or external-write workflow semantics were changed by deleting the redundant self-test workflow",
+    "Node 20 to Node 24 exact semantic fingerprint equality was previously proven in run 33648807781, so the cross-runtime workflow is now migration-only via workflow_dispatch",
+    "the runtime differential must be rerun when the numeric runtime contract changes; it is no longer a permanent per-replay-change tax",
+    "run 33653108570 reran REPLAY_CORE with 9/9 passing, REPLAY_PROPERTIES across 1024 generated worlds with 0 failures, and RESOURCE_PHYSICS within budget",
+    "run 33653108570 found zero unclassified core executables and required manual review only because protected replay/governance fingerprints intentionally moved",
+    "the cleanup removes one complete workflow and reduces automatic CI/artifact churn without weakening fail-closed manual baseline acceptance",
     "PostgreSQL integration and historical G1/G2 replay equivalence remain outside this GitHub/offline acceptance boundary"
   ],
-  "acceptedAtSourceTime": "2026-09-02T15:58:00Z"
+  "acceptedAtSourceTime": "2026-09-02T16:12:00Z"
 }
