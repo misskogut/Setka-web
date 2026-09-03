@@ -26,6 +26,7 @@ test('machine kernel loads as a deterministic machine-readable contract', () => 
   assert.equal(kernel.schemaVersion, 'SETKA_MACHINE_KERNEL_V1');
   assert.equal(kernel.ingressPolicy.kernelDoesNotRequireAIToReadItself, true);
   assert.equal(kernel.shipCompiler.intentSchemaVersion, 'SETKA_SHIP_INTENT_V1');
+  assert.ok(kernel.lawRegistry.ADAPTIVE_EVIDENCE_BUDGET);
 });
 
 test('arbitrary human language is preserved for normalization rather than guessed by the kernel', () => {
@@ -58,6 +59,7 @@ test('blueprint references only laws known by the loaded machine kernel', () => 
   assert.equal(verification.ok, true);
   assert.equal(verification.state, 'VERIFIED');
   assert.deepEqual(verification.unknownLawReferences, []);
+  assert.ok(compiled.blueprint.lawReferences.includes('ADAPTIVE_EVIDENCE_BUDGET'));
 });
 
 test('runtime tuning can be compiled as a bounded self-development proposal without self-acceptance', () => {
@@ -65,6 +67,15 @@ test('runtime tuning can be compiled as a bounded self-development proposal with
   assert.equal(out.state, 'CANDIDATE_COMPILED');
   assert.equal(out.proposal.autoApplyWithinExistingLawEnvelope, true);
   assert.equal(out.proposal.externalAuthorityRequired, false);
+  assert.equal(out.proposal.accepted, false);
+  assert.equal(out.proposal.canonicalMutationPerformed, false);
+});
+
+test('deep basin stability compiles to bounded folding proposal rather than blind deletion', () => {
+  const out = compileSelfDevelopmentProposal({ signal: 'DEEP_BASIN_STABILITY', context: { sectorId: 'HULL-12', criticality: 0.08 } });
+  assert.equal(out.state, 'CANDIDATE_COMPILED');
+  assert.equal(out.proposal.proposedAction, 'KEEP_UNRELATED_DERIVED_DETAIL_FOLDED_WITHIN_DECLARED_THRESHOLD');
+  assert.equal(out.proposal.autoApplyWithinExistingLawEnvelope, true);
   assert.equal(out.proposal.accepted, false);
   assert.equal(out.proposal.canonicalMutationPerformed, false);
 });
