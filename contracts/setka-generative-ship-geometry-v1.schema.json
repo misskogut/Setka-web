@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://setka.local/contracts/setka-generative-ship-geometry-v1.schema.json",
+  "title": "SETKA Generative Ship Geometry Contract V1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "shipId",
+    "law",
+    "numericContract",
+    "sectors",
+    "coupling",
+    "materializationPolicy"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "SETKA_GENERATIVE_SHIP_GEOMETRY_V1" },
+    "shipId": { "type": "string", "minLength": 1 },
+    "law": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["family", "equation", "initialCondition", "version"],
+      "properties": {
+        "family": { "const": "QUADRATIC_COMPLEX" },
+        "equation": { "const": "z_next=z^2+c" },
+        "initialCondition": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["re", "im"],
+          "properties": {
+            "re": { "type": "number" },
+            "im": { "type": "number" }
+          }
+        },
+        "version": { "type": "string", "minLength": 1 },
+        "contentHash": { "type": ["string", "null"] }
+      }
+    },
+    "numericContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["numberType", "operationOrderVersion"],
+      "properties": {
+        "numberType": { "enum": ["FLOAT64_JS_V1", "DECIMAL_EXPLICIT", "OTHER_DECLARED"] },
+        "operationOrderVersion": { "type": "string", "minLength": 1 },
+        "runtimeVersion": { "type": ["string", "null"] },
+        "tolerancePolicy": { "type": ["string", "null"] }
+      }
+    },
+    "sectors": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/sector" }
+    },
+    "coupling": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "mode"],
+      "properties": {
+        "version": { "type": "string", "minLength": 1 },
+        "mode": { "enum": ["NONE_INDEPENDENT", "DECLARED_DEPENDENCY_GRAPH", "DECLARED_FUNCTION"] },
+        "contentHash": { "type": ["string", "null"] },
+        "unknownDependenciesFailClosed": { "const": true }
+      }
+    },
+    "materializationPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["canonicalState", "allowedStates", "projectionIsNotCanonical4DState"],
+      "properties": {
+        "canonicalState": { "const": "FOLDED_GENERATOR" },
+        "allowedStates": {
+          "type": "array",
+          "contains": { "const": "FOLDED" },
+          "items": { "enum": ["FOLDED", "GHOST", "UNFOLDED"] }
+        },
+        "projectionIsNotCanonical4DState": { "const": true },
+        "discardDerivedGeometryOnlyAfterProof": { "const": true }
+      }
+    },
+    "feigenbaum": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "delta": { "type": "number" },
+        "alpha": { "type": "number" },
+        "usage": { "const": "ASYMPTOTIC_SCALING_HINT_ONLY" },
+        "exactFiniteBifurcationGenerator": { "const": false }
+      }
+    },
+    "causalPatchesRef": { "type": ["string", "null"] },
+    "checkpointRootHash": { "type": ["string", "null"] }
+  },
+  "$defs": {
+    "complex": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["re", "im"],
+      "properties": {
+        "re": { "type": "number" },
+        "im": { "type": "number" }
+      }
+    },
+    "domain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": { "enum": ["POINT", "RECT", "PARAMETRIC_REGION", "REFERENCE"] },
+        "c": { "$ref": "#/$defs/complex" },
+        "min": { "$ref": "#/$defs/complex" },
+        "max": { "$ref": "#/$defs/complex" },
+        "reference": { "type": "string" }
+      }
+    },
+    "dynamicPassport": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "regimeClass": { "type": ["string", "null"] },
+        "period": { "type": ["integer", "null"], "minimum": 1 },
+        "lyapunov": { "type": ["number", "null"] },
+        "escapeTime": { "type": ["integer", "null"], "minimum": 0 },
+        "convergenceRate": { "type": ["number", "null"] },
+        "algorithmVersion": { "type": ["string", "null"] },
+        "exactness": { "enum": ["EXACT", "APPROXIMATE", "UNKNOWN"] }
+      }
+    },
+    "sector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sectorId", "domain", "materializationState", "lawVersion"],
+      "properties": {
+        "sectorId": { "type": "string", "minLength": 1 },
+        "parentSectorId": { "type": ["string", "null"] },
+        "domain": { "$ref": "#/$defs/domain" },
+        "lawVersion": { "type": "string", "minLength": 1 },
+        "materializationState": { "enum": ["FOLDED", "GHOST", "UNFOLDED"] },
+        "dynamicPassport": { "$ref": "#/$defs/dynamicPassport" },
+        "couplingRefs": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "instanceOf": { "type": ["string", "null"] },
+        "branchId": { "type": ["string", "null"] },
+        "proofHash": { "type": ["string", "null"] }
+      }
+    }
+  }
+}
