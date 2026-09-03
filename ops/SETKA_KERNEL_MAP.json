@@ -34,6 +34,7 @@
     "REPLAY_CORE": { "argv": ["--test", "tests/setka-replay-core.test.mjs"] },
     "REPLAY_PROPERTIES": { "argv": ["--test", "tests/setka-replay-properties.test.mjs"] },
     "RESOURCE_PHYSICS": { "argv": ["--test", "tests/setka-resource-physics.test.mjs"] },
+    "GENERATIVE_GEOMETRY": { "argv": ["--test", "tests/setka-generative-geometry.test.mjs"] },
     "WORKFLOW_SAFETY": { "argv": ["ops/setka-workflow-safety-audit.mjs"] },
     "KERNEL_HANDSHAKE": { "argv": ["ops/setka-kernel-handshake.mjs", "--selftest"] },
     "MISSION_GATE": { "argv": ["ops/setka-mission-gate.mjs", "--check"] }
@@ -55,6 +56,25 @@
       "checkGroups": ["REPLAY_CORE", "REPLAY_PROPERTIES", "RESOURCE_PHYSICS", "MISSION_GATE"],
       "externalChecks": ["NODE_RUNTIME_DIFFERENTIAL_ON_RUNTIME_CONTRACT_CHANGE"],
       "manualReviewTargets": ["NUMERIC_SEMANTICS", "EVENT_BOUNDARIES", "HISTORICAL_REPLAY_COMPATIBILITY", "MISSION_ALIGNMENT_AND_PRE_SCALE_GATE"]
+    },
+    "generative_geometry": {
+      "criticality": "HIGH",
+      "patterns": [
+        "core/geometry/**",
+        "contracts/setka-generative-ship-geometry-v1.schema.json",
+        "tests/setka-generative-geometry.test.mjs",
+        "docs/SETKA_GENERATIVE_SHIP_GEOMETRY_V1.md"
+      ],
+      "checkGroups": ["GENERATIVE_GEOMETRY", "MISSION_GATE"],
+      "manualReviewTargets": [
+        "QUADRATIC_AND_NUMERIC_SEMANTICS",
+        "PARAMETER_DOMAIN_AND_4D_STATE_SEMANTICS",
+        "FOLD_UNFOLD_EXACTNESS",
+        "SECTOR_OPERATION_INVARIANTS",
+        "COUPLING_DEPENDENCY_COMPLETENESS",
+        "FEIGENBAUM_ASYMPTOTIC_ONLY_SEMANTICS",
+        "MISSION_ALIGNMENT_AND_PRE_SCALE_GATE"
+      ]
     },
     "storage_write": {
       "criticality": "HIGH",
