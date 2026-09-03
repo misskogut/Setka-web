@@ -37,6 +37,7 @@
     "RESOURCE_PHYSICS": { "argv": ["--test", "tests/setka-resource-physics.test.mjs"] },
     "GENERATIVE_GEOMETRY": { "argv": ["--test", "tests/setka-generative-geometry.test.mjs"] },
     "LEAST_VERIFIED_ACTION": { "argv": ["--test", "tests/setka-least-verified-action.test.mjs"] },
+    "STABILITY_VIABILITY": { "argv": ["--test", "tests/setka-stability-viability.test.mjs"] },
     "SHIP_KERNEL_COMPILER": { "argv": ["--test", "tests/setka-ship-kernel-compiler.test.mjs"] },
     "WORKFLOW_SAFETY": { "argv": ["ops/setka-workflow-safety-audit.mjs"] },
     "KERNEL_HANDSHAKE": { "argv": ["ops/setka-kernel-handshake.mjs", "--selftest"] },
@@ -102,6 +103,22 @@
         "MISSION_ALIGNMENT_AND_PRE_SCALE_GATE"
       ]
     },
+    "stability_control": {
+      "criticality": "CRITICAL",
+      "patterns": [
+        "core/safety/**",
+        "tests/setka-stability-viability.test.mjs"
+      ],
+      "checkGroups": ["STABILITY_VIABILITY", "SHIP_KERNEL_COMPILER", "MISSION_GATE"],
+      "manualReviewTargets": [
+        "LYAPUNOV_CERTIFICATE_SCOPE",
+        "DECLARED_FINITE_MODEL_COMPLETENESS",
+        "VIABILITY_KERNEL_CONTROL_INVARIANCE",
+        "NO_CONTINUOUS_WORLD_CLAIM_FROM_FINITE_MODEL",
+        "SAFE_SET_AND_ACTION_COMPLETENESS",
+        "MISSION_ALIGNMENT_AND_PRE_SCALE_GATE"
+      ]
+    },
     "ship_compiler": {
       "criticality": "HIGH",
       "patterns": [
@@ -110,10 +127,12 @@
         "tests/setka-ship-kernel-compiler.test.mjs",
         "ops/SETKA_MACHINE_KERNEL_V1.json"
       ],
-      "checkGroups": ["SHIP_KERNEL_COMPILER", "GENERATIVE_GEOMETRY", "LEAST_VERIFIED_ACTION", "KERNEL_HANDSHAKE", "MISSION_GATE"],
+      "checkGroups": ["SHIP_KERNEL_COMPILER", "GENERATIVE_GEOMETRY", "LEAST_VERIFIED_ACTION", "STABILITY_VIABILITY", "KERNEL_HANDSHAKE", "MISSION_GATE"],
       "manualReviewTargets": [
         "HUMAN_INTENT_TO_MACHINE_CONTRACT_BOUNDARY",
         "MACHINE_KERNEL_SELF_KNOWLEDGE_COMPLETENESS",
+        "ORGAN_CONTRACT_COMPLETENESS",
+        "TRANSITIVE_ORGAN_DEPENDENCY_CLOSURE",
         "UNKNOWN_CAPABILITY_FAIL_CLOSED_SEMANTICS",
         "SELF_DEVELOPMENT_AUTHORITY_BOUNDARY",
         "NO_SELF_ACCEPTED_KERNEL_LAW_CHANGE",
