@@ -11,7 +11,8 @@
     "postgresIntegrationState": "NOT_YET_VERIFIED",
     "denseCompactionState": "FORBIDDEN_UNTIL_POST_RECOVERY_PROOF",
     "missionSelfDiagnostic": "DETERMINISTIC_FIRST",
-    "missionPolicyPath": "ops/SETKA_KERNEL_MISSION_POLICY.json"
+    "missionPolicyPath": "ops/SETKA_KERNEL_MISSION_POLICY.json",
+    "machineKernelPath": "ops/SETKA_MACHINE_KERNEL_V1.json"
   },
   "complexityPolicy": {
     "preferDeleteMergeOrComputeBeforeCreate": true,
@@ -36,6 +37,7 @@
     "RESOURCE_PHYSICS": { "argv": ["--test", "tests/setka-resource-physics.test.mjs"] },
     "GENERATIVE_GEOMETRY": { "argv": ["--test", "tests/setka-generative-geometry.test.mjs"] },
     "LEAST_VERIFIED_ACTION": { "argv": ["--test", "tests/setka-least-verified-action.test.mjs"] },
+    "SHIP_KERNEL_COMPILER": { "argv": ["--test", "tests/setka-ship-kernel-compiler.test.mjs"] },
     "WORKFLOW_SAFETY": { "argv": ["ops/setka-workflow-safety-audit.mjs"] },
     "KERNEL_HANDSHAKE": { "argv": ["ops/setka-kernel-handshake.mjs", "--selftest"] },
     "MISSION_GATE": { "argv": ["ops/setka-mission-gate.mjs", "--check"] }
@@ -74,6 +76,7 @@
         "SECTOR_OPERATION_INVARIANTS",
         "COUPLING_DEPENDENCY_COMPLETENESS",
         "FEIGENBAUM_ASYMPTOTIC_ONLY_SEMANTICS",
+        "NEWTON_BASIN_SAMPLING_AND_BOUNDARY_SEMANTICS",
         "MISSION_ALIGNMENT_AND_PRE_SCALE_GATE"
       ]
     },
@@ -94,7 +97,26 @@
         "PARETO_AND_TIE_SEMANTICS",
         "WHOLE_HORIZON_AND_SETUP_COST_SEMANTICS",
         "COUNTERFACTUAL_BRANCH_AND_DELTA_REPLAN_SEMANTICS",
+        "POWER_LAW_MODEL_EVIDENCE_AND_SCALE_RANGE",
         "NO_FALSE_GLOBAL_OPTIMALITY_CLAIM",
+        "MISSION_ALIGNMENT_AND_PRE_SCALE_GATE"
+      ]
+    },
+    "ship_compiler": {
+      "criticality": "HIGH",
+      "patterns": [
+        "core/compiler/**",
+        "contracts/setka-ship-compiler-v1.schema.json",
+        "tests/setka-ship-kernel-compiler.test.mjs",
+        "ops/SETKA_MACHINE_KERNEL_V1.json"
+      ],
+      "checkGroups": ["SHIP_KERNEL_COMPILER", "GENERATIVE_GEOMETRY", "LEAST_VERIFIED_ACTION", "KERNEL_HANDSHAKE", "MISSION_GATE"],
+      "manualReviewTargets": [
+        "HUMAN_INTENT_TO_MACHINE_CONTRACT_BOUNDARY",
+        "MACHINE_KERNEL_SELF_KNOWLEDGE_COMPLETENESS",
+        "UNKNOWN_CAPABILITY_FAIL_CLOSED_SEMANTICS",
+        "SELF_DEVELOPMENT_AUTHORITY_BOUNDARY",
+        "NO_SELF_ACCEPTED_KERNEL_LAW_CHANGE",
         "MISSION_ALIGNMENT_AND_PRE_SCALE_GATE"
       ]
     },
@@ -138,6 +160,7 @@
         "ops/SETKA_KERNEL_MISSION_POLICY.json",
         "ops/SETKA_KERNEL_RELEASE_MANIFEST.json",
         "ops/SETKA_SUPABASE_KERNEL_SYNC_TODO.md",
+        "ops/SETKA_SELF_DIAGNOSTIC_ROADMAP.md",
         "ops/SETKA_KERNEL_MAP.json",
         ".github/workflows/setka-kernel-pulse.yml",
         ".github/workflows/setka-kernel-pulse.yaml"
