@@ -1,37 +1,44 @@
 {
   "schemaVersion": "SETKA_KERNEL_BASELINE_ACCEPTANCE_V1",
   "mode": "REVIEWED_TRANSITION",
-  "previousBaselineCommit": "55533351d2076765649777313b5534faec994abe",
-  "acceptedBaselineCommit": "05c3af9f0afbe4ce0bf8736d539be4995f40ecd2",
+  "previousBaselineCommit": "05c3af9f0afbe4ce0bf8736d539be4995f40ecd2",
+  "acceptedBaselineCommit": "fdff8bddaaf32589ae4c6028ebab6f7c9cac7f3b",
   "reviewedBy": "SETKA-S-0001-0001",
-  "reviewContext": "President-authorized compilation of basin-boundary sensitivity into a deterministic adaptive evidence/computation budget: sampled Newton-basin boundary proximity, convergence residual and iteration strain increase only local counterfactual twins, proof samples and materialization resolution; deep well-separated converged regions may keep unrelated derived detail folded; uncertain/nonconverged basin evidence fails closed and never authorizes aggressive folding; machine kernel and ship self-development compiler now know this rule without AI rediscovery",
-  "reviewRunId": 33768291860,
+  "reviewContext": "President-authorized transition from a machine-readable law registry to explicit self-describing organ contracts plus deterministic transitive dependency compilation, together with bounded Lyapunov stability and exact-for-declared-finite-model viability primitives; the new SAFE_CONTROL capability restricts optimization to declared viable states/actions where requested and preserves the distinction between sampled evidence, exact finite-model certificates and claims about continuous or unmodeled reality",
+  "reviewRunId": 33769478867,
   "reviewedComponents": [
-    "least_verified_action",
-    "ship_compiler"
+    "stability_control",
+    "ship_compiler",
+    "kernel_governance"
   ],
   "reviewedFiles": [
-    "core/optimization/adaptive-evidence-budget.mjs",
-    "tests/setka-least-verified-action.test.mjs",
+    "core/safety/stability-viability.mjs",
+    "tests/setka-stability-viability.test.mjs",
     "ops/SETKA_MACHINE_KERNEL_V1.json",
     "core/compiler/ship-kernel-compiler.mjs",
-    "tests/setka-ship-kernel-compiler.test.mjs"
+    "contracts/setka-ship-compiler-v1.schema.json",
+    "tests/setka-ship-kernel-compiler.test.mjs",
+    "ops/SETKA_KERNEL_MAP.json",
+    ".github/workflows/setka-kernel-pulse.yml"
   ],
   "reviewedSemantics": [
-    "Adaptive Evidence Budget is an allocation law over already-sampled attractor-basin diagnostics, not a claim that finite Newton sampling proves an exact fractal basin boundary or global stability",
-    "the v1 criticality score is the maximum of sampled boundary proximity 1/(1+d_sample/d_ref), bounded residual strain and bounded iteration strain, so any observed sensitivity can increase the local evidence budget",
-    "the budget multiplier is 1+criticality*(maxMultiplier-1) and deterministically scales local counterfactual twin count, proof sample count and local resolution while preserving declared base budgets",
-    "nearer sampled different-attractor regions therefore receive more local evidence/computation than deep well-separated regions under the same budget contract",
-    "deep-basin folding is conservative: only converged states with numeric sampled boundary distance, residual and iteration evidence may derive a foldUnrelatedDetail hint under a declared threshold; no canonical cause is deleted by this primitive",
-    "nonconverged, missing or malformed basin evidence returns REVIEW_REQUIRED, uses the maximum declared safe local budget suggestion and explicitly forbids aggressive folding",
-    "sampledBoundaryDistanceEstimate remains sampledOnly=true, exactBoundaryProven=false and globalStabilityProven=false; the new allocator cannot upgrade approximate basin evidence into exact proof",
-    "SETKA_MACHINE_KERNEL_V1 now registers ADAPTIVE_EVIDENCE_BUDGET as a machine-readable law and includes it in ATTRACTOR_ANALYSIS so a normalized ship intent can compile the capability without AI reading the kernel",
-    "the machine kernel maps BASIN_BOUNDARY_SENSITIVITY to increased local counterfactual resolution and DEEP_BASIN_STABILITY to keeping unrelated derived detail folded within a declared threshold",
-    "the self-development compiler now compiles DEEP_BASIN_STABILITY into bounded MATERIALIZATION_RESOLUTION runtime tuning; the proposal remains accepted=false and canonicalMutationPerformed=false and therefore is not silent self-modification",
-    "Kernel Pulse review run 33768291860 executed syntax checks for all changed executables, Generative Geometry 14/14 tests, Least Verified Action/scaling/adaptive-budget 15/15 tests, Ship Kernel Compiler 9/9 tests, Kernel Handshake 8 cases and Mission Gate 20 cases; all executable tests passed and unclassified executable count was zero",
-    "the MANUAL_REVIEW_REQUIRED result of run 33768291860 was the expected governance response to one new protected executable and semantic changes; the new file is accepted as one compact allocator that reuses existing basin, materialization, counterfactual and LVA organs rather than a separate daemon/service",
-    "this transition does not implement an exact basin-boundary prover, global stability theorem, autonomous destructive folding, production fleet scheduler or self-accepted kernel-law mutation",
-    "no PostgreSQL schema, Supabase writer, Edge Function, production fleet runtime, canonical transcript row or cryosleep state was modified; all recovery and transcript gates remain authoritative"
+    "SETKA_MACHINE_KERNEL_V1 now contains an explicit organRegistry; every declared ship organ must expose organId, version, purpose, inputs, outputs, lawReferences, dependencies, invariants, materializationPolicy, resourceMetrics, provenanceRequirements and failClosedRules before it counts as kernel self-knowledge",
+    "the compiler validates machine-kernel self-knowledge before building and fails closed if an organ contract is incomplete, references an unknown law, depends on an unknown organ, or is referenced by a capability without a declared organ contract",
+    "capability tokens are no longer incorrectly emitted as ship organs; requested capabilities expand to declared organ IDs and the compiler resolves the complete transitive dependency closure deterministically",
+    "compiled blueprint organ entries now reference their versioned machine-kernel contract using SETKA_MACHINE_KERNEL_V1#organRegistry.<ORGAN_ID>; the blueprint references laws and contracts instead of copying the whole kernel into each ship",
+    "the current organ registry covers base identity, causal memory, replay, provenance, runtime safety and self-diagnostic organs together with generative geometry, fold/unfold, bifurcation scaling, branching/shared prefix, Least Verified Action, attractor analysis, adaptive evidence budgeting, local refinement, scale analysis, computational irreducibility, privacy/hierarchical memory and safe-control organs",
+    "LYAPUNOV_STABILITY is implemented with a positive quadratic V over a declared equilibrium and discrete delta V=V(next)-V(current); an increasing V or departure from equilibrium rejects the stability candidate",
+    "nonexhaustive Lyapunov transitions produce SAMPLED_STABILITY_EVIDENCE only; they never prove global stability",
+    "an exact Lyapunov certificate is permitted only for an explicitly declared exhaustive finite model whose transition count matches the declared finite domain and whose non-equilibrium transitions strictly decrease V while equilibrium is preserved; the result explicitly disclaims a universal physical-system claim",
+    "FINITE_VIABILITY_KERNEL computes the greatest controlled-invariant fixed point of a complete declared finite deterministic state/action transition model by repeatedly removing safe states with no allowed action returning to the current candidate kernel",
+    "finite viability computation fails closed on missing transitions, actions pointing outside the declared state model or an unresolved fixed point; exactness is limited to the declared finite model and never promoted to a continuous/unmodeled-world guarantee",
+    "SAFE_CONTROL is now a compilable capability containing LYAPUNOV_STABILITY and FINITE_VIABILITY_KERNEL plus their base safety, diagnostic and provenance dependencies; a complete normalized intent compiles this without AI reading the kernel",
+    "the safe-control policy states that when the capability is required the system first restricts candidate actions to the declared viability kernel, then evaluates stability evidence, and only then allows Least Verified Action to compare resource cost; a cheaper nonviable action is not a valid optimization candidate",
+    "Kernel Map registers stability_control as CRITICAL, routes core/safety and tests/setka-stability-viability.test.mjs through a dedicated STABILITY_VIABILITY check group, and adds self-knowledge/dependency-closure review targets to ship_compiler",
+    "Kernel Pulse review run 33769478867 executed syntax checks for changed executables, Generative Geometry 14/14, Least Verified Action/scaling/adaptive-budget 15/15, Ship Kernel Compiler 11/11, Stability/Viability 7/7, Kernel Handshake 8 cases and Mission Gate 20 cases; all executable tests passed and unclassified executable count was zero",
+    "the MANUAL_REVIEW_REQUIRED result of run 33769478867 was the expected governance response to a new CRITICAL stability_control component, two new protected files and protected ship-compiler/kernel-governance semantic drift; it was not a test failure",
+    "this transition does not implement a continuous-state viability solver, a symbolic/global Lyapunov theorem prover, a control-barrier-function solver, an autonomous production autopilot, an autonomous natural-language parser, or self-accepted kernel-law mutation",
+    "no PostgreSQL schema, Supabase writer, Edge Function, production fleet runtime, canonical transcript row or cryosleep state was modified; all recovery, backup, handshake, authority and transcript-readback gates remain authoritative"
   ],
-  "acceptedAtSourceTime": "2026-09-03T14:43:00Z"
+  "acceptedAtSourceTime": "2026-09-03T14:55:00Z"
 }
