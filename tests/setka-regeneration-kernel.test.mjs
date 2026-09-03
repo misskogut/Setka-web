@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import './setka-reproduction-kernel.test.mjs';
 import { validateMachineKernelSelfKnowledge } from '../core/compiler/ship-kernel-compiler.mjs';
 import {
   loadRegenerativeKernel,
