@@ -165,6 +165,41 @@ export function verifyLyapunovEvidence({
   });
 }
 
+export function assessDiscreteControlBarrierTransition({
+  hCurrent,
+  hNext,
+  alphaRate = 1,
+  tolerance = 1e-12
+}) {
+  hCurrent = finiteNumber(hCurrent, 'hCurrent');
+  hNext = finiteNumber(hNext, 'hNext');
+  alphaRate = finiteNumber(alphaRate, 'alphaRate');
+  tolerance = finiteNonNegative(tolerance, 'tolerance');
+  if (alphaRate < 0 || alphaRate > 1) throw new RangeError('alphaRate must be in [0, 1]');
+
+  const deltaH = hNext - hCurrent;
+  const requiredDeltaLowerBound = -alphaRate * hCurrent;
+  let classification;
+  if (hCurrent < -tolerance) classification = 'CURRENT_OUTSIDE_SAFE_SET';
+  else if (hNext < -tolerance) classification = 'UNSAFE_NEXT_STATE';
+  else if (deltaH + tolerance >= requiredDeltaLowerBound) classification = 'BARRIER_PRESERVED';
+  else classification = 'BARRIER_CONDITION_VIOLATED';
+
+  return Object.freeze({
+    schemaVersion: STABILITY_VIABILITY_SCHEMA_VERSION,
+    method: 'DISCRETE_CONTROL_BARRIER_FUNCTION',
+    safeSetConvention: 'h(x)>=0',
+    hCurrent,
+    hNext,
+    deltaH,
+    alphaRate,
+    requiredDeltaLowerBound,
+    classification,
+    preservesDeclaredBarrierCondition: classification === 'BARRIER_PRESERVED',
+    provesGlobalForwardInvariance: false
+  });
+}
+
 function uniqueStrings(values, name) {
   if (!Array.isArray(values)) throw new TypeError(`${name} must be an array`);
   const out = [];
@@ -177,6 +212,71 @@ function uniqueStrings(values, name) {
     out.push(value);
   }
   return out;
+}
+
+export function computeFiniteBarrierPreservingActions({
+  states,
+  actionsByState,
+  transitionTable,
+  barrierByState,
+  alphaRate = 1,
+  completeDeclaredFiniteModel = false,
+  tolerance = 1e-12
+}) {
+  const stateIds = uniqueStrings(states, 'states');
+  const stateSet = new Set(stateIds);
+  if (!actionsByState || typeof actionsByState !== 'object' || Array.isArray(actionsByState)) throw new TypeError('actionsByState must be an object');
+  if (!transitionTable || typeof transitionTable !== 'object' || Array.isArray(transitionTable)) throw new TypeError('transitionTable must be an object');
+  if (!barrierByState || typeof barrierByState !== 'object' || Array.isArray(barrierByState)) throw new TypeError('barrierByState must be an object');
+  alphaRate = finiteNumber(alphaRate, 'alphaRate');
+  tolerance = finiteNonNegative(tolerance, 'tolerance');
+  if (alphaRate < 0 || alphaRate > 1) throw new RangeError('alphaRate must be in [0, 1]');
+
+  const witnessActions = {};
+  const safeSideStateIds = [];
+  const statesWithoutWitness = [];
+  const assessments = [];
+
+  for (const stateId of stateIds) {
+    if (!Object.hasOwn(barrierByState, stateId)) throw new RangeError(`missing barrier value for ${stateId}`);
+    const hCurrent = finiteNumber(barrierByState[stateId], `barrierByState.${stateId}`);
+    const actions = uniqueStrings(actionsByState[stateId] ?? [], `actionsByState.${stateId}`);
+    const safeSide = hCurrent >= -tolerance;
+    if (safeSide) safeSideStateIds.push(stateId);
+    const preserving = [];
+
+    for (const actionId of actions) {
+      const key = `${stateId}|${actionId}`;
+      if (!Object.hasOwn(transitionTable, key)) throw new RangeError(`missing transition ${key}`);
+      const nextStateId = transitionTable[key];
+      if (typeof nextStateId !== 'string' || !stateSet.has(nextStateId)) throw new RangeError(`transition ${key} points outside declared state model`);
+      if (!Object.hasOwn(barrierByState, nextStateId)) throw new RangeError(`missing barrier value for ${nextStateId}`);
+      const assessment = assessDiscreteControlBarrierTransition({
+        hCurrent,
+        hNext: finiteNumber(barrierByState[nextStateId], `barrierByState.${nextStateId}`),
+        alphaRate,
+        tolerance
+      });
+      assessments.push(Object.freeze({ stateId, actionId, nextStateId, ...assessment }));
+      if (assessment.preservesDeclaredBarrierCondition) preserving.push(actionId);
+    }
+
+    witnessActions[stateId] = preserving.sort();
+    if (safeSide && preserving.length === 0) statesWithoutWitness.push(stateId);
+  }
+
+  return Object.freeze({
+    schemaVersion: STABILITY_VIABILITY_SCHEMA_VERSION,
+    state: completeDeclaredFiniteModel ? 'EXACT_BARRIER_ACTION_FILTER_FOR_DECLARED_FINITE_MODEL' : 'SAMPLED_OR_PARTIAL_BARRIER_EVIDENCE',
+    method: 'DISCRETE_CONTROL_BARRIER_FUNCTION',
+    exactForDeclaredFiniteModel: Boolean(completeDeclaredFiniteModel),
+    continuousOrUnmodeledWorldClaim: false,
+    declaredSafeSideControlInvariant: Boolean(completeDeclaredFiniteModel) && statesWithoutWitness.length === 0,
+    safeSideStateIds: Object.freeze(safeSideStateIds.sort()),
+    statesWithoutWitness: Object.freeze(statesWithoutWitness.sort()),
+    witnessActions: Object.freeze(witnessActions),
+    assessments: Object.freeze(assessments)
+  });
 }
 
 export function computeFiniteViabilityKernel({
