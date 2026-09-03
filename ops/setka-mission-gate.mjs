@@ -250,6 +250,26 @@ function selftest(policy) {
       name: 'duplicate branch prefix optimize',
       proposal: { schemaVersion: 'SETKA_CHANGE_PROPOSAL_V1', title: 'Shared branch history', changeClass: 'STORAGE', impacts: { ...baseImpacts, resourceEfficiency: 'IMPROVE' }, signals: ['DUPLICATE_IMMUTABLE_PREFIX_ACROSS_BRANCHES'], addsMandatoryVendorDependencies: 0, addsPermanentKernelFiles: 0, benchmarkDefined: true },
       expected: 'OPTIMIZE'
+    },
+    {
+      name: 'unproven geometry fold hard block',
+      proposal: { schemaVersion: 'SETKA_CHANGE_PROPOSAL_V1', title: 'Drop dense ship geometry before proof', changeClass: 'STORAGE', impacts: baseImpacts, signals: ['DISCARD_GEOMETRY_WITHOUT_EXACT_UNFOLD_PROOF'], addsMandatoryVendorDependencies: 0, addsPermanentKernelFiles: 0, benchmarkDefined: true },
+      expected: 'BLOCK'
+    },
+    {
+      name: 'unknown coupling review',
+      proposal: { schemaVersion: 'SETKA_CHANGE_PROPOSAL_V1', title: 'Automatic neighboring-sector reaction', changeClass: 'RUNTIME', impacts: baseImpacts, signals: ['COUPLING_DEPENDENCY_SEMANTICS_UNKNOWN'], addsMandatoryVendorDependencies: 0, addsPermanentKernelFiles: 0, benchmarkDefined: true },
+      expected: 'REVIEW_REQUIRED'
+    },
+    {
+      name: 'local sector unfold optimize',
+      proposal: { schemaVersion: 'SETKA_CHANGE_PROPOSAL_V1', title: 'Local geometry materialization', changeClass: 'RUNTIME', impacts: { ...baseImpacts, resourceEfficiency: 'IMPROVE' }, signals: ['FULL_SHIP_UNFOLD_WHERE_LOCAL_SECTOR_SUFFICES'], addsMandatoryVendorDependencies: 0, addsPermanentKernelFiles: 0, benchmarkDefined: true },
+      expected: 'OPTIMIZE'
+    },
+    {
+      name: 'Feigenbaum exact finite generator hard block',
+      proposal: { schemaVersion: 'SETKA_CHANGE_PROPOSAL_V1', title: 'Use delta as exact finite bifurcation generator', changeClass: 'KERNEL', impacts: baseImpacts, signals: ['FEIGENBAUM_CONSTANT_USED_AS_EXACT_FINITE_BIFURCATION_GENERATOR'], addsMandatoryVendorDependencies: 0, addsPermanentKernelFiles: 0, benchmarkDefined: true },
+      expected: 'BLOCK'
     }
   ];
 
