@@ -37,9 +37,10 @@
     "organ": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["organId", "lawReferences", "source"],
+      "required": ["organId", "contractRef", "lawReferences", "source"],
       "properties": {
         "organId": { "type": "string", "minLength": 1 },
+        "contractRef": { "type": "string", "pattern": "^SETKA_MACHINE_KERNEL_V1#organRegistry\\.[A-Z0-9_]+$" },
         "lawReferences": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
         "source": { "const": "SETKA_MACHINE_KERNEL_V1" }
       }
