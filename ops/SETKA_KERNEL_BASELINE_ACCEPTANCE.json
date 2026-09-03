@@ -1,36 +1,37 @@
 {
   "schemaVersion": "SETKA_KERNEL_BASELINE_ACCEPTANCE_V1",
   "mode": "REVIEWED_TRANSITION",
-  "previousBaselineCommit": "f296bcbd5fecb1361aa99d97ccf659530bd26f5b",
-  "acceptedBaselineCommit": "3b8be494e0b901ecc9d6b4e0e7d9ab5db01a7b56",
+  "previousBaselineCommit": "3b8be494e0b901ecc9d6b4e0e7d9ab5db01a7b56",
+  "acceptedBaselineCommit": "ce287dc57d10e2e877e291fc70fc9c9e947dc4ea",
   "reviewedBy": "SETKA-S-0001-0001",
-  "reviewContext": "President-authorized completion of the regenerative lifecycle layer: quarantined damaged organs may be rebuilt from versioned genotype, translated through existing organ contracts, restored from proven replay state and proposed for safe swap only after invariants, viability, barrier and provenance-continuity evidence; apoptosis is a last-resort runtime-stop candidate only when declared viability is empty, no repair/regeneration path remains, a causal survival capsule is sealed, irreversible history is preserved, external effects are quiesced and external authority is valid",
-  "reviewRunId": 33792359417,
+  "reviewContext": "President-authorized regulated reproduction layer: mitosis creates a distinct daughter identity and new causal genesis, inheritance references versioned genotype plus explicitly allowed seed state without copying parent life, epigenetic differentiation specializes expression without genome rewrite, and developmental stage advance requires declared checkpoint, invariant, viability, barrier and homeostasis evidence; no daughter runtime, canonical daughter, genotype mutation or production privilege is self-authorized by this layer",
+  "reviewRunId": 33793128659,
   "reviewedComponents": [
     "ship_compiler",
     "kernel_governance"
   ],
   "reviewedFiles": [
-    "core/compiler/regeneration-kernel-v1.mjs",
+    "core/compiler/reproduction-kernel-v1.mjs",
+    "tests/setka-reproduction-kernel.test.mjs",
     "tests/setka-regeneration-kernel.test.mjs",
-    "ops/SETKA_KERNEL_MAP.json"
+    ".github/workflows/setka-kernel-pulse.yml"
   ],
   "reviewedSemantics": [
-    "SETKA_REGENERATIVE_KERNEL_V1 is a bounded extension over the accepted immune living kernel; it does not create a daemon, database, production fleet runtime, external writer or autonomous destructive worker",
-    "VERIFIED_REGENERATION requires an immune quarantine trigger plus known genotype version, valid expression manifest, verified build binding, verified state checkpoint and replay proof before a rebuilt organ candidate exists",
-    "REGENERATIVE_SWAP additionally requires verified invariants, viability, control-barrier evidence, provenance continuity and zero active external effects; the module produces only a safe-swap candidate and does not perform canonical replacement",
-    "healthy non-quarantined organs are not regenerated merely because a rebuild path exists, preventing unnecessary churn and genotype-expression noise",
-    "old damaged organ causal history is never deleted by regeneration; genotype mutation, canonical mutation and external materialization remain unauthorized by the planning functions",
-    "SAFE_APOPTOSIS is explicitly last resort: a non-empty viability kernel routes back to safe control, and any available repair/regeneration path blocks apoptosis and requires repair first",
-    "an apoptosis candidate requires verified safe shutdown, a sealed causal survival capsule, preservation of irreversible history, quiesced external effects and valid external authority; missing evidence fails closed to review or authority-required state",
-    "apoptosis semantics stop only live runtime; identity, genotype, irreversible causal history and provenance remain preserved, and the assessment function never performs a runtime stop or canonical deletion",
-    "REGENERATION_PLANNER and APOPTOSIS_CONTROLLER are machine-readable organ contracts with dependencies, invariants, resource metrics, provenance requirements, fail-closed rules, test bindings, review targets and build bindings",
-    "the regenerative organism loop extends immune sensing and quarantine with regeneration-path search, genotype transcription/translation, candidate rebuild, replay state restore and safe swap verification before any last-resort apoptosis assessment",
-    "the Pre-scale Gate warning for new permanent mass was reviewed: one compact regenerative module is accepted because it reuses quarantine, genome, transcription, ribosome, replay, viability, barrier, Lyapunov, homeostasis, runtime safety, identity and provenance organs rather than introducing parallel services",
-    "Kernel Map now routes REGENERATION_KERNEL and adds review targets for genotype-to-rebuild/state-restore boundaries and apoptosis causal-survival semantics",
-    "Kernel Pulse review run 33792359417 executed syntax checks, Generative Geometry 14/14, Immunity Kernel 7/7, Regeneration Kernel 7/7, Least Verified Action/scaling/adaptive-budget 15/15, Ship Kernel Compiler/organism 26/26, Stability/Viability/Barrier 10/10, Kernel Handshake 8 cases and Mission Gate 20 cases; all executable tests passed and unclassified executable count was zero",
-    "the MANUAL_REVIEW_REQUIRED result of run 33792359417 was the expected governance response to protected ship_compiler and Kernel Map drift, not an executable test failure",
-    "no PostgreSQL schema, Supabase writer, Edge Function, production fleet state, canonical transcript row, cryosleep state, recovery gate, runtime stop or destructive database cleanup was modified; all backup, recovery, authority, handshake and transcript-readback requirements remain authoritative"
+    "SETKA_REPRODUCTIVE_KERNEL_V1 is a bounded extension over the accepted regenerative living kernel and reuses existing identity, genome, nucleus, provenance, runtime safety, privacy, safe-control, ribosome and homeostasis organs rather than creating a parallel runtime",
+    "REGULATED_MITOSIS requires a daughter identity distinct from the parent, a versioned genotype reference, lineage provenance, declared genesis seed and external authority evidence before producing a daughter-genesis candidate",
+    "the daughter receives a new causal genesis; parent causal history is referenced as lineage provenance and is never copied or relabeled as the daughter causal life",
+    "VERSIONED_INHERITANCE carries only declared gene references and explicit seed state under an allowed disclosure class; full parent transcript, implicit runtime state and PRIVATE_RAW life are not inherited by default",
+    "EPIGENETIC_DIFFERENTIATION changes expression masks and local parameters without rewriting genotype; any genotype mutation request is routed to external authority review instead of being disguised as differentiation",
+    "DEVELOPMENTAL_CHECKPOINTS require checkpoint, invariant, viability, control-barrier and homeostasis evidence before a stage-advance candidate may be produced; production privilege is not granted by the differentiation planner",
+    "MITOSIS_PLANNER, INHERITANCE_COMPILER and DIFFERENTIATION_CONTROLLER are machine-readable organ contracts with dependencies, invariants, resource metrics, provenance requirements, fail-closed rules, test bindings, review targets and build bindings",
+    "REGULATED_REPRODUCTION, LIVING_ORGANISM_KERNEL and SELF_HOSTING_KERNEL gain the reproductive organs only when the reproductive extension is explicitly loaded, preserving lighter lower-level kernels",
+    "the hierarchy rule preserves distinct child identity, causal life, state and provenance while sharing versioned genotype references; parent or mother levels receive declared derived knowledge rather than raw child life by default",
+    "the reproduction module produces plans and candidates only; it does not create an external daughter runtime, canonical daughter entity, database row, production privilege or self-authorized genotype mutation",
+    "Kernel Pulse workflow routing now includes immunity, regeneration and reproduction test paths so future changes to these protected verification surfaces trigger the kernel governance pulse",
+    "Kernel Pulse review run 33793128659 executed syntax checks, Generative Geometry 14/14, Immunity Kernel 7/7, Regeneration plus Reproduction Kernel 15/15, Least Verified Action/scaling/adaptive-budget 15/15, Ship Kernel Compiler/organism 26/26, Stability/Viability/Barrier 10/10, Kernel Handshake 8 cases and Mission Gate 20 cases; all executable tests passed and unclassified executable count was zero",
+    "the MANUAL_REVIEW_REQUIRED result of run 33793128659 was the expected governance response to protected ship_compiler and workflow drift, not an executable test failure",
+    "the Pre-scale Gate warning for one new permanent reproductive module was reviewed and accepted because the module composes existing organs and adds no service, daemon, database, external worker or duplicated canonical store",
+    "no PostgreSQL schema, Supabase writer, Edge Function, production fleet state, canonical transcript row, cryosleep state, recovery gate, runtime stop, daughter runtime or destructive database cleanup was modified; all backup, recovery, authority, handshake and transcript-readback requirements remain authoritative"
   ],
-  "acceptedAtSourceTime": "2026-09-03T18:46:00Z"
+  "acceptedAtSourceTime": "2026-09-03T18:54:00Z"
 }
