@@ -9,6 +9,13 @@ import {
   chooseLeastVerifiedAction,
   probeLocalStationarity
 } from '../core/optimization/least-verified-action.mjs';
+import {
+  fitPowerLawCandidate,
+  classifyScalingExponent,
+  projectPowerLawCandidate,
+  certifyScalingModel,
+  projectCertifiedScalingModel
+} from '../core/optimization/scaling-law.mjs';
 
 function constraints(overrides = {}) {
   return Object.fromEntries(REQUIRED_HARD_CONSTRAINTS.map((key) => [key, overrides[key] ?? 'PASS']));
@@ -126,4 +133,49 @@ test('no sampled improvement is explicitly not global-optimality proof', () => {
   assert.equal(result.stationary, true);
   assert.equal(result.sampledOnly, true);
   assert.equal(result.globalOptimalityProven, false);
+});
+
+test('power-law fit is explicitly only a candidate model', () => {
+  const fit = fitPowerLawCandidate([
+    { x: 1, y: 2 },
+    { x: 2, y: 8 },
+    { x: 4, y: 32 },
+    { x: 8, y: 128 }
+  ]);
+  assert.ok(Math.abs(fit.alpha - 2) < 1e-12);
+  assert.ok(Math.abs(fit.C - 2) < 1e-12);
+  assert.equal(fit.status, 'CANDIDATE_ONLY');
+  assert.equal(fit.canonicalTruth, false);
+  assert.equal(classifyScalingExponent(fit.alpha), 'SUPERLINEAR_GROWTH_RISK_CANDIDATE');
+});
+
+test('uncertified power-law projection remains unbounded evidence and cannot silently drive LVA', () => {
+  const fit = fitPowerLawCandidate([
+    { x: 1, y: 1 },
+    { x: 2, y: 4 },
+    { x: 4, y: 16 }
+  ]);
+  const estimate = projectPowerLawCandidate(fit, 8);
+  assert.equal(estimate.evidenceState, 'ESTIMATED_UNBOUNDED');
+  const uncertain = plan({ id: 'scaled-uncertain', fixed: { COMPUTE: estimate.y }, evidence: { COMPUTE: estimate.evidenceState } });
+  assert.equal(evaluatePlan(uncertain).state, 'REVIEW_REQUIRED');
+});
+
+test('power-law model requires alternative comparison, range and bounded uncertainty before bounded use', () => {
+  const fit = fitPowerLawCandidate([
+    { x: 1, y: 2 },
+    { x: 2, y: 4 },
+    { x: 4, y: 8 }
+  ]);
+  assert.equal(certifyScalingModel(fit, { alternativeModelComparison: 'FAIL' }).state, 'REVIEW_REQUIRED');
+  const certified = certifyScalingModel(fit, {
+    alternativeModelComparison: 'PASS',
+    validRange: { min: 1, max: 16 },
+    uncertaintyBound: 0.1
+  });
+  assert.equal(certified.state, 'CERTIFIED_FOR_DECLARED_RANGE');
+  const projection = projectCertifiedScalingModel(certified.model, 8);
+  assert.equal(projection.state, 'BOUNDED_ESTIMATE');
+  assert.ok(Math.abs(projection.y - 16) < 1e-12);
+  assert.equal(projectCertifiedScalingModel(certified.model, 32).state, 'REVIEW_REQUIRED');
 });
