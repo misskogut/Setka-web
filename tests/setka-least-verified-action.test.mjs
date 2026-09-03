@@ -16,6 +16,10 @@ import {
   certifyScalingModel,
   projectCertifiedScalingModel
 } from '../core/optimization/scaling-law.mjs';
+import {
+  deriveAdaptiveEvidenceBudget,
+  compareAdaptiveEvidenceBudgets
+} from '../core/optimization/adaptive-evidence-budget.mjs';
 
 function constraints(overrides = {}) {
   return Object.fromEntries(REQUIRED_HARD_CONSTRAINTS.map((key) => [key, overrides[key] ?? 'PASS']));
@@ -178,4 +182,43 @@ test('power-law model requires alternative comparison, range and bounded uncerta
   assert.equal(projection.state, 'BOUNDED_ESTIMATE');
   assert.ok(Math.abs(projection.y - 16) < 1e-12);
   assert.equal(projectCertifiedScalingModel(certified.model, 32).state, 'REVIEW_REQUIRED');
+});
+
+test('near sampled basin boundary receives larger evidence budget than deep basin state', () => {
+  const common = {
+    convergenceState: 'CONVERGED',
+    residual: 1e-12,
+    iterations: 4
+  };
+  const nearBoundary = deriveAdaptiveEvidenceBudget({
+    assignment: { ...common, sampledBoundaryDistanceEstimate: 0.01 },
+    boundaryReferenceDistance: 0.1,
+    baseBudget: { counterfactualTwins: 2, proofSamples: 4, localResolution: 1 },
+    maxMultiplier: 8
+  });
+  const deepBasin = deriveAdaptiveEvidenceBudget({
+    assignment: { ...common, sampledBoundaryDistanceEstimate: 10 },
+    boundaryReferenceDistance: 0.1,
+    baseBudget: { counterfactualTwins: 2, proofSamples: 4, localResolution: 1 },
+    maxMultiplier: 8
+  });
+  assert.ok(nearBoundary.criticality > deepBasin.criticality);
+  assert.ok(nearBoundary.budget.counterfactualTwins > deepBasin.budget.counterfactualTwins);
+  assert.equal(compareAdaptiveEvidenceBudgets(nearBoundary, deepBasin).moreCritical, 'A');
+  assert.equal(nearBoundary.exactBoundaryProven, false);
+});
+
+test('deep stable basin may fold unrelated detail while uncertain basin fails closed', () => {
+  const deep = deriveAdaptiveEvidenceBudget({
+    assignment: { convergenceState: 'CONVERGED', sampledBoundaryDistanceEstimate: 100, residual: 0, iterations: 0 },
+    boundaryReferenceDistance: 0.1,
+    foldThreshold: 0.2
+  });
+  assert.equal(deep.foldUnrelatedDetail, true);
+  const unknown = deriveAdaptiveEvidenceBudget({
+    assignment: { convergenceState: 'MAX_ITERATIONS', sampledBoundaryDistanceEstimate: null, residual: 1, iterations: 64 },
+    boundaryReferenceDistance: 0.1
+  });
+  assert.equal(unknown.state, 'REVIEW_REQUIRED');
+  assert.equal(unknown.foldUnrelatedDetail, false);
 });
