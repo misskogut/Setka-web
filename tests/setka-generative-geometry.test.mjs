@@ -5,6 +5,11 @@ import {
   QUADRATIC_FEIGENBAUM_C_INFINITY,
   complex,
   quadraticStep,
+  evaluatePolynomial,
+  polynomialDerivativeCoefficients,
+  newtonPolynomialStep,
+  classifyNewtonAttractor,
+  analyzeNewtonBasin,
   logisticStep,
   logisticStateToQuadraticZ,
   logisticParameterToQuadraticC,
@@ -25,6 +30,55 @@ const near = (a, b, eps = 1e-12) => assert.ok(Math.abs(a - b) <= eps, `${a} != $
 
 test('quadratic step computes complex square plus c', () => {
   assert.deepEqual(quadraticStep(complex(1, 2), complex(3, 4)), { re: 0, im: 8 });
+});
+
+test('polynomial evaluator and derivative support complex Newton diagnostics', () => {
+  const coefficients = [1, 0, 0, -1];
+  const value = evaluatePolynomial(coefficients, complex(1, 0));
+  near(value.re, 0);
+  near(value.im, 0);
+  assert.deepEqual(polynomialDerivativeCoefficients(coefficients), [
+    { re: 3, im: 0 },
+    { re: 0, im: 0 },
+    { re: 0, im: 0 }
+  ]);
+});
+
+test('Newton iteration converges to declared attractor for z^3-1 near each root', () => {
+  const roots = [
+    complex(1, 0),
+    complex(-0.5, Math.sqrt(3) / 2),
+    complex(-0.5, -Math.sqrt(3) / 2)
+  ];
+  const coefficients = [1, 0, 0, -1];
+  const step = newtonPolynomialStep({ z: complex(0.9, 0.05), coefficients });
+  assert.equal(step.state, 'STEP');
+  const a = classifyNewtonAttractor({ initial: complex(0.9, 0.05), coefficients, roots });
+  const b = classifyNewtonAttractor({ initial: complex(-0.45, 0.8), coefficients, roots });
+  const c = classifyNewtonAttractor({ initial: complex(-0.45, -0.8), coefficients, roots });
+  assert.equal(a.state, 'CONVERGED');
+  assert.equal(a.attractorId, 'ROOT:0');
+  assert.equal(b.attractorId, 'ROOT:1');
+  assert.equal(c.attractorId, 'ROOT:2');
+});
+
+test('Newton basin analyzer returns sampled outcome map without claiming exact fractal boundary', () => {
+  const roots = [
+    complex(1, 0),
+    complex(-0.5, Math.sqrt(3) / 2),
+    complex(-0.5, -Math.sqrt(3) / 2)
+  ];
+  const result = analyzeNewtonBasin({
+    coefficients: [1, 0, 0, -1],
+    roots,
+    samples: [complex(0.9, 0), complex(-0.5, 0.9), complex(-0.5, -0.9)]
+  });
+  assert.equal(result.sampledOnly, true);
+  assert.equal(result.exactBoundaryProven, false);
+  assert.equal(result.globalConvergenceProven, false);
+  assert.equal(result.assignments.length, 3);
+  assert.ok(result.assignments.every((entry) => entry.convergenceState === 'CONVERGED'));
+  assert.ok(result.assignments.every((entry) => entry.sampledBoundaryDistanceEstimate > 0));
 });
 
 test('logistic map conjugates to the real quadratic family', () => {
