@@ -4,6 +4,8 @@ import {
   quadraticLyapunovValue,
   assessDiscreteLyapunovTransition,
   verifyLyapunovEvidence,
+  assessDiscreteControlBarrierTransition,
+  computeFiniteBarrierPreservingActions,
   computeFiniteViabilityKernel
 } from '../core/safety/stability-viability.mjs';
 
@@ -64,6 +66,45 @@ test('increasing Lyapunov transition rejects the stability candidate', () => {
   });
   assert.equal(out.state, 'STABILITY_CANDIDATE_REJECTED');
   assert.deepEqual(out.violatingTransitionIndexes, [0]);
+});
+
+test('discrete control barrier preserves declared safe side when h condition is satisfied', () => {
+  const out = assessDiscreteControlBarrierTransition({ hCurrent: 2, hNext: 1.2, alphaRate: 0.5 });
+  assert.equal(out.classification, 'BARRIER_PRESERVED');
+  assert.equal(out.preservesDeclaredBarrierCondition, true);
+  assert.equal(out.provesGlobalForwardInvariance, false);
+});
+
+test('discrete control barrier blocks transition to negative safe-set side', () => {
+  const out = assessDiscreteControlBarrierTransition({ hCurrent: 0.3, hNext: -0.01, alphaRate: 1 });
+  assert.equal(out.classification, 'UNSAFE_NEXT_STATE');
+  assert.equal(out.preservesDeclaredBarrierCondition, false);
+});
+
+test('finite barrier filter derives witness actions and exactness only for declared complete finite model', () => {
+  const out = computeFiniteBarrierPreservingActions({
+    states: ['A', 'B', 'FAIL'],
+    actionsByState: {
+      A: ['stay', 'risk'],
+      B: ['toA'],
+      FAIL: ['stay']
+    },
+    transitionTable: {
+      'A|stay': 'A',
+      'A|risk': 'FAIL',
+      'B|toA': 'A',
+      'FAIL|stay': 'FAIL'
+    },
+    barrierByState: { A: 1, B: 0.5, FAIL: -1 },
+    alphaRate: 1,
+    completeDeclaredFiniteModel: true
+  });
+  assert.equal(out.state, 'EXACT_BARRIER_ACTION_FILTER_FOR_DECLARED_FINITE_MODEL');
+  assert.deepEqual(out.witnessActions.A, ['stay']);
+  assert.deepEqual(out.witnessActions.B, ['toA']);
+  assert.deepEqual(out.safeSideStateIds, ['A', 'B']);
+  assert.equal(out.declaredSafeSideControlInvariant, true);
+  assert.equal(out.continuousOrUnmodeledWorldClaim, false);
 });
 
 test('finite viability kernel removes safe states that cannot remain safe', () => {
