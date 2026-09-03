@@ -35,6 +35,7 @@
     "REPLAY_PROPERTIES": { "argv": ["--test", "tests/setka-replay-properties.test.mjs"] },
     "RESOURCE_PHYSICS": { "argv": ["--test", "tests/setka-resource-physics.test.mjs"] },
     "GENERATIVE_GEOMETRY": { "argv": ["--test", "tests/setka-generative-geometry.test.mjs"] },
+    "LEAST_VERIFIED_ACTION": { "argv": ["--test", "tests/setka-least-verified-action.test.mjs"] },
     "WORKFLOW_SAFETY": { "argv": ["ops/setka-workflow-safety-audit.mjs"] },
     "KERNEL_HANDSHAKE": { "argv": ["ops/setka-kernel-handshake.mjs", "--selftest"] },
     "MISSION_GATE": { "argv": ["ops/setka-mission-gate.mjs", "--check"] }
@@ -73,6 +74,27 @@
         "SECTOR_OPERATION_INVARIANTS",
         "COUPLING_DEPENDENCY_COMPLETENESS",
         "FEIGENBAUM_ASYMPTOTIC_ONLY_SEMANTICS",
+        "MISSION_ALIGNMENT_AND_PRE_SCALE_GATE"
+      ]
+    },
+    "least_verified_action": {
+      "criticality": "HIGH",
+      "patterns": [
+        "core/optimization/**",
+        "contracts/setka-least-verified-action-v1.schema.json",
+        "tests/setka-least-verified-action.test.mjs",
+        "ops/SETKA_LEAST_VERIFIED_ACTION_POLICY.json",
+        "docs/SETKA_LEAST_VERIFIED_ACTION_V1.md"
+      ],
+      "checkGroups": ["LEAST_VERIFIED_ACTION", "MISSION_GATE"],
+      "manualReviewTargets": [
+        "HARD_CONSTRAINT_VS_COST_BOUNDARY",
+        "COST_NORMALIZATION_AND_WEIGHT_SEMANTICS",
+        "EVIDENCE_COMPLETENESS",
+        "PARETO_AND_TIE_SEMANTICS",
+        "WHOLE_HORIZON_AND_SETUP_COST_SEMANTICS",
+        "COUNTERFACTUAL_BRANCH_AND_DELTA_REPLAN_SEMANTICS",
+        "NO_FALSE_GLOBAL_OPTIMALITY_CLAIM",
         "MISSION_ALIGNMENT_AND_PRE_SCALE_GATE"
       ]
     },
