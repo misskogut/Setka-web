@@ -19,6 +19,14 @@ import {
   coarseGrainWeightedMean,
   assessCandidateInvariant
 } from '../core/compiler/ship-kernel-compiler.mjs';
+import {
+  loadOrganismKernel,
+  translateExpressionManifest,
+  advanceMultiTimeClock,
+  arbitrateInterrupts,
+  assessHomeostasis,
+  compileLivingKernel
+} from '../core/compiler/organism-kernel-v1.mjs';
 
 function intent(overrides = {}) {
   return {
@@ -156,6 +164,87 @@ test('SELF_HOSTING_KERNEL closes genotype-to-expression-to-processor-to-authorit
   assert.ok(out.loop.includes('AUTHORITY_GATE'));
   assert.equal(out.selfAcceptanceAllowed, false);
   assert.equal(out.canonicalMutationPerformed, false);
+});
+
+test('organism extension adds ribosome clock interrupts and homeostasis as contract-driven organs', () => {
+  const kernel = loadOrganismKernel();
+  const check = validateMachineKernelSelfKnowledge({ kernel });
+  assert.equal(check.state, 'VERIFIED');
+  assert.ok(kernel.lawRegistry.RIBOSOMAL_TRANSLATION);
+  assert.ok(kernel.lawRegistry.MULTI_TIME_CLOCK);
+  assert.ok(kernel.lawRegistry.INTERRUPT_ARBITRATION);
+  assert.ok(kernel.lawRegistry.HOMEOSTATIC_METABOLISM);
+  assert.ok(kernel.capabilityRegistry.SELF_HOSTING_KERNEL.includes('RIBOSOME_ORGAN_FACTORY'));
+  assert.ok(kernel.capabilityRegistry.SELF_HOSTING_KERNEL.includes('HOMEOSTATIC_METABOLISM'));
+});
+
+test('living kernel compiles genome transcription translation clocked execution and regulation without self-acceptance', () => {
+  const out = compileLivingKernel(intent({ requestedCapabilities: ['GENERATIVE_GEOMETRY', 'OPTIMIZATION'] }), { laneCount: 2 });
+  assert.equal(out.state, 'LIVING_KERNEL_CANDIDATE_COMPILED');
+  const ids = out.blueprint.organs.map((organ) => organ.organId);
+  assert.ok(ids.includes('RIBOSOME_ORGAN_FACTORY'));
+  assert.ok(ids.includes('MULTI_TIME_CLOCK'));
+  assert.ok(ids.includes('INTERRUPT_CONTROLLER'));
+  assert.ok(ids.includes('HOMEOSTATIC_METABOLISM'));
+  assert.equal(out.ribosome.state, 'TRANSLATED_BUILD_PLAN');
+  assert.ok(out.organismLoop.includes('RIBOSOMAL_TRANSLATION'));
+  assert.ok(out.organismLoop.includes('HOMEOSTATIC_REGULATION'));
+  assert.equal(out.selfAcceptanceAllowed, false);
+  assert.equal(out.canonicalMutationPerformed, false);
+});
+
+test('ribosome translates typed expression into build bindings without external materialization', () => {
+  const kernel = loadOrganismKernel();
+  const compiled = compileShipBlueprint(intent({ requestedCapabilities: ['CELL_NUCLEUS', 'PROCESSOR_CORE', 'RIBOSOME_TRANSLATION'] }), { kernel });
+  const nucleus = compileCellNucleus(compiled, { kernel });
+  const translation = translateExpressionManifest(nucleus, { kernel });
+  assert.equal(translation.state, 'TRANSLATED_BUILD_PLAN');
+  assert.ok(translation.translatedOrganCount > 0);
+  assert.ok(translation.translationPlan.every((item) => item.buildBinding?.target));
+  assert.equal(translation.externalMaterializationPerformed, false);
+  assert.equal(translation.genotypeMutationPerformed, false);
+});
+
+test('multi-time clock keeps external chronology ship ticks and mathematical steps separate unless mapping is declared', () => {
+  const out = advanceMultiTimeClock({
+    clock: { externalEpochMs: 1000, shipTick: 7, mathematicalStep: 20 },
+    externalDeltaMs: 250,
+    shipTickDelta: 2,
+    mathematicalStepDelta: 11
+  });
+  assert.deepEqual(out.coordinate, { externalEpochMs: 1250, shipTick: 9, mathematicalStep: 31 });
+  assert.equal(out.axesCoupled, false);
+  assert.equal(out.inferredAxisConversion, false);
+});
+
+test('interrupt controller respects readiness dependencies safety and deterministic priority', () => {
+  const out = arbitrateInterrupts({ interrupts: [
+    { interruptId: 'LOW', priority: 1, due: true, dependenciesResolved: true, safetyGatePassed: true, sourceAxis: 'SHIP_TICK' },
+    { interruptId: 'HIGH-BLOCKED', priority: 9, due: true, dependenciesResolved: false, safetyGatePassed: true, sourceAxis: 'MATH_STEP' },
+    { interruptId: 'HIGH', priority: 5, due: true, dependenciesResolved: true, safetyGatePassed: true, sourceAxis: 'EXTERNAL_TIME' }
+  ] });
+  assert.equal(out.state, 'INTERRUPT_SELECTED');
+  assert.equal(out.selectedInterrupt.interruptId, 'HIGH');
+  assert.deepEqual(out.blockedInterrupts.map((item) => item.interruptId), ['HIGH-BLOCKED']);
+  assert.equal(out.canonicalCausalReorderingAuthorized, false);
+  assert.equal(out.writebackAuthorityBypassed, false);
+});
+
+test('homeostasis blocks cost optimization on hard range violation and exposes safe margin when healthy', () => {
+  const healthy = assessHomeostasis({ resources: [
+    { resourceId: 'STORAGE', value: 40, min: 0, max: 100, target: 50, hard: true },
+    { resourceId: 'CPU', value: 45, min: 0, max: 100, target: 50, hard: true }
+  ] });
+  assert.equal(healthy.state, 'HOMEOSTATIC');
+  assert.equal(healthy.costOptimizationAllowed, true);
+  assert.equal(healthy.safeControlRequired, false);
+
+  const unsafe = assessHomeostasis({ resources: [
+    { resourceId: 'STORAGE', value: 105, min: 0, max: 100, target: 50, hard: true }
+  ] });
+  assert.equal(unsafe.state, 'SAFE_CONTROL_REQUIRED');
+  assert.equal(unsafe.costOptimizationAllowed, false);
+  assert.deepEqual(unsafe.hardViolationIds, ['STORAGE']);
 });
 
 test('information-efficiency primitives are deterministic scoring functions over declared evidence', () => {
