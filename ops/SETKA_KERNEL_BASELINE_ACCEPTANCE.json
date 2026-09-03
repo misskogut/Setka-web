@@ -1,36 +1,36 @@
 {
   "schemaVersion": "SETKA_KERNEL_BASELINE_ACCEPTANCE_V1",
   "mode": "REVIEWED_TRANSITION",
-  "previousBaselineCommit": "77770b540d37bce0593086715d54371ff3114b98",
-  "acceptedBaselineCommit": "f296bcbd5fecb1361aa99d97ccf659530bd26f5b",
+  "previousBaselineCommit": "f296bcbd5fecb1361aa99d97ccf659530bd26f5b",
+  "acceptedBaselineCommit": "3b8be494e0b901ecc9d6b4e0e7d9ab5db01a7b56",
   "reviewedBy": "SETKA-S-0001-0001",
-  "reviewContext": "President-authorized completion of the living-kernel immune layer: identity/provenance self-nonself recognition, normalized anomaly triage, non-destructive quarantine, and autophagy admission restricted to verified reconstructible derived inactive mass with retained provenance; the transition extends genome -> expression -> execution -> sensing -> homeostasis with immune isolation and safe resource recovery while preserving canonical irreversible memory and external authority for fundamental law changes",
-  "reviewRunId": 33773233538,
+  "reviewContext": "President-authorized completion of the regenerative lifecycle layer: quarantined damaged organs may be rebuilt from versioned genotype, translated through existing organ contracts, restored from proven replay state and proposed for safe swap only after invariants, viability, barrier and provenance-continuity evidence; apoptosis is a last-resort runtime-stop candidate only when declared viability is empty, no repair/regeneration path remains, a causal survival capsule is sealed, irreversible history is preserved, external effects are quiesced and external authority is valid",
+  "reviewRunId": 33792359417,
   "reviewedComponents": [
     "ship_compiler",
     "kernel_governance"
   ],
   "reviewedFiles": [
-    "core/compiler/immunity-kernel-v1.mjs",
-    "tests/setka-immunity-kernel.test.mjs",
+    "core/compiler/regeneration-kernel-v1.mjs",
+    "tests/setka-regeneration-kernel.test.mjs",
     "ops/SETKA_KERNEL_MAP.json"
   ],
   "reviewedSemantics": [
-    "SETKA_IMMUNE_KERNEL_V1 is a bounded extension over the accepted living organism kernel; it does not create a daemon, database, external runtime, canonical store or autonomous destructive worker",
-    "IMMUNE_SELF_NONSELF grants SELF_VERIFIED only when declared identity, provenance verification, allowed version and valid authority are all present; authorized external input remains explicitly external and unknown or contradictory evidence does not inherit self privileges",
-    "IMMUNE_ANOMALY_TRIAGE computes a declared normalized maximum signal score over values in [0,1] with explicit warning and quarantine thresholds; absent signals fail closed to review and no global damage theorem is inferred from local samples",
-    "QUARANTINE_MEMBRANE isolates NONSELF_DECLARED, UNKNOWN_IDENTITY, high-anomaly or review-required candidates before canonical writeback or external effects; quarantine is explicitly isolation rather than deletion and never authorizes history rewrite",
-    "AUTOPHAGY_ADMISSION permits only derived mass with verified reconstruction proof, zero active dependencies, no unique irreversible information and retained provenance; canonical causes and unique irreversible inputs are never autophagy eligible",
-    "assessAutophagyCandidate produces a reclamation candidate and resource evidence only; it performs no destructive cleanup, authorizes no canonical deletion and routes eligible cleanup through Least Verified Action before any later runtime action",
-    "the immune loop is SELF_NONSELF_RECOGNITION -> ANOMALY_TRIAGE -> QUARANTINE_IF_REQUIRED -> REPAIR_OR_AUTOPHAGY_CANDIDATE -> SAFE_CONTROL -> LEAST_VERIFIED_ACTION -> RESOURCE_RECOVERY -> PROVENANCE",
-    "the organism loop now inserts immune classification, anomaly triage and quarantine/repair/autophagy between self-diagnostic sensing and homeostatic regulation, preserving safe-control and authority ordering",
-    "SELF_NONSELF_RECOGNITION, IMMUNE_ANOMALY_TRIAGE, QUARANTINE_ENVELOPE and AUTOPHAGY_RECYCLER are machine-readable organ contracts with dependencies, invariants, resource metrics, provenance requirements, fail-closed rules, test bindings, review targets and build bindings",
-    "SELF_HOSTING_KERNEL and LIVING_ORGANISM_KERNEL receive the immune organs only when the immune kernel extension is explicitly loaded, preserving the existing lighter default machine and organism kernels for ships that do not need the immune layer",
-    "Kernel Map now routes an IMMUNITY_KERNEL check group and tracks the immune module and tests inside ship_compiler governance; the change adds immune-specific review targets for self/nonself boundaries, quarantine isolation-vs-deletion and autophagy causal reconstruction",
-    "Kernel Pulse review run 33773233538 executed syntax checks, Generative Geometry 14/14, Immunity Kernel 7/7, Least Verified Action/scaling/adaptive-budget 15/15, Ship Kernel Compiler/organism 26/26, Stability/Viability/Barrier 10/10, Kernel Handshake 8 cases and Mission Gate 20 cases; all executable tests passed and unclassified executable count was zero",
-    "the MANUAL_REVIEW_REQUIRED result of run 33773233538 was the expected governance response to protected ship_compiler and Kernel Map drift, not an executable failure",
-    "the Pre-scale Gate warning for new permanent mass was reviewed: one compact immune executable module is accepted because it reuses identity, provenance, runtime safety, nucleus, diagnostic, cache, replay, homeostasis, safe-control and LVA organs rather than adding parallel services; the separate added test file is verification surface rather than runtime mass",
-    "no PostgreSQL schema, Supabase writer, Edge Function, production fleet state, canonical transcript row, cryosleep state, recovery gate or destructive database cleanup was modified; all backup, recovery, authority, handshake and transcript-readback requirements remain authoritative"
+    "SETKA_REGENERATIVE_KERNEL_V1 is a bounded extension over the accepted immune living kernel; it does not create a daemon, database, production fleet runtime, external writer or autonomous destructive worker",
+    "VERIFIED_REGENERATION requires an immune quarantine trigger plus known genotype version, valid expression manifest, verified build binding, verified state checkpoint and replay proof before a rebuilt organ candidate exists",
+    "REGENERATIVE_SWAP additionally requires verified invariants, viability, control-barrier evidence, provenance continuity and zero active external effects; the module produces only a safe-swap candidate and does not perform canonical replacement",
+    "healthy non-quarantined organs are not regenerated merely because a rebuild path exists, preventing unnecessary churn and genotype-expression noise",
+    "old damaged organ causal history is never deleted by regeneration; genotype mutation, canonical mutation and external materialization remain unauthorized by the planning functions",
+    "SAFE_APOPTOSIS is explicitly last resort: a non-empty viability kernel routes back to safe control, and any available repair/regeneration path blocks apoptosis and requires repair first",
+    "an apoptosis candidate requires verified safe shutdown, a sealed causal survival capsule, preservation of irreversible history, quiesced external effects and valid external authority; missing evidence fails closed to review or authority-required state",
+    "apoptosis semantics stop only live runtime; identity, genotype, irreversible causal history and provenance remain preserved, and the assessment function never performs a runtime stop or canonical deletion",
+    "REGENERATION_PLANNER and APOPTOSIS_CONTROLLER are machine-readable organ contracts with dependencies, invariants, resource metrics, provenance requirements, fail-closed rules, test bindings, review targets and build bindings",
+    "the regenerative organism loop extends immune sensing and quarantine with regeneration-path search, genotype transcription/translation, candidate rebuild, replay state restore and safe swap verification before any last-resort apoptosis assessment",
+    "the Pre-scale Gate warning for new permanent mass was reviewed: one compact regenerative module is accepted because it reuses quarantine, genome, transcription, ribosome, replay, viability, barrier, Lyapunov, homeostasis, runtime safety, identity and provenance organs rather than introducing parallel services",
+    "Kernel Map now routes REGENERATION_KERNEL and adds review targets for genotype-to-rebuild/state-restore boundaries and apoptosis causal-survival semantics",
+    "Kernel Pulse review run 33792359417 executed syntax checks, Generative Geometry 14/14, Immunity Kernel 7/7, Regeneration Kernel 7/7, Least Verified Action/scaling/adaptive-budget 15/15, Ship Kernel Compiler/organism 26/26, Stability/Viability/Barrier 10/10, Kernel Handshake 8 cases and Mission Gate 20 cases; all executable tests passed and unclassified executable count was zero",
+    "the MANUAL_REVIEW_REQUIRED result of run 33792359417 was the expected governance response to protected ship_compiler and Kernel Map drift, not an executable test failure",
+    "no PostgreSQL schema, Supabase writer, Edge Function, production fleet state, canonical transcript row, cryosleep state, recovery gate, runtime stop or destructive database cleanup was modified; all backup, recovery, authority, handshake and transcript-readback requirements remain authoritative"
   ],
-  "acceptedAtSourceTime": "2026-09-03T15:35:00Z"
+  "acceptedAtSourceTime": "2026-09-03T18:46:00Z"
 }
