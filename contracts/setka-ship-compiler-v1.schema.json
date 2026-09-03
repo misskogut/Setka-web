@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://setka.local/contracts/setka-ship-compiler-v1.schema.json",
+  "title": "SETKA Ship Compiler V1",
+  "$defs": {
+    "constraint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["constraintId", "kind", "value"],
+      "properties": {
+        "constraintId": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["HARD", "PREFERENCE"] },
+        "value": {}
+      }
+    },
+    "intent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "intentId", "purpose", "requestedCapabilities", "constraints"],
+      "properties": {
+        "schemaVersion": { "const": "SETKA_SHIP_INTENT_V1" },
+        "intentId": { "type": "string", "minLength": 1 },
+        "purpose": { "type": "string", "minLength": 1 },
+        "requestedCapabilities": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "constraints": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/constraint" }
+        },
+        "parameters": { "type": "object" }
+      }
+    },
+    "organ": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["organId", "lawReferences", "source"],
+      "properties": {
+        "organId": { "type": "string", "minLength": 1 },
+        "lawReferences": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "source": { "const": "SETKA_MACHINE_KERNEL_V1" }
+      }
+    },
+    "blueprint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "blueprintId",
+        "sourceIntentId",
+        "machineKernelVersion",
+        "purpose",
+        "organs",
+        "lawReferences",
+        "constraints",
+        "parameters",
+        "buildProtocol",
+        "materializationPolicy",
+        "requiresAIToCompile",
+        "canonicalMutationAuthorized",
+        "derivedArtifact"
+      ],
+      "properties": {
+        "schemaVersion": { "const": "SETKA_SHIP_BLUEPRINT_V1" },
+        "blueprintId": { "type": "string", "minLength": 1 },
+        "sourceIntentId": { "type": "string", "minLength": 1 },
+        "machineKernelVersion": { "const": "SETKA_MACHINE_KERNEL_V1" },
+        "purpose": { "type": "string", "minLength": 1 },
+        "organs": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/organ" } },
+        "lawReferences": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "constraints": { "type": "array", "items": { "$ref": "#/$defs/constraint" } },
+        "parameters": { "type": "object" },
+        "buildProtocol": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "materializationPolicy": { "type": "string", "minLength": 1 },
+        "requiresAIToCompile": { "const": false },
+        "canonicalMutationAuthorized": { "const": false },
+        "derivedArtifact": { "const": true }
+      }
+    }
+  },
+  "oneOf": [
+    { "$ref": "#/$defs/intent" },
+    { "$ref": "#/$defs/blueprint" }
+  ]
+}
