@@ -40,6 +40,7 @@
     "STABILITY_VIABILITY": { "argv": ["--test", "tests/setka-stability-viability.test.mjs"] },
     "SHIP_KERNEL_COMPILER": { "argv": ["--test", "tests/setka-ship-kernel-compiler.test.mjs"] },
     "IMMUNITY_KERNEL": { "argv": ["--test", "tests/setka-immunity-kernel.test.mjs"] },
+    "REGENERATION_KERNEL": { "argv": ["--test", "tests/setka-regeneration-kernel.test.mjs"] },
     "WORKFLOW_SAFETY": { "argv": ["ops/setka-workflow-safety-audit.mjs"] },
     "KERNEL_HANDSHAKE": { "argv": ["ops/setka-kernel-handshake.mjs", "--selftest"] },
     "MISSION_GATE": { "argv": ["ops/setka-mission-gate.mjs", "--check"] }
@@ -127,9 +128,10 @@
         "contracts/setka-ship-compiler-v1.schema.json",
         "tests/setka-ship-kernel-compiler.test.mjs",
         "tests/setka-immunity-kernel.test.mjs",
+        "tests/setka-regeneration-kernel.test.mjs",
         "ops/SETKA_MACHINE_KERNEL_V1.json"
       ],
-      "checkGroups": ["SHIP_KERNEL_COMPILER", "IMMUNITY_KERNEL", "GENERATIVE_GEOMETRY", "LEAST_VERIFIED_ACTION", "STABILITY_VIABILITY", "KERNEL_HANDSHAKE", "MISSION_GATE"],
+      "checkGroups": ["SHIP_KERNEL_COMPILER", "IMMUNITY_KERNEL", "REGENERATION_KERNEL", "GENERATIVE_GEOMETRY", "LEAST_VERIFIED_ACTION", "STABILITY_VIABILITY", "KERNEL_HANDSHAKE", "MISSION_GATE"],
       "manualReviewTargets": [
         "HUMAN_INTENT_TO_MACHINE_CONTRACT_BOUNDARY",
         "MACHINE_KERNEL_SELF_KNOWLEDGE_COMPLETENESS",
@@ -141,6 +143,8 @@
         "IMMUNE_SELF_NONSELF_BOUNDARY",
         "QUARANTINE_ISOLATION_VS_DELETION",
         "AUTOPHAGY_CAUSAL_RECONSTRUCTION_BOUNDARY",
+        "REGENERATION_GENOTYPE_REBUILD_AND_STATE_RESTORE_BOUNDARY",
+        "APOPTOSIS_LAST_RESORT_AND_CAUSAL_SURVIVAL_BOUNDARY",
         "MISSION_ALIGNMENT_AND_PRE_SCALE_GATE"
       ]
     },
