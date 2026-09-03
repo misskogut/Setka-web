@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://setka.local/contracts/setka-least-verified-action-v1.schema.json",
+  "title": "SETKA Least Verified Action Plan v1",
+  "type": "object",
+  "required": ["schemaVersion", "planId", "hardConstraints", "references", "weights", "segments"],
+  "properties": {
+    "schemaVersion": { "const": "SETKA_LEAST_VERIFIED_ACTION_PLAN_V1" },
+    "planId": { "type": "string", "minLength": 1 },
+    "branchId": { "type": ["string", "null"] },
+    "policyVersion": { "type": "string", "minLength": 1 },
+    "evaluationHorizon": { "type": ["string", "number", "null"] },
+    "hardConstraints": {
+      "type": "object",
+      "additionalProperties": {
+        "enum": ["PASS", "FAIL", "UNKNOWN", "NOT_APPLICABLE"]
+      }
+    },
+    "references": {
+      "type": "object",
+      "additionalProperties": { "type": "number", "exclusiveMinimum": 0 }
+    },
+    "weights": {
+      "type": "object",
+      "additionalProperties": { "type": "number", "minimum": 0 }
+    },
+    "segments": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["segmentId", "duration", "fixed", "rates", "evidence"],
+        "properties": {
+          "segmentId": { "type": "string", "minLength": 1 },
+          "duration": { "type": "number", "minimum": 0 },
+          "fixed": {
+            "type": "object",
+            "additionalProperties": { "type": "number", "minimum": 0 }
+          },
+          "rates": {
+            "type": "object",
+            "additionalProperties": { "type": "number", "minimum": 0 }
+          },
+          "evidence": {
+            "type": "object",
+            "additionalProperties": {
+              "enum": ["MEASURED", "DERIVED_EXACT", "ESTIMATED_BOUNDED", "ESTIMATED_UNBOUNDED", "UNKNOWN"]
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "provenance": { "type": ["object", "null"] }
+  },
+  "additionalProperties": false
+}
