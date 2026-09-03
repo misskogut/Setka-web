@@ -4,9 +4,20 @@ import {
   classifyHumanRequest,
   compileShipBlueprint,
   compileSelfDevelopmentProposal,
+  compileProcessorCore,
+  compileCellNucleus,
+  compileSelfHostingKernel,
+  deriveContractDrivenBuildPlan,
   loadMachineKernel,
   validateMachineKernelSelfKnowledge,
-  verifyBlueprintKernelReferences
+  verifyBlueprintKernelReferences,
+  shannonSurprisalBits,
+  minimumDescriptionLengthBits,
+  informationBottleneckObjective,
+  rateDistortionObjective,
+  graphLaplacianMorphogenesisStep,
+  coarseGrainWeightedMean,
+  assessCandidateInvariant
 } from '../core/compiler/ship-kernel-compiler.mjs';
 
 function intent(overrides = {}) {
@@ -22,7 +33,7 @@ function intent(overrides = {}) {
   };
 }
 
-test('machine kernel loads as a deterministic machine-readable contract', () => {
+test('machine kernel loads as a deterministic machine-readable contract with self-host extension', () => {
   const kernel = loadMachineKernel();
   assert.equal(kernel.schemaVersion, 'SETKA_MACHINE_KERNEL_V1');
   assert.equal(kernel.ingressPolicy.kernelDoesNotRequireAIToReadItself, true);
@@ -30,14 +41,29 @@ test('machine kernel loads as a deterministic machine-readable contract', () => 
   assert.ok(kernel.lawRegistry.ADAPTIVE_EVIDENCE_BUDGET);
   assert.ok(kernel.lawRegistry.LYAPUNOV_STABILITY);
   assert.ok(kernel.lawRegistry.FINITE_VIABILITY_KERNEL);
+  assert.ok(kernel.lawRegistry.CONTROL_BARRIER_FUNCTION);
+  assert.ok(kernel.lawRegistry.PROCESSOR_EXECUTION_CYCLE);
+  assert.ok(kernel.lawRegistry.GENOTYPE_PHENOTYPE);
+  assert.ok(kernel.lawRegistry.MINIMUM_DESCRIPTION_LENGTH);
+  assert.ok(kernel.lawRegistry.GRAPH_LAPLACIAN_MORPHOGENESIS);
+  assert.ok(kernel.capabilityRegistry.SELF_HOSTING_KERNEL);
 });
 
-test('every declared ship organ has a complete machine-readable self-knowledge contract', () => {
+test('every declared ship organ has complete contract-driven machine-readable self-knowledge', () => {
   const result = validateMachineKernelSelfKnowledge();
   assert.equal(result.state, 'VERIFIED');
   assert.equal(result.ok, true);
+  assert.equal(result.contractDriven, true);
   assert.equal(result.issues.length, 0);
-  assert.ok(result.organCount >= 20);
+  assert.ok(result.organCount >= 40);
+  const kernel = loadMachineKernel();
+  for (const contract of Object.values(kernel.organRegistry)) {
+    assert.ok(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].includes(contract.criticality));
+    assert.ok(Array.isArray(contract.testBindings));
+    assert.ok(Array.isArray(contract.reviewTargets));
+    assert.equal(typeof contract.buildBinding?.kind, 'string');
+    assert.equal(typeof contract.buildBinding?.target, 'string');
+  }
 });
 
 test('arbitrary human language is preserved for normalization rather than guessed by the kernel', () => {
@@ -79,16 +105,83 @@ test('blueprint references only known laws and contains transitive organ depende
   assert.ok(compiled.blueprint.organs.some((organ) => organ.organId === 'FOLD_UNFOLD_MATERIALIZATION'));
 });
 
-test('SAFE_CONTROL intent compiles Lyapunov and viability organs without AI', () => {
+test('contract-driven build plan is derived from organ contracts instead of a second hand-written build table', () => {
+  const compiled = compileShipBlueprint(intent({ requestedCapabilities: ['GENERATIVE_GEOMETRY', 'SAFE_CONTROL'] }));
+  const plan = deriveContractDrivenBuildPlan(compiled);
+  assert.equal(plan.state, 'VERIFIED');
+  assert.ok(plan.testBindings.includes('STABILITY_VIABILITY'));
+  assert.ok(plan.criticalOrganIds.includes('RUNTIME_SAFETY'));
+  assert.ok(plan.organBindings.every((binding) => binding.buildBinding?.target));
+});
+
+test('SAFE_CONTROL now includes Lyapunov viability and control-barrier organs without AI', () => {
   const compiled = compileShipBlueprint(intent({ requestedCapabilities: ['SAFE_CONTROL'] }));
   assert.equal(compiled.state, 'COMPILED_CANDIDATE');
   const ids = compiled.blueprint.organs.map((organ) => organ.organId);
   assert.ok(ids.includes('LYAPUNOV_STABILITY'));
   assert.ok(ids.includes('FINITE_VIABILITY_KERNEL'));
+  assert.ok(ids.includes('CONTROL_BARRIER_FUNCTION'));
   assert.ok(ids.includes('RUNTIME_SAFETY'));
-  assert.ok(compiled.blueprint.lawReferences.includes('LYAPUNOV_STABILITY'));
-  assert.ok(compiled.blueprint.lawReferences.includes('FINITE_VIABILITY_KERNEL'));
+  assert.ok(compiled.blueprint.lawReferences.includes('CONTROL_BARRIER_FUNCTION'));
   assert.equal(verifyBlueprintKernelReferences(compiled).state, 'VERIFIED');
+});
+
+test('PROCESSOR_CORE compiles fetch-decode-dependency-execute-verify-writeback with noncanonical speculation', () => {
+  const compiled = compileShipBlueprint(intent({ requestedCapabilities: ['PROCESSOR_CORE'] }));
+  const core = compileProcessorCore(compiled, { laneCount: 4 });
+  assert.equal(core.state, 'COMPILED');
+  assert.deepEqual(core.stages, ['FETCH', 'DECODE', 'DEPENDENCY_CHECK', 'EXECUTE', 'VERIFY', 'WRITEBACK']);
+  assert.equal(core.laneCount, 4);
+  assert.equal(core.speculativeCanonicalWriteAllowed, false);
+  assert.equal(core.canonicalMutationPerformed, false);
+});
+
+test('CELL_NUCLEUS compiles genotype epigenetic activation transcription and replication without genome mutation', () => {
+  const compiled = compileShipBlueprint(intent({ requestedCapabilities: ['CELL_NUCLEUS', 'PROCESSOR_CORE'] }));
+  const nucleus = compileCellNucleus(compiled, { activationMask: ['IDENTITY', 'GENOME_STORE', 'PROCESSOR_CONTROL_UNIT'] });
+  assert.equal(nucleus.state, 'COMPILED');
+  assert.deepEqual(nucleus.epigeneticActivation, ['GENOME_STORE', 'IDENTITY', 'PROCESSOR_CONTROL_UNIT']);
+  assert.equal(nucleus.expressionExecutionOccursOutsideNucleus, true);
+  assert.equal(nucleus.genotypeMutationPerformed, false);
+  assert.equal(nucleus.expressionManifest.length, 3);
+});
+
+test('SELF_HOSTING_KERNEL closes genotype-to-expression-to-processor-to-authority loop without self-acceptance', () => {
+  const out = compileSelfHostingKernel(intent({ requestedCapabilities: ['GENERATIVE_GEOMETRY', 'OPTIMIZATION'] }), { laneCount: 2 });
+  assert.equal(out.state, 'SELF_HOSTING_CANDIDATE_COMPILED');
+  assert.equal(out.processorCore.state, 'COMPILED');
+  assert.equal(out.cellNucleus.state, 'COMPILED');
+  assert.ok(out.loop.includes('NUCLEAR_TRANSCRIPTION'));
+  assert.ok(out.loop.includes('PROCESSOR_FETCH_DECODE_EXECUTE_VERIFY_WRITEBACK'));
+  assert.ok(out.loop.includes('AUTHORITY_GATE'));
+  assert.equal(out.selfAcceptanceAllowed, false);
+  assert.equal(out.canonicalMutationPerformed, false);
+});
+
+test('information-efficiency primitives are deterministic scoring functions over declared evidence', () => {
+  assert.equal(shannonSurprisalBits(0.25), 2);
+  assert.equal(minimumDescriptionLengthBits({ modelBits: 5, parameterBits: 2, residualBits: 3, proofBits: 1 }), 11);
+  assert.equal(informationBottleneckObjective({ iXT: 5, iTY: 2, beta: 1.5 }), 2);
+  assert.equal(rateDistortionObjective({ rateBits: 10, distortion: 0.5, lambda: 4 }), 12);
+});
+
+test('graph Laplacian morphogenesis performs a declared local diffusion step without inventing global stability', () => {
+  const next = graphLaplacianMorphogenesisStep({
+    state: [1, 0],
+    edges: [{ from: 0, to: 1, weight: 1 }],
+    reactionDelta: [0, 0],
+    diffusion: 0.5,
+    dt: 1
+  });
+  assert.deepEqual(next, [0.5, 0.5]);
+});
+
+test('coarse graining and invariant checking remain declared operators rather than universal theorem claims', () => {
+  assert.deepEqual(coarseGrainWeightedMean({ values: [1, 3, 10, 14], groups: [[0, 1], [2, 3]] }), [2, 12]);
+  const invariant = assessCandidateInvariant({ values: [3, 3 + 1e-13, 3 - 1e-13], tolerance: 1e-12, symmetryEvidence: false });
+  assert.equal(invariant.state, 'NUMERICALLY_STABLE_BUT_NOETHER_LINK_UNPROVEN');
+  assert.equal(invariant.generalSymbolicNoetherSolverClaimed, false);
+  assert.equal(invariant.globalConservationProven, false);
 });
 
 test('runtime tuning can be compiled as a bounded self-development proposal without self-acceptance', () => {
@@ -96,6 +189,22 @@ test('runtime tuning can be compiled as a bounded self-development proposal with
   assert.equal(out.state, 'CANDIDATE_COMPILED');
   assert.equal(out.proposal.autoApplyWithinExistingLawEnvelope, true);
   assert.equal(out.proposal.externalAuthorityRequired, false);
+  assert.equal(out.proposal.accepted, false);
+  assert.equal(out.proposal.canonicalMutationPerformed, false);
+});
+
+test('processor cache mismatch compiles to bounded derived-cache invalidation', () => {
+  const out = compileSelfDevelopmentProposal({ signal: 'CACHE_IDENTITY_MISMATCH', context: { cacheKey: 'X' } });
+  assert.equal(out.state, 'CANDIDATE_COMPILED');
+  assert.equal(out.proposal.proposedAction, 'INVALIDATE_DERIVED_CACHE_AND_RECOMPUTE');
+  assert.equal(out.proposal.autoApplyWithinExistingLawEnvelope, true);
+  assert.equal(out.proposal.canonicalMutationPerformed, false);
+});
+
+test('genome integrity drift never self-accepts a kernel repair', () => {
+  const out = compileSelfDevelopmentProposal({ signal: 'GENOME_INTEGRITY_DRIFT', context: { kernelVersion: 'V1' } });
+  assert.equal(out.state, 'CANDIDATE_COMPILED');
+  assert.equal(out.proposal.externalAuthorityRequired, true);
   assert.equal(out.proposal.accepted, false);
   assert.equal(out.proposal.canonicalMutationPerformed, false);
 });
