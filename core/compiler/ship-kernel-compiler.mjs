@@ -19,13 +19,74 @@ function cloneJson(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function inspectMachineKernel(kernel) {
+  const issues = [];
+  if (!kernel || kernel.schemaVersion !== 'SETKA_MACHINE_KERNEL_V1') {
+    return { state: 'INVALID', ok: false, issues: ['UNSUPPORTED_MACHINE_KERNEL_VERSION'] };
+  }
+  for (const field of ['lawRegistry', 'capabilityRegistry', 'organRegistry', 'shipCompiler', 'selfDevelopmentPolicy', 'selfKnowledgeContract']) {
+    if (!kernel[field] || typeof kernel[field] !== 'object') issues.push(`MISSING_${field.toUpperCase()}`);
+  }
+  if (issues.length > 0) return { state: 'INVALID', ok: false, issues };
+
+  const required = kernel.selfKnowledgeContract.requiredForEveryOrgan;
+  if (!Array.isArray(required) || required.length === 0) issues.push('SELF_KNOWLEDGE_REQUIRED_FIELDS_MISSING');
+  const organIds = new Set(Object.keys(kernel.organRegistry));
+  const lawIds = new Set(Object.keys(kernel.lawRegistry));
+
+  for (const [organId, contract] of Object.entries(kernel.organRegistry)) {
+    if (!contract || typeof contract !== 'object') {
+      issues.push(`ORGAN_CONTRACT_NOT_OBJECT:${organId}`);
+      continue;
+    }
+    for (const field of required ?? []) {
+      if (!Object.hasOwn(contract, field)) issues.push(`ORGAN_FIELD_MISSING:${organId}:${field}`);
+    }
+    if (contract.organId !== organId) issues.push(`ORGAN_ID_MISMATCH:${organId}`);
+    for (const field of ['inputs', 'outputs', 'lawReferences', 'dependencies', 'invariants', 'resourceMetrics', 'provenanceRequirements', 'failClosedRules']) {
+      if (!Array.isArray(contract[field])) issues.push(`ORGAN_ARRAY_FIELD_INVALID:${organId}:${field}`);
+    }
+    for (const lawRef of contract.lawReferences ?? []) {
+      if (!lawIds.has(lawRef)) issues.push(`UNKNOWN_ORGAN_LAW_REFERENCE:${organId}:${lawRef}`);
+    }
+    for (const dependency of contract.dependencies ?? []) {
+      if (!organIds.has(dependency)) issues.push(`UNKNOWN_ORGAN_DEPENDENCY:${organId}:${dependency}`);
+    }
+  }
+
+  for (const baseOrgan of kernel.shipCompiler.baseOrgansAlwaysIncluded ?? []) {
+    if (!organIds.has(baseOrgan)) issues.push(`UNKNOWN_BASE_ORGAN:${baseOrgan}`);
+  }
+  for (const [capability, expansion] of Object.entries(kernel.capabilityRegistry)) {
+    if (!Array.isArray(expansion)) {
+      issues.push(`CAPABILITY_EXPANSION_NOT_ARRAY:${capability}`);
+      continue;
+    }
+    for (const organId of expansion) {
+      if (!organIds.has(organId)) issues.push(`CAPABILITY_REFERENCES_UNKNOWN_ORGAN:${capability}:${organId}`);
+    }
+  }
+
+  return {
+    schemaVersion: 'SETKA_MACHINE_KERNEL_SELF_KNOWLEDGE_CHECK_V1',
+    state: issues.length === 0 ? 'VERIFIED' : 'INVALID',
+    ok: issues.length === 0,
+    organCount: organIds.size,
+    lawCount: lawIds.size,
+    capabilityCount: Object.keys(kernel.capabilityRegistry).length,
+    issues: Object.freeze(issues.sort())
+  };
+}
+
 export function loadMachineKernel() {
   const kernel = JSON.parse(readFileSync(MACHINE_KERNEL_URL, 'utf8'));
-  if (kernel?.schemaVersion !== 'SETKA_MACHINE_KERNEL_V1') throw new TypeError('unsupported machine kernel version');
-  if (!kernel.lawRegistry || !kernel.capabilityRegistry || !kernel.shipCompiler || !kernel.selfDevelopmentPolicy) {
-    throw new TypeError('machine kernel is incomplete');
-  }
+  const basic = inspectMachineKernel(kernel);
+  if (!basic.ok) throw new TypeError(`machine kernel self-knowledge invalid: ${basic.issues.join(', ')}`);
   return Object.freeze(kernel);
+}
+
+export function validateMachineKernelSelfKnowledge({ kernel = loadMachineKernel() } = {}) {
+  return Object.freeze(inspectMachineKernel(kernel));
 }
 
 export function validateShipIntent(intent) {
@@ -68,15 +129,46 @@ function expandCapability(capability, kernel) {
   return expansion;
 }
 
+function resolveOrganClosure(seedOrganIds, kernel) {
+  const visiting = new Set();
+  const resolved = new Set();
+
+  function visit(organId) {
+    if (resolved.has(organId)) return;
+    const contract = kernel.organRegistry[organId];
+    if (!contract) throw new RangeError(`unknown organ contract: ${organId}`);
+    if (visiting.has(organId)) throw new RangeError(`organ dependency cycle: ${organId}`);
+    visiting.add(organId);
+    for (const dependency of contract.dependencies) visit(dependency);
+    visiting.delete(organId);
+    resolved.add(organId);
+  }
+
+  for (const organId of sortedUnique(seedOrganIds)) visit(organId);
+  return [...resolved].sort();
+}
+
 export function compileShipBlueprint(intent, { kernel = loadMachineKernel() } = {}) {
   validateShipIntent(intent);
+  const selfKnowledge = inspectMachineKernel(kernel);
+  if (!selfKnowledge.ok) {
+    return Object.freeze({
+      schemaVersion: SHIP_BLUEPRINT_SCHEMA_VERSION,
+      state: 'REVIEW_REQUIRED',
+      reason: 'MACHINE_KERNEL_SELF_KNOWLEDGE_INVALID',
+      intentId: intent.intentId,
+      unknownCapabilities: [],
+      selfKnowledgeIssues: selfKnowledge.issues,
+      blueprint: null
+    });
+  }
+
   const unknownCapabilities = [];
   const selected = [...kernel.shipCompiler.baseOrgansAlwaysIncluded];
-
   for (const capability of intent.requestedCapabilities) {
     const expansion = expandCapability(capability, kernel);
     if (!expansion) unknownCapabilities.push(capability);
-    else selected.push(capability, ...expansion);
+    else selected.push(...expansion);
   }
 
   if (unknownCapabilities.length > 0) {
@@ -90,8 +182,8 @@ export function compileShipBlueprint(intent, { kernel = loadMachineKernel() } = 
     });
   }
 
-  const organIds = sortedUnique(selected);
-  const lawReferences = sortedUnique(organIds.filter((id) => Object.hasOwn(kernel.lawRegistry, id)));
+  const organIds = resolveOrganClosure(selected, kernel);
+  const lawReferences = sortedUnique(organIds.flatMap((organId) => kernel.organRegistry[organId].lawReferences));
   const blueprint = {
     schemaVersion: SHIP_BLUEPRINT_SCHEMA_VERSION,
     blueprintId: `BLUEPRINT:${intent.intentId}`,
@@ -100,14 +192,15 @@ export function compileShipBlueprint(intent, { kernel = loadMachineKernel() } = 
     purpose: intent.purpose,
     organs: organIds.map((organId) => ({
       organId,
-      lawReferences: Object.hasOwn(kernel.lawRegistry, organId) ? [organId] : [],
+      contractRef: `SETKA_MACHINE_KERNEL_V1#organRegistry.${organId}`,
+      lawReferences: cloneJson(kernel.organRegistry[organId].lawReferences),
       source: 'SETKA_MACHINE_KERNEL_V1'
     })),
     lawReferences,
     constraints: cloneJson(intent.constraints),
     parameters: cloneJson(intent.parameters ?? {}),
     buildProtocol: cloneJson(kernel.pipeline.slice(2)),
-    materializationPolicy: 'REFERENCE_VERSIONED_KERNEL_LAWS_AND_STORE_ONLY_SHIP_SPECIFIC_PARAMETERS_CAUSES_AND_RESIDUALS',
+    materializationPolicy: 'REFERENCE_VERSIONED_KERNEL_LAWS_AND_ORGAN_CONTRACTS_AND_STORE_ONLY_SHIP_SPECIFIC_PARAMETERS_CAUSES_AND_RESIDUALS',
     requiresAIToCompile: false,
     canonicalMutationAuthorized: false,
     derivedArtifact: true
@@ -201,16 +294,40 @@ export function verifyBlueprintKernelReferences(compiled, { kernel = loadMachine
   if (compiled?.state !== 'COMPILED_CANDIDATE' || !compiled.blueprint) {
     return { state: 'REVIEW_REQUIRED', ok: false, reason: 'BLUEPRINT_NOT_COMPILED' };
   }
+  const selfKnowledge = inspectMachineKernel(kernel);
+  if (!selfKnowledge.ok) {
+    return { state: 'REVIEW_REQUIRED', ok: false, reason: 'MACHINE_KERNEL_SELF_KNOWLEDGE_INVALID', issues: selfKnowledge.issues };
+  }
+
+  const organIds = new Set(compiled.blueprint.organs.map((organ) => organ.organId));
+  const unknownOrgans = [...organIds].filter((organId) => !Object.hasOwn(kernel.organRegistry, organId)).sort();
   const unknownLawReferences = compiled.blueprint.lawReferences.filter((ref) => !Object.hasOwn(kernel.lawRegistry, ref));
-  const missingBaseOrgans = kernel.shipCompiler.baseOrgansAlwaysIncluded.filter(
-    (required) => !compiled.blueprint.organs.some((organ) => organ.organId === required)
-  );
-  const ok = unknownLawReferences.length === 0 && missingBaseOrgans.length === 0;
+  const missingBaseOrgans = kernel.shipCompiler.baseOrgansAlwaysIncluded.filter((required) => !organIds.has(required));
+  const missingDependencies = [];
+  const invalidContractRefs = [];
+
+  for (const organ of compiled.blueprint.organs) {
+    const contract = kernel.organRegistry[organ.organId];
+    if (!contract) continue;
+    if (organ.contractRef !== `SETKA_MACHINE_KERNEL_V1#organRegistry.${organ.organId}`) invalidContractRefs.push(organ.organId);
+    for (const dependency of contract.dependencies) {
+      if (!organIds.has(dependency)) missingDependencies.push(`${organ.organId}->${dependency}`);
+    }
+  }
+
+  const ok = unknownOrgans.length === 0
+    && unknownLawReferences.length === 0
+    && missingBaseOrgans.length === 0
+    && missingDependencies.length === 0
+    && invalidContractRefs.length === 0;
   return Object.freeze({
     state: ok ? 'VERIFIED' : 'REVIEW_REQUIRED',
     ok,
+    unknownOrgans,
     unknownLawReferences,
     missingBaseOrgans,
+    missingDependencies: Object.freeze(missingDependencies.sort()),
+    invalidContractRefs: Object.freeze(invalidContractRefs.sort()),
     canonicalMutationAuthorized: false
   });
 }
