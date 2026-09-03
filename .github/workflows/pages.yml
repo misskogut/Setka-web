@@ -1,15 +1,11 @@
-name: Deploy SETKA Web to GitHub Pages
+name: Deploy SETKA Private Lockdown to GitHub Pages
 
 on:
   push:
     branches: ["main"]
-    paths-ignore:
-      - '**/*.md'
-      - 'core/**'
-      - 'contracts/**'
-      - 'tests/**'
-      - 'ops/**'
-      - '.github/**'
+    paths:
+      - 'private-lockdown/**'
+      - '.github/workflows/pages.yml'
   workflow_dispatch:
 
 permissions:
@@ -22,7 +18,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  deploy-lockdown:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -32,10 +28,10 @@ jobs:
         uses: actions/checkout@v6
       - name: Setup Pages
         uses: actions/configure-pages@v5
-      - name: Upload artifact
+      - name: Upload lockdown artifact only
         uses: actions/upload-pages-artifact@v4
         with:
-          path: "."
-      - name: Deploy to GitHub Pages
+          path: "private-lockdown"
+      - name: Deploy lockdown
         id: deployment
         uses: actions/deploy-pages@v4
