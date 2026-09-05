@@ -110,5 +110,14 @@
     }
   }
 
-  window.addEventListener("DOMContentLoaded",()=>{ensureUi();load();setInterval(load,POLL_MS);});
+  function loadOnboardComputer(){
+    if(document.querySelector('script[data-setka-board="1"]')) return;
+    const s=document.createElement("script");
+    s.src="standalone-admin-board-v34.js?v=1";
+    s.async=true;
+    s.dataset.setkaBoard="1";
+    document.head.appendChild(s);
+  }
+
+  window.addEventListener("DOMContentLoaded",()=>{ensureUi();load();loadOnboardComputer();setInterval(load,POLL_MS);});
 })();
