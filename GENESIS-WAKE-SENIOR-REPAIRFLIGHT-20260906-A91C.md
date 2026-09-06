@@ -7,13 +7,17 @@ AUTHORITY: PRESIDENT_SETKA
 REPOSITORY: misskogut/Setka-web
 BRANCH: main
 ENTRYPOINT: SENIOR_ASTRA_GENESIS_REPAIR_UNTIL_FLIGHT.md
-ORDER: RESUME_CHECKPOINT → LOGIN_GATE → FRONT_REPAIR_RETRY_LOOP → REGRESSION_AUTOMATION → FINAL_REPORT
+ORDER: RESUME_CHECKPOINT → LOGIN_GATE → FRONT_REPAIR_RETRY_LOOP → REGRESSION_AUTOMATION → CONTINUE_UNTIL_ACCEPTANCE
 SCOPE: existing GENESIS-7F31 synthetic fleet only, plus general runtime components required to make those scenarios pass
-STOP_RULE: preserve final 15% for checkpoint/report; do not abandon a scenario for an ordinary VERSTAK defect
+STOP_RULE: mission persists across model-limit windows; resource exhaustion means PAUSED_BY_RESOURCE_LIMIT, not mission completion; checkpoint after each material repair/retest and before exhaustion
 FALLBACK: exact `foundation.senior_wake_resolve_v1(WAKE_KEY)` only
+CONTINUITY: SENIOR_MISSION_CONTINUITY.md
+MISSION_KEY: MISSION-GENESIS-7F31-REPAIR-FLIGHT
 
-RULE: NO SEARCH. NO CONTEXT RECONSTRUCTION. DO NOT RECREATE THE TEST FLEET. OPEN ENTRYPOINT AND EXECUTE.
+RULE: NO SEARCH. NO CONTEXT RECONSTRUCTION. DO NOT RECREATE THE TEST FLEET. OPEN ENTRYPOINT, RESOLVE LATEST CHECKPOINT, EXECUTE NEXT EXACT ACTION.
 
-Previous checkpoint is already encoded in the entrypoint. Do not re-run the old one-session flight or old post-flight gap review from scratch.
+The previous one-session flight/gap review is complete and must not be rerun. This mission continues until its acceptance criteria are met or President explicitly stops it.
+
+If the model/resource window ends, persist `PAUSED_BY_RESOURCE_LIMIT` checkpoint and stop naturally. On the next `Продолжай` or same wake key, resume the exact unfinished step.
 
 This wake key is routing metadata, not a database password and not a test-user credential.
