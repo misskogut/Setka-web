@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#06080c">
+<meta http-equiv="Cache-Control" content="no-cache,no-store,must-revalidate">
+<title>VERSTAK · вход</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#06080c;color:#f4f7fb;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",Arial,sans-serif}body{min-height:100vh;display:grid;place-items:center;padding:20px;background:radial-gradient(circle at 50% -10%,#19202d 0,#090c12 36%,#05070a 78%)}.box{width:min(480px,100%);background:linear-gradient(180deg,#0f141d,#0b0f16);border:1px solid #293343;border-radius:24px;padding:22px;box-shadow:0 22px 70px #0009}.k{font-size:11px;letter-spacing:.14em;color:#7f8ba0;margin-bottom:8px}h1{font-size:28px;margin:0 0 8px}.muted{color:#9ca8ba;font-size:13px;line-height:1.5}.lab{font-size:11px;color:#8b97a9;margin:12px 0 6px}.in{width:100%;border:1px solid #303b4d;background:#080c12;color:#fff;border-radius:14px;padding:13px 14px;font-size:16px;outline:none}.in:focus{border-color:#7386aa}.btn{width:100%;margin-top:15px;border:0;border-radius:14px;padding:13px;background:#eef3ff;color:#090b0f;font-weight:800;font-size:15px}.btn:disabled{opacity:.5}.msg{min-height:20px;color:#9eabbc;font-size:12px;margin-top:12px}.hidden{display:none!important}.foot{color:#707c8f;font-size:11px;line-height:1.5;margin-top:16px}
+</style>
+</head>
+<body>
+<div class="box">
+<div class="k">SETKA · VERSTAK ALPHA</div>
+<h1 id="title">Вход на корабль</h1>
+<div id="intro" class="muted">Введи свой SETKA ID и шестизначный PIN.</div>
+<div id="login">
+<div class="lab">SETKA ID</div><input id="id" class="in" autocomplete="username" autocapitalize="characters" placeholder="SETKA-H-XXXX-XXXX">
+<div class="lab">PIN · 6 цифр</div><input id="pin" class="in" type="password" inputmode="numeric" maxlength="6" autocomplete="current-password" placeholder="••••••">
+<button id="go" class="btn">Войти в VERSTAK</button>
+</div>
+<div id="activate" class="hidden">
+<div class="lab">Твой SETKA ID</div><input id="aid" class="in" readonly>
+<div class="lab">Придумай PIN · 6 цифр</div><input id="p1" class="in" type="password" inputmode="numeric" maxlength="6" placeholder="••••••">
+<div class="lab">Повтори PIN</div><input id="p2" class="in" type="password" inputmode="numeric" maxlength="6" placeholder="••••••">
+<button id="activateBtn" class="btn">Активировать вход</button>
+</div>
+<div id="msg" class="msg"></div>
+<div class="foot">Корабль принадлежит SETKA. SETKA ID даёт человеку персональный допуск и собственный рабочий контур внутри корабля.</div>
+</div>
+<script>
+const API='https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/verstak-alpha';
+const KEY='sb_publishable_1jL-x9_kp6rpfGghpSp_OA_OiXDnvsv';
+const TARGET='https://misskogut.github.io/Setka-web/verstak-alpha.html';
+const $=s=>document.querySelector(s),msg=t=>$('#msg').textContent=t;
+async function call(action,payload={},access=''){const h={'content-type':'application/json','apikey':KEY};if(access)h['x-verstak-access']=access;const r=await fetch(API,{method:'POST',headers:h,body:JSON.stringify({action,...payload})});const d=await r.json().catch(()=>({}));if(!r.ok||d.ok===false){const e=new Error(d.error||'request_failed');e.status=r.status;throw e}return d}
+function redirect(t){location.replace(TARGET+'#access='+encodeURIComponent(t))}
+async function login(){const id=$('#id').value.trim().toUpperCase(),pin=$('#pin').value.trim();if(!id||pin.length!==6){msg('Нужны SETKA ID и PIN из 6 цифр.');return}$('#go').disabled=true;msg('Проверяю доступ…');try{const d=await call('login',{setkaId:id,pin});redirect(d.accessToken)}catch(e){msg(e.message==='temporarily_locked'?'Слишком много попыток. Попробуй позже.':'SETKA ID или PIN не подходят.')}finally{$('#go').disabled=false}}
+async function activate(){const access=window.__invite||'',a=$('#p1').value.trim(),b=$('#p2').value.trim();if(!/^\d{6}$/.test(a)){msg('PIN должен состоять из 6 цифр.');return}if(a!==b){msg('PIN не совпадает.');return}$('#activateBtn').disabled=true;msg('Активирую вход…');try{const boot=await call('bootstrap',{},access);await call('set_pin',{pin:a},access);const d=await call('login',{setkaId:boot.identity.setkaId,pin:a});redirect(d.accessToken)}catch(e){msg('Не удалось активировать вход. Проверь персональную ссылку.')}finally{$('#activateBtn').disabled=false}}
+async function init(){const q=new URLSearchParams(location.search),pref=(q.get('id')||'').toUpperCase();if(pref)$('#id').value=pref;const hs=new URLSearchParams(location.hash.replace(/^#/,'')),invite=hs.get('access')||'';if(invite.length>20){window.__invite=invite;history.replaceState(null,'',location.pathname+location.search);$('#login').classList.add('hidden');$('#activate').classList.remove('hidden');$('#title').textContent='Первый вход';$('#intro').textContent='Создай личный PIN для своего SETKA ID. После этого персональная ссылка больше не нужна.';msg('Проверяю приглашение…');try{const b=await call('bootstrap',{},invite);$('#aid').value=b.identity.setkaId;msg('Придумай PIN из 6 цифр.')}catch{msg('Персональная ссылка не принята или истекла.')}}}
+$('#go').onclick=login;$('#pin').addEventListener('keydown',e=>{if(e.key==='Enter')login()});$('#activateBtn').onclick=activate;init();
+</script>
+</body>
+</html>
