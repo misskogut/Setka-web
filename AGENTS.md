@@ -1,8 +1,10 @@
 # SETKA / VERSTAK · WORK BOOTSTRAP OVERRIDE
 
-## UNIVERSAL RUNTIME BLACKBOX RULE
+## UNIVERSAL FLIGHT RECORDER RULE
 
-Blackbox is the universal SETKA runtime flight recorder, not a Senior-only feature.
+**BLACK BOX** means the protected SETKA / VERSTAK intellectual system.
+
+**БОРТОВОЙ САМОПИСЕЦ / FLIGHT RECORDER** means the temporary runtime observer of a session.
 
 Canonical separation:
 
@@ -10,16 +12,18 @@ Canonical separation:
 
 For any SETKA synthetic runtime session (Solai, Vector, Senior, future synthetics):
 
-1. Enter through the trusted synthetic runtime path. `public.foundation_start_synthetic_run(...)` now auto-starts raw observation and returns `blackboxSessionRef`.
-2. The canonical raw tape is the existing append-only runtime/event spine projected as `foundation.runtime_blackbox_raw_v1`.
-3. Execution surfaces should emit objective low-level actions through `foundation.runtime_blackbox_event_v1(...)` or their native field/meter/trace channel. Prefer runner/middleware instrumentation over the model reconstructing actions after the fact.
-4. Never send each raw operation into `foundation.system_transcript_events`. Transcript is semantic/causal memory only.
-5. Reports remain separate and are compared against raw evidence through `foundation.runtime_blackbox_report_reconciliation_v1`.
-6. Use `foundation.runtime_blackbox_dashboard_v1(actorIdentityRef, sessionRef)` for derived self-observation, repetition and optimization metrics.
-7. Missing telemetry is `UNKNOWN / UNINSTRUMENTED`, not zero activity.
-8. Raw observation must not dump passwords, PIN values, bearer/session tokens, service secrets or recovery material. Record safe operation metadata/evidence refs instead.
+1. Enter through the trusted synthetic runtime path. `public.foundation_start_synthetic_run(...)` auto-starts observation and returns `flightRecorderSessionRef`.
+2. Use canonical recorder names: `foundation.flight_recorder_raw_v1`, `foundation.flight_recorder_event_v1(...)`, `foundation.flight_recorder_dashboard_v1(...)`. Legacy `runtime_blackbox_*` names are compatibility aliases only.
+3. Execution surfaces should emit objective low-level actions through the recorder or their native field/meter/trace channel. Prefer runner/middleware instrumentation over model reconstruction after the fact.
+4. Do not copy every raw operation into `foundation.system_transcript_events`. Transcript is semantic/causal memory only.
+5. At session close, SETKA must compile that session immediately via `foundation.flight_recorder_compile_session_v1(...)`.
+6. **Do not wait for repetition. One session is enough to raise an automation candidate.** Repetition may increase confidence/priority but is not the discovery gate.
+7. Deterministic/mechanical work should move toward SETKA executors/guards/harnesses; genuine unresolved reasoning remains an AI boundary.
+8. Recorder RAW is temporary TRACE material. After candidate resolution + proof/seal, recorder-owned raw is purged and only a compact capsule/hash/metrics + one meaningful Transcript fact remain.
+9. Missing telemetry is `UNKNOWN / UNINSTRUMENTED`, not zero activity. Check `foundation.flight_recorder_coverage_dashboard_v1()`.
+10. Raw observation must never dump passwords, PINs, bearer/session tokens, service secrets or recovery material.
 
-Read `ops/SETKA_RUNTIME_BLACKBOX_RAW_V1.md` before changing runtime observation semantics.
+Read `ops/SETKA_FLIGHT_RECORDER_V1.md` before changing recorder semantics.
 
 ## SENIOR WAKE KEY RULE
 
@@ -30,9 +34,8 @@ Perform only this deterministic route:
 1. In repository `misskogut/Setka-web`, branch `main`, open the exact file `/<WAKE_KEY>.md`.
 2. If it exists and `STATUS: ACTIVE`, read its manifest and open its exact `ENTRYPOINT`.
 3. Resolve the exact key through `foundation.senior_wake_resolve_v1(<WAKE_KEY>)` only when the manifest needs live checkpoint state or GitHub exact lookup is unavailable.
-4. If the active manifest declares `BLACKBOX_PROTOCOL` + `MISSION_KEY`, use the mission's one-call HOT OPEN before broad manual work:
-   `foundation.senior_blackbox_open_v1(WAKE_KEY, MISSION_KEY, metadata)`.
-5. HOT OPEN is the Senior mission adapter: it restores latest checkpoint, executes registered deterministic evidence first, and returns compact evidence + `nextExactAction`. Its work telemetry belongs to the universal runtime Blackbox layer above.
+4. If the active manifest declares `FLIGHT_RECORDER_PROTOCOL` + `MISSION_KEY`, use the mission's one-call Senior HOT OPEN before broad manual work: `foundation.senior_blackbox_open_v1(WAKE_KEY, MISSION_KEY, metadata)`. The function name is legacy compatibility; its telemetry belongs to the Flight Recorder.
+5. HOT OPEN restores latest checkpoint, executes registered deterministic evidence first, and returns compact evidence + `nextExactAction`.
 6. Do NOT manually repeat evidence already returned as PASS. Investigate only FAIL / UNKNOWN / contradiction / new design boundary.
 7. If neither exact resolver succeeds, return `WAKE_KEY_NOT_RESOLVED` and stop.
 
@@ -46,15 +49,14 @@ If the President writes only `Продолжай` or `Continue` in an existing S
 
 `RESUME ACTIVE SENIOR MISSION FROM LATEST VERIFIED CHECKPOINT`.
 
-Do not start a new mission and do not reconstruct context. Open `SENIOR_ACTIVE_TASK.md` exactly, take its active TASK_KEY + MISSION_KEY, exact-resolve them, run one HOT OPEN when the active task is Blackbox-instrumented, then execute returned `nextExactAction`.
+Do not start a new mission and do not reconstruct context. Open `SENIOR_ACTIVE_TASK.md` exactly, take its active TASK_KEY + MISSION_KEY, exact-resolve them, run one HOT OPEN, then execute returned `nextExactAction`.
 
 During an instrumented wake:
-- mark meaningful Senior-specific phase transitions with `foundation.senior_blackbox_transition_v1(...)`;
-- checkpoint material repair/retest progress with `foundation.senior_blackbox_checkpoint_v1(...)`;
-- before a known resource edge call `foundation.senior_blackbox_pause_v1(...)`.
+- Senior-specific helper names `senior_blackbox_*` are legacy adapters over the Flight Recorder;
+- checkpoint material repair/retest progress after meaningful changes;
+- before a known resource edge persist `PAUSED_BY_RESOURCE_LIMIT` continuity state;
+- every manual/mechanical action in this single session is immediately eligible for recorder compilation as an automation candidate; do not wait for a second occurrence.
 
-These Senior helpers are adapters over the universal raw observer, not a separate raw history.
-
-Resource exhaustion is `PAUSED_BY_RESOURCE_LIMIT`, not mission completion. Follow `SENIOR_MISSION_CONTINUITY.md` and `SENIOR_BLACKBOX_EYE_PROTOCOL.md` when declared by the active manifest.
+Resource exhaustion is `PAUSED_BY_RESOURCE_LIMIT`, not mission completion. Follow `SENIOR_MISSION_CONTINUITY.md`, `SENIOR_FLIGHT_RECORDER_PROTOCOL.md`, and `ops/SETKA_FLIGHT_RECORDER_V1.md`.
 
 For all non-wake/non-continue work, follow `SETKA_START_HERE.md` and the ordinary repository truth hierarchy.
