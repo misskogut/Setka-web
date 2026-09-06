@@ -1,20 +1,143 @@
 (()=>{
 'use strict';
-const KEY='setka:foundation:president:zoom:v018';
-const LEVELS=[.6,.75,.9,1,1.15,1.3,1.4];
+const KEY='setka:foundation:president:zoom:v018-transform1';
+const MIN=.18,MAX=2.25,WORKSPACE_WIDTH=1280;
 const frame=document.getElementById('appFrame');
-const bar=document.querySelector('.controlBar');
-if(!frame||!bar)return;
-let scale=1;
-try{const x=Number(localStorage.getItem(KEY));if(LEVELS.includes(x))scale=x}catch{}
-const wrap=document.createElement('div');wrap.className='zoomTool';wrap.setAttribute('aria-label','Масштаб админки');wrap.innerHTML='<button type="button" data-zoom="out" aria-label="Уменьшить масштаб">−</button><span class="zoomValue">100%</span><button type="button" data-zoom="in" aria-label="Увеличить масштаб">+</button>';
-const anchor=document.getElementById('refreshVersions');bar.insertBefore(wrap,anchor||null);
-const value=wrap.querySelector('.zoomValue');
-function nearestIndex(){let best=0,dist=Infinity;LEVELS.forEach((v,i)=>{const d=Math.abs(v-scale);if(d<dist){dist=d;best=i}});return best}
-function apply(){value.textContent=`${Math.round(scale*100)}%`;try{localStorage.setItem(KEY,String(scale))}catch{}try{const d=frame.contentDocument;if(!d)return;const root=d.documentElement,body=d.body;if('zoom' in root.style){root.style.zoom=String(scale);root.style.transform='';root.style.width=''}else{root.style.zoom='';body.style.transformOrigin='0 0';body.style.transform=`scale(${scale})`;body.style.width=`${100/scale}%`}d.documentElement.dataset.shellZoom=String(scale);frame.contentWindow.dispatchEvent(new CustomEvent('foundation:admin-zoom',{detail:{scale}}))}catch{}}
-function step(dir){const i=nearestIndex(),j=Math.max(0,Math.min(LEVELS.length-1,i+dir));scale=LEVELS[j];apply()}
-wrap.addEventListener('click',e=>{const b=e.target.closest('button[data-zoom]');if(!b)return;step(b.dataset.zoom==='in'?1:-1)});
-frame.addEventListener('load',()=>requestAnimationFrame(apply));
-apply();
-window.FoundationControlZoomV018={get:()=>scale,set:v=>{const n=Number(v);if(!Number.isFinite(n))return scale;scale=LEVELS.reduce((a,b)=>Math.abs(b-n)<Math.abs(a-n)?b:a,LEVELS[0]);apply();return scale}};
+if(!frame)return;
+let scale=1,pinch=null,extentRaf=0,mutationObserver=null;
+function clamp(v){return Math.max(MIN,Math.min(MAX,Number(v)||1))}
+function frameWidth(){try{return frame.clientWidth||innerWidth||390}catch{return 390}}
+function fitValue(){return clamp(Math.max(1,frameWidth()-12)/WORKSPACE_WIDTH)}
+function persist(){try{localStorage.setItem(KEY,String(scale))}catch{}}
+function midpoint(t){return{x:(t[0].clientX+t[1].clientX)/2,y:(t[0].clientY+t[1].clientY)/2}}
+function distance(t){const dx=t[0].clientX-t[1].clientX,dy=t[0].clientY-t[1].clientY;return Math.hypot(dx,dy)}
+function ensureWorkspace(d){
+ const shell=d.getElementById('app')||d.querySelector('.shell');
+ if(!shell)return null;
+ let wrap=d.getElementById('foundationWorkspace018');
+ if(!wrap){
+   wrap=d.createElement('div');
+   wrap.id='foundationWorkspace018';
+   shell.parentNode?.insertBefore(wrap,shell);
+   wrap.appendChild(shell);
+ }
+ shell.style.width=`${WORKSPACE_WIDTH}px`;
+ shell.style.minWidth=`${WORKSPACE_WIDTH}px`;
+ shell.style.maxWidth='none';
+ shell.style.zoom='';
+ shell.style.transformOrigin='0 0';
+ wrap.style.position='relative';
+ wrap.style.transform='none';
+ wrap.style.transformOrigin='0 0';
+ return{shell,wrap};
+}
+function rawHeight(shell){return Math.max(shell.scrollHeight,shell.offsetHeight,900)}
+function updateExtent(workspace){
+ if(!workspace)return;
+ const {shell,wrap}=workspace;
+ const h=rawHeight(shell);
+ wrap.style.width=`${Math.ceil(WORKSPACE_WIDTH*scale)}px`;
+ wrap.style.height=`${Math.ceil(h*scale)}px`;
+ wrap.style.minHeight=`${Math.ceil(900*scale)}px`;
+}
+function queueExtent(workspace){
+ cancelAnimationFrame(extentRaf);
+ extentRaf=requestAnimationFrame(()=>updateExtent(workspace));
+}
+function apply(save=true){
+ let d;
+ try{d=frame.contentDocument}catch{return}
+ if(!d)return;
+ const workspace=ensureWorkspace(d);
+ if(!workspace)return;
+ const {shell}=workspace,root=d.documentElement,body=d.body;
+ if(!root||!body)return;
+ shell.style.zoom='';
+ shell.style.transform=`scale(${scale})`;
+ shell.style.transformOrigin='0 0';
+ root.style.overflow='auto';
+ body.style.overflow='auto';
+ root.style.scrollBehavior='auto';
+ body.style.scrollBehavior='auto';
+ root.style.overscrollBehavior='contain';
+ body.style.overscrollBehavior='contain';
+ root.dataset.shellZoom=String(scale);
+ root.dataset.shellZoomMode='transform-hit-safe';
+ updateExtent(workspace);
+ if(save)persist();
+ try{frame.contentWindow.dispatchEvent(new CustomEvent('foundation:admin-zoom',{detail:{scale,source:'gesture-canvas-transform'}}))}catch{}
+}
+function bindDoc(){
+ let d;
+ try{d=frame.contentDocument}catch{return}
+ if(!d||d.documentElement.dataset.gestureZoomBound==='4')return;
+ d.documentElement.dataset.gestureZoomBound='4';
+ const workspace=ensureWorkspace(d);
+ if(!workspace)return;
+ const scroller=()=>d.scrollingElement||d.documentElement;
+ const start=e=>{
+   if(!e.touches||e.touches.length!==2)return;
+   const m=midpoint(e.touches),s=scroller();
+   pinch={distance:Math.max(1,distance(e.touches)),scale,contentX:(s.scrollLeft+m.x)/scale,contentY:(s.scrollTop+m.y)/scale};
+   e.preventDefault();
+ };
+ const move=e=>{
+   if(!pinch||!e.touches||e.touches.length<2)return;
+   e.preventDefault();
+   const m=midpoint(e.touches);
+   scale=clamp(pinch.scale*(distance(e.touches)/pinch.distance));
+   apply(false);
+   const s=scroller();
+   s.scrollLeft=Math.max(0,pinch.contentX*scale-m.x);
+   s.scrollTop=Math.max(0,pinch.contentY*scale-m.y);
+ };
+ const end=e=>{
+   if(pinch&&(!e.touches||e.touches.length<2)){
+     pinch=null;
+     apply(true);
+   }
+ };
+ d.addEventListener('touchstart',start,{passive:false,capture:true});
+ d.addEventListener('touchmove',move,{passive:false,capture:true});
+ d.addEventListener('touchend',end,{passive:false,capture:true});
+ d.addEventListener('touchcancel',end,{passive:false,capture:true});
+ d.addEventListener('wheel',e=>{
+   if(!(e.ctrlKey||e.metaKey))return;
+   e.preventDefault();
+   const s=scroller(),before=scale,contentX=(s.scrollLeft+e.clientX)/before,contentY=(s.scrollTop+e.clientY)/before;
+   scale=clamp(scale*(e.deltaY>0?.92:1.08));
+   apply(true);
+   s.scrollLeft=Math.max(0,contentX*scale-e.clientX);
+   s.scrollTop=Math.max(0,contentY*scale-e.clientY);
+ },{passive:false,capture:true});
+ mutationObserver?.disconnect();
+ mutationObserver=new MutationObserver(()=>queueExtent(workspace));
+ mutationObserver.observe(workspace.shell,{subtree:true,childList:true,attributes:true,attributeFilter:['class','hidden','open']});
+ apply(false);
+}
+try{
+ const stored=Number(localStorage.getItem(KEY));
+ if(Number.isFinite(stored))scale=clamp(stored);
+ else if(frameWidth()<760)scale=fitValue();
+}catch{
+ if(frameWidth()<760)scale=fitValue();
+}
+frame.addEventListener('load',()=>requestAnimationFrame(()=>{
+ if(frameWidth()<760){
+   try{
+     if(!localStorage.getItem(KEY))scale=fitValue();
+   }catch{scale=fitValue()}
+ }
+ bindDoc();
+}));
+window.addEventListener('resize',()=>{if(frameWidth()<760&&scale>1.2)scale=fitValue();apply(false)});
+requestAnimationFrame(bindDoc);
+window.FoundationControlZoomV018={
+ get:()=>scale,
+ set:v=>{scale=clamp(v);apply(true);return scale},
+ reset:()=>{scale=1;apply(true);return scale},
+ fit:()=>{scale=fitValue();apply(true);return scale},
+ mode:'stable-canvas-transform',
+ workspaceWidth:WORKSPACE_WIDTH
+};
 })();
