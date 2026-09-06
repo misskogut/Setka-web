@@ -4,40 +4,70 @@ STATUS: ACTIVE PRESIDENT DIRECTIVE
 SENIOR_IDENTITY: SETKA-S-0003-0001
 PROJECT: SETKA / VERSTAK
 MODE: CONTINUATION, NOT RESTART
+MISSION_KEY: MISSION-GENESIS-7F31-REPAIR-FLIGHT
+CONTINUITY: SENIOR_MISSION_CONTINUITY.md
 
-## 0. CHECKPOINT TO RESUME
+## 0. RESUME, DO NOT RESTART
 
-Previous run: `GENESIS-7F31-RUN01`.
-System transcript checkpoints:
-- event 6143: Phase 1 checkpoint, `GENESIS_SMOKE_TEST_FAIL`, 4 test ships created, 0 user episodes, browser-auth entry blocked.
+Previous run `GENESIS-7F31-RUN01` ended with:
+- event 6143: `GENESIS_SMOKE_TEST_FAIL`, four test ships provisioned, zero user episodes, browser/auth entry blocked;
 - event 6144: combined report, `BLOCKED_USER_FLIGHT`, Phase 2 completed in limited mode.
 
-Existing test identities and ships MUST be reused, not recreated:
+Reuse these identities/ships exactly:
 - `SETKA-H-7F31-0000` → `SHIP-GENESIS-7F31-ZERO`
 - `SETKA-H-7F31-0001` → `SHIP-GENESIS-7F31-MASHA`
 - `SETKA-H-7F31-0002` → `SHIP-GENESIS-7F31-LERA`
 - `SETKA-H-7F31-0003` → `SHIP-GENESIS-7F31-NIKITA`
 
-All are `GENESIS_SYNTHETIC_TEST`. Credentials and session rows already exist. Do not rotate IDs unless required by a real security reason.
+All are `GENESIS_SYNTHETIC_TEST`. Credentials/session rows already exist. Do not recreate the fleet.
 
-Confirmed previous gaps:
+Confirmed gaps from RUN01:
 1. `GENESIS_LOGIN_ROUTE`
 2. `NO_GENERIC_FACT_COMMIT_IN_INSPECTED_LANGUAGE_PATH`
 3. `PENCIL_RECORDS_REQUEST_WITHOUT_DIRECT_PRESENTATION_APPLY`
 4. `FLEET_PROMOTION_NO_SYNTHETIC_EXCLUSION`
 5. `GUARD_RESUME_NOT_DEMONSTRATED`
 
-Previous roadmap also listed: `T01_AUTH`, `T02_TEST_QUARANTINE`, `T03_TYPED_INGRESS`, `T04_GUARD_VALIDATION_RESUME`, `T05_CAUSAL_BIRTH`, `T06_NBA_INFORMATION_NEED`, `T07_PRESENTATION_DIFF`, then time/reuse/mother/legacy work.
+Before any broad inspection, exact-resolve the wake key and read `latestCheckpoint`. Execute its `nextExactAction` first.
 
-## 1. PRIMARY LAW
+## 1. MISSION CONTINUES ACROSS MODEL LIMIT WINDOWS
+
+The unit of work is this mission, not one model/session window.
+
+`MISSION ≠ MODEL WINDOW`
+
+If the model/resource limit ends, this means only:
+`PAUSED_BY_RESOURCE_LIMIT`.
+
+It does NOT mean:
+- mission finished;
+- flight failed;
+- write final report;
+- start a new task next time.
+
+After every material repair/retest and before likely resource exhaustion, append a machine-readable checkpoint using `foundation.senior_mission_checkpoint_record_v1(...)` with:
+- current user/ship;
+- current front step;
+- last verified PASS;
+- current failure;
+- repair reference;
+- retest state;
+- exact NEXT ACTION;
+- evidence refs.
+
+On the next wake or President command `Продолжай`, resume this SAME mission from the latest checkpoint and execute `nextExactAction`.
+
+Do not rely on model memory alone. Do not reconstruct already proven history.
+
+## 2. PRIMARY REPAIR LAW
 
 Do not stop a user scenario because VERSTAK fails.
 
 Use this loop:
 
 `USER FRONT STEP → PASS?`
-- YES → continue the same user's life.
-- NO → classify failure → leave USER role → repair the GENERAL system capability → regression check → return to the SAME user/front/step → retry → continue.
+- YES → checkpoint meaningful progress → continue the same user's life.
+- NO → classify failure → leave USER role → repair the GENERAL system capability → internal regression → return to SAME user + SAME front step → retest → continue.
 
 A normal VERSTAK defect is an input to development, not a reason to abandon the flight.
 
@@ -46,9 +76,9 @@ Only `EXTERNAL_HARD_BLOCKER` may prevent retry:
 - explicit President approval required;
 - repair would violate security or append-only history.
 
-Even then, continue every other scenario that remains possible.
+Even then, checkpoint the exact boundary and continue every other scenario that remains possible.
 
-## 2. ROLE FIREWALL
+## 3. ROLE FIREWALL
 
 ### USER SIMULATOR
 Use only the published Genesis user front exactly as a real person would.
@@ -63,71 +93,71 @@ Only when VERSTAK itself reaches a genuine ingress/egress/information boundary. 
 
 Never leak Auditor knowledge into USER behavior.
 
-## 3. FIRST GATE — CLOSE THE LOGIN LOOP
+## 4. FIRST GATE — CLOSE THE LOGIN LOOP
 
 Before Masha/Lera/Nikita life scenarios, make this real path work:
 
 `TEST ID + existing PIN/password credential → authenticated/scoped session → Genesis front → correct local ship`.
 
 Requirements:
-- user must not paste an opaque session token as the normal product login;
+- user must not paste an opaque session token as normal product login;
 - successful login lands on Genesis, not legacy Alpha;
-- credential verification uses existing secure credential contract;
-- session token remains internal to the login/session flow;
+- credential verification uses the existing secure credential contract;
+- session token stays internal to auth/session flow;
 - local user cannot get sibling or mother scope;
-- browser/work security constraints must be distinguished from VERSTAK defects.
+- distinguish Work/browser platform restrictions from VERSTAK defects.
 
-After repair, prove through USER role:
+Prove through USER role:
 1. ZERO logs in.
 2. ZERO sees only zero-state Genesis surface.
-3. `last_login_at` / session use reflects actual login.
+3. actual login/session use is recorded.
 4. no extra organs appear.
 
-Do not advance until this gate passes or is proven external-hard-blocked.
+If it fails because of VERSTAK, REPAIR AND RETEST. Do not abandon the flight.
 
-## 4. STEPWISE USER FLIGHT
+## 5. STEPWISE USER FLIGHT
 
-Do not simulate a long life at once. One semantic step at a time; after each step prove backend + front effect.
+One semantic step at a time; after each step prove backend + front effect.
 
 ### ZERO
-Only login + zero state + first dynamic suggestions.
+Login + zero state + first dynamic suggestions.
 
 ### MASHA
-Suggested natural sequence:
+Natural sequence:
 1. `Привет, меня зовут Маша.`
 2. `Я иногда бегаю.`
 3. `Хочу через два месяца быстрее пробегать 5 км.`
-4. one simple training fact.
-5. one incomplete/uncertain fact or `не знаю`.
-6. one change/correction.
+4. one simple training fact;
+5. one incomplete/uncertain fact or `не знаю`;
+6. one correction/change;
 7. one Pencil request.
 
-At each step ask: what durable fact/entity/state/mission/need was actually created, and what changed on the front?
+At each step determine what durable fact/entity/state/mission/need was actually created and what changed on the front.
 
 ### LERA
-Natural blog/content-business sequence. Make the world structurally different from Masha. Do not hardcode a Marketing sector. Let sector/family appear only if the general causal-birth mechanism justifies it.
+Natural blog/content-business sequence. Her ship must emerge from the same general primitives but become structurally different from Masha. Do not hardcode Marketing/Content sectors.
 
 ### NIKITA
-Run only after Masha has produced reusable learning. Check safe reuse without any Masha-private facts.
+Run only after Masha has produced reusable learning. Verify safe generalized reuse without any Masha-private facts.
 
-## 5. REPAIR PRIORITY
+## 6. REPAIR PRIORITY
 
-Repair as many GENERAL blockers as needed to complete the assigned short scenarios. The previous `max 3 repairs` limit is cancelled.
+Repair as many GENERAL blockers as needed. The old `max 3 repairs` limit is cancelled.
 
-Prioritize:
+Priority:
 1. login/session/front route;
 2. typed ingress: human phrase → durable fact/entity/state;
-3. guard validation + resume back into the interrupted user flow;
+3. guard validation + resume into interrupted user flow;
 4. causal birth of mission/organ/sector/local function with `born_from_event`;
 5. NEXT BEST ACTION + information need;
-6. Pencil intent → actual presentation mutation + diff, without backend semantic corruption;
+6. Pencil intent → actual presentation mutation + diff without backend semantic corruption;
 7. synthetic-learning quarantine + safe fleet candidate rules;
 8. safe reuse Masha → Nikita;
 9. mother projection only as needed for proof.
 
-Do not spend the main session on legacy cleanup unless it directly blocks the user flight.
+Do not spend the mission on legacy cleanup unless it directly blocks the assigned user flight.
 
-## 6. NO PERSON-SPECIFIC PATCHES
+## 7. NO PERSON-SPECIFIC PATCHES
 
 Forbidden:
 - `IF MASHA ...`
@@ -136,7 +166,7 @@ Forbidden:
 
 Repairs must implement generic primitives: identity fact, activity fact, goal/mission inference, family/sector birth, information need, presentation mutation, etc.
 
-## 7. FRONT PROOF REQUIRED
+## 8. FRONT PROOF REQUIRED
 
 No fix is accepted because SQL/code looks correct.
 
@@ -144,24 +174,26 @@ For every repaired user-visible blocker:
 1. reproduce failure or reference prior checkpoint;
 2. implement repair;
 3. run internal regression;
-4. return to the same TEST ID;
-5. repeat the same action through Genesis front;
-6. record actual USER-visible PASS/FAIL.
+4. return to same TEST ID;
+5. repeat same action through Genesis front;
+6. record actual USER-visible PASS/FAIL;
+7. checkpoint the result.
 
-If step 5 is not performed, mark `BACKEND_ONLY_NOT_USER_PROVEN`.
+If same-step front retest is not performed, mark `BACKEND_ONLY_NOT_USER_PROVEN`.
 
-## 8. AUTOMATION DEBT / SELF-OPTIMIZATION
+## 9. AUTOMATION DEBT / SELF-OPTIMIZATION
 
-While working, identify manual activities that should never require Astra again.
+Identify manual activities that should not require Astra next time.
 
-For every repeated/manual engineering check, record:
+For repeated/manual engineering checks record:
 - `MANUAL_ACTIVITY`
 - `WHY_AI_NEEDED_NOW`
 - `AUTOMATE_AS` (test / guard / harness / resolver / registry)
 - `IMPLEMENTED_NOW | DEFERRED`
 
-Prefer converting repeated checks into deterministic gates, especially:
+Prefer deterministic gates for:
 - wake routing;
+- checkpoint resume;
 - ship scope isolation;
 - ZERO-state contract;
 - front/backend projection consistency;
@@ -170,7 +202,7 @@ Prefer converting repeated checks into deterministic gates, especially:
 - guard resume;
 - user-front regression.
 
-Measure before/after where possible:
+Measure where possible:
 - manual intervention count;
 - AI/guard calls;
 - native parse/commit rate;
@@ -178,56 +210,62 @@ Measure before/after where possible:
 - automatic gate coverage;
 - repeated task cost.
 
-The system should become cheaper to test after this session.
+Every expensive manual pass should leave a reusable machine mechanism when practical.
 
-## 9. RESOURCE BUDGET
+## 10. RESOURCE-EDGE BEHAVIOR
 
-Use roughly:
-- 5% orientation/checkpoint restore;
-- 65% repair → same-step retest → continue user flight;
-- 15% regression + automation-debt conversion;
-- 15% final report/checkpoint.
+Use the available model window productively. Do NOT reserve a large percentage merely to manufacture a report for an unfinished mission.
 
-Do not save half the session merely to write a roadmap. Use the engineering budget while preserving the final 15%.
+When capacity becomes low:
+1. do not begin a large non-atomic refactor;
+2. finish or safely stop the current atomic change;
+3. write an immediate continuity checkpoint;
+4. state `PAUSED_BY_RESOURCE_LIMIT` if appropriate;
+5. preserve exact `NEXT ACTION`;
+6. stop naturally when the platform stops you.
 
-If a defect is interesting but not blocking the assigned front scenarios, record it and continue.
+The next wake continues from that exact point.
 
-## 10. REQUIRED OUTCOME
+## 11. MISSION ACCEPTANCE
 
-The target is a `CLOSED GENESIS LOOP`, not another abstract audit.
+Target is a `CLOSED GENESIS LOOP`.
 
-Minimum desired proof:
-- ZERO real login and zero-state front pass;
-- Masha produces at least: durable name fact → activity → mission/goal → one information need or next action;
-- at least one organ/sector/local function is born causally if actually needed;
-- one AI guard case resumes the interrupted flow if a genuine unknown occurs;
-- Pencil produces a real presentation change and survives backend invariant check;
-- Lera develops a meaningfully different ship structure from Masha;
-- Nikita demonstrates safe reuse or provides exact proof why reuse is not yet possible;
+Desired proof:
+- ZERO real login and zero-state front PASS;
+- Masha produces durable name fact → activity → mission/goal → at least one information need or next action;
+- at least one organ/sector/local function is born causally if needed;
+- one genuine AI Guard case resumes the interrupted flow;
+- Pencil produces real presentation change and backend invariant holds;
+- Lera develops meaningfully different ship structure from Masha;
+- Nikita demonstrates safe reuse or exact proof why reuse is not yet possible;
 - synthetic data cannot become accepted fleet truth automatically;
 - local isolation still passes after repairs.
 
-## 11. FINAL REPORT
+## 12. REPORTING LAW
 
-Return one concise engineering report containing:
-1. resumed checkpoint;
-2. user-front episode ledger;
-3. failures encountered;
-4. repair → same-step retest results;
-5. what became actually user-proven;
-6. automation debt converted/deferred;
-7. before/after self-optimization metrics available;
-8. TEST ID / Ship ID / login/front access status without exposing secrets in public transcript;
-9. remaining blockers;
-10. verdict:
-   - `CLOSED_GENESIS_LOOP_PASS`
-   - `CLOSED_GENESIS_LOOP_PARTIAL`
-   - `CLOSED_GENESIS_LOOP_FAIL`
-11. exact next checkpoint.
+### CHECKPOINT REPORT
+Use during pauses/resource edges. Keep it machine-readable and concise. It is NOT mission completion.
 
-## 12. FOUR COMMANDS
+### FINAL REPORT
+Write only when:
+- mission acceptance criteria are genuinely completed; or
+- President explicitly stops/closes the mission.
+
+Final report contains:
+1. user-front episode ledger;
+2. failure → repair → same-step retest ledger;
+3. actually user-proven capabilities;
+4. automation debt converted/deferred;
+5. self-optimization metrics available;
+6. access status without exposing secrets in public transcript;
+7. remaining blockers;
+8. final verdict;
+9. final verified state.
+
+## 13. FIVE COMMANDS
 
 `RESUME — DON'T RESTART.`
 `FRONT — DON'T SIMULATE THROUGH BACKEND.`
 `REPAIR — DON'T ABANDON ON NORMAL FAILURE.`
 `RETEST — DON'T CLAIM FIX WITHOUT USER-FRONT PROOF.`
+`PAUSE — RESOURCE LIMIT IS NOT MISSION COMPLETION.`
