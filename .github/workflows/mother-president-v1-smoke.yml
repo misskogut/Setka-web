@@ -1,0 +1,52 @@
+name: Mother Ship President V1 Smoke
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'mother-president-v1/**'
+      - '.github/workflows/mother-president-v1-smoke.yml'
+  workflow_dispatch:
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: JavaScript syntax
+        run: node --check mother-president-v1/app.js
+      - name: Static contract
+        run: |
+          grep -q 'Материнский корабль' mother-president-v1/index.html
+          grep -q 'Бортовой компьютер' mother-president-v1/index.html
+          grep -q 'setka-mother-president-v1' mother-president-v1/app.js
+          grep -q 'setka:foundation:president:session' mother-president-v1/app.js
+      - name: Install Playwright
+        run: npm install --no-save playwright-core@1.55.0
+      - name: Install Chromium
+        run: npx playwright install chromium
+      - name: Wait for Pages
+        run: sleep 35
+      - name: Browser smoke
+        run: |
+          node <<'NODE'
+          const { chromium } = require('playwright-core');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:390,height:844}});
+            const errors=[];
+            page.on('pageerror',e=>errors.push(String(e)));
+            const r=await page.goto('https://misskogut.github.io/Setka-web/mother-president-v1/?smoke=1',{waitUntil:'domcontentloaded',timeout:60000});
+            if(!r || r.status()>=400) throw new Error('HTTP '+(r&&r.status()));
+            await page.waitForTimeout(1500);
+            const title=await page.title();
+            if(!title.includes('Материнский')) throw new Error('Unexpected title: '+title);
+            const body=await page.locator('body').innerText();
+            if(!body.includes('SETKA')) throw new Error('SETKA UI missing');
+            if(!body.includes('Вход Президента') && !body.includes('Материнский корабль')) throw new Error('Neither login nor ship UI rendered');
+            if(errors.length) throw new Error('pageerror: '+errors.join(' | '));
+            await browser.close();
+            console.log('MOTHER_PRESIDENT_V1_SMOKE=PASS');
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
