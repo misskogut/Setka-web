@@ -6,6 +6,7 @@ PROJECT: SETKA / VERSTAK
 MODE: CONTINUATION, NOT RESTART
 MISSION_KEY: MISSION-GENESIS-7F31-REPAIR-FLIGHT
 CONTINUITY: SENIOR_MISSION_CONTINUITY.md
+FLIGHT_RECORDER: SENIOR_FLIGHT_RECORDER_PROTOCOL.md
 
 ## 0. RESUME, DO NOT RESTART
 
@@ -45,7 +46,7 @@ It does NOT mean:
 - write final report;
 - start a new task next time.
 
-After every material repair/retest and before likely resource exhaustion, append a machine-readable checkpoint using `foundation.senior_mission_checkpoint_record_v1(...)` with:
+After every material repair/retest and before likely resource exhaustion, append a machine-readable checkpoint with:
 - current user/ship;
 - current front step;
 - last verified PASS;
@@ -181,17 +182,34 @@ For every repaired user-visible blocker:
 
 If same-step front retest is not performed, mark `BACKEND_ONLY_NOT_USER_PROVEN`.
 
-## 9. AUTOMATION DEBT / SELF-OPTIMIZATION
+## 9. FLIGHT RECORDER / SELF-OPTIMIZATION
 
-Identify manual activities that should not require Astra next time.
+Canonical observer name is **Бортовой самописец / Flight Recorder**. `BLACK BOX` is reserved for SETKA/VERSTAK itself. Legacy function names containing `senior_blackbox_*` remain compatibility adapters only.
 
-For repeated/manual engineering checks record:
-- `MANUAL_ACTIVITY`
-- `WHY_AI_NEEDED_NOW`
-- `AUTOMATE_AS` (test / guard / harness / resolver / registry)
-- `IMPLEMENTED_NOW | DEFERRED`
+Core rule:
 
-Prefer deterministic gates for:
+`ONE SESSION IS ENOUGH TO RAISE AN AUTOMATION CANDIDATE.`
+
+Do NOT wait for the same manual activity to recur in another session before asking whether SETKA should take it over.
+
+For every observed work path, classify:
+- `SYSTEM_EXECUTION` — SETKA already does it;
+- `MECHANICAL / EXECUTABLE / SQL / TOOL / IO / REGRESSION` — candidate to move into a deterministic test / guard / harness / resolver / executor;
+- `NOVEL_REASONING / DIAGNOSTIC / DECISION / TEACHING` — AI boundary unless a formal rule is proven;
+- `UNKNOWN` — keep unresolved, do not fake automation.
+
+The Flight Recorder session compiler should run at session close. It must:
+1. measure time/actions where instrumentation exists;
+2. raise candidates from this one session immediately;
+3. compare RAW ↔ Report ↔ Transcript without conflating them;
+4. preserve genuine AI-boundary work;
+5. route safe deterministic work toward SETKA execution;
+6. retain RAW while candidates are unresolved;
+7. after automation/classification + regression/seal, compact the session capsule and purge recorder-owned RAW.
+
+Repetition is only additional evidence/priority; it is not the discovery gate.
+
+Senior should prefer deterministic gates for:
 - wake routing;
 - checkpoint resume;
 - ship scope isolation;
@@ -203,14 +221,19 @@ Prefer deterministic gates for:
 - user-front regression.
 
 Measure where possible:
-- manual intervention count;
+- Mechanical Work %;
+- System Execution %;
+- Senior/AI reasoning-boundary %;
+- time to first useful action;
+- automation candidates raised in this session;
+- candidates resolved/transferred before later wakes;
 - AI/guard calls;
-- native parse/commit rate;
-- user-stuck states;
 - automatic gate coverage;
-- repeated task cost.
+- user-stuck states.
 
-Every expensive manual pass should leave a reusable machine mechanism when practical.
+Important coverage law: `foundation.flight_recorder_coverage_dashboard_v1()` tells what is actually instrumented. External Work/GitHub/browser/filesystem actions that never cross a SETKA execution adapter are `UNINSTRUMENTED`, not zero. Do not reconstruct missing telemetry and label it RAW.
+
+Every expensive manual pass should leave a reusable machine mechanism when safe. The target is that the next wake begins with a more autonomous SETKA than the previous wake.
 
 ## 10. RESOURCE-EDGE BEHAVIOR
 
@@ -255,7 +278,7 @@ Final report contains:
 1. user-front episode ledger;
 2. failure → repair → same-step retest ledger;
 3. actually user-proven capabilities;
-4. automation debt converted/deferred;
+4. automation transferred/deferred from Flight Recorder session analysis;
 5. self-optimization metrics available;
 6. access status without exposing secrets in public transcript;
 7. remaining blockers;
