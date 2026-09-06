@@ -15,13 +15,18 @@ jobs:
         with:
           node-version: '20'
       - name: JavaScript syntax
-        run: node --check mother-president-v1/app-v2.js
+        run: |
+          node --check mother-president-v1/app-v2.js
+          node --check mother-president-v1/api-route-v4.js
+          node --check mother-president-v1/atlas-v1.js
       - name: Static contract
         run: |
           grep -q 'Материнский корабль' mother-president-v1/index.html
           grep -q 'Главное управление' mother-president-v1/index.html
           grep -q 'Бортовой компьютер' mother-president-v1/index.html
-          grep -q 'setka-mother-president-v3' mother-president-v1/app-v2.js
+          grep -q 'Атлас backend' mother-president-v1/index.html
+          grep -q 'setka-mother-president-v4' mother-president-v1/api-route-v4.js
+          grep -q 'atlas_source' mother-president-v1/atlas-v1.js
           grep -q 'FLEET' mother-president-v1/app-v2.js
           grep -q 'EXPERIMENTS' mother-president-v1/app-v2.js
           grep -q 'setka:foundation:president:session' mother-president-v1/app-v2.js
@@ -31,7 +36,7 @@ jobs:
         run: npx playwright@1.63.0 install chromium
       - name: Wait for Pages
         run: sleep 35
-      - name: Browser smoke
+      - name: Public shell browser smoke
         run: |
           node <<'NODE'
           const { chromium } = require('playwright');
@@ -40,19 +45,18 @@ jobs:
             const page=await browser.newPage({viewport:{width:390,height:844}});
             const errors=[];
             page.on('pageerror',e=>errors.push(String(e)));
-            const r=await page.goto('https://misskogut.github.io/Setka-web/mother-president-v1/?smoke=2',{waitUntil:'domcontentloaded',timeout:60000});
+            const r=await page.goto('https://misskogut.github.io/Setka-web/mother-president-v1/?smoke=3',{waitUntil:'domcontentloaded',timeout:60000});
             if(!r || r.status()>=400) throw new Error('HTTP '+(r&&r.status()));
             await page.waitForTimeout(1800);
             const title=await page.title();
             if(!title.includes('Материнский')) throw new Error('Unexpected title: '+title);
             const body=await page.locator('body').innerText();
             if(!body.includes('SETKA')) throw new Error('SETKA UI missing');
-            if(!body.includes('Главное управление')) throw new Error('V2 cockpit missing');
-            if(!body.includes('Флот')) throw new Error('Fleet surface missing');
-            if(!body.includes('Эксперименты')) throw new Error('Experiments surface missing');
-            if(!body.includes('Бортовой компьютер')) throw new Error('Onboard computer missing');
+            if(!body.includes('Главное управление')) throw new Error('Cockpit shell missing');
+            if(!body.includes('Атлас backend')) throw new Error('Backend Atlas shell missing');
+            if(!body.includes('Бортовой компьютер')) throw new Error('Onboard computer shell missing');
             if(errors.length) throw new Error('pageerror: '+errors.join(' | '));
             await browser.close();
-            console.log('MOTHER_PRESIDENT_V2_SMOKE=PASS');
+            console.log('MOTHER_PRESIDENT_V2_PUBLIC_SHELL_SMOKE=PASS');
           })().catch(e=>{console.error(e);process.exit(1)});
           NODE
