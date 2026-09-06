@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const BUILD='018-wd-20260826-2217';
+const BUILD='018-yandex-unfreeze1';
 const frame=document.getElementById('appFrame');
 if(!frame)return;
 const proto=Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype,'src');
@@ -19,5 +19,11 @@ Object.defineProperty(frame,'src',{
     }
   }
 });
+if(!document.querySelector('script[data-foundation-pin-address="1"]')){
+  const s=document.createElement('script');
+  s.src='foundation-control-pin-address-v018.js?build='+encodeURIComponent(BUILD);
+  s.dataset.foundationPinAddress='1';
+  document.head.appendChild(s);
+}
 window.FoundationBuildV018={build:BUILD};
 })();
