@@ -42,6 +42,8 @@ It does NOT attempt to inspect hidden chain-of-thought.
 - `foundation.senior_blackbox_wake_begin_v1(...)`
 - `foundation.senior_blackbox_open_v1(...)` — preferred one-call HOT OPEN
 
+HOT OPEN restores continuity and runs registered deterministic evidence before Senior manually traverses the system.
+
 ### Phase telemetry
 Reuses existing runtime spine:
 - `foundation.session_runtime_phase_events`
@@ -109,6 +111,34 @@ Initial metrics:
 
 Existing resource accounting remains authoritative for token/cost data when actual counters are available. Missing token/cost values are UNKNOWN, never zero.
 
+### Self-diagnostic board and automatic wake summary
+
+Compact board:
+- `foundation.senior_blackbox_dashboard_v1(missionKey)`
+
+It returns:
+- latest continuity checkpoint;
+- latest machine-measured wake profile;
+- recent wake history;
+- active deterministic executors;
+- latest evidence packet;
+- `AUTOMATE_NOW` debt;
+- rule-based `optimizationHints`.
+
+Current hint rules include:
+- no instrumented wake yet;
+- wake overhead / Time-to-First-Useful-Action too high;
+- Mechanical Work % too high;
+- System Execution % too low relative to remaining mechanics;
+- automation-debt candidates ready.
+
+When a Blackbox wake changes from `RUNNING` to pause/completed state, the observer automatically:
+1. routes repeated automation debt;
+2. builds the diagnostic dashboard;
+3. appends a `senior_blackbox_wake_observed` summary to `foundation.system_transcript_events`.
+
+This means President/SETKA can inspect wake efficiency from the Transcript without manually reconstructing raw phase rows.
+
 ## Pre-instrumentation baseline
 
 System Transcript event `6149` records a user-visible pre-Blackbox wake baseline:
@@ -140,6 +170,18 @@ Verified:
    - `automateAs = SHIP SCOPE ISOLATION GATE`;
    - `SENIOR_AUTOMATION_CANDIDATE` routed to `automation_gap_signals`.
 6. Rollback left no fake wake, checkpoint, or automation signal in live state.
+7. `senior_blackbox_dashboard_v1` currently returns `NO_INSTRUMENTED_WAKE_YET`, which is correct before the next real Senior wake.
+
+## Applied Supabase migrations
+
+- `senior_blackbox_eye_v1`
+- `senior_wake_blackbox_system_first_v1`
+- `senior_blackbox_hot_open_v1`
+- `senior_genesis_evidence_debt_filter_v1`
+- `senior_automation_debt_router_v1`
+- `senior_blackbox_dashboard_and_auto_summary_v1`
+
+These are recorded in `supabase_migrations.schema_migrations` in the live project.
 
 ## Runtime protocol
 
@@ -157,7 +199,7 @@ The next real Senior wake should:
 3. receive system evidence without manual scope/ZERO traversal;
 4. mark phase transitions while working on the actual `LOGIN_GATE`;
 5. pause/checkpoint if resource-limited;
-6. produce the first machine-measured wake profile.
+6. produce the first machine-measured wake profile and automatic Transcript summary.
 
 The first optimization target is to reduce Time-to-First-Useful-Action and Mechanical Work % versus the pre-instrumentation wake while increasing System Execution %.
 
