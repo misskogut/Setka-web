@@ -4,6 +4,7 @@ STATUS: ACTIVE_SPECIALIZATION
 OWNER: PRESIDENT_SETKA
 SENIOR_IDENTITY: SETKA-S-0003-0001
 UNIVERSAL_PARENT: `ops/SETKA_FLIGHT_RECORDER_V1.md`
+STRUCTURAL_RECORD: `ops/SETKA_FLIGHT_RECORDER_HARMONIZATION_20260906.md`
 
 ## Naming
 
@@ -19,6 +20,28 @@ Legacy helper function names `senior_blackbox_*` remain callable for compatibili
 
 Senior is not the permanent executor of deterministic work.
 
+## Structural invariants — do not recreate parallel organs
+
+Canonical synthetic execution lifecycle:
+
+`foundation.synthetic_runs`
+
+A Senior wake must use a normal trusted synthetic run. The Senior mission/wake entity is only an adapter for routing/checkpoints/repair continuity. Do not create a second runtime lifecycle.
+
+Canonical automation/capability path:
+
+`foundation.automation_gap_signals -> foundation.automation_assets -> foundation.automation_contour_bindings -> foundation.system_capability_library_v1`
+
+There is no separate Flight Recorder automation registry. `foundation.flight_recorder_automation_registry` was deliberately removed during harmonization. Do not recreate it.
+
+Canonical front operational evidence path:
+
+`VERSTAK scoped session gateways -> diamond.interaction_traces/chunks -> foundation.flight_recorder_raw_v1`
+
+Do not create a second front telemetry store.
+
+Existing `synthetic_session_path_snapshots` are semantic Transcript-path mining and are not the Flight Recorder RAW layer; do not merge the two meanings.
+
 ## HOT OPEN
 
 At every Senior model window, after exact wake routing and before broad inspection:
@@ -26,10 +49,11 @@ At every Senior model window, after exact wake routing and before broad inspecti
 `foundation.senior_blackbox_open_v1(WAKE_KEY, MISSION_KEY, metadata)`
 
 This legacy-named Senior adapter:
+- opens one canonical trusted `synthetic_run`;
 - restores latest mission checkpoint;
 - runs registered deterministic evidence first;
 - returns compact PASS/FAIL/UNKNOWN + `nextExactAction`;
-- binds the wake to observable runtime work.
+- binds the wake to the Flight Recorder using the same run/session reference.
 
 Do not manually repeat PASS evidence.
 
@@ -58,6 +82,8 @@ When Senior has implemented a **general deterministic replacement** for an obser
 
 The first SQL parameter retains the historical internal name `p_activity_kind` for ABI compatibility, but its canonical semantic meaning is `operationKind` (for example `CHECK_SCOPE`), while `activityClass` describes the work class (for example `EXECUTABLE`).
 
+This function writes into the existing canonical `foundation.automation_assets` registry and existing contour bindings. It does not create Flight Recorder-owned permanent capability state.
+
 Never register an automation merely because a trace exists. Registration requires:
 - a real executor/guard/harness/resolver already implemented;
 - a regression/proof reference;
@@ -68,13 +94,15 @@ After registration, later matching candidates are handled by:
 
 `foundation.flight_recorder_apply_registered_automations_v1(actorIdentityRef, sessionRef)`
 
-and can become `SYSTEM_EXECUTION_AVAILABLE` / resolved without asking Senior to rediscover the same path.
+and can be resolved through the canonical automation asset without asking Senior to rediscover the same path.
 
 ## Continuity
 
 Mission != model window.
 
 Resource exhaustion = `PAUSED_BY_RESOURCE_LIMIT`.
+
+The mission remains paused/active in its checkpoint. The concrete model-window transport run may close incomplete; do not confuse transport-run completion status with mission completion.
 
 After material repair/retest preserve:
 - current user/ship/front step;
@@ -96,11 +124,11 @@ Do not accept backend-only fixes as user-proven.
 ## Recorder lifecycle
 
 For an instrumented synthetic runtime:
-- session start -> Flight Recorder AUTO;
+- session start -> one canonical `synthetic_run` + Flight Recorder AUTO;
 - work -> recorder/native raw channels;
-- session finish -> compile this one session;
+- session finish/pause -> compile this one session;
 - automation candidates raised immediately;
-- verified registered replacements are applied automatically;
+- verified replacements resolve through canonical automation assets;
 - once candidates are resolved/classified and sealed -> recorder-owned RAW purged;
 - compact metrics/hash/proof + semantic optimization fact remain.
 
@@ -110,7 +138,9 @@ Senior should therefore expect later wakes to have less mechanical work than ear
 
 `foundation.flight_recorder_coverage_dashboard_v1()` is authoritative for what the recorder can actually see.
 
-External ChatGPT Work/GitHub/browser/filesystem operations that never cross a SETKA execution adapter remain `UNINSTRUMENTED`, not zero. Do not invent missing raw history.
+VERSTAK session gateways now emit server-side request/action traces automatically through the existing interaction-trace contour.
+
+External ChatGPT Work/GitHub/Supabase/browser/filesystem operations that never cross a SETKA execution adapter remain `UNINSTRUMENTED`, not zero. Do not invent missing raw history and do not create model-side self-report tool spam merely to imitate independent telemetry.
 
 ## Final principle
 
