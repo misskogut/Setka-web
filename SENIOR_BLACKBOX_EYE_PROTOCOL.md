@@ -1,9 +1,24 @@
 # SENIOR BLACKBOX EYE · SYSTEM-FIRST EXECUTION PROTOCOL
 
-STATUS: ACTIVE
+STATUS: ACTIVE_SPECIALIZATION
 OWNER: PRESIDENT_SETKA
 SENIOR_IDENTITY: SETKA-S-0003-0001
 MISSION_SCOPE: active Senior missions, initially MISSION-GENESIS-7F31-REPAIR-FLIGHT
+UNIVERSAL_RAW_PARENT: `ops/SETKA_RUNTIME_BLACKBOX_RAW_V1.md`
+
+## IMPORTANT: THIS IS NOT THE CANONICAL BLACKBOX STORE
+
+Blackbox is universal SETKA runtime observation. Senior is only one consumer.
+
+Canonical separation:
+
+`RAW OBSERVATION != TRANSCRIPT != REPORT`
+
+The universal raw layer is described in `ops/SETKA_RUNTIME_BLACKBOX_RAW_V1.md` and projected by:
+
+`foundation.runtime_blackbox_raw_v1`
+
+Senior-specific tables/functions below exist for wake routing, continuity, evidence executors and repair/retest workflow. They do not replace the universal raw tape.
 
 ## PURPOSE
 
@@ -13,7 +28,7 @@ Canonical law:
 
 `TASK → SETKA ATTEMPTS FIRST → EVIDENCE PACKET → SENIOR ONLY AT FAIL / UNKNOWN / DESIGN BOUNDARY → TEACH / REPAIR → CAPABILITY / AUTOMATION → NEXT TIME SETKA DOES MORE ITSELF`.
 
-Blackbox Eye observes objective work traces only. It does NOT inspect hidden chain-of-thought. It records phase timing, system/tool boundaries, repairs, retests, checkpoints and durable evidence.
+Senior observation records objective work traces only. It does NOT inspect hidden chain-of-thought. Raw work evidence remains outside the Transcript unless a separate semantic/causal event genuinely deserves transcript persistence.
 
 ## HOT OPEN — PREFERRED START
 
@@ -22,11 +37,11 @@ At the beginning of every Senior model window, after exact wake routing and befo
 `foundation.senior_blackbox_open_v1(WAKE_KEY, MISSION_KEY, metadata)`
 
 This single call:
-1. starts the Blackbox wake observation;
+1. starts the Senior mission/wake adapter;
 2. restores the latest mission checkpoint;
 3. runs the registered deterministic GENESIS evidence executor;
 4. stores the full evidence packet internally;
-5. returns only compact status + evidence reference + `NEXT EXACT ACTION`.
+5. returns compact status + evidence reference + `NEXT EXACT ACTION`.
 
 Keep returned `sessionRef` for the whole model window.
 
@@ -36,9 +51,11 @@ Low-level functions `senior_blackbox_wake_begin_v1` and `senior_blackbox_run_exe
 
 ## PHASE TRANSITIONS
 
-At meaningful phase boundaries call:
+At meaningful Senior phase boundaries call:
 
 `foundation.senior_blackbox_transition_v1(sessionRef, phaseCode, activityClass, labelRu, evidence)`
+
+This adapter writes into the existing generic append-only `foundation.session_runtime_phase_events` spine, which is part of the universal raw observer.
 
 Use activityClass from:
 - `WAKE`
@@ -55,7 +72,7 @@ Use activityClass from:
 - `CHECKPOINT`
 - `WAIT`
 
-Phase transitions automatically close the previous open phase in that wake session.
+Phase transitions automatically close the previous open phase in that Senior wake session.
 
 ## SYSTEM-FIRST EXECUTORS
 
@@ -84,14 +101,7 @@ After every material repair/retest or causal change, append a checkpoint with:
 
 `foundation.senior_blackbox_checkpoint_v1(...)`
 
-Checkpoint must preserve:
-- current user/ship/episode/front step;
-- last verified PASS;
-- current failure;
-- repair ref;
-- retest state;
-- exact NEXT ACTION;
-- evidence refs.
+Checkpoint preserves mission continuity. It is not the raw event tape.
 
 ## RESOURCE PAUSE
 
@@ -99,13 +109,22 @@ Before a known resource edge, call:
 
 `foundation.senior_blackbox_pause_v1(sessionRef, 'RESOURCE_LIMIT', nextExactAction, evidence)`
 
-This closes open phases, appends a `PAUSED_BY_RESOURCE_LIMIT` checkpoint and records observed duration into the existing resource-accounting spine.
+This closes open Senior phase spans, appends `PAUSED_BY_RESOURCE_LIMIT` continuity state and records available resource evidence.
 
-If the platform terminates the model window without time to call pause, the latest material checkpoint remains authoritative. Never reconstruct already proven history.
+If the platform terminates the model window without time to call pause, the latest material checkpoint remains authoritative. Never reconstruct missing raw telemetry and label it raw.
 
-## AUTOMATION DEBT / SELF-OPTIMIZATION
+## UNIVERSAL + SENIOR SELF-OPTIMIZATION
 
-The system exposes:
+Universal derived views now exist for every observed actor:
+
+- `foundation.runtime_blackbox_session_metrics_v1`
+- `foundation.runtime_blackbox_report_reconciliation_v1`
+- `foundation.runtime_blackbox_actor_coverage_v1`
+- `foundation.runtime_blackbox_repeat_activity_v1`
+- `foundation.runtime_blackbox_optimization_delta_v1`
+- `foundation.runtime_blackbox_dashboard_v1(actorIdentityRef, sessionRef)`
+
+Senior-specific views remain useful for mission-specific automation debt and evidence:
 
 - `foundation.senior_blackbox_activity_spans_v1`
 - `foundation.senior_automation_debt_v1`
@@ -120,7 +139,7 @@ Interpretation:
 - lower Time-to-First-Useful-Action and lower Mechanical Work % are positive optimization signals;
 - higher System Execution % means more work has moved from Astra into SETKA.
 
-Do not treat missing token counters as zero. Duration and phase evidence are exact where recorded; token/cost metrics remain unknown unless the runtime exposes them.
+Do not treat missing token counters or missing raw activity as zero. Missing instrumentation is UNKNOWN.
 
 ## FINAL PRINCIPLE
 
@@ -131,3 +150,5 @@ Senior's value is measured by:
 2. how accurately Senior identifies the genuine unknown boundary;
 3. how many solved manual paths become reusable system capabilities;
 4. how much less mechanical work future wakes require.
+
+But the Blackbox itself belongs to SETKA as a whole, not to Senior.
