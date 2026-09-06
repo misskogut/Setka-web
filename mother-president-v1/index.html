@@ -7,102 +7,86 @@
 <meta name="robots" content="noindex,nofollow,noarchive">
 <meta http-equiv="Cache-Control" content="no-cache,no-store,must-revalidate">
 <title>SETKA · Материнский корабль · Президент</title>
-<link rel="stylesheet" href="app.css?v=1">
+<link rel="stylesheet" href="app-v2.css?v=2">
 </head>
 <body>
-<div id="app" class="app">
-  <header class="topbar">
-    <div class="brand">
-      <div class="brandMark">S</div>
-      <div><strong>SETKA</strong><span>Материнский корабль</span></div>
-    </div>
-    <div class="topCenter">
-      <button id="backBtn" class="iconBtn" title="Назад">‹</button>
-      <select id="versionSelect" class="versionSelect" aria-label="Версия"></select>
-      <button id="forwardBtn" class="iconBtn" title="Вперёд">›</button>
-      <div id="shipState" class="shipState"><i></i><span>Загрузка…</span></div>
-    </div>
-    <div class="tools">
-      <button id="pinsBtn" class="toolBtn">📌 <span>Пины</span><b id="pinsBadge"></b></button>
-      <button id="pencilBtn" class="toolBtn">✏️ <span>Карандаш</span></button>
-      <button id="mailBtn" class="toolBtn">✉️ <span>Почта</span></button>
-      <button id="idBtn" class="toolBtn">ID</button>
-      <button id="refreshBtn" class="toolBtn compact">↻</button>
-    </div>
-  </header>
-
-  <aside class="rail">
-    <button class="railHome active" data-section="HOME"><span>⌂</span><em>Корабль</em></button>
-    <div id="sectorNav" class="sectorNav"></div>
-    <div class="railFoot">
-      <div><small>Президент</small><strong>SETKA-0001-0001</strong></div>
-      <button id="logoutBtn" class="tinyBtn">Выйти</button>
-    </div>
-  </aside>
-
+<div class="app">
+<header class="topbar">
+  <div class="brand"><div class="brandMark">S</div><div><strong>SETKA</strong><span>Материнский корабль</span></div></div>
+  <div class="topCenter">
+    <div class="versionBox"><b id="workingVersion">— · WORKING</b><small id="frontVersion">MOTHER-PRESIDENT-V2</small></div>
+    <div class="statusPill"><i></i><span id="shipStatus">Загрузка…</span></div>
+  </div>
+  <div class="tools">
+    <button id="pinsBtn" class="toolBtn">📌 <span class="label">PIN</span><b id="pinBadge" class="badge"></b></button>
+    <button id="pencilBtn" class="toolBtn">✏️ <span class="label">Карандаш</span></button>
+    <button id="mailBtn" class="toolBtn">✉️ <span class="label">Почта</span></button>
+    <button id="idBtn" class="toolBtn">ID</button>
+    <button id="refreshBtn" class="toolBtn">↻</button>
+  </div>
+</header>
+<div class="layout">
+  <nav id="rail" class="rail"></nav>
   <main class="main">
     <section id="homeView" class="view active">
       <div class="hero">
-        <div>
-          <div class="eyebrow">КОРНЕВОЙ КОРАБЛЬ · LIVE BACKEND</div>
-          <h1 id="shipTitle">Материнский корабль SETKA</h1>
-          <p id="shipMeta">Загрузка реального состояния…</p>
-        </div>
-        <div class="heroStats" id="heroStats"></div>
+        <div><div class="eyebrow">КОРНЕВОЙ КОРАБЛЬ · LIVE BACKEND</div><h1 id="shipTitle">Материнский корабль SETKA</h1><p id="shipMeta">Загрузка реального состояния…</p></div>
+        <div id="heroState" class="statusPill"><i></i>loading</div>
       </div>
+      <div id="stats" class="stats"></div>
 
-      <div class="roomGrid" id="roomGrid"></div>
+      <section class="sectionBlock">
+        <div class="sectionTitle"><div><h2>Главное управление</h2><p>Флот, эксперименты, рабочий контур и проекты — прямо из backend.</p></div></div>
+        <div id="majorGrid" class="majorGrid"></div>
+      </section>
 
-      <div class="lowerGrid">
-        <section class="panel">
-          <div class="panelHead"><div><span class="kicker">СЕЙЧАС</span><h2>События корабля</h2></div><button class="linkBtn" data-go="OBSERVATORY">Обсерватория →</button></div>
-          <div id="eventPreview" class="feed"></div>
-        </section>
-        <section class="panel">
-          <div class="panelHead"><div><span class="kicker">ФЛОТ</span><h2>Дочерние корабли</h2></div></div>
-          <div id="childShips" class="cards"></div>
-        </section>
-      </div>
+      <section class="sectionBlock">
+        <div class="sectionTitle"><div><h2>Все системы Материнского корабля</h2><p>Каждая карточка открывает реальные таблицы/views, а не декоративный экран.</p></div></div>
+        <div id="moduleGrid" class="moduleGrid"></div>
+      </section>
+
+      <section class="sectionBlock">
+        <div class="sectionTitle"><div><h2>Физические отсеки корабля</h2><p>Каноническая пространственная анатомия из ship_sectors.</p></div></div>
+        <div id="sectorGrid" class="sectorGrid"></div>
+      </section>
+
+      <section class="sectionBlock eventGrid">
+        <div class="panel"><h3>Сейчас · Event Hub</h3><div id="eventPreview" class="feed"></div></div>
+        <div class="panel"><h3>Быстрые действия</h3><div id="quickHome" class="quickActions"></div></div>
+      </section>
     </section>
 
-    <section id="sectionView" class="view">
-      <div class="sectionHead">
-        <button id="sectionBack" class="backLink">← К кораблю</button>
-        <div><div id="sectionKind" class="eyebrow"></div><h1 id="sectionTitle"></h1><p id="sectionPurpose"></p></div>
+    <section id="moduleView" class="view">
+      <div class="moduleHead">
+        <div><button id="moduleBack" class="ghostBtn">← К кораблю</button><div class="eyebrow" style="margin-top:16px"><span id="moduleIcon"></span> LIVE BACKEND MODULE</div><h1 id="moduleTitle"></h1><p id="moduleSubtitle"></p><span id="moduleMeta" class="rowMeta"></span></div>
+        <input id="moduleSearch" class="search" placeholder="Поиск по модулю и данным…">
       </div>
-      <div id="sectionSources" class="sourceStrip"></div>
-      <div id="sectionData" class="dataGroups"></div>
+      <div id="sourceGrid" class="sourceGrid"></div>
     </section>
   </main>
-
-  <aside id="computer" class="computer">
-    <div class="computerHead"><div><i></i><div><strong>Бортовой компьютер</strong><span id="computerStatus">Подключение…</span></div></div><button id="computerCollapse" class="iconBtn">›</button></div>
-    <div id="computerSummary" class="computerSummary">Загружаю состояние корабля.</div>
-    <div class="quickHead">Быстрые действия</div>
-    <div id="quickActions" class="quickActions"></div>
-    <div id="chatLog" class="chatLog"></div>
-    <form id="computerForm" class="computerForm">
-      <textarea id="computerInput" rows="2" placeholder="Спроси бортовой компьютер…"></textarea>
-      <button type="submit">Отправить</button>
-    </form>
-  </aside>
-
-  <div id="drawer" class="drawer" aria-hidden="true">
-    <div class="drawerHead"><div><span id="drawerKicker" class="kicker"></span><h2 id="drawerTitle"></h2></div><button id="drawerClose" class="iconBtn">×</button></div>
-    <div id="drawerBody" class="drawerBody"></div>
-  </div>
-
-  <div id="modal" class="modal" aria-hidden="true">
-    <div class="modalCard">
-      <button id="modalClose" class="modalClose">×</button>
-      <div id="modalBody"></div>
-    </div>
-  </div>
-
-  <div id="toast" class="toast"></div>
 </div>
 
-<script src="api-normalize.js?v=1"></script>
-<script src="app.js?v=1"></script>
+<button id="computerFab" class="computerFab" aria-label="Бортовой компьютер">◉</button>
+<aside id="computerPanel" class="computerPanel" aria-hidden="true">
+  <div class="panelHead"><div><strong>Бортовой компьютер SETKA</strong><small>всегда доступен · отвечает сам · HUMAN_RU</small></div><button id="computerClose" class="iconBtn">×</button></div>
+  <div class="panelBody">
+    <div class="statusPill"><i></i> SETKA-ONBOARD-COMPUTER</div>
+    <div id="chatLog" class="chatLog"><div class="bubble computer">Я подключён к Материнскому кораблю. Спроси о состоянии, событиях, работе или доступных действиях.</div></div>
+  </div>
+  <form id="computerForm" class="computerForm"><textarea id="computerInput" rows="2" placeholder="Сообщение бортовому компьютеру…"></textarea><button class="primaryBtn" type="submit">→</button></form>
+</aside>
+
+<aside id="drawer" class="drawer" aria-hidden="true">
+  <div class="panelHead"><div><span id="drawerKicker" class="eyebrow"></span><strong id="drawerTitle">Связь</strong></div><button id="drawerClose" class="iconBtn">×</button></div>
+  <div id="drawerBody" class="panelBody"></div>
+</aside>
+
+<div id="modal" class="modal"><div class="modalCard"><div class="modalActions" style="margin-top:0"><button id="modalClose" class="iconBtn">×</button></div><div id="modalBody"></div></div></div>
+<div id="toast" class="toast"></div>
+
+<div id="loginScreen" class="loginScreen">
+  <div class="loginCard"><div class="brand" style="margin-bottom:16px"><div class="brandMark">S</div><div><strong>SETKA</strong><span>Президент · Материнский корабль</span></div></div><h1>Вход Президента</h1><p>Используется существующий SETKA ID и персональный ключ.</p><input id="loginId" value="SETKA-0001-0001" autocomplete="username"><input id="loginKey" type="password" placeholder="Персональный ключ" autocomplete="current-password"><button id="loginBtn" class="primaryBtn">Войти</button><p id="loginError"></p></div>
+</div>
+<script src="app-v2.js?v=2"></script>
 </body>
 </html>
