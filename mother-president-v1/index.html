@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#050708">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<meta http-equiv="Cache-Control" content="no-cache,no-store,must-revalidate">
+<title>SETKA · Материнский корабль · Президент</title>
+<link rel="stylesheet" href="app.css?v=1">
+</head>
+<body>
+<div id="app" class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brandMark">S</div>
+      <div><strong>SETKA</strong><span>Материнский корабль</span></div>
+    </div>
+    <div class="topCenter">
+      <button id="backBtn" class="iconBtn" title="Назад">‹</button>
+      <select id="versionSelect" class="versionSelect" aria-label="Версия"></select>
+      <button id="forwardBtn" class="iconBtn" title="Вперёд">›</button>
+      <div id="shipState" class="shipState"><i></i><span>Загрузка…</span></div>
+    </div>
+    <div class="tools">
+      <button id="pinsBtn" class="toolBtn">📌 <span>Пины</span><b id="pinsBadge"></b></button>
+      <button id="pencilBtn" class="toolBtn">✏️ <span>Карандаш</span></button>
+      <button id="mailBtn" class="toolBtn">✉️ <span>Почта</span></button>
+      <button id="idBtn" class="toolBtn">ID</button>
+      <button id="refreshBtn" class="toolBtn compact">↻</button>
+    </div>
+  </header>
+
+  <aside class="rail">
+    <button class="railHome active" data-section="HOME"><span>⌂</span><em>Корабль</em></button>
+    <div id="sectorNav" class="sectorNav"></div>
+    <div class="railFoot">
+      <div><small>Президент</small><strong>SETKA-0001-0001</strong></div>
+      <button id="logoutBtn" class="tinyBtn">Выйти</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <section id="homeView" class="view active">
+      <div class="hero">
+        <div>
+          <div class="eyebrow">КОРНЕВОЙ КОРАБЛЬ · LIVE BACKEND</div>
+          <h1 id="shipTitle">Материнский корабль SETKA</h1>
+          <p id="shipMeta">Загрузка реального состояния…</p>
+        </div>
+        <div class="heroStats" id="heroStats"></div>
+      </div>
+
+      <div class="roomGrid" id="roomGrid"></div>
+
+      <div class="lowerGrid">
+        <section class="panel">
+          <div class="panelHead"><div><span class="kicker">СЕЙЧАС</span><h2>События корабля</h2></div><button class="linkBtn" data-go="OBSERVATORY">Обсерватория →</button></div>
+          <div id="eventPreview" class="feed"></div>
+        </section>
+        <section class="panel">
+          <div class="panelHead"><div><span class="kicker">ФЛОТ</span><h2>Дочерние корабли</h2></div></div>
+          <div id="childShips" class="cards"></div>
+        </section>
+      </div>
+    </section>
+
+    <section id="sectionView" class="view">
+      <div class="sectionHead">
+        <button id="sectionBack" class="backLink">← К кораблю</button>
+        <div><div id="sectionKind" class="eyebrow"></div><h1 id="sectionTitle"></h1><p id="sectionPurpose"></p></div>
+      </div>
+      <div id="sectionSources" class="sourceStrip"></div>
+      <div id="sectionData" class="dataGroups"></div>
+    </section>
+  </main>
+
+  <aside id="computer" class="computer">
+    <div class="computerHead"><div><i></i><div><strong>Бортовой компьютер</strong><span id="computerStatus">Подключение…</span></div></div><button id="computerCollapse" class="iconBtn">›</button></div>
+    <div id="computerSummary" class="computerSummary">Загружаю состояние корабля.</div>
+    <div class="quickHead">Быстрые действия</div>
+    <div id="quickActions" class="quickActions"></div>
+    <div id="chatLog" class="chatLog"></div>
+    <form id="computerForm" class="computerForm">
+      <textarea id="computerInput" rows="2" placeholder="Спроси бортовой компьютер…"></textarea>
+      <button type="submit">Отправить</button>
+    </form>
+  </aside>
+
+  <div id="drawer" class="drawer" aria-hidden="true">
+    <div class="drawerHead"><div><span id="drawerKicker" class="kicker"></span><h2 id="drawerTitle"></h2></div><button id="drawerClose" class="iconBtn">×</button></div>
+    <div id="drawerBody" class="drawerBody"></div>
+  </div>
+
+  <div id="modal" class="modal" aria-hidden="true">
+    <div class="modalCard">
+      <button id="modalClose" class="modalClose">×</button>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+</div>
+
+<script src="app.js?v=1"></script>
+</body>
+</html>
