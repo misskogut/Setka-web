@@ -20,21 +20,18 @@
   <button id="loginBtn" class="btn primary login-button">Войти</button>
   <p id="gateMsg" class="muted small">Если это первый вход, открой персональную ссылку-приглашение и задай PIN один раз.</p>
 </div>
-
 <main id="main" class="app hidden">
   <header class="topbar" data-no-pencil>
     <div><div class="brand">VERSTAK · ALPHA</div><div id="shipName" class="shipline">Корабль</div></div>
     <div class="grow"></div>
     <div class="status"><span id="healthDot" class="dot"></span><span id="healthText">Проверка…</span></div>
-    <div class="identity"><div id="identityName">Саша</div><div id="setkaId"></div></div>
+    <div class="identity"><div id="identityName">Пользователь</div><div id="setkaId"></div></div>
     <button id="logoutBtn" class="btn ghost tiny-btn" data-no-pencil>Выйти</button>
   </header>
-
   <section class="hero pin-target" data-pin-key="ship:hero">
-    <div class="kicker">Персональный рабочий корабль</div><h1>Твой VERSTAK</h1>
+    <div class="kicker">Рабочий доступ к кораблю</div><h1>VERSTAK</h1>
     <p>Создавай проекты, добавляй отсеки, ставь PIN прямо на экран и записывай действия Карандашом. Все события попадают в Стенограмму.</p>
   </section>
-
   <nav class="sector-grid" data-no-pencil>
     <button class="sector-btn active" data-section="bridge"><span class="ico">🧭</span><span class="lab">Мостик</span></button>
     <button class="sector-btn" data-section="workbench"><span class="ico">🛠</span><span class="lab">Верстак</span></button>
@@ -42,40 +39,34 @@
     <button class="sector-btn" data-section="mail"><span class="ico">✉️</span><span class="lab">Связь</span></button>
     <button class="sector-btn" data-section="polygon"><span class="ico">🧪</span><span class="lab">Полигон</span></button>
   </nav>
-
   <section id="panel-bridge" class="panel active">
     <div id="pinSetupCard" class="card hidden" data-no-pencil>
       <div class="kicker">🔐 Первый вход</div>
       <h3>Создай PIN для своего SETKA ID</h3>
-      <p class="muted">После этого на любом устройстве можно входить обычным способом: SETKA ID + 6 цифр. PIN хранится на сервере только в защищённом производном виде.</p>
+      <p class="muted">После этого на любом устройстве можно входить обычным способом: SETKA ID + 6 цифр.</p>
       <div class="pin-setup-grid">
         <input id="setupPin" class="input" type="password" inputmode="numeric" maxlength="6" placeholder="6 цифр">
         <input id="setupPin2" class="input" type="password" inputmode="numeric" maxlength="6" placeholder="Повтори PIN">
       </div>
       <button id="setupPinBtn" class="btn primary">Активировать вход по ID + PIN</button>
     </div>
-
-    <div class="health-row"><div class="metric pin-target" data-pin-key="metric:projects"><b id="projectCount">0</b><span class="muted small">проектов</span></div><div class="metric pin-target" data-pin-key="metric:pins"><b id="pinCount">0</b><span class="muted small">PIN</span></div><div class="metric pin-target" data-pin-key="metric:solai"><b id="queueCount">0</b><span class="muted small">ждёт Солая</span></div></div>
+    <div class="health-row"><div class="metric pin-target" data-pin-key="metric:projects"><b id="projectCount">0</b><span class="muted small">проектов</span></div><div class="metric pin-target" data-pin-key="metric:pins"><b id="pinCount">0</b><span class="muted small">PIN</span></div><div class="metric pin-target" data-pin-key="metric:solai"><b id="queueCount">0</b><span class="muted small">запросов</span></div></div>
     <div id="bridgeCurrent" class="card pin-target" data-pin-key="bridge:current" style="margin-top:12px"></div>
-    <div class="card pin-target" data-pin-key="bridge:onboard"><div class="kicker">🛰 Бортовой компьютер</div><h3>Спроси по своему кораблю</h3><div class="row"><input id="boardInput" class="input" style="flex:1;min-width:220px" placeholder="Например: что мне сейчас проверить?"><button id="boardSend" class="btn primary" data-no-pencil>Отправить</button></div><div class="meta">Вопрос фиксируется в системе и передаётся Солаю. Ответ появится в секторе «Связь».</div></div>
+    <div class="card pin-target" data-pin-key="bridge:onboard"><div class="kicker">🛰 Бортовой компьютер</div><h3>Спроси по своему кораблю</h3><div class="row"><input id="boardInput" class="input" style="flex:1;min-width:220px" placeholder="Например: что мне сейчас проверить?"><button id="boardSend" class="btn primary" data-no-pencil>Отправить</button></div><div class="meta">Вопрос фиксируется в системе и сразу передаётся Солаю.</div></div>
     <div class="card pin-target" data-pin-key="bridge:last"><div class="kicker">Последнее событие</div><div id="bridgeLast"></div></div>
   </section>
-
   <section id="panel-workbench" class="panel">
     <div class="card"><div class="kicker">Проекты</div><h2>Верстак</h2><p class="muted">Здесь создаётся проект. У каждого проекта могут быть свои отсеки: маркетинг, логистика, разработка, исследования — любые нужные тебе.</p><div id="projects" class="stack"></div><textarea id="newProjectDesc" class="textarea" placeholder="Коротко: что это за проект? (необязательно)"></textarea><button id="createProject" class="btn primary" data-no-pencil>+ Создать проект</button></div>
     <div class="card"><div class="row"><div><div class="kicker">Отсеки проекта</div><h3>Рабочие пространства</h3></div><div class="grow"></div><button id="createCompartment" class="btn" data-no-pencil>+ Отсек</button></div><div id="compartments" class="compartments"></div><div class="project-workspace pin-target" data-pin-key="workspace:main"><div class="kicker">Текущий отсек</div><h2 id="workspaceTitle">Проект</h2><div id="workspacePurpose" class="muted"></div><div class="target-demo"><div class="target-box pin-target" data-pin-key="workspace:idea"><b>Точка проекта</b><div class="muted small">Поставь сюда PIN и объясни, что имеешь в виду.</div></div><div class="target-box pin-target" data-pin-key="workspace:test"><b>Тест сценария</b><div class="muted small">Включи Карандаш, нажми несколько элементов и заверши запись.</div></div></div></div></div>
-    <div class="card"><div class="kicker">📌 PIN</div><h3>Точные указания по экрану</h3><p class="muted">PIN сохраняет проект, отсек, экран, объект и координату. После создания он автоматически попадает Солаю на разбор.</p><div id="pins" class="pin-list"></div></div>
+    <div class="card"><div class="kicker">📌 PIN</div><h3>Точные указания по экрану</h3><p class="muted">PIN сохраняет проект, отсек, экран, объект и координату.</p><div id="pins" class="pin-list"></div></div>
   </section>
-
   <section id="panel-transcript" class="panel"><div class="card"><div class="kicker">🕰 Append-only история</div><h2>Стенограмма корабля</h2><p class="muted">Проекты, отсеки, PIN, Карандаш и вопросы Бортовому компьютеру фиксируются здесь по времени.</p><div id="events" class="event-list"></div></div></section>
-  <section id="panel-mail" class="panel"><div class="card"><div class="kicker">✉️ Канал человек ↔ Солай</div><h2>Связь</h2><p class="muted">PIN и записи Карандаша автоматически создают запрос Солаю. Здесь видно, что ожидает ответа и что уже разобрано.</p><div id="queue" class="queue-list"></div></div></section>
-  <section id="panel-polygon" class="panel"><div class="card pin-target" data-pin-key="polygon:alpha"><div class="kicker">🧪 Испытательный полигон</div><h2>Пока минимальный режим</h2><p class="muted">В Alpha этот сектор нужен для тестов самого VERSTAK. Позже здесь будут эксперименты проекта, replay, контрольные ветви и результаты.</p><div class="target-demo"><div class="target-box pin-target" data-pin-key="polygon:pin-test"><b>Испытание PIN</b><div class="muted small">Поставь PIN на этот объект.</div></div><div class="target-box pin-target" data-pin-key="polygon:pencil-test"><b>Испытание Карандаша</b><div class="muted small">Запиши сценарий и опиши ожидаемый результат.</div></div></div></div></section>
+  <section id="panel-mail" class="panel"><div class="card"><div class="kicker">✉️ Канал человек ↔ Солай</div><h2>Связь</h2><p class="muted">PIN, Карандаш и вопросы Бортовому компьютеру создают текущие задачи Солаю.</p><div id="queue" class="queue-list"></div></div></section>
+  <section id="panel-polygon" class="panel"><div class="card pin-target" data-pin-key="polygon:alpha"><div class="kicker">🧪 Испытательный полигон</div><h2>Пока минимальный режим</h2><p class="muted">В Alpha этот сектор нужен для тестов самого VERSTAK.</p><div class="target-demo"><div class="target-box pin-target" data-pin-key="polygon:pin-test"><b>Испытание PIN</b><div class="muted small">Поставь PIN на этот объект.</div></div><div class="target-box pin-target" data-pin-key="polygon:pencil-test"><b>Испытание Карандаша</b><div class="muted small">Запиши сценарий и опиши ожидаемый результат.</div></div></div></div></section>
 </main>
-
 <div class="tool-dock" data-no-pencil><button id="pinTool" class="tool">📌 PIN</button><button id="pencilTool" class="tool">✏️ Карандаш</button></div>
 <div id="toast" class="toast hidden"></div>
 <div id="modal" class="modal hidden"><div class="modal-box"><div class="kicker">VERSTAK</div><h3 id="modalTitle">Комментарий</h3><textarea id="modalText" class="textarea"></textarea><div class="row" style="justify-content:flex-end;margin-top:10px"><button id="modalCancel" class="btn ghost" data-no-pencil>Отмена</button><button id="modalOk" class="btn primary" data-no-pencil>Сохранить</button></div></div></div>
-<script src="verstak-alpha-event-route.js?v=1"></script>
-<script src="verstak-alpha.js?v=2"></script>
+<script src="verstak-alpha.js?v=3"></script>
 </body>
 </html>
