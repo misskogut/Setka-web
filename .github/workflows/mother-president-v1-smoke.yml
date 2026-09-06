@@ -23,15 +23,15 @@ jobs:
           grep -q 'setka-mother-president-v1' mother-president-v1/app.js
           grep -q 'setka:foundation:president:session' mother-president-v1/app.js
       - name: Install Playwright
-        run: npm install --no-save playwright-core@1.55.0
+        run: npm install --no-save playwright@1.63.0
       - name: Install Chromium
-        run: npx playwright install chromium
+        run: npx playwright@1.63.0 install chromium
       - name: Wait for Pages
         run: sleep 35
       - name: Browser smoke
         run: |
           node <<'NODE'
-          const { chromium } = require('playwright-core');
+          const { chromium } = require('playwright');
           (async()=>{
             const browser=await chromium.launch({headless:true});
             const page=await browser.newPage({viewport:{width:390,height:844}});
