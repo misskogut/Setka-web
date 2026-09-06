@@ -1,0 +1,37 @@
+name: Foundation 0.1.7 Restored Smoke
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'history/foundation-017-final/**'
+      - '.github/workflows/foundation-v017-restored-smoke.yml'
+  workflow_dispatch:
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax
+        run: |
+          node --check history/foundation-017-final/foundation-control-shell.js
+          node --check history/foundation-017-final/foundation-control-patch-v016.js
+          node --check history/foundation-017-final/foundation-control-context-v017.js
+          node --check history/foundation-017-final/foundation-control-refresh-v017.js
+          node --check history/foundation-017-final/smoke.mjs
+      - name: Install Playwright core
+        run: npm install --no-save playwright-core@1.55.0
+      - name: Wait for GitHub Pages snapshot
+        run: |
+          for i in $(seq 1 50); do
+            if curl -fsS "https://misskogut.github.io/Setka-web/history/foundation-017-final/?view=0.1.7" | grep -q "Foundation President · 0.1.7 Final"; then exit 0; fi
+            sleep 5
+          done
+          exit 1
+      - name: Browser interaction smoke
+        env:
+          CHROME_PATH: /usr/bin/chromium
+        run: node history/foundation-017-final/smoke.mjs
