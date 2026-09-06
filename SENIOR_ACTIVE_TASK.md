@@ -2,20 +2,22 @@
 
 STATUS: ACTIVE
 SENIOR_IDENTITY: SETKA-S-0003-0001
-TASK_KEY: GENESIS-WAKE-SENIOR-ONESESSION-20260906-7F31
-TASK_FILE: SENIOR_ASTRA_GENESIS_CHAIN.md
+TASK_KEY: GENESIS-WAKE-SENIOR-REPAIRFLIGHT-20260906-A91C
+TASK_FILE: SENIOR_ASTRA_GENESIS_REPAIR_UNTIL_FLIGHT.md
 ISSUED_BY: PRESIDENT_SETKA
 ISSUED_AT: 2026-09-06
+PREVIOUS_RUN: GENESIS-7F31-RUN01
+PREVIOUS_CHECKPOINT_EVENTS: 6143, 6144
 
-При получении TASK_KEY Старший должен:
+The previous one-session flight/gap-review chain is completed and must not be restarted.
 
-1. подтвердить идентичность `SETKA-S-0003-0001`;
-2. прочитать `SENIOR_ASTRA_GENESIS_CHAIN.md` полностью;
-3. выполнить PHASE 1 из `SENIOR_ASTRA_GENESIS_ONE_SESSION_FLIGHT.md`;
-4. НЕ завершать общий рабочий цикл после Phase 1 — её рапорт является checkpoint;
-5. затем обязательно выполнить PHASE 2 из `SENIOR_ASTRA_POST_FLIGHT_GAP_REVIEW.md`;
-6. сохранить минимум 30% общего рабочего ресурса на Phase 2 и FINAL COMBINED REPORT;
-7. считать `SENIOR_ASTRA_GENESIS_RUNTIME_TASK.md` недействующим (`SUPERSEDED`);
-8. завершить работу только после единого финального отчёта: FLIGHT + TEST FLEET ACCESS + AS-IS/CANON/GAP + TARGET SPINE + ROADMAP P0-P4 + TOP 10 + RELEASE GATE.
+On wake:
+1. resolve this key exactly through the Wake Gateway;
+2. open `SENIOR_ASTRA_GENESIS_REPAIR_UNTIL_FLIGHT.md` directly;
+3. reuse the existing ZERO / MASHA / LERA / NIKITA identities and ships;
+4. resume from the blocked user-flight checkpoint;
+5. use the loop `FRONT FAILURE → GENERAL REPAIR → SAME-STEP FRONT RETEST → CONTINUE`;
+6. do not abandon a scenario for an ordinary VERSTAK defect;
+7. preserve final 15% for the engineering checkpoint/report.
 
-TASK_KEY является ключом поручения/пробуждения, а не секретом базы данных и не пользовательским паролем тестовых кораблей.
+Wake key routes work only; it is not authorization or a user credential.
