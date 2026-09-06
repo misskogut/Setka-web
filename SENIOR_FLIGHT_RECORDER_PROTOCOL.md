@@ -50,6 +50,26 @@ The recorder/session compiler routes candidates through `foundation.automation_g
 
 A candidate is not automatically a safe new law. Transfer requires bounded semantics, security, recoverability and regression proof.
 
+### Teach SETKA after one solved path
+
+When Senior has implemented a **general deterministic replacement** for an observed manual operation and has a passing regression/proof reference, register the proven transfer with:
+
+`foundation.flight_recorder_register_automation_v1(operationKind, activityClass, executorRef, regressionRef, createdByRef, scopeIdentityRef, proof, true)`
+
+The first SQL parameter retains the historical internal name `p_activity_kind` for ABI compatibility, but its canonical semantic meaning is `operationKind` (for example `CHECK_SCOPE`), while `activityClass` describes the work class (for example `EXECUTABLE`).
+
+Never register an automation merely because a trace exists. Registration requires:
+- a real executor/guard/harness/resolver already implemented;
+- a regression/proof reference;
+- deterministic/bounded semantics;
+- no privilege expansion or person-specific shortcut.
+
+After registration, later matching candidates are handled by:
+
+`foundation.flight_recorder_apply_registered_automations_v1(actorIdentityRef, sessionRef)`
+
+and can become `SYSTEM_EXECUTION_AVAILABLE` / resolved without asking Senior to rediscover the same path.
+
 ## Continuity
 
 Mission != model window.
@@ -80,7 +100,8 @@ For an instrumented synthetic runtime:
 - work -> recorder/native raw channels;
 - session finish -> compile this one session;
 - automation candidates raised immediately;
-- once resolved/classified and sealed -> recorder-owned RAW purged;
+- verified registered replacements are applied automatically;
+- once candidates are resolved/classified and sealed -> recorder-owned RAW purged;
 - compact metrics/hash/proof + semantic optimization fact remain.
 
 Senior should therefore expect later wakes to have less mechanical work than earlier wakes.
