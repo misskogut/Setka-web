@@ -12,7 +12,7 @@
 <div class="appShell">
   <header class="topbar">
     <div class="brand"><span class="mark">S</span><div><strong>SETKA</strong><small>Материнский корабль</small></div></div>
-    <div class="version"><strong id="workingVersion">WORKING</strong><small>Президентский фронт · LIVE</small></div>
+    <div class="version"><strong id="workingVersion">РАБОЧАЯ ВЕРСИЯ</strong><small>Президентский фронт · ЖИВОЙ</small></div>
     <div class="topTools">
       <button id="pinsBtn" title="PIN">📌</button>
       <button id="pencilBtn" title="Карандаш / TRACE">✏️</button>
@@ -27,17 +27,17 @@
   <main class="content">
     <section id="home" class="screen active">
       <div class="hero">
-        <div><span class="eyebrow">SHIP-SETKA-MOTHER</span><h1>Материнский корабль SETKA</h1><p>Слева — реальные контуры системы. Открой нужный отсек, чтобы увидеть его живые записи backend.</p></div>
-        <div class="live"><i></i> LIVE BACKEND</div>
+        <div><span class="eyebrow">МАТЕРИНСКИЙ КОРАБЛЬ</span><h1>Материнский корабль SETKA</h1><p>Слева — реальные контуры системы. Открой нужный отсек, чтобы увидеть его живые данные.</p></div>
+        <div class="live"><i></i> ЖИВЫЕ ДАННЫЕ</div>
       </div>
-      <div class="notice">Карточки внутри отсеков открываются нажатием и показывают полную запись из backend.</div>
+      <div class="notice">Карточки внутри отсеков открываются нажатием и показывают полную запись из системы.</div>
       <div id="homeGrid" class="homeGrid"></div>
     </section>
 
     <section id="module" class="screen">
       <div class="moduleHeader">
         <button id="backBtn" class="backBtn">← К кораблю</button>
-        <div class="moduleTitleWrap"><span id="moduleIcon" class="moduleIcon"></span><div><span class="eyebrow">LIVE BACKEND</span><h1 id="moduleTitle"></h1><p id="moduleSubtitle"></p></div></div>
+        <div class="moduleTitleWrap"><span id="moduleIcon" class="moduleIcon"></span><div><span class="eyebrow">ЖИВЫЕ ДАННЫЕ</span><h1 id="moduleTitle"></h1><p id="moduleSubtitle"></p></div></div>
         <input id="search" class="search" placeholder="Поиск внутри открытого отсека…" />
       </div>
       <div id="moduleStatus" class="moduleStatus"></div>
@@ -47,7 +47,7 @@
 
   <button id="computerFab" class="computerFab" title="Бортовой компьютер">◉</button>
   <aside id="computer" class="computerPanel">
-    <div class="panelHead"><div><strong>Бортовой компьютер</strong><small>SETKA-ONBOARD-COMPUTER · всегда доступен</small></div><button id="computerClose">×</button></div>
+    <div class="panelHead"><div><strong>Бортовой компьютер</strong><small>Всегда доступен</small></div><button id="computerClose">×</button></div>
     <div id="chat" class="chat"><div class="bubble bot">Я на связи. Обычные вопросы отвечаю сам.</div></div>
     <form id="computerForm" class="composer"><textarea id="computerInput" rows="2" placeholder="Напиши бортовому…"></textarea><button>→</button></form>
   </aside>
@@ -73,5 +73,6 @@
   </div>
 </div>
 <script src="app.js?v=3"></script>
+<script src="human-ru.js?v=1"></script>
 </body>
 </html>
