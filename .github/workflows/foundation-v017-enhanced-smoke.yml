@@ -1,0 +1,31 @@
+name: Foundation 0.1.7 Enhanced Smoke
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax
+        run: |
+          node --check history/foundation-017-enhanced/foundation-control-enhancements.js
+          node --check history/foundation-017-enhanced/smoke.mjs
+      - name: Install Playwright core
+        run: npm install --no-save playwright-core@1.55.0
+      - name: Wait for GitHub Pages enhanced snapshot
+        run: |
+          for i in $(seq 1 50); do
+            if curl -fsS "https://misskogut.github.io/Setka-web/history/foundation-017-enhanced/?view=0.1.7" | grep -q "Foundation President · 0.1.7 Enhanced"; then exit 0; fi
+            sleep 5
+          done
+          exit 1
+      - name: Browser interaction smoke
+        env:
+          CHROME_PATH: /usr/bin/chromium
+        run: node history/foundation-017-enhanced/smoke.mjs
