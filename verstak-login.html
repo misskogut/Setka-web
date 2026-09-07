@@ -12,12 +12,12 @@
 </head>
 <body>
 <div class="box">
-<div class="k">SETKA · VERSTAK ALPHA</div>
+<div class="k">SETKA · VERSTAK</div>
 <h1 id="title">Вход на корабль</h1>
 <div id="intro" class="muted">Введи свой SETKA ID и шестизначный PIN.</div>
 <div id="login">
-<div class="lab">SETKA ID</div><input id="id" class="in" autocomplete="username" autocapitalize="characters" placeholder="SETKA-H-XXXX-XXXX">
-<div class="lab">PIN · 6 цифр</div><input id="pin" class="in" type="password" inputmode="numeric" maxlength="6" autocomplete="current-password" placeholder="••••••">
+<label class="lab" for="id">SETKA ID</label><input id="id" class="in" autocomplete="username" autocapitalize="characters" placeholder="SETKA-H-XXXX-XXXX">
+<label class="lab" for="pin">PIN · 6 цифр</label><input id="pin" class="in" type="password" inputmode="numeric" maxlength="6" autocomplete="current-password" placeholder="••••••">
 <button id="go" class="btn">Войти в VERSTAK</button>
 </div>
 <div id="activate" class="hidden">
@@ -32,10 +32,10 @@
 <script>
 const API='https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/verstak-alpha';
 const KEY='sb_publishable_1jL-x9_kp6rpfGghpSp_OA_OiXDnvsv';
-const TARGET='https://misskogut.github.io/Setka-web/verstak-alpha.html';
+const TARGET='verstak-user-genesis-v2.html';
 const $=s=>document.querySelector(s),msg=t=>$('#msg').textContent=t;
 async function call(action,payload={},access=''){const h={'content-type':'application/json','apikey':KEY};if(access)h['x-verstak-access']=access;const r=await fetch(API,{method:'POST',headers:h,body:JSON.stringify({action,...payload})});const d=await r.json().catch(()=>({}));if(!r.ok||d.ok===false){const e=new Error(d.error||'request_failed');e.status=r.status;throw e}return d}
-function redirect(t){location.replace(TARGET+'#access='+encodeURIComponent(t))}
+function redirect(t){if(typeof t!=='string'||!t)throw new Error('session_missing');sessionStorage.setItem('verstak_session',t);location.replace(TARGET)}
 async function login(){const id=$('#id').value.trim().toUpperCase(),pin=$('#pin').value.trim();if(!id||pin.length!==6){msg('Нужны SETKA ID и PIN из 6 цифр.');return}$('#go').disabled=true;msg('Проверяю доступ…');try{const d=await call('login',{setkaId:id,pin});redirect(d.accessToken)}catch(e){msg(e.message==='temporarily_locked'?'Слишком много попыток. Попробуй позже.':'SETKA ID или PIN не подходят.')}finally{$('#go').disabled=false}}
 async function activate(){const access=window.__invite||'',a=$('#p1').value.trim(),b=$('#p2').value.trim();if(!/^\d{6}$/.test(a)){msg('PIN должен состоять из 6 цифр.');return}if(a!==b){msg('PIN не совпадает.');return}$('#activateBtn').disabled=true;msg('Активирую вход…');try{const boot=await call('bootstrap',{},access);await call('set_pin',{pin:a},access);const d=await call('login',{setkaId:boot.identity.setkaId,pin:a});redirect(d.accessToken)}catch(e){msg('Не удалось активировать вход. Проверь персональную ссылку.')}finally{$('#activateBtn').disabled=false}}
 async function init(){const q=new URLSearchParams(location.search),pref=(q.get('id')||'').toUpperCase();if(pref)$('#id').value=pref;const hs=new URLSearchParams(location.hash.replace(/^#/,'')),invite=hs.get('access')||'';if(invite.length>20){window.__invite=invite;history.replaceState(null,'',location.pathname+location.search);$('#login').classList.add('hidden');$('#activate').classList.remove('hidden');$('#title').textContent='Первый вход';$('#intro').textContent='Создай личный PIN для своего SETKA ID. После этого персональная ссылка больше не нужна.';msg('Проверяю приглашение…');try{const b=await call('bootstrap',{},invite);$('#aid').value=b.identity.setkaId;msg('Придумай PIN из 6 цифр.')}catch{msg('Персональная ссылка не принята или истекла.')}}}
