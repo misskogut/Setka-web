@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+<title>SETKA · Universal Graph Viewer</title>
+<style>
+:root{color-scheme:dark;--bg:#050e1e;--panel:rgba(4,12,24,.88);--line:#36506f;--text:#e8f2ff;--muted:#9db4d1;--blue:#73beff;--gold:#ffd750}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--text)}
+#app{position:fixed;inset:0}canvas{display:block;touch-action:none}
+.toolbar{position:fixed;left:10px;right:10px;top:max(10px,env(safe-area-inset-top));z-index:20;display:flex;gap:7px;align-items:center;pointer-events:none}.toolbar>*{pointer-events:auto}
+.pill,.btn{background:rgba(5,15,29,.86);border:1px solid var(--line);border-radius:12px;color:var(--text);backdrop-filter:blur(8px)}
+.pill{padding:9px 11px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}.pill b{font-size:13px}.pill small{display:block;color:var(--muted);margin-top:2px;font-size:10px}
+.btn{padding:10px 11px;font:12px inherit;cursor:pointer}.btn.active{border-color:#6fa8df;background:rgba(22,48,75,.92)}
+.drawer{position:fixed;z-index:30;background:var(--panel);border:1px solid var(--line);border-radius:14px;backdrop-filter:blur(10px);box-shadow:0 12px 38px rgba(0,0,0,.28);transition:transform .2s ease,opacity .2s ease;overflow:auto}
+.drawer h3{margin:0 0 8px;font-size:14px}.drawer .close{position:absolute;right:9px;top:8px;background:transparent;border:0;color:var(--muted);font-size:20px}.drawer .row{padding:5px 0;border-bottom:1px solid rgba(80,110,150,.16);font-size:11px;line-height:1.45}.drawer .k{color:var(--muted)}
+#infoDrawer{left:10px;top:78px;width:min(430px,calc(100vw - 20px));max-height:55vh;padding:14px}#infoDrawer.closed{transform:translateY(-120%);opacity:0;pointer-events:none}
+#inspectDrawer{right:10px;bottom:max(10px,env(safe-area-inset-bottom));width:min(420px,calc(100vw - 20px));max-height:48vh;padding:14px}#inspectDrawer.closed{transform:translateY(120%);opacity:0;pointer-events:none}
+#legend{position:fixed;left:10px;bottom:max(10px,env(safe-area-inset-bottom));z-index:18;background:rgba(5,15,29,.74);border:1px solid rgba(54,80,111,.65);border-radius:12px;padding:8px 9px;display:grid;grid-template-columns:auto auto;gap:4px 10px;font-size:9px;backdrop-filter:blur(6px);max-height:36vh;overflow:auto}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:-1px}.line{display:inline-block;width:27px;border-top:2px solid var(--blue);margin-right:6px;vertical-align:3px}.dash{border-top-style:dashed;border-color:var(--gold)}
+#tip{position:fixed;z-index:25;pointer-events:none;background:rgba(3,10,20,.92);border:1px solid var(--line);border-radius:9px;padding:6px 8px;font-size:10px;display:none;max-width:60vw}
+#status{position:fixed;left:50%;transform:translateX(-50%);bottom:max(8px,env(safe-area-inset-bottom));z-index:15;color:#9fb5cf;font-size:9px;background:rgba(5,15,29,.58);padding:5px 8px;border-radius:8px;pointer-events:none}
+@media(max-width:700px){.toolbar{gap:5px}.pill small{display:none}.btn{padding:9px 9px;font-size:10px}#legend{display:none}#inspectDrawer{max-height:42vh}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="toolbar">
+  <div class="pill"><b>SETKA · GRAPH</b><small id="subtitle">SELF-ANATOMY-607061BC677E · 24 nodes · 24 edges</small></div>
+  <button class="btn" id="infoBtn">INFO</button>
+  <button class="btn active" id="autoBtn">AUTO</button>
+  <button class="btn" id="resetBtn">RESET</button>
+</div>
+<div id="infoDrawer" class="drawer closed"><button class="close" data-close="info">×</button><h3>Эксперимент</h3><div id="infoBody"></div></div>
+<div id="inspectDrawer" class="drawer closed"><button class="close" data-close="inspect">×</button><h3 id="nodeTitle">Узел</h3><div id="nodeBody"></div></div>
+<div id="legend"></div><div id="tip"></div><div id="status">drag = rotate · pinch = zoom · tap node = inspect</div>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+
+const COLORS={CORE:0xffe178,SURFACE:0xffb473,SHIP:0x64c3ff,RUNTIME:0xb4e6ff,OBSERVATION:0xa5eba5,KNOWLEDGE:0xbea0ff,WORK:0xff7378,IDENTITY:0x6991ff,TIME_EVIDENCE:0xffd764};
+const DEFAULT_SCENE={
+ meta:{resultRef:'SELF-ANATOMY-607061BC677E',sourceResultRef:'GENESIS-MORPH-5C26A270D607',experimentRef:'EXPERIMENT-SETKA-SPATIOTEMPORAL-SELF-ANATOMY-BEFORE-REPAIR-20260907-01',nodes:24,edges:24,domains:8,fullReachableAt:49,bifurcations:18,intrinsicDimension:'UNKNOWN_NOT_IDENTIFIABLE_FROM_CURRENT_EVIDENCE',observedStateVectorDimension:8,presentationDimension:3,fractal:'PARTIAL_STRUCTURAL_REPEAT_ONLY_NOT_PROOF_OF_FRACTALITY',mandelbrot:'NO_RIGOROUS_MANDELBROT_CORRESPONDENCE_PROVEN',coordinateMeaning:'z = normalized ship birth time; angle = domain sector + recorded bifurcation displacement; radius = canonical concern ordinal / depth'},
+ nodes:[
+ ['CORE_0','CORE_0','CORE',0,0,0,-1,'GENESIS-MORPH-5C26A270D607'],
+ ['SURFACE/SURFACE_PRESIDENT','Поверхность Президента','SURFACE',1,-.266761,-.298058,-.966102,'foundation.president_output_assembly_policy'],
+ ['SHIP/SHIP_SECTOR','Секторы','SHIP',2,-.399526,-.019469,-.932203,'foundation.ship_sectors'],
+ ['RUNTIME/RUNTIME_WAKE','Пробуждение','RUNTIME',3,-.298219,.266581,-.898305,'foundation.synthetic_wake_signals'],
+ ['TIME_EVIDENCE/TIME_TRANSCRIPT','Стенограмма','TIME_EVIDENCE',4,.020527,-.399473,-.864407,'foundation.system_transcript_events'],
+ ['OBSERVATION/OBS_PULSE','Пульс','OBSERVATION',5,-.022806,.399349,-.830508,'foundation.entity_pulse_current_v1'],
+ ['KNOWLEDGE/KNOWLEDGE_ENTITY','Сущности и паспорта','KNOWLEDGE',6,.26731,.297565,-.79661,'foundation.entity_passports'],
+ ['WORK/WORK_MISSION','Миссии','WORK',7,.298866,-.265856,-.762712,'foundation.synthetic_missions'],
+ ['IDENTITY/IDENTITY_ROOT','Личности','IDENTITY',8,.399387,.022141,-.728814,'diamond.identities'],
+ ['SHIP/SHIP_POSITION','Должности','SHIP',12,-.54906,-.032148,-.59322,'foundation.ship_position_index'],
+ ['TIME_EVIDENCE/TIME_PROVENANCE','Происхождение','TIME_EVIDENCE',13,.03473,-.548902,-.559322,'foundation.entity_source_links · foundation.event_provenance_links'],
+ ['RUNTIME/RUNTIME_SESSION','Сессии и RUN','RUNTIME',14,-.411429,.365001,-.525424,'foundation.synthetic_runs'],
+ ['OBSERVATION/OBS_GRAPH','Граф','OBSERVATION',15,-.035752,.548837,-.491525,'foundation.graph_observed_metric_points · foundation.graph_live_requests'],
+ ['WORK/WORK_DUTY','Обязанности','WORK',16,.411781,-.364604,-.457627,'foundation.synthetic_duty_records'],
+ ['KNOWLEDGE/KNOWLEDGE_PIN','PIN и связи','KNOWLEDGE',17,.361937,.414128,-.423729,'foundation.annotation_pins · foundation.pin_relations'],
+ ['IDENTITY/IDENTITY_PROFILE','Профили и персоны','IDENTITY',18,.548969,.033664,-.389831,'foundation.identity_profile_entries'],
+ ['TIME_EVIDENCE/TIME_EVIDENCE','Evidence','TIME_EVIDENCE',24,.039351,-.698893,-.186441,'foundation.task_evidence_links'],
+ ['WORK/WORK_TASK','Задачи','WORK',25,.535024,-.451387,-.152542,'foundation.atomic_tasks'],
+ ['SHIP/SHIP_OCCUPANCY','Занятие должностей','SHIP',26,-.699186,-.033742,-.118644,'foundation.ship_position_occupancies'],
+ ['RUNTIME/RUNTIME_REPORT','Отчёты исполнения','RUNTIME',27,-.540051,.445359,-.084746,'foundation.synthetic_session_reports'],
+ ['IDENTITY/IDENTITY_APPOINTMENT','Назначения','IDENTITY',36,.84946,-.030305,.220339,'foundation.synthetic_appointments'],
+ ['SHIP/SHIP_CONTACT','Контакты и маршруты','SHIP',37,-.843585,-.104236,.254237,'foundation.ship_contact_routes'],
+ ['WORK/WORK_COMPLETION','Завершение и evidence','WORK',48,.743206,-.669062,.627119,'foundation.task_evidence_links'],
+ ['RUNTIME/RUNTIME_MATH','Математические синтетики','RUNTIME',49,-.791194,.611566,.661017,'foundation.mathematical_synthetics']
+ ].map(v=>({id:v[0],label:v[1],domain:v[2],birthT:v[3],coord3d:{x:v[4],y:v[5],z:v[6]},root:v[7],epistemicClass:'FACT'})),
+ edges:[
+ ['CORE_0','IDENTITY/IDENTITY_ROOT','CORE_TO_DOMAIN_ROOT'],['CORE_0','KNOWLEDGE/KNOWLEDGE_ENTITY','CORE_TO_DOMAIN_ROOT'],['CORE_0','OBSERVATION/OBS_PULSE','CORE_TO_DOMAIN_ROOT'],['CORE_0','RUNTIME/RUNTIME_WAKE','CORE_TO_DOMAIN_ROOT'],['CORE_0','SHIP/SHIP_SECTOR','CORE_TO_DOMAIN_ROOT'],['CORE_0','SURFACE/SURFACE_PRESIDENT','CORE_TO_DOMAIN_ROOT'],['CORE_0','TIME_EVIDENCE/TIME_TRANSCRIPT','CORE_TO_DOMAIN_ROOT'],['CORE_0','WORK/WORK_MISSION','CORE_TO_DOMAIN_ROOT'],
+ ['IDENTITY/IDENTITY_ROOT','IDENTITY/IDENTITY_PROFILE','DOMAIN_SUCCESSOR'],['IDENTITY/IDENTITY_PROFILE','IDENTITY/IDENTITY_APPOINTMENT','DOMAIN_SUCCESSOR'],['KNOWLEDGE/KNOWLEDGE_ENTITY','KNOWLEDGE/KNOWLEDGE_PIN','DOMAIN_SUCCESSOR'],['OBSERVATION/OBS_PULSE','OBSERVATION/OBS_GRAPH','DOMAIN_SUCCESSOR'],['RUNTIME/RUNTIME_WAKE','RUNTIME/RUNTIME_SESSION','DOMAIN_SUCCESSOR'],['RUNTIME/RUNTIME_SESSION','RUNTIME/RUNTIME_REPORT','DOMAIN_SUCCESSOR'],['RUNTIME/RUNTIME_REPORT','RUNTIME/RUNTIME_MATH','DOMAIN_SUCCESSOR'],['SHIP/SHIP_SECTOR','SHIP/SHIP_POSITION','DOMAIN_SUCCESSOR'],['SHIP/SHIP_POSITION','SHIP/SHIP_OCCUPANCY','DOMAIN_SUCCESSOR'],['SHIP/SHIP_OCCUPANCY','SHIP/SHIP_CONTACT','DOMAIN_SUCCESSOR'],['TIME_EVIDENCE/TIME_TRANSCRIPT','TIME_EVIDENCE/TIME_PROVENANCE','DOMAIN_SUCCESSOR'],['TIME_EVIDENCE/TIME_PROVENANCE','TIME_EVIDENCE/TIME_EVIDENCE','DOMAIN_SUCCESSOR'],['WORK/WORK_MISSION','WORK/WORK_DUTY','DOMAIN_SUCCESSOR'],['WORK/WORK_DUTY','WORK/WORK_TASK','DOMAIN_SUCCESSOR'],['WORK/WORK_TASK','WORK/WORK_COMPLETION','DOMAIN_SUCCESSOR'],['TIME_EVIDENCE/TIME_EVIDENCE','WORK/WORK_COMPLETION','SHARED_CANONICAL_ROOT']
+ ].map(v=>({source:v[0],target:v[1],relationKind:v[2],epistemicClass:'DERIVED'}))
+};
+
+let sceneData=window.SETKA_GRAPH_SCENE||DEFAULT_SCENE;
+const app=document.getElementById('app');
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.setClearColor(0x050e1e,1);app.appendChild(renderer.domElement);
+const scene=new THREE.Scene();scene.fog=new THREE.FogExp2(0x050e1e,.035);
+const camera=new THREE.PerspectiveCamera(45,innerWidth/innerHeight,.01,100);camera.position.set(2.5,1.8,3.6);
+const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.07;controls.enablePan=true;controls.minDistance=1.2;controls.maxDistance=10;controls.autoRotate=true;controls.autoRotateSpeed=.6;
+scene.add(new THREE.AmbientLight(0xffffff,1.5));const key=new THREE.DirectionalLight(0xffffff,2);key.position.set(3,4,5);scene.add(key);
+const root=new THREE.Group();scene.add(root);const nodeMeshes=[];const byId=new Map();
+
+function clearRoot(){while(root.children.length)root.remove(root.children[0]);nodeMeshes.length=0;byId.clear()}
+function makeLine(a,b,kind){const geo=new THREE.BufferGeometry().setFromPoints([a,b]);if(kind==='SHARED_CANONICAL_ROOT'){const mat=new THREE.LineDashedMaterial({color:0xffd750,dashSize:.06,gapSize:.045,transparent:true,opacity:.95});const l=new THREE.Line(geo,mat);l.computeLineDistances();return l}return new THREE.Line(geo,new THREE.LineBasicMaterial({color:0x73beff,transparent:true,opacity:.78}))}
+function buildScene(data){clearRoot();for(const n of data.nodes){byId.set(n.id,n);const c=COLORS[n.domain]||0xdddddd;const geo=new THREE.SphereGeometry(n.id==='CORE_0'?.06:.045,18,12);const mat=new THREE.MeshStandardMaterial({color:c,emissive:c,emissiveIntensity:.18,roughness:.45,metalness:.05,transparent:true,opacity:.95});const m=new THREE.Mesh(geo,mat);m.position.set(n.coord3d.x,n.coord3d.y,n.coord3d.z);m.userData.node=n;root.add(m);nodeMeshes.push(m)}for(const e of data.edges){const a=byId.get(e.source),b=byId.get(e.target);if(!a||!b)continue;root.add(makeLine(new THREE.Vector3(a.coord3d.x,a.coord3d.y,a.coord3d.z),new THREE.Vector3(b.coord3d.x,b.coord3d.y,b.coord3d.z),e.relationKind))}addRings();fillMeta(data);fillLegend()}
+function addRings(){const mat=new THREE.LineBasicMaterial({color:0x466182,transparent:true,opacity:.16});for(const r of [.25,.5,.75,1]){for(const axis of ['xy','xz','yz']){const pts=[];for(let i=0;i<=96;i++){const a=i/96*Math.PI*2;let x=0,y=0,z=0;if(axis==='xy'){x=Math.cos(a)*r;y=Math.sin(a)*r}else if(axis==='xz'){x=Math.cos(a)*r;z=Math.sin(a)*r}else{y=Math.cos(a)*r;z=Math.sin(a)*r}pts.push(new THREE.Vector3(x,y,z))}root.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),mat))}}}
+function fillMeta(d){const m=d.meta||{};document.getElementById('subtitle').textContent=`${m.resultRef||'scene'} · ${d.nodes.length} nodes · ${d.edges.length} edges`;const rows=[['resultRef',m.resultRef],['sourceResultRef',m.sourceResultRef],['experimentRef',m.experimentRef],['nodes',d.nodes.length],['edges',d.edges.length],['domains',m.domains],['full reachable',m.fullReachableAt!=null?`t=${m.fullReachableAt}s`:null],['bifurcations',m.bifurcations],['observed state vector',m.observedStateVectorDimension],['presentation dimension',m.presentationDimension],['intrinsic dimension',m.intrinsicDimension],['fractal assessment',m.fractal],['Mandelbrot assessment',m.mandelbrot],['coordinates',m.coordinateMeaning]];document.getElementById('infoBody').innerHTML=rows.filter(x=>x[1]!=null).map(([k,v])=>`<div class="row"><span class="k">${k}</span><br>${esc(v)}</div>`).join('')}
+function fillLegend(){const el=document.getElementById('legend');el.innerHTML=Object.entries(COLORS).map(([k,c])=>`<div><span class="dot" style="background:#${c.toString(16).padStart(6,'0')}"></span>${k}</div><div></div>`).join('')+`<div><span class="line"></span>DERIVED</div><div><span class="line dash"></span>SHARED ROOT</div>`}
+function esc(v){return String(v).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}
+function inspect(n){document.getElementById('nodeTitle').textContent=n.label||n.id;const inc=sceneData.edges.filter(e=>e.target===n.id),out=sceneData.edges.filter(e=>e.source===n.id);const rows=[['id',n.id],['domain',n.domain],['born',`t=${n.birthT}`],['class',n.epistemicClass],['canonical root',n.root],['coord3d',JSON.stringify(n.coord3d)],['incoming',inc.length],['outgoing',out.length]];let html=rows.map(([k,v])=>`<div class="row"><span class="k">${k}</span><br>${esc(v??'—')}</div>`).join('');const rel=[...inc,...out];if(rel.length)html+=`<div class="row"><span class="k">relations</span><br>${rel.map(e=>`${esc(e.source)} → ${esc(e.target)} · ${e.relationKind}`).join('<br>')}</div>`;document.getElementById('nodeBody').innerHTML=html;document.getElementById('inspectDrawer').classList.remove('closed')}
+const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2(),tip=document.getElementById('tip');let down={x:0,y:0,t:0};
+renderer.domElement.addEventListener('pointerdown',e=>{down={x:e.clientX,y:e.clientY,t:performance.now()}});
+renderer.domElement.addEventListener('pointerup',e=>{const moved=Math.hypot(e.clientX-down.x,e.clientY-down.y);if(moved>8)return;pointer.x=e.clientX/innerWidth*2-1;pointer.y=-(e.clientY/innerHeight)*2+1;raycaster.setFromCamera(pointer,camera);const hit=raycaster.intersectObjects(nodeMeshes,false)[0];if(hit)inspect(hit.object.userData.node)});
+renderer.domElement.addEventListener('pointermove',e=>{pointer.x=e.clientX/innerWidth*2-1;pointer.y=-(e.clientY/innerHeight)*2+1;raycaster.setFromCamera(pointer,camera);const hit=raycaster.intersectObjects(nodeMeshes,false)[0];if(hit){tip.style.display='block';tip.style.left=Math.min(innerWidth-180,e.clientX+10)+'px';tip.style.top=Math.max(82,e.clientY+10)+'px';tip.textContent=hit.object.userData.node.label||hit.object.userData.node.id}else tip.style.display='none'});
+
+document.getElementById('infoBtn').onclick=()=>document.getElementById('infoDrawer').classList.toggle('closed');document.getElementById('autoBtn').onclick=e=>{controls.autoRotate=!controls.autoRotate;e.currentTarget.classList.toggle('active',controls.autoRotate);e.currentTarget.textContent=controls.autoRotate?'AUTO':'MANUAL'};document.getElementById('resetBtn').onclick=()=>{camera.position.set(2.5,1.8,3.6);controls.target.set(0,0,-.15);controls.update()};document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>document.getElementById(b.dataset.close==='info'?'infoDrawer':'inspectDrawer').classList.add('closed'));
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+window.setSetkaGraphScene=(d)=>{sceneData=d;buildScene(d)};
+async function init(){const u=new URL(location.href),src=u.searchParams.get('scene');if(src){try{sceneData=await (await fetch(src)).json()}catch(e){console.warn('scene fetch failed',e)}}buildScene(sceneData);controls.target.set(0,0,-.15);controls.update();renderer.setAnimationLoop(()=>{controls.update();renderer.render(scene,camera)})}
+init();
+</script>
+</body>
+</html>
