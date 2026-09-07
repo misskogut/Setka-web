@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+<title>SETKA · Full Self Blueprint</title>
+<style>
+:root{color-scheme:dark;--bg:#040914;--panel:rgba(5,12,24,.90);--line:#2e4664;--text:#edf5ff;--muted:#98abc2}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--text)}
+#app{position:fixed;inset:0}canvas{display:block;touch-action:none}
+.toolbar{position:fixed;left:8px;right:8px;top:max(8px,env(safe-area-inset-top));z-index:30;display:flex;gap:6px;align-items:center;pointer-events:none}.toolbar>*{pointer-events:auto}
+.pill,.btn{background:rgba(4,12,24,.80);border:1px solid var(--line);border-radius:11px;color:var(--text);backdrop-filter:blur(9px)}
+.pill{padding:8px 10px;min-width:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pill b{font-size:12px}.pill small{display:block;color:var(--muted);font-size:9px;margin-top:2px}.btn{padding:9px 9px;font:10px inherit;cursor:pointer}.btn.active{border-color:#7ba7d8;background:rgba(24,48,75,.92)}
+.drawer{position:fixed;z-index:40;background:var(--panel);border:1px solid var(--line);border-radius:13px;backdrop-filter:blur(10px);box-shadow:0 16px 46px rgba(0,0,0,.34);overflow:auto;transition:transform .2s ease,opacity .2s ease}.drawer.closed{opacity:0;pointer-events:none}
+#infoDrawer{left:8px;top:66px;width:min(460px,calc(100vw - 16px));max-height:58vh;padding:14px}#infoDrawer.closed{transform:translateY(-120%)}
+#nodeDrawer{right:8px;bottom:max(8px,env(safe-area-inset-bottom));width:min(420px,calc(100vw - 16px));max-height:44vh;padding:14px}#nodeDrawer.closed{transform:translateY(120%)}
+.close{position:absolute;right:8px;top:5px;background:none;border:0;color:var(--muted);font-size:21px}.drawer h3{margin:0 24px 9px 0;font-size:13px}.row{padding:4px 0;border-bottom:1px solid rgba(90,120,160,.14);font-size:10px;line-height:1.4}.k{color:var(--muted)}
+#status{position:fixed;left:50%;bottom:max(8px,env(safe-area-inset-bottom));transform:translateX(-50%);z-index:25;background:rgba(3,10,20,.72);border:1px solid rgba(46,70,100,.65);border-radius:9px;padding:6px 9px;color:#a8bed5;font-size:9px;pointer-events:none;white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis}
+.domainLabel{position:fixed;z-index:18;pointer-events:none;transform:translate(-50%,-50%);background:rgba(2,8,18,.58);border:1px solid rgba(130,160,200,.35);border-radius:8px;padding:3px 6px;font-size:9px;white-space:nowrap;backdrop-filter:blur(5px);text-shadow:0 1px 3px #000}
+#loader{position:fixed;inset:0;z-index:100;background:#040914;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;color:#cfe0f5;font-size:11px}.spin{width:26px;height:26px;border-radius:50%;border:2px solid #263d58;border-top-color:#a6c8ee;animation:s 1s linear infinite}@keyframes s{to{transform:rotate(360deg)}}
+@media(max-width:700px){.pill small{display:none}.btn{padding:8px;font-size:9px}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="toolbar">
+  <div class="pill"><b>SETKA · FULL SELF BLUEPRINT</b><small id="subtitle">loading full body…</small></div>
+  <button class="btn" id="infoBtn">INFO</button>
+  <button class="btn active" id="autoBtn">AUTO</button>
+  <button class="btn active" id="edgeBtn">EDGES</button>
+  <button class="btn active" id="hullBtn">BODY</button>
+  <button class="btn" id="resetBtn">RESET</button>
+</div>
+<div id="infoDrawer" class="drawer closed"><button class="close">×</button><h3>Эксперимент</h3><div id="infoBody"></div></div>
+<div id="nodeDrawer" class="drawer closed"><button class="close">×</button><h3 id="nodeTitle">Узел</h3><div id="nodeBody"></div></div>
+<div id="status">загрузка полного графа…</div>
+<div id="loader"><div class="spin"></div><div id="loadText">SETKA собирает проекцию организма…</div></div>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+
+const SUPABASE='https://gfchgaphzhxufwdhrcis.supabase.co';
+const ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdmY2hnYXBoemh4dWZ3ZGhyY2lzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc1ODY2MjgsImV4cCI6MjEwMzE2MjYyOH0.kLT-i_UGIm5X4UTuN7meJ4dsJc-j5SETTcVbOtF__Vo';
+const DEFAULT_SCENE='FULL-SELF-BLUEPRINT-F710128742FD4736';
+const sceneRef=new URLSearchParams(location.search).get('scene')||DEFAULT_SCENE;
+
+const app=document.getElementById('app'), status=document.getElementById('status'), subtitle=document.getElementById('subtitle');
+const loader=document.getElementById('loader'), loadText=document.getElementById('loadText');
+const infoDrawer=document.getElementById('infoDrawer'), nodeDrawer=document.getElementById('nodeDrawer');
+const infoBody=document.getElementById('infoBody'), nodeBody=document.getElementById('nodeBody'), nodeTitle=document.getElementById('nodeTitle');
+
+const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.setSize(innerWidth,innerHeight);renderer.setClearColor(0x040914,1);app.appendChild(renderer.domElement);
+const scene=new THREE.Scene();scene.fog=new THREE.FogExp2(0x040914,.018);
+const camera=new THREE.PerspectiveCamera(48,innerWidth/innerHeight,.05,100);camera.position.set(0,1,12);
+const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.065;controls.enablePan=true;controls.autoRotate=true;controls.autoRotateSpeed=.45;controls.minDistance=2;controls.maxDistance=28;
+scene.add(new THREE.AmbientLight(0xffffff,1.2));
+const key=new THREE.DirectionalLight(0xffffff,1.2);key.position.set(4,6,5);scene.add(key);
+
+let DATA=null, points=null, links=null, hullGroup=new THREE.Group(), hubGroup=new THREE.Group(), labels=[], nodeMap=new Map(), idToIndex=new Map();scene.add(hullGroup);scene.add(hubGroup);
+const raycaster=new THREE.Raycaster();raycaster.params.Points.threshold=.11;const pointer=new THREE.Vector2();
+
+function hash01(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return ((h>>>0)%100000)/100000}
+function colorFor(s,l=.55){const c=new THREE.Color();c.setHSL(hash01(s),.72,l);return c}
+function esc(s){return String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')}
+function row(k,v){return `<div class="row"><span class="k">${esc(k)}:</span> ${esc(v)}</div>`}
+
+async function load(){
+  const t0=performance.now();loadText.textContent='запрашиваю full-body scene…';
+  const res=await fetch(`${SUPABASE}/rest/v1/rpc/setka_full_body_scene_v1`,{method:'POST',headers:{'apikey':ANON,'Authorization':`Bearer ${ANON}`,'Content-Type':'application/json'},body:JSON.stringify({p_scene_ref:sceneRef})});
+  if(!res.ok) throw new Error(`RPC ${res.status}: ${await res.text()}`);
+  loadText.textContent='получаю 14k+ узлов и связи…';
+  DATA=await res.json();
+  if(!DATA.ok) throw new Error(DATA.state||'scene failed');
+  build(DATA);
+  const ms=Math.round(performance.now()-t0);
+  subtitle.textContent=`${DATA.sceneRef} · ${DATA.nodes.length.toLocaleString()} nodes · ${DATA.links.length.toLocaleString()} edges`;
+  status.textContent=`full body ready · browser load ${ms} ms · server pack ${DATA.serverBuildMs} ms`;
+  loader.style.display='none';
+}
+
+function build(d){
+  nodeMap.clear();idToIndex.clear();
+  const n=d.nodes.length;
+  const pos=new Float32Array(n*3), cols=new Float32Array(n*3);
+  let maxDegree=1;
+  for(const v of d.nodes) maxDegree=Math.max(maxDegree,Number(v[4]||0));
+  for(let i=0;i<n;i++){
+    const v=d.nodes[i], id=v[0], label=v[1], domain=v[2], prefix=v[3], degree=Number(v[4]||0), x=+v[5],y=+v[6],z=+v[7],t=v[8];
+    const c=colorFor(domain,.40+.27*Math.min(1,Math.log1p(degree)/Math.log1p(maxDegree)));
+    pos[i*3]=x;pos[i*3+1]=y;pos[i*3+2]=z;cols[i*3]=c.r;cols[i*3+1]=c.g;cols[i*3+2]=c.b;
+    const obj={id,label,domain,prefix,degree,x,y,z,t};nodeMap.set(id,obj);idToIndex.set(id,i);
+  }
+  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(pos,3));geo.setAttribute('color',new THREE.BufferAttribute(cols,3));
+  points=new THREE.Points(geo,new THREE.PointsMaterial({size:.055,vertexColors:true,transparent:true,opacity:.95,sizeAttenuation:true,depthWrite:false}));scene.add(points);
+
+  const epos=new Float32Array(d.links.length*6), ecols=new Float32Array(d.links.length*6);
+  let p=0;
+  for(const e of d.links){
+    const a=nodeMap.get(e[0]),b=nodeMap.get(e[1]);if(!a||!b)continue;const c=colorFor(e[2],.48);
+    epos[p]=a.x;ecols[p++]=c.r;epos[p]=a.y;ecols[p++]=c.g;epos[p]=a.z;ecols[p++]=c.b;
+    epos[p]=b.x;ecols[p++]=c.r;epos[p]=b.y;ecols[p++]=c.g;epos[p]=b.z;ecols[p++]=c.b;
+  }
+  const eg=new THREE.BufferGeometry();eg.setAttribute('position',new THREE.BufferAttribute(epos,3));eg.setAttribute('color',new THREE.BufferAttribute(ecols,3));
+  links=new THREE.LineSegments(eg,new THREE.LineBasicMaterial({vertexColors:true,transparent:true,opacity:.11,depthWrite:false}));scene.add(links);
+
+  const p99=Number(d.meta?.degreeDistribution?.p99||16);
+  const sphereGeo=new THREE.SphereGeometry(.075,8,6);
+  for(const v of d.nodes){if(Number(v[4]||0)<p99)continue;const o=nodeMap.get(v[0]),c=colorFor(o.domain,.62);const m=new THREE.Mesh(sphereGeo,new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:.82,depthWrite:false}));m.position.set(o.x,o.y,o.z);m.userData.nodeId=o.id;hubGroup.add(m)}
+
+  buildHulls(d.domains);
+  fillInfo(d);
+  fitCamera();
+}
+
+function buildHulls(domains){
+  for(const x of labels)x.remove();labels=[];
+  while(hullGroup.children.length)hullGroup.remove(hullGroup.children[0]);
+  const groups=new Map();for(const o of nodeMap.values()){if(!groups.has(o.domain))groups.set(o.domain,[]);groups.get(o.domain).push(o)}
+  for(const dm of domains){const arr=groups.get(dm.code)||[];if(!arr.length)continue;const c0=new THREE.Vector3();for(const o of arr)c0.add(new THREE.Vector3(o.x,o.y,o.z));c0.multiplyScalar(1/arr.length);let r=.2;for(const o of arr)r=Math.max(r,c0.distanceTo(new THREE.Vector3(o.x,o.y,o.z)));r=Math.min(r*1.04,2.4);
+    const c=colorFor(dm.code,.5);const mesh=new THREE.Mesh(new THREE.SphereGeometry(r,16,10),new THREE.MeshBasicMaterial({color:c,wireframe:true,transparent:true,opacity:.08,depthWrite:false}));mesh.position.copy(c0);hullGroup.add(mesh);
+    const el=document.createElement('div');el.className='domainLabel';el.textContent=`${dm.emoji||''} ${dm.nameRu||dm.code} · ${dm.count}`;el.style.borderColor=`#${c.getHexString()}77`;document.body.appendChild(el);labels.push({el,pos:c0,code:dm.code});
+  }
+}
+
+function fillInfo(d){const c=d.meta?.coverage||{}, dim=d.meta?.dimensionAssessment||{}, deg=d.meta?.degreeDistribution||{};infoBody.innerHTML=
+  row('scene',d.sceneRef)+row('исполнитель','SETKA-M-0006-0001 · Наблюдатель графика')+row('узлы',c.nodes??d.nodes.length)+row('связи',c.edges??d.links.length)+row('домены',c.domains)+row('concerns',c.concerns)+row('канонические объекты',c.canonicalObjects)+row('классы связей',c.edgeClasses)+row('relation kinds',c.relationKinds)+row('прямая temporal evidence',c.nodesWithDirectTemporalEvidence)+row('intrinsic dimension',dim.intrinsicDimension)+row('наблюдаемые каналы',(dim.observedCoordinateFamilies||[]).join(' · '))+row('degree p50 / p90 / p99 / max',`${deg.p50} / ${deg.p90} / ${deg.p99} / ${deg.max}`)+row('важно','3D — проекция наблюдения, не доказанная внутренняя размерность. Публичный viewer маскирует чувствительные live-ID, сохраняя топологию.');}
+
+function fitCamera(){const box=new THREE.Box3().setFromObject(points);const s=box.getSize(new THREE.Vector3()),c=box.getCenter(new THREE.Vector3());controls.target.copy(c);const d=Math.max(s.x,s.y,s.z)*1.55;camera.position.set(c.x+d*.55,c.y+d*.25,c.z+d);controls.update()}
+function updateLabels(){for(const x of labels){const p=x.pos.clone().project(camera);const vis=p.z>-1&&p.z<1;x.el.style.display=vis?'block':'none';if(!vis)continue;x.el.style.left=`${(p.x*.5+.5)*innerWidth}px`;x.el.style.top=`${(-p.y*.5+.5)*innerHeight}px`}}
+
+function pick(clientX,clientY){const r=renderer.domElement.getBoundingClientRect();pointer.x=((clientX-r.left)/r.width)*2-1;pointer.y=-((clientY-r.top)/r.height)*2+1;raycaster.setFromCamera(pointer,camera);let hits=raycaster.intersectObjects(hubGroup.children,false);if(hits.length){showNode(nodeMap.get(hits[0].object.userData.nodeId));return}hits=raycaster.intersectObject(points,false);if(hits.length){const idx=hits[0].index;const id=DATA.nodes[idx][0];showNode(nodeMap.get(id));}}
+function showNode(o){if(!o)return;nodeTitle.textContent=o.label;nodeBody.innerHTML=row('domain',o.domain)+row('type',o.prefix)+row('degree',o.degree)+row('x / y / z',`${o.x.toFixed(4)} / ${o.y.toFixed(4)} / ${o.z.toFixed(4)}`)+row('temporal evidence',o.t==null?'UNKNOWN':o.t);nodeDrawer.classList.remove('closed')}
+
+let down=null;renderer.domElement.addEventListener('pointerdown',e=>{down={x:e.clientX,y:e.clientY,t:performance.now()}});renderer.domElement.addEventListener('pointerup',e=>{if(!down)return;const moved=Math.hypot(e.clientX-down.x,e.clientY-down.y);if(moved<8&&performance.now()-down.t<500)pick(e.clientX,e.clientY);down=null});
+
+function animate(){requestAnimationFrame(animate);controls.update();updateLabels();renderer.render(scene,camera)}animate();
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+
+document.getElementById('infoBtn').onclick=()=>infoDrawer.classList.toggle('closed');document.querySelector('#infoDrawer .close').onclick=()=>infoDrawer.classList.add('closed');document.querySelector('#nodeDrawer .close').onclick=()=>nodeDrawer.classList.add('closed');
+document.getElementById('autoBtn').onclick=e=>{controls.autoRotate=!controls.autoRotate;e.currentTarget.classList.toggle('active',controls.autoRotate)};
+document.getElementById('edgeBtn').onclick=e=>{links.visible=!links.visible;e.currentTarget.classList.toggle('active',links.visible)};
+document.getElementById('hullBtn').onclick=e=>{hullGroup.visible=!hullGroup.visible;for(const x of labels)x.el.style.visibility=hullGroup.visible?'visible':'hidden';e.currentTarget.classList.toggle('active',hullGroup.visible)};
+document.getElementById('resetBtn').onclick=fitCamera;
+
+load().catch(err=>{console.error(err);loadText.textContent='Ошибка: '+err.message;status.textContent='scene load failed'});
+</script>
+</body>
+</html>
