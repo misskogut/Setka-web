@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
+<title>SETKA · System Bifurcation Unfold</title>
+<style>
+:root{color-scheme:dark;--bg:#030814;--panel:rgba(7,15,29,.88);--line:#31475f;--text:#eff7ff;--muted:#9db0c6}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;background:var(--bg);color:var(--text);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;overflow:hidden}
+#wrap{position:fixed;inset:0;display:grid;grid-template-rows:auto 1fr auto;gap:8px;padding:max(10px,env(safe-area-inset-top)) 10px max(10px,env(safe-area-inset-bottom))}
+.top{display:flex;gap:8px;align-items:center}.title,.badge{border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:9px 11px;backdrop-filter:blur(8px)}.title{flex:1;min-width:0}.title b{font-size:12px}.title small{display:block;color:var(--muted);font-size:9px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.badge{font-size:9px;color:#d8e7f7}
+.main{min-height:0;display:grid;grid-template-columns:1.25fr .75fr;gap:8px}.card{border:1px solid var(--line);background:var(--panel);border-radius:14px;overflow:hidden;min-height:0;position:relative}.card h3{margin:0;padding:10px 12px 0;font-size:11px}.card p{margin:4px 12px 0;color:var(--muted);font-size:9px;line-height:1.4}canvas{position:absolute;inset:42px 8px 8px;width:calc(100% - 16px);height:calc(100% - 50px)}.stats{padding:10px 12px 12px;overflow:auto;height:100%}.row{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid rgba(80,105,135,.18);padding:7px 0;font-size:9px}.row span:first-child{color:var(--muted)}.depth{display:grid;grid-template-columns:42px 1fr 82px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid rgba(80,105,135,.18);font-size:9px}.bar{height:8px;border:1px solid #415875;border-radius:8px;overflow:hidden}.fill{height:100%;background:linear-gradient(90deg,#587da5,#a9c9eb)}.foot{font-size:9px;color:var(--muted);padding:8px 10px;border:1px solid var(--line);background:var(--panel);border-radius:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}@media(max-width:760px){.main{grid-template-columns:1fr;grid-template-rows:1.05fr .95fr}.badge{display:none}.card h3{font-size:10px}.card p{font-size:8px}}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div class="top">
+    <div class="title"><b>SETKA · SYSTEM BIFURCATION UNFOLD</b><small>SYSTEM-BIF-UNFOLD-80D4E871E1AF45F3 · experimental candidate, not canon</small></div>
+    <div class="badge">AI 0 · CANON MUTATION 0</div>
+  </div>
+  <div class="main">
+    <section class="card"><h3>Экспериментальная рекуррентная координата по топологической глубине</h3><p>x[n+1] = 3.2·x[n]·(1−x[n]), x₀ = 0.371. Линия показывает только значение поля по глубине, не пространственную геометрию тела.</p><canvas id="c"></canvas></section>
+    <section class="card"><div class="stats">
+      <h3 style="padding:0">Тело SETKA</h3>
+      <div class="row"><span>Связное тело</span><b>14 778</b></div>
+      <div class="row"><span>Всего узлов</span><b>14 810</b></div>
+      <div class="row"><span>Вне closure</span><b>32</b></div>
+      <div class="row"><span>Фактических внутренних связей</span><b>43 840</b></div>
+      <div class="row"><span>Максимальная глубина</span><b>4</b></div>
+      <div class="row"><span>T materialization</span><b>13 572</b></div>
+      <div class="row"><span>N system / provenance</span><b>2 556</b></div>
+      <h3 style="padding:14px 0 3px">Слои</h3>
+      <div id="layers"></div>
+    </div></section>
+  </div>
+  <div class="foot">TRUTH BOUNDARY · experimental system-wide scale transfer · globalEquationAuthority=false · intrinsicGeometryClaim=false · operatorGeometryPrescribed=false</div>
+</div>
+<script>
+const rows=[
+ {d:0,n:1,x:0.371},
+ {d:1,n:5830,x:0.7467488},
+ {d:2,n:4215,x:0.605168095035392},
+ {d:3,n:3765,x:0.7646069497172056},
+ {d:4,n:967,x:0.5759461189163399}
+];
+const layers=document.getElementById('layers');const maxN=Math.max(...rows.map(r=>r.n));
+rows.forEach(r=>{const el=document.createElement('div');el.className='depth';el.innerHTML=`<b>d=${r.d}</b><div class="bar"><div class="fill" style="width:${100*r.n/maxN}%"></div></div><span>${r.n.toLocaleString()} узл.</span>`;layers.appendChild(el)});
+const canvas=document.getElementById('c'),ctx=canvas.getContext('2d');
+function draw(){const r=canvas.getBoundingClientRect(),dpr=Math.min(devicePixelRatio,2);canvas.width=r.width*dpr;canvas.height=r.height*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);const w=r.width,h=r.height,pad={l:42,r:16,t:22,b:34};ctx.clearRect(0,0,w,h);ctx.strokeStyle='rgba(110,145,180,.25)';ctx.fillStyle='#9db0c6';ctx.lineWidth=1;ctx.font='9px ui-monospace';ctx.textAlign='right';for(let i=0;i<=4;i++){const y=pad.t+(h-pad.t-pad.b)*i/4;ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(w-pad.r,y);ctx.stroke();ctx.fillText((1-i/4).toFixed(2),pad.l-6,y+3)}ctx.textAlign='center';for(let i=0;i<rows.length;i++){const x=pad.l+(w-pad.l-pad.r)*i/(rows.length-1);ctx.fillText('d='+rows[i].d,x,h-12)}ctx.strokeStyle='#a9c9eb';ctx.lineWidth=2;ctx.beginPath();rows.forEach((v,i)=>{const x=pad.l+(w-pad.l-pad.r)*i/(rows.length-1),y=pad.t+(1-v.x)*(h-pad.t-pad.b);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke();rows.forEach((v,i)=>{const x=pad.l+(w-pad.l-pad.r)*i/(rows.length-1),y=pad.t+(1-v.x)*(h-pad.t-pad.b);ctx.fillStyle='#e8f3ff';ctx.beginPath();ctx.arc(x,y,4,0,Math.PI*2);ctx.fill();ctx.fillStyle='#c9d9ea';ctx.fillText(v.x.toFixed(4),x,y-10)});ctx.fillStyle='#9db0c6';ctx.textAlign='left';ctx.fillText('x',8,14)}draw();addEventListener('resize',draw);
+</script>
+</body>
+</html>
