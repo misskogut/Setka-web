@@ -31,10 +31,11 @@
 </div>
 <script>
 const API='https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/verstak-alpha';
+const LOGIN_API='https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/verstak-login';
 const KEY='sb_publishable_1jL-x9_kp6rpfGghpSp_OA_OiXDnvsv';
 const TARGET='verstak-user-genesis-v2.html';
 const $=s=>document.querySelector(s),msg=t=>$('#msg').textContent=t;
-async function call(action,payload={},access=''){const h={'content-type':'application/json','apikey':KEY};if(access)h['x-verstak-access']=access;const r=await fetch(API,{method:'POST',headers:h,body:JSON.stringify({action,...payload})});const d=await r.json().catch(()=>({}));if(!r.ok||d.ok===false){const e=new Error(d.error||'request_failed');e.status=r.status;throw e}return d}
+async function call(action,payload={},access=''){const h={'content-type':'application/json','apikey':KEY};if(access)h['x-verstak-access']=access;const endpoint=action==='login'?LOGIN_API:API;const r=await fetch(endpoint,{method:'POST',headers:h,body:JSON.stringify({action,...payload})});const d=await r.json().catch(()=>({}));if(!r.ok||d.ok===false){const e=new Error(d.error||'request_failed');e.status=r.status;throw e}return d}
 function redirect(t){if(typeof t!=='string'||!t)throw new Error('session_missing');sessionStorage.setItem('verstak_session',t);location.replace(TARGET)}
 async function login(){const id=$('#id').value.trim().toUpperCase(),pin=$('#pin').value.trim();if(!id||pin.length!==6){msg('Нужны SETKA ID и PIN из 6 цифр.');return}$('#go').disabled=true;msg('Проверяю доступ…');try{const d=await call('login',{setkaId:id,pin});redirect(d.accessToken)}catch(e){msg(e.message==='temporarily_locked'?'Слишком много попыток. Попробуй позже.':'SETKA ID или PIN не подходят.')}finally{$('#go').disabled=false}}
 async function activate(){const access=window.__invite||'',a=$('#p1').value.trim(),b=$('#p2').value.trim();if(!/^\d{6}$/.test(a)){msg('PIN должен состоять из 6 цифр.');return}if(a!==b){msg('PIN не совпадает.');return}$('#activateBtn').disabled=true;msg('Активирую вход…');try{const boot=await call('bootstrap',{},access);await call('set_pin',{pin:a},access);const d=await call('login',{setkaId:boot.identity.setkaId,pin:a});redirect(d.accessToken)}catch(e){msg('Не удалось активировать вход. Проверь персональную ссылку.')}finally{$('#activateBtn').disabled=false}}
