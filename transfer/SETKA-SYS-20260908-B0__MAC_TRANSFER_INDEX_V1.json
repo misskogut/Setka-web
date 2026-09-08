@@ -1,0 +1,61 @@
+{
+  "format": "SETKA_MAC_TRANSFER_INDEX_V1",
+  "lineageRef": "SETKA-LINEAGE-MAIN",
+  "versionRef": "SETKA-SYS-20260908-B0",
+  "versionLabel": "SYS-2026.09.08-B0",
+  "forkSystemEventNo": 6608,
+  "branches": {
+    "current": "SETKA-BRANCH-CURRENT-TRANSCRIPT",
+    "mac": "SETKA-BRANCH-MAC-VNEXT",
+    "selfOrganized": "SETKA-BRANCH-SELF-ORGANIZED"
+  },
+  "acceptedCanon": {
+    "version": "V1.5",
+    "manifestHash": "a97a8e5565d925af12806d55858353b850bfd813a1bc3fc1b63dc60999cb9dae"
+  },
+  "baseline": {
+    "bodySnapshotRef": "BODY-GROWN-SNAPSHOT-2009DD509A0C4DC1",
+    "bodyGraphNodes": 14933,
+    "bodyGrownNodes": 14812,
+    "bodyInternalEdges": 43901,
+    "experimentArchiveSnapshotRef": "EXPERIMENT-ARCHIVE-2BAF568B60D5466D",
+    "experimentArchiveHash": "aed7b879f8fe6c910d27c89da21c6d3ec67dbd4f2c9fbb248dc50ed956fcb5cf",
+    "experimentCount": 29,
+    "systemDigestRef": "DIGEST-20260908-185659.445",
+    "systemDigestHash": "d57f4bf643a73fe013b4de0c99e9c71391e2bf6b19385df4a1b86f57df22edd9",
+    "systemStateSnapshotRef": "STATE-20260908-185701.530",
+    "versionIntegrityHash": "965fba8cbf160a773cf98fd48af07ba71bd62769e09d3c497242f5cf71be0571"
+  },
+  "privateTransferPackage": {
+    "packageRef": "MAC-XFER-45CB86CD6C5B4FC3",
+    "packageSha256": "ae5028a18bd1da3447234e6b4135c4613bf20b53120dcb6e1437709d12a26475",
+    "portableFilename": "SETKA-SYS-20260908-B0__MAC_TRANSFER_V1.json",
+    "location": "PRIVATE_SETKA_STORAGE",
+    "publicRepoContainsPrivatePayload": false
+  },
+  "pocketCore": {
+    "ref": "SETKA-POCKET-CORE-SEED-V0",
+    "manifestSha256": "fb5a5c4949c457c44610b3ee0b70696b6697a0c179367dad4188b7fa5c3473ed",
+    "stateHash": "225389170c3384c2e16f7d231b5dbd14706d4b830c955973e871b7fb90e2ffcd"
+  },
+  "bootContract": [
+    "verify private transfer package SHA-256",
+    "rehydrate pocket core in a fresh-machine environment without source-table reads",
+    "verify identity, mission, capabilities, duties, memory and experimental protocol",
+    "verify lineage and baseline hashes",
+    "verify transcript/state continuation before claiming full branch restoration",
+    "record PASS or FAIL; never rewrite source branch"
+  ],
+  "experimentGuard": {
+    "sunWorldDataAssimilated": false,
+    "solarExperimentMustStartOnlyAfterMacColdBootVerification": true,
+    "sameWorldDatasetMustBeUsedForBothBranches": true
+  },
+  "truth": {
+    "acceptedCanonHeadChanged": false,
+    "freshMachineColdBootPerformed": false,
+    "macBranchBooted": false,
+    "selfOrganizedBranchExecuting": false,
+    "thisFileContainsSecretsOrPrivateMemory": false
+  }
+}
