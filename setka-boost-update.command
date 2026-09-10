@@ -12,6 +12,7 @@ FRONT_LAUNCHER_URL="$BASE_URL/setka-front-local.command"
 OVERLAY_B23_URL="$BASE_URL/setka-front-b23.js"
 OVERLAY_B24_URL="$BASE_URL/setka-front-b24.js"
 OVERLAY_B25_URL="$BASE_URL/setka-front-b25.js"
+OVERLAY_B26_URL="$BASE_URL/setka-front-b26.js"
 BRIDGE_B23_URL="$BASE_URL/setka-front-bridge-b23.py"
 BRIDGE_B24_URL="$BASE_URL/setka-front-bridge-b24.py"
 BRIDGE_B25_URL="$BASE_URL/setka-front-bridge-b25.py"
@@ -24,6 +25,7 @@ FRONT_LAUNCHER_TARGET="$BIN_DIR/SETKA_FRONT.command"
 OVERLAY_B23="$FRONT_DIR/setka-b23-base.js"
 OVERLAY_B24="$FRONT_DIR/setka-b24-trace.js"
 OVERLAY_B25="$FRONT_DIR/setka-b25-context.js"
+OVERLAY_B26="$FRONT_DIR/setka-b26-workspace.js"
 OVERLAY="$FRONT_DIR/setka-b2.js"
 BRIDGE_B23="$FRONT_DIR/setka-front-bridge-b23.py"
 BRIDGE_B24="$FRONT_DIR/setka-front-bridge-b24.py"
@@ -61,7 +63,7 @@ download_atomic() {
 }
 
 echo "============================================"
-echo "SETKA · BOOST UPDATE · B2.5"
+echo "SETKA · BOOST UPDATE · FRONT B2.6 · DATA B1"
 echo "$(date)"
 echo "============================================"
 echo
@@ -71,23 +73,24 @@ TOOLING_REFRESHED=false
 if command -v curl >/dev/null 2>&1; then
   if download_atomic "$FRONT_LAUNCHER_URL" "$FRONT_LAUNCHER_TARGET" 700; then
     ln -sfn "$FRONT_LAUNCHER_TARGET" "$DESKTOP/SETKA_FRONT.command"
-    echo "PASS · B2.5 launcher refreshed"
+    echo "PASS · B2.6 launcher refreshed"
   else
     echo "HOLD · launcher refresh unavailable; existing launcher preserved"
   fi
 
   download_atomic "$OVERLAY_B23_URL" "$OVERLAY_B23" 600 && echo "PASS · B2.3 human/color layer refreshed" || echo "HOLD · B2.3 layer refresh unavailable"
-  download_atomic "$OVERLAY_B24_URL" "$OVERLAY_B24" 600 && echo "PASS · B2.4 trace layer refreshed" || echo "HOLD · B2.4 trace layer refresh unavailable"
+  download_atomic "$OVERLAY_B24_URL" "$OVERLAY_B24" 600 && echo "PASS · B2.4 trace layer refreshed" || echo "HOLD · B2.4 layer refresh unavailable"
   download_atomic "$OVERLAY_B25_URL" "$OVERLAY_B25" 600 && echo "PASS · B2.5 event-context layer refreshed" || echo "HOLD · B2.5 event-context layer refresh unavailable"
-  if [ -f "$OVERLAY_B23" ] && [ -f "$OVERLAY_B24" ] && [ -f "$OVERLAY_B25" ]; then
-    cat "$OVERLAY_B23" "$OVERLAY_B24" "$OVERLAY_B25" > "$OVERLAY.tmp" && mv "$OVERLAY.tmp" "$OVERLAY"
+  download_atomic "$OVERLAY_B26_URL" "$OVERLAY_B26" 600 && echo "PASS · B2.6 workspace layer refreshed" || echo "HOLD · B2.6 workspace layer refresh unavailable"
+  if [ -f "$OVERLAY_B23" ] && [ -f "$OVERLAY_B24" ] && [ -f "$OVERLAY_B25" ] && [ -f "$OVERLAY_B26" ]; then
+    cat "$OVERLAY_B23" "$OVERLAY_B24" "$OVERLAY_B25" "$OVERLAY_B26" > "$OVERLAY.tmp" && mv "$OVERLAY.tmp" "$OVERLAY"
     chmod 600 "$OVERLAY" 2>/dev/null || true
-    echo "PASS · B2.5 combined overlay ready"
+    echo "PASS · B2.6 combined overlay ready"
   fi
 
   download_atomic "$BRIDGE_B23_URL" "$BRIDGE_B23" 700 && echo "PASS · B2.3 bridge refreshed" || echo "HOLD · B2.3 bridge refresh unavailable"
   download_atomic "$BRIDGE_B24_URL" "$BRIDGE_B24" 700 && echo "PASS · B2.4 bridge refreshed" || echo "HOLD · B2.4 bridge refresh unavailable"
-  download_atomic "$BRIDGE_B25_URL" "$BRIDGE" 700 && echo "PASS · B2.5 bridge refreshed" || echo "HOLD · B2.5 bridge refresh unavailable"
+  download_atomic "$BRIDGE_B25_URL" "$BRIDGE" 700 && echo "PASS · B2.5 data bridge refreshed" || echo "HOLD · B2.5 bridge refresh unavailable"
 
   if curl -fsSL "$SELF_URL" -o "$SELF_NEXT"; then
     chmod 700 "$SELF_NEXT"
@@ -165,24 +168,25 @@ fi
 
 if [ -x "$FRONT_LAUNCHER_TARGET" ]; then
   nohup "$FRONT_LAUNCHER_TARGET" >"$LOG_DIR/front-launch-$STAMP.log" 2>&1 &
-  echo "PASS · B2.5 front launcher invoked"
+  echo "PASS · B2.6 front launcher invoked"
 fi
 
 cat <<'TXT'
 ============================================
-SETKA BOOST UPDATE · COMPLETE · B2.5
-- click transcript event -> event-time frozen graph context
-- BEFORE / EVENT / AFTER / RETURN CURRENT navigation
-- recorded causal trace replay remains evidence-only
-- human Russian remains default; SYS exposes raw terms
-- unknown causal paths are never invented
-- front version and data baseline are separated: FRONT B2.5 / DATA B1
+SETKA BOOST UPDATE · COMPLETE · FRONT B2.6 / DATA B1
+- free workspace layout added over the existing B2.5 event-time context front
+- cards, panels and control strips can be moved anywhere on the desktop
+- persistent top/mode/graph controls can be detached and positioned individually
+- layout is stored locally on this Mac and restored on reload
+- layout mode prevents accidental command/button execution while arranging controls
+- one-click RESET restores the canonical default front arrangement
+- B2.5 event context, recorded trace player and frozen snapshots remain unchanged
 - device token remains in macOS Keychain and is not exposed to browser JS
-- no service_role required on Mac
+- no runtime data mutation from layout actions
 - no CANON promotion performed
 - no Git merge performed
 ============================================
 TXT
 
-notify "SETKA B2.5 update complete"
+notify "SETKA FRONT B2.6 workspace update complete"
 finish_wait
