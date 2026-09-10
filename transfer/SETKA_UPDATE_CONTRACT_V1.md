@@ -14,12 +14,24 @@ Future B2/B3/... releases must reuse this transport instead of asking the operat
 
 `UPDATE_SETKA.command` performs only the following bounded operations:
 
-1. call the installed `setka update` scoped updater;
-2. verify the active portable-core package, hashes, state/digest refs and dynamic continuation anchor;
-3. atomically refresh the local runtime receipt/current version;
-4. refresh the cached Minimal Front source when network access is available;
-5. fetch Git development refs for visibility only;
-6. emit status and a durable local log.
+1. refresh the desktop tooling channel when network access is available;
+2. call the installed `setka update` scoped updater;
+3. verify the active portable-core package, hashes, state/digest refs and dynamic continuation anchor;
+4. atomically refresh the local runtime receipt/current version;
+5. refresh the cached Minimal Front source when network access is available;
+6. fetch Git development refs for visibility only;
+7. emit status and a durable local log.
+
+Desktop tooling is versioned separately from CANON. The update button may refresh its own next-run implementation and the local front launcher from the repository tooling channel. This is delivery/tooling maintenance only and does not constitute runtime promotion or CANON mutation.
+
+## Local front launcher
+
+`SETKA_FRONT.command` is idempotent:
+
+- if the SETKA localhost front is already serving on its configured port, a repeated double-click reopens that existing front and exits successfully;
+- it MUST NOT start a second local HTTP server on the same port;
+- if the port belongs to another process, it stops with an explicit port-busy status instead of exposing a Python traceback;
+- local front source refresh remains cache-safe when network access is unavailable.
 
 ## Hard safety boundaries
 
@@ -29,7 +41,7 @@ Future B2/B3/... releases must reuse this transport instead of asking the operat
 - The updater MUST NOT promote or mutate CANON.
 - The updater MUST NOT merge Git branches automatically.
 - Dirty developer work MUST be preserved.
-- Failure of optional front refresh or Git ref fetch MUST NOT falsify the verified core-update result.
+- Failure of optional tooling/front refresh or Git ref fetch MUST NOT falsify the verified core-update result.
 - Package/hash/continuation verification failure MUST stop the core update.
 - Experimental branch output remains experimental until an explicit President-approved CANON promotion occurs.
 
@@ -44,5 +56,7 @@ New features may change frequently; the delivery mechanism should not. Any futur
 ## Operator UX
 
 Normal update action after one-time installation: double-click `UPDATE_SETKA.command` on the Mac desktop.
+
+Normal front action: double-click `SETKA_FRONT.command`. Repeated clicks are safe.
 
 Equivalent terminal action remains: `setka update`.
