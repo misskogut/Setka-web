@@ -1,0 +1,122 @@
+{
+  "format": "SETKA_MAC_CONTINUATION_ANCHOR_V1",
+  "versionRef": "SETKA-SYS-20260910-B1",
+  "lineageRef": "SETKA-LINEAGE-MAIN",
+  "forkEventNo": 6766,
+  "state": {
+    "snapshotRef": "STATE-20260910-125428.947",
+    "capturedAt": "2026-09-10T12:54:31.997452+00:00",
+    "sourceEventNo": 6764,
+    "networkIntegrity": {
+      "connectedTotal": 11506,
+      "passportsTotal": 11621,
+      "sourceGapTotal": 115,
+      "sourceIntegrityPct": 99.01
+    },
+    "autonomy": {
+      "snapshots": 11,
+      "avgAutonomyPct": 45.45,
+      "subjectsMeasured": 11,
+      "avgAiDependencyPct": 54.55
+    },
+    "capabilities": {
+      "assetsTotal": 75,
+      "assetsActive": 69,
+      "capabilitiesTotal": 75,
+      "productOpportunities": 3,
+      "compositionCandidates": 4
+    },
+    "workload": {
+      "runs": 2092,
+      "duties": 100,
+      "openTasks": 19,
+      "greenReadyPins": 0,
+      "activeAutomationGaps": 22
+    }
+  },
+  "digest": {
+    "digestRef": "DIGEST-20260910-125441.908",
+    "capturedAt": "2026-09-10T12:54:43.682085+00:00",
+    "transcriptTip": 6765,
+    "entityPassports": 11622,
+    "networkIntegrity": {
+      "connectedTotal": 11507,
+      "passportsTotal": 11622,
+      "sourceGapTotal": 115,
+      "sourceIntegrityPct": 99.01
+    },
+    "workload": {
+      "runs": 2092,
+      "duties": 100,
+      "openTasks": 19,
+      "activeAutomationGaps": 57
+    },
+    "digestHash": "36d075832ae12af225a8b05f3ef5201e022f174bcf721fb3b2e111c22ecb6945",
+    "sourceEventNo": 6766
+  },
+  "transcriptTail": [
+    {
+      "eventNo": 6761,
+      "sourceKey": "visualization:VIS-7D3FE910D0B44247",
+      "occurredAt": "2026-09-10T12:47:36.099757+00:00",
+      "eventType": "SYSTEM_VISUALIZATION_EMITTED",
+      "entityType": "VISUALIZATION_PACKET",
+      "entityRef": "VIS-7D3FE910D0B44247",
+      "version": "1.0.1"
+    },
+    {
+      "eventNo": 6762,
+      "sourceKey": "multi-daughter-v2-result-76fafd620fc64f86b9748094138e5ae8",
+      "occurredAt": "2026-09-10T12:48:36.914288+00:00",
+      "eventType": "MULTI_DAUGHTER_PERSISTENCE_RESULT",
+      "entityType": "EXPERIMENT",
+      "entityRef": "EXPERIMENT-MULTI-DAUGHTER-PERSISTENCE-V2",
+      "version": "2.0.0"
+    },
+    {
+      "eventNo": 6763,
+      "sourceKey": "motorway-multidaughter-3d9fdf5823b0477d93ea54ec23eb3d15",
+      "occurredAt": "2026-09-10T12:48:36.948498+00:00",
+      "eventType": "MOTORWAY_CANDIDATE_MULTI_DAUGHTER_VALIDATED",
+      "entityType": "MOTORWAY_CANDIDATE",
+      "entityRef": "MOTORWAY-CANDIDATE-NATIVE-DAUGHTER-FULL-REBUILD-V1",
+      "version": "2.0.0"
+    },
+    {
+      "eventNo": 6764,
+      "sourceKey": "system-state-snapshot:STATE-20260910-125428.947",
+      "occurredAt": "2026-09-10T12:54:31.553291+00:00",
+      "eventType": "system_state_snapshot_captured",
+      "entityType": "SYSTEM_STATE_SNAPSHOT",
+      "entityRef": "STATE-20260910-125428.947",
+      "version": "3.0.0"
+    },
+    {
+      "eventNo": 6765,
+      "sourceKey": "entity-metabolism:78762ca9-b6b4-48e3-9324-765cd9cac1f3",
+      "occurredAt": "2026-09-10T12:54:33.668785+00:00",
+      "eventType": "entity_metabolism_transition",
+      "entityType": "ENTITY_CANDIDATE",
+      "entityRef": "DIRECT-84EAE064F358AB39",
+      "version": "1.0.0"
+    },
+    {
+      "eventNo": 6766,
+      "sourceKey": "system-state-digest:DIGEST-20260910-125441.908",
+      "occurredAt": "2026-09-10T12:54:43.666729+00:00",
+      "eventType": "system_state_digest_captured",
+      "entityType": "SYSTEM_STATE_DIGEST",
+      "entityRef": "DIGEST-20260910-125441.908",
+      "version": "1.0.0"
+    }
+  ],
+  "truth": {
+    "fullHistoricalTranscriptIncluded": false,
+    "continuationTailIncluded": true,
+    "stateCheckpointIncluded": true,
+    "digestCheckpointIncluded": true,
+    "bodyPayloadIncluded": false,
+    "fullDatabaseDumpIncluded": false,
+    "scope": "PORTABLE_CORE_PLUS_CHECKPOINT_CONTINUATION"
+  }
+}
