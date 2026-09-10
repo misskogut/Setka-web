@@ -9,8 +9,8 @@ DESKTOP="$HOME/Desktop"
 BASE_URL="https://raw.githubusercontent.com/misskogut/Setka-web/main"
 FRONT_URL="$BASE_URL/setka-minimal-front-b1.html"
 FRONT_LAUNCHER_URL="$BASE_URL/setka-front-local.command"
-FRONT_OVERLAY_URL="$BASE_URL/setka-front-b2.js"
-FRONT_BRIDGE_URL="$BASE_URL/setka-front-bridge.py"
+FRONT_OVERLAY_URL="$BASE_URL/setka-front-b23.js"
+FRONT_BRIDGE_URL="$BASE_URL/setka-front-bridge-b23.py"
 SELF_URL="$BASE_URL/setka-boost-update.command"
 SETKA_BIN="$HOME/bin/setka"
 REPO="${SETKA_REPO:-$HOME/SETKA_LOCAL/WORKSPACE/Setka-web}"
@@ -66,8 +66,8 @@ if command -v curl >/dev/null 2>&1; then
   else
     echo "HOLD · launcher refresh unavailable; existing launcher preserved"
   fi
-  download_atomic "$FRONT_OVERLAY_URL" "$FRONT_OVERLAY_TARGET" 600 && echo "PASS · B2 front overlay refreshed" || echo "HOLD · B2 overlay refresh unavailable"
-  download_atomic "$FRONT_BRIDGE_URL" "$FRONT_BRIDGE_TARGET" 700 && echo "PASS · B2 local bridge refreshed" || echo "HOLD · B2 bridge refresh unavailable"
+  download_atomic "$FRONT_OVERLAY_URL" "$FRONT_OVERLAY_TARGET" 600 && echo "PASS · B2.3 front overlay refreshed" || echo "HOLD · B2.3 overlay refresh unavailable"
+  download_atomic "$FRONT_BRIDGE_URL" "$FRONT_BRIDGE_TARGET" 700 && echo "PASS · B2.3 local bridge refreshed" || echo "HOLD · B2.3 bridge refresh unavailable"
 
   if curl -fsSL "$SELF_URL" -o "$SELF_NEXT"; then
     chmod 700 "$SELF_NEXT"
@@ -151,11 +151,9 @@ else
   echo "HOLD · no staged updater; current updater remains active"
 fi
 
-# Reinvoke the refreshed front launcher detached. It upgrades only the known legacy
-# localhost server and otherwise reopens an already-running B2 bridge.
 if [ -x "$FRONT_LAUNCHER_TARGET" ]; then
   nohup "$FRONT_LAUNCHER_TARGET" >"$LOG_DIR/front-launch-$STAMP.log" 2>&1 &
-  echo "PASS · B2 front launcher invoked"
+  echo "PASS · B2.3 front launcher invoked"
 fi
 
 cat <<'TXT'
@@ -163,7 +161,9 @@ cat <<'TXT'
 SETKA BOOST UPDATE · COMPLETE
 - scoped update path used
 - updater and front launcher refresh themselves when network is available
-- B2 bridge + full transcript UI + protected local command ingress refreshed
+- B2.3 human Russian layer + system-language toggle refreshed
+- deterministic presentation color modes refreshed
+- full transcript UI + protected local command ingress preserved
 - device token remains in macOS Keychain and is not exposed to browser JS
 - no service_role required on Mac
 - no CANON promotion performed
