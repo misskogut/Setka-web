@@ -6,14 +6,19 @@ BIN_DIR="$ROOT/bin"
 LOG_DIR="$ROOT/logs"
 FRONT_DIR="$ROOT/front"
 DESKTOP="$HOME/Desktop"
-FRONT_URL="https://raw.githubusercontent.com/misskogut/Setka-web/main/setka-minimal-front-b1.html"
-FRONT_LAUNCHER_URL="https://raw.githubusercontent.com/misskogut/Setka-web/main/setka-front-local.command"
-SELF_URL="https://raw.githubusercontent.com/misskogut/Setka-web/main/setka-boost-update.command"
+BASE_URL="https://raw.githubusercontent.com/misskogut/Setka-web/main"
+FRONT_URL="$BASE_URL/setka-minimal-front-b1.html"
+FRONT_LAUNCHER_URL="$BASE_URL/setka-front-local.command"
+FRONT_OVERLAY_URL="$BASE_URL/setka-front-b2.js"
+FRONT_BRIDGE_URL="$BASE_URL/setka-front-bridge.py"
+SELF_URL="$BASE_URL/setka-boost-update.command"
 SETKA_BIN="$HOME/bin/setka"
 REPO="${SETKA_REPO:-$HOME/SETKA_LOCAL/WORKSPACE/Setka-web}"
 SELF_TARGET="$BIN_DIR/SETKA_BOOST_UPDATE.command"
 SELF_NEXT="$BIN_DIR/SETKA_BOOST_UPDATE.command.next"
 FRONT_LAUNCHER_TARGET="$BIN_DIR/SETKA_FRONT.command"
+FRONT_OVERLAY_TARGET="$FRONT_DIR/setka-b2.js"
+FRONT_BRIDGE_TARGET="$FRONT_DIR/setka-front-bridge.py"
 STAMP="$(date '+%Y%m%d-%H%M%S')"
 LOG="$LOG_DIR/update-$STAMP.log"
 
@@ -34,6 +39,18 @@ finish_wait() {
   read -r -p "Нажми Enter, чтобы закрыть окно... " _ || true
 }
 
+download_atomic() {
+  local url="$1" target="$2" mode="${3:-600}"
+  local tmp="$target.tmp"
+  if curl -fsSL "$url" -o "$tmp"; then
+    mv "$tmp" "$target"
+    chmod "$mode" "$target" 2>/dev/null || true
+    return 0
+  fi
+  rm -f "$tmp"
+  return 1
+}
+
 echo "============================================"
 echo "SETKA · BOOST UPDATE"
 echo "$(date)"
@@ -43,15 +60,14 @@ echo
 echo "[0/5] TOOLING REFRESH"
 TOOLING_REFRESHED=false
 if command -v curl >/dev/null 2>&1; then
-  if curl -fsSL "$FRONT_LAUNCHER_URL" -o "$FRONT_LAUNCHER_TARGET.tmp"; then
-    mv "$FRONT_LAUNCHER_TARGET.tmp" "$FRONT_LAUNCHER_TARGET"
-    chmod 700 "$FRONT_LAUNCHER_TARGET"
+  if download_atomic "$FRONT_LAUNCHER_URL" "$FRONT_LAUNCHER_TARGET" 700; then
     ln -sfn "$FRONT_LAUNCHER_TARGET" "$DESKTOP/SETKA_FRONT.command"
     echo "PASS · SETKA_FRONT launcher refreshed"
   else
-    rm -f "$FRONT_LAUNCHER_TARGET.tmp"
     echo "HOLD · launcher refresh unavailable; existing launcher preserved"
   fi
+  download_atomic "$FRONT_OVERLAY_URL" "$FRONT_OVERLAY_TARGET" 600 && echo "PASS · B2 front overlay refreshed" || echo "HOLD · B2 overlay refresh unavailable"
+  download_atomic "$FRONT_BRIDGE_URL" "$FRONT_BRIDGE_TARGET" 700 && echo "PASS · B2 local bridge refreshed" || echo "HOLD · B2 bridge refresh unavailable"
 
   if curl -fsSL "$SELF_URL" -o "$SELF_NEXT"; then
     chmod 700 "$SELF_NEXT"
@@ -135,12 +151,20 @@ else
   echo "HOLD · no staged updater; current updater remains active"
 fi
 
+# Reinvoke the refreshed front launcher detached. It upgrades only the known legacy
+# localhost server and otherwise reopens an already-running B2 bridge.
+if [ -x "$FRONT_LAUNCHER_TARGET" ]; then
+  nohup "$FRONT_LAUNCHER_TARGET" >"$LOG_DIR/front-launch-$STAMP.log" 2>&1 &
+  echo "PASS · B2 front launcher invoked"
+fi
+
 cat <<'TXT'
 ============================================
 SETKA BOOST UPDATE · COMPLETE
 - scoped update path used
 - updater and front launcher refresh themselves when network is available
-- repeated SETKA_FRONT double-click reopens existing localhost instead of spawning a second server
+- B2 bridge + full transcript UI + protected local command ingress refreshed
+- device token remains in macOS Keychain and is not exposed to browser JS
 - no service_role required on Mac
 - no CANON promotion performed
 - no Git merge performed
