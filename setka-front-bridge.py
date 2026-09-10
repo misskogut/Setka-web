@@ -17,6 +17,219 @@ INDEX = FRONT_DIR / "index.html"
 OVERLAY = FRONT_DIR / "setka-b2.js"
 DEVICE_FILE = ROOT / "device.json"
 
+GRAPH_BRIDGE_INJECTION = r'''
+    // B2.1 · bounded semantic spotlight. It only uses nodes/edges already present
+    // in the currently loaded frozen snapshot; it never creates graph facts.
+    let semanticSpotlightGroup = null;
+    let semanticSpotlightRestore = null;
+    let semanticSpotlightSnapshotRef = null;
+
+    function normalizeSpotlightText(value) {
+      return String(value ?? "")
+        .normalize("NFKC")
+        .toLocaleLowerCase("ru-RU")
+        .replace(/[_:/\\.-]+/g, " ")
+        .replace(/[^\\p{L}\\p{N}]+/gu, " ")
+        .trim()
+        .replace(/\\s+/g, " ");
+    }
+
+    function disposeSemanticSpotlight() {
+      if (!semanticSpotlightGroup) return;
+      semanticSpotlightGroup.traverse((child) => {
+        if (child.geometry) child.geometry.dispose();
+        if (Array.isArray(child.material)) child.material.forEach((m) => m?.dispose?.());
+        else child.material?.dispose?.();
+      });
+      semanticSpotlightGroup.parent?.remove(semanticSpotlightGroup);
+      semanticSpotlightGroup = null;
+    }
+
+    function clearSemanticSpotlight(options = {}) {
+      const sameSnapshot = semanticSpotlightSnapshotRef && semanticSpotlightSnapshotRef === state.graphRef;
+      disposeSemanticSpotlight();
+      if (sameSnapshot && semanticSpotlightRestore) {
+        if (points?.material) points.material.opacity = semanticSpotlightRestore.pointsOpacity;
+        if (graphLines?.material) graphLines.material.opacity = semanticSpotlightRestore.graphOpacity;
+        if (growthLines?.material) growthLines.material.opacity = semanticSpotlightRestore.growthOpacity;
+        hubs?.children?.forEach((hub, i) => {
+          if (hub.material && semanticSpotlightRestore.hubOpacities[i] !== undefined) {
+            hub.material.opacity = semanticSpotlightRestore.hubOpacities[i];
+          }
+        });
+        controls.autoRotate = semanticSpotlightRestore.autoRotate;
+        dom["auto-toggle"]?.classList.toggle("active", controls.autoRotate);
+      }
+      semanticSpotlightRestore = null;
+      semanticSpotlightSnapshotRef = null;
+      if (dom["graph-classification"]) dom["graph-classification"].textContent = "SNAPSHOT · FROZEN BODY";
+      if (options.fit) fitGraph();
+      return { ok: true, state: "SPOTLIGHT_CLEARED", snapshotRef: state.graphRef };
+    }
+
+    function spotlightPointCloud(nodes, color, size) {
+      const geometry = new THREE.BufferGeometry().setFromPoints(nodes.map((node) => node.position));
+      const material = new THREE.PointsMaterial({
+        color,
+        size,
+        transparent: true,
+        opacity: 1,
+        sizeAttenuation: true,
+        depthTest: false,
+        depthWrite: false
+      });
+      const cloud = new THREE.Points(geometry, material);
+      cloud.renderOrder = 30;
+      return cloud;
+    }
+
+    function semanticSpotlight(query) {
+      const rawQuery = String(query ?? "").trim();
+      const needle = normalizeSpotlightText(rawQuery);
+      if (!needle) return { ok: false, state: "EMPTY_SPOTLIGHT_QUERY", directMatches: 0 };
+      if (!points || !state.graph || !nodeMap.size) {
+        return { ok: false, state: "GRAPH_NOT_READY", directMatches: 0, snapshotRef: state.graphRef };
+      }
+
+      clearSemanticSpotlight({ fit: false });
+
+      const tokens = needle.split(" ").filter(Boolean);
+      const searchable = (node) => [node.id, node.type, node.name, node.family, node.parent]
+        .filter(Boolean)
+        .map((value) => normalizeSpotlightText(value));
+
+      let direct = [...nodeMap.values()].filter((node) => searchable(node).some((field) => field === needle));
+      let matchKind = "EXACT";
+      if (!direct.length) {
+        direct = [...nodeMap.values()].filter((node) => {
+          const fields = searchable(node);
+          const combined = fields.join(" ");
+          return fields.some((field) => field.includes(needle)) || tokens.every((token) => combined.includes(token));
+        });
+        matchKind = "SUBSTRING";
+      }
+
+      if (!direct.length) {
+        return {
+          ok: true,
+          state: "SPOTLIGHT_NO_GRAPH_MATCH",
+          query: rawQuery,
+          matchKind: "NONE",
+          directMatches: 0,
+          relatedNodes: 0,
+          realEdges: 0,
+          topologyChanged: false,
+          snapshotRef: state.graphRef
+        };
+      }
+
+      const directIds = new Set(direct.map((node) => node.id));
+      const linkedEdges = edgeMeta.filter((edge) => directIds.has(edge.source.id) || directIds.has(edge.target.id));
+      const relatedIds = new Set();
+      linkedEdges.forEach((edge) => {
+        if (!directIds.has(edge.source.id)) relatedIds.add(edge.source.id);
+        if (!directIds.has(edge.target.id)) relatedIds.add(edge.target.id);
+      });
+      const related = [...relatedIds].map((id) => nodeMap.get(id)).filter(Boolean);
+
+      semanticSpotlightRestore = {
+        pointsOpacity: points?.material?.opacity ?? 0.88,
+        graphOpacity: graphLines?.material?.opacity ?? 0.105,
+        growthOpacity: growthLines?.material?.opacity ?? 0.08,
+        hubOpacities: hubs?.children?.map((hub) => hub.material?.opacity ?? 0.94) || [],
+        autoRotate: controls.autoRotate
+      };
+      semanticSpotlightSnapshotRef = state.graphRef;
+
+      if (points?.material) points.material.opacity = 0.045;
+      if (graphLines?.material) graphLines.material.opacity = 0.014;
+      if (growthLines?.material) growthLines.material.opacity = 0.009;
+      hubs?.children?.forEach((hub) => { if (hub.material) hub.material.opacity = 0.08; });
+      controls.autoRotate = false;
+      dom["auto-toggle"]?.classList.remove("active");
+
+      semanticSpotlightGroup = new THREE.Group();
+      semanticSpotlightGroup.name = "SETKA_SEMANTIC_SPOTLIGHT";
+      graphGroup.add(semanticSpotlightGroup);
+
+      const directRender = direct.slice(0, 500);
+      const relatedRender = related.slice(0, 1200);
+      const edgeRender = linkedEdges.slice(0, 4000);
+      const directSize = Math.max(0.12, Math.min(0.42, graphRadius * 0.018));
+      const relatedSize = Math.max(0.075, Math.min(0.24, graphRadius * 0.011));
+
+      semanticSpotlightGroup.add(spotlightPointCloud(directRender, 0x9dffbe, directSize));
+      if (relatedRender.length) semanticSpotlightGroup.add(spotlightPointCloud(relatedRender, 0x87e9ff, relatedSize));
+
+      if (edgeRender.length) {
+        const edgePositions = [];
+        edgeRender.forEach((edge) => edgePositions.push(
+          edge.source.position.x, edge.source.position.y, edge.source.position.z,
+          edge.target.position.x, edge.target.position.y, edge.target.position.z
+        ));
+        const edgeGeometry = new THREE.BufferGeometry().setAttribute(
+          "position", new THREE.Float32BufferAttribute(edgePositions, 3)
+        );
+        const edgeMaterial = new THREE.LineBasicMaterial({
+          color: 0xffd27d,
+          transparent: true,
+          opacity: 0.92,
+          depthTest: false,
+          depthWrite: false
+        });
+        const edgeLines = new THREE.LineSegments(edgeGeometry, edgeMaterial);
+        edgeLines.renderOrder = 29;
+        semanticSpotlightGroup.add(edgeLines);
+      }
+
+      const focusBox = new THREE.Box3();
+      directRender.forEach((node) => focusBox.expandByPoint(node.position));
+      const focusCenter = focusBox.getCenter(new THREE.Vector3());
+      const focusSize = focusBox.getSize(new THREE.Vector3());
+      const focusRadius = Math.max(focusSize.x, focusSize.y, focusSize.z) * 0.62;
+      const viewDistance = Math.max(graphRadius * 0.12, focusRadius * 2.8, 1.8);
+      const viewDirection = camera.position.clone().sub(controls.target);
+      if (viewDirection.lengthSq() < 0.0001) viewDirection.set(0.72, 0.42, 1.55);
+      viewDirection.normalize();
+      controls.target.copy(focusCenter);
+      camera.position.copy(focusCenter).addScaledVector(viewDirection, viewDistance);
+      controls.update();
+
+      if (dom["graph-classification"]) {
+        dom["graph-classification"].textContent = `SPOTLIGHT · ${rawQuery.toUpperCase()} · REAL GRAPH ONLY`;
+      }
+
+      return {
+        ok: true,
+        state: "SEMANTIC_SPOTLIGHT_MATCH",
+        query: rawQuery,
+        matchKind,
+        directMatches: direct.length,
+        relatedNodes: related.length,
+        realEdges: linkedEdges.length,
+        topologyChanged: false,
+        snapshotRef: state.graphRef,
+        rendered: {
+          direct: directRender.length,
+          related: relatedRender.length,
+          edges: edgeRender.length,
+          truncated: direct.length > directRender.length || related.length > relatedRender.length || linkedEdges.length > edgeRender.length
+        },
+        direct: direct.slice(0, 24).map((node) => ({ id: node.id, name: node.name, type: node.type, family: node.family }))
+      };
+    }
+
+    window.SETKA_GRAPH_BRIDGE = Object.freeze({
+      version: "B2.1",
+      ready: () => Boolean(points && state.graph && nodeMap.size),
+      snapshotRef: () => state.graphRef,
+      mode: () => state.mode,
+      spotlight: semanticSpotlight,
+      clearSpotlight: clearSemanticSpotlight
+    });
+    dom["reset-view"]?.addEventListener("click", () => clearSemanticSpotlight({ fit: false }));
+'''
+
 
 def load_device():
     if not DEVICE_FILE.exists():
@@ -57,7 +270,7 @@ def rpc(name, payload):
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "SETKAFrontB2/1.0"
+    server_version = "SETKAFrontB2.1/1.0"
 
     def log_message(self, fmt, *args):
         print(f"SETKA FRONT · {self.address_string()} · {fmt % args}")
@@ -88,8 +301,10 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/b2/health":
             return self._json(200, {
                 "ok": True,
-                "state": "SETKA_LOCAL_FRONT_B2_READY",
+                "state": "SETKA_LOCAL_FRONT_B21_READY",
                 "commandTokenExposed": False,
+                "semanticSpotlight": True,
+                "graphMutation": False,
                 "canonMutation": False,
             })
         if path == "/api/b2/transcript":
@@ -132,6 +347,9 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_error(404, "SETKA front source missing")
                 return
             html = INDEX.read_text(errors="replace")
+            module_anchor = "    initialize();\n  </script>"
+            if "window.SETKA_GRAPH_BRIDGE" not in html and module_anchor in html:
+                html = html.replace(module_anchor, f"{GRAPH_BRIDGE_INJECTION}\n    initialize();\n  </script>")
             marker = '<script src="/setka-b2.js" defer></script>'
             if marker not in html:
                 html = html.replace("</body>", f"  {marker}\n</body>")
@@ -180,9 +398,10 @@ def main():
     parser.add_argument("--port", type=int, default=int(os.environ.get("SETKA_FRONT_PORT", "8765")))
     args = parser.parse_args()
     server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
-    print(f"SETKA LOCAL FRONT B2 · http://127.0.0.1:{args.port}/")
-    print("SETKA LOCAL FRONT B2 · device token stays in macOS Keychain")
-    print("SETKA LOCAL FRONT B2 · CANON mutation unavailable through B2 ingress")
+    print(f"SETKA LOCAL FRONT B2.1 · http://127.0.0.1:{args.port}/")
+    print("SETKA LOCAL FRONT B2.1 · semantic spotlight uses current frozen graph only")
+    print("SETKA LOCAL FRONT B2.1 · device token stays in macOS Keychain")
+    print("SETKA LOCAL FRONT B2.1 · CANON mutation unavailable through B2 ingress")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
