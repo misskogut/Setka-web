@@ -9,21 +9,25 @@ DESKTOP="$HOME/Desktop"
 BASE_URL="https://raw.githubusercontent.com/misskogut/Setka-web/main"
 FRONT_URL="$BASE_URL/setka-minimal-front-b1.html"
 FRONT_LAUNCHER_URL="$BASE_URL/setka-front-local.command"
-FRONT_OVERLAY_BASE_URL="$BASE_URL/setka-front-b23.js"
-FRONT_OVERLAY_EXT_URL="$BASE_URL/setka-front-b24.js"
-FRONT_BRIDGE_BASE_URL="$BASE_URL/setka-front-bridge-b23.py"
-FRONT_BRIDGE_URL="$BASE_URL/setka-front-bridge-b24.py"
+OVERLAY_B23_URL="$BASE_URL/setka-front-b23.js"
+OVERLAY_B24_URL="$BASE_URL/setka-front-b24.js"
+OVERLAY_B25_URL="$BASE_URL/setka-front-b25.js"
+BRIDGE_B23_URL="$BASE_URL/setka-front-bridge-b23.py"
+BRIDGE_B24_URL="$BASE_URL/setka-front-bridge-b24.py"
+BRIDGE_B25_URL="$BASE_URL/setka-front-bridge-b25.py"
 SELF_URL="$BASE_URL/setka-boost-update.command"
 SETKA_BIN="$HOME/bin/setka"
 REPO="${SETKA_REPO:-$HOME/SETKA_LOCAL/WORKSPACE/Setka-web}"
 SELF_TARGET="$BIN_DIR/SETKA_BOOST_UPDATE.command"
 SELF_NEXT="$BIN_DIR/SETKA_BOOST_UPDATE.command.next"
 FRONT_LAUNCHER_TARGET="$BIN_DIR/SETKA_FRONT.command"
-FRONT_OVERLAY_BASE_TARGET="$FRONT_DIR/setka-b23-base.js"
-FRONT_OVERLAY_EXT_TARGET="$FRONT_DIR/setka-b24.js"
-FRONT_OVERLAY_TARGET="$FRONT_DIR/setka-b2.js"
-FRONT_BRIDGE_BASE_TARGET="$FRONT_DIR/setka-front-bridge-b23.py"
-FRONT_BRIDGE_TARGET="$FRONT_DIR/setka-front-bridge.py"
+OVERLAY_B23="$FRONT_DIR/setka-b23-base.js"
+OVERLAY_B24="$FRONT_DIR/setka-b24-trace.js"
+OVERLAY_B25="$FRONT_DIR/setka-b25-context.js"
+OVERLAY="$FRONT_DIR/setka-b2.js"
+BRIDGE_B23="$FRONT_DIR/setka-front-bridge-b23.py"
+BRIDGE_B24="$FRONT_DIR/setka-front-bridge-b24.py"
+BRIDGE="$FRONT_DIR/setka-front-bridge.py"
 STAMP="$(date '+%Y%m%d-%H%M%S')"
 LOG="$LOG_DIR/update-$STAMP.log"
 
@@ -57,7 +61,7 @@ download_atomic() {
 }
 
 echo "============================================"
-echo "SETKA · BOOST UPDATE"
+echo "SETKA · BOOST UPDATE · B2.5"
 echo "$(date)"
 echo "============================================"
 echo
@@ -67,21 +71,23 @@ TOOLING_REFRESHED=false
 if command -v curl >/dev/null 2>&1; then
   if download_atomic "$FRONT_LAUNCHER_URL" "$FRONT_LAUNCHER_TARGET" 700; then
     ln -sfn "$FRONT_LAUNCHER_TARGET" "$DESKTOP/SETKA_FRONT.command"
-    echo "PASS · SETKA_FRONT launcher refreshed"
+    echo "PASS · B2.5 launcher refreshed"
   else
     echo "HOLD · launcher refresh unavailable; existing launcher preserved"
   fi
 
-  download_atomic "$FRONT_OVERLAY_BASE_URL" "$FRONT_OVERLAY_BASE_TARGET" 600 && echo "PASS · B2.3 human layer refreshed" || echo "HOLD · B2.3 layer refresh unavailable"
-  download_atomic "$FRONT_OVERLAY_EXT_URL" "$FRONT_OVERLAY_EXT_TARGET" 600 && echo "PASS · B2.4 inspector layer refreshed" || echo "HOLD · B2.4 layer refresh unavailable"
-  if [ -f "$FRONT_OVERLAY_BASE_TARGET" ] && [ -f "$FRONT_OVERLAY_EXT_TARGET" ]; then
-    cat "$FRONT_OVERLAY_BASE_TARGET" "$FRONT_OVERLAY_EXT_TARGET" > "$FRONT_OVERLAY_TARGET.tmp" && mv "$FRONT_OVERLAY_TARGET.tmp" "$FRONT_OVERLAY_TARGET"
-    chmod 600 "$FRONT_OVERLAY_TARGET" 2>/dev/null || true
-    echo "PASS · B2.4 combined front overlay ready"
+  download_atomic "$OVERLAY_B23_URL" "$OVERLAY_B23" 600 && echo "PASS · B2.3 human/color layer refreshed" || echo "HOLD · B2.3 layer refresh unavailable"
+  download_atomic "$OVERLAY_B24_URL" "$OVERLAY_B24" 600 && echo "PASS · B2.4 trace layer refreshed" || echo "HOLD · B2.4 trace layer refresh unavailable"
+  download_atomic "$OVERLAY_B25_URL" "$OVERLAY_B25" 600 && echo "PASS · B2.5 event-context layer refreshed" || echo "HOLD · B2.5 event-context layer refresh unavailable"
+  if [ -f "$OVERLAY_B23" ] && [ -f "$OVERLAY_B24" ] && [ -f "$OVERLAY_B25" ]; then
+    cat "$OVERLAY_B23" "$OVERLAY_B24" "$OVERLAY_B25" > "$OVERLAY.tmp" && mv "$OVERLAY.tmp" "$OVERLAY"
+    chmod 600 "$OVERLAY" 2>/dev/null || true
+    echo "PASS · B2.5 combined overlay ready"
   fi
 
-  download_atomic "$FRONT_BRIDGE_BASE_URL" "$FRONT_BRIDGE_BASE_TARGET" 700 && echo "PASS · B2.3 base bridge refreshed" || echo "HOLD · B2.3 base bridge refresh unavailable"
-  download_atomic "$FRONT_BRIDGE_URL" "$FRONT_BRIDGE_TARGET" 700 && echo "PASS · B2.4 trace bridge refreshed" || echo "HOLD · B2.4 bridge refresh unavailable"
+  download_atomic "$BRIDGE_B23_URL" "$BRIDGE_B23" 700 && echo "PASS · B2.3 bridge refreshed" || echo "HOLD · B2.3 bridge refresh unavailable"
+  download_atomic "$BRIDGE_B24_URL" "$BRIDGE_B24" 700 && echo "PASS · B2.4 bridge refreshed" || echo "HOLD · B2.4 bridge refresh unavailable"
+  download_atomic "$BRIDGE_B25_URL" "$BRIDGE" 700 && echo "PASS · B2.5 bridge refreshed" || echo "HOLD · B2.5 bridge refresh unavailable"
 
   if curl -fsSL "$SELF_URL" -o "$SELF_NEXT"; then
     chmod 700 "$SELF_NEXT"
@@ -114,20 +120,16 @@ if [ "$rc" -ne 0 ]; then
 fi
 
 echo
-echo "[2/5] LOCAL FRONT MIRROR REFRESH"
+echo "[2/5] LOCAL FRONT BASE REFRESH"
 TMP="$FRONT_DIR/index.html.tmp"
 TARGET="$FRONT_DIR/index.html"
 if command -v curl >/dev/null 2>&1 && curl -fsSL "$FRONT_URL" -o "$TMP"; then
   mv "$TMP" "$TARGET"
   chmod 600 "$TARGET" 2>/dev/null || true
-  echo "PASS · local front cache refreshed"
+  echo "PASS · base data shell refreshed"
 else
   rm -f "$TMP"
-  if [ -f "$TARGET" ]; then
-    echo "HOLD · front refresh unavailable; existing cached front preserved"
-  else
-    echo "HOLD · front refresh unavailable; no cached front yet"
-  fi
+  [ -f "$TARGET" ] && echo "HOLD · base refresh unavailable; cached shell preserved" || echo "HOLD · base refresh unavailable; no cached shell"
 fi
 
 echo
@@ -138,11 +140,7 @@ if [ -d "$REPO/.git" ]; then
     branch="$(git -C "$REPO" branch --show-current 2>/dev/null || true)"
     dirty="$(git -C "$REPO" status --porcelain 2>/dev/null || true)"
     echo "branch: ${branch:-DETACHED}"
-    if [ -n "$dirty" ]; then
-      echo "SAFE HOLD · local changes detected; no merge performed"
-    else
-      echo "SAFE · working tree clean; no merge/promotion performed"
-    fi
+    [ -n "$dirty" ] && echo "SAFE HOLD · local changes detected; no merge performed" || echo "SAFE · working tree clean; no merge/promotion performed"
   else
     echo "HOLD · Git refs fetch failed; verified core update remains valid"
   fi
@@ -167,18 +165,18 @@ fi
 
 if [ -x "$FRONT_LAUNCHER_TARGET" ]; then
   nohup "$FRONT_LAUNCHER_TARGET" >"$LOG_DIR/front-launch-$STAMP.log" 2>&1 &
-  echo "PASS · B2.4 front launcher invoked"
+  echo "PASS · B2.5 front launcher invoked"
 fi
 
 cat <<'TXT'
 ============================================
-SETKA BOOST UPDATE · COMPLETE
-- scoped update path used
-- B2.4 event inspector and recorded causal trace replay refreshed
+SETKA BOOST UPDATE · COMPLETE · B2.5
+- click transcript event -> event-time frozen graph context
+- BEFORE / EVENT / AFTER / RETURN CURRENT navigation
+- recorded causal trace replay remains evidence-only
 - human Russian remains default; SYS exposes raw terms
-- graph trace colors are presentation only
-- temporal trace connectors are NOT graph edges
-- unknown/unrecorded causal paths are never invented
+- unknown causal paths are never invented
+- front version and data baseline are separated: FRONT B2.5 / DATA B1
 - device token remains in macOS Keychain and is not exposed to browser JS
 - no service_role required on Mac
 - no CANON promotion performed
@@ -186,5 +184,5 @@ SETKA BOOST UPDATE · COMPLETE
 ============================================
 TXT
 
-notify "SETKA update complete"
+notify "SETKA B2.5 update complete"
 finish_wait
