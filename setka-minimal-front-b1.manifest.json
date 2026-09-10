@@ -1,0 +1,16 @@
+{
+  "artifact": "SETKA_MINIMAL_FRONT_B1",
+  "versionRef": "SETKA-SYS-20260910-B1",
+  "forkEventNo": 6766,
+  "sourceSha256": "2651bc3d960bb5431cb957a4a10bfb7690cb48a253438ccfc14d2725874f1566",
+  "cloudMirrorPath": "/Setka-web/setka-minimal-front-b1.html",
+  "localDefaultUrl": "http://127.0.0.1:8765/",
+  "runtimeTruth": {
+    "events": "REPLAY_PLUS_REALTIME_POSTGRES_CHANGES",
+    "graphTopology": "FROZEN_SNAPSHOT",
+    "liveGraph": "LIVE_ACTIVITY_PULSE_UNLESS_NEW_REAL_SNAPSHOT_BOUND",
+    "modeButtons": "OBSERVATION_BRANCH_VIEW_NOT_RUNTIME_ACTIVATION"
+  },
+  "canonMutation": false,
+  "deploymentRole": "DELIVERY_MIRROR_ONLY"
+}
