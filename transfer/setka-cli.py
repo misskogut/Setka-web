@@ -14,6 +14,16 @@ ROOT = Path.home() / ".setka"
 DEVICE_FILE = ROOT / "device.json"
 CURRENT_FILE = ROOT / "CURRENT_CORE_VERSION"
 
+MODE_BRANCHES = {
+    "canon": "setka/canon-b1",
+    "linear": "setka/linear",
+    "self": "setka/self-organized",
+    "self-organized": "setka/self-organized",
+    "motorway": "setka/motorway-lab",
+    "motorway-lab": "setka/motorway-lab",
+    "integration": "setka/integration",
+}
+
 
 def jdump(obj):
     return json.dumps(obj, ensure_ascii=False, indent=2, sort_keys=True)
@@ -186,6 +196,90 @@ def install_verified(payload, manifest, anchor, checks, version_ref, package_ref
     return receipt, package_path, receipt_path
 
 
+def git_repo_root():
+    try:
+        root = subprocess.check_output(
+            ["git", "rev-parse", "--show-toplevel"], text=True, stderr=subprocess.DEVNULL
+        ).strip()
+    except Exception:
+        fail("SETKA_MODE_NOT_IN_GIT_REPOSITORY", "Run setka mode from inside the Setka-web repository", code=6)
+    return root
+
+
+def git_current_branch(repo):
+    try:
+        return subprocess.check_output(
+            ["git", "-C", repo, "branch", "--show-current"], text=True, stderr=subprocess.DEVNULL
+        ).strip()
+    except Exception:
+        return ""
+
+
+def mode_for_branch(branch):
+    canonical = {
+        "setka/canon-b1": "canon",
+        "setka/linear": "linear",
+        "setka/self-organized": "self-organized",
+        "setka/motorway-lab": "motorway-lab",
+        "setka/integration": "integration",
+    }
+    return canonical.get(branch)
+
+
+def cmd_mode():
+    repo = git_repo_root()
+    current_branch = git_current_branch(repo)
+    current_mode = mode_for_branch(current_branch)
+
+    if len(sys.argv) < 3:
+        print(jdump({
+            "ok": True,
+            "state": "SETKA_MODE_STATUS",
+            "currentMode": current_mode,
+            "currentBranch": current_branch,
+            "modes": {
+                "canon": {"branch": "setka/canon-b1", "readOnlyBaseline": True},
+                "linear": {"branch": "setka/linear", "readOnlyBaseline": False},
+                "self": {"branch": "setka/self-organized", "readOnlyBaseline": False},
+                "motorway": {"branch": "setka/motorway-lab", "readOnlyBaseline": False},
+                "integration": {"branch": "setka/integration", "readOnlyBaseline": False},
+            },
+        }))
+        return
+
+    requested = sys.argv[2].strip().lower()
+    target = MODE_BRANCHES.get(requested)
+    if not target:
+        fail("UNKNOWN_SETKA_MODE", "Supported: canon | linear | self | motorway | integration", code=6)
+
+    dirty = subprocess.check_output(
+        ["git", "-C", repo, "status", "--porcelain"], text=True
+    ).strip()
+    if dirty:
+        fail(
+            "SETKA_MODE_SWITCH_BLOCKED_DIRTY_TREE",
+            "Commit or stash current changes before switching SETKA mode.",
+            details={"currentBranch": current_branch, "requestedMode": requested},
+            code=7,
+        )
+
+    proc = subprocess.run(
+        ["git", "-C", repo, "switch", target], text=True, capture_output=True
+    )
+    if proc.returncode != 0:
+        fail("SETKA_MODE_SWITCH_FAILED", proc.stderr.strip() or proc.stdout.strip(), code=7)
+
+    canonical_mode = mode_for_branch(target)
+    print(jdump({
+        "ok": True,
+        "state": "SETKA_MODE_ACTIVE",
+        "mode": canonical_mode,
+        "branch": target,
+        "readOnlyBaseline": target == "setka/canon-b1",
+        "canonMutationPerformed": False,
+    }))
+
+
 def cmd_update():
     device = load_device()
     token = keychain_token()
@@ -228,6 +322,15 @@ def cmd_status():
                 receipt = json.loads(path.read_text())
             except Exception:
                 receipt = None
+
+    try:
+        repo = git_repo_root()
+        branch = git_current_branch(repo)
+        mode = mode_for_branch(branch)
+    except SystemExit:
+        branch = None
+        mode = None
+
     print(jdump({
         "ok": True,
         "state": "MAC_DEVICE_READY",
@@ -235,6 +338,8 @@ def cmd_status():
         "branchRef": device.get("branchRef"),
         "credentialScope": device.get("scope"),
         "currentVersionRef": current,
+        "gitBranch": branch,
+        "setkaMode": mode,
         "lastUpdateReceipt": receipt,
     }))
 
@@ -245,8 +350,14 @@ def main():
         cmd_update()
     elif command == "status":
         cmd_status()
+    elif command in {"mode", "modes"}:
+        cmd_mode()
     else:
-        fail("UNKNOWN_SETKA_COMMAND", f"Supported: setka update | setka status", code=1)
+        fail(
+            "UNKNOWN_SETKA_COMMAND",
+            "Supported: setka update | setka status | setka mode [canon|linear|self|motorway|integration]",
+            code=1,
+        )
 
 
 if __name__ == "__main__":
