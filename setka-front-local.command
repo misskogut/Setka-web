@@ -3,48 +3,65 @@ set -u
 
 FRONT_DIR="$HOME/.setka/front"
 PORT="${SETKA_FRONT_PORT:-8765}"
-REMOTE="https://raw.githubusercontent.com/misskogut/Setka-web/main/setka-minimal-front-b1.html"
-TMP="$FRONT_DIR/index.html.tmp"
+BASE_URL="https://raw.githubusercontent.com/misskogut/Setka-web/main"
+FRONT_URL="$BASE_URL/setka-minimal-front-b1.html"
+OVERLAY_URL="$BASE_URL/setka-front-b2.js"
+BRIDGE_URL="$BASE_URL/setka-front-bridge.py"
 TARGET="$FRONT_DIR/index.html"
+OVERLAY="$FRONT_DIR/setka-b2.js"
+BRIDGE="$FRONT_DIR/setka-front-bridge.py"
 URL="http://127.0.0.1:$PORT/"
+HEALTH="$URL/api/b2/health"
 
 mkdir -p "$FRONT_DIR"
 
-echo "SETKA LOCAL FRONT · preparing"
-if command -v curl >/dev/null 2>&1; then
-  if curl -fsSL "$REMOTE" -o "$TMP"; then
-    mv "$TMP" "$TARGET"
-    chmod 600 "$TARGET" 2>/dev/null || true
-    echo "SETKA LOCAL FRONT · source refreshed"
-  else
-    rm -f "$TMP"
-    if [ -f "$TARGET" ]; then
-      echo "SETKA LOCAL FRONT · network unavailable, using cached source"
-    else
-      echo "SETKA LOCAL FRONT · no source available"
-      exit 1
-    fi
+echo "SETKA LOCAL FRONT · preparing B2"
+refresh_file() {
+  local remote="$1" target="$2" tmp="$2.tmp"
+  if command -v curl >/dev/null 2>&1 && curl -fsSL "$remote" -o "$tmp"; then
+    mv "$tmp" "$target"
+    chmod 600 "$target" 2>/dev/null || true
+    return 0
   fi
-elif [ ! -f "$TARGET" ]; then
-  echo "SETKA LOCAL FRONT · curl missing and no cached source"
-  exit 1
+  rm -f "$tmp"
+  return 1
+}
+
+refresh_file "$FRONT_URL" "$TARGET" && echo "SETKA LOCAL FRONT · base refreshed" || echo "SETKA LOCAL FRONT · base cache preserved"
+refresh_file "$OVERLAY_URL" "$OVERLAY" && echo "SETKA LOCAL FRONT · B2 overlay refreshed" || echo "SETKA LOCAL FRONT · B2 overlay cache preserved"
+refresh_file "$BRIDGE_URL" "$BRIDGE" && echo "SETKA LOCAL FRONT · B2 bridge refreshed" || echo "SETKA LOCAL FRONT · B2 bridge cache preserved"
+chmod 700 "$BRIDGE" 2>/dev/null || true
+
+if [ ! -f "$TARGET" ] || [ ! -f "$OVERLAY" ] || [ ! -f "$BRIDGE" ]; then
+  echo "STOP · SETKA LOCAL FRONT · B2 files incomplete"
+  exit 2
 fi
 
-# Idempotent launch: a second double-click must never spawn a second server.
-if command -v curl >/dev/null 2>&1 && curl -fsS --max-time 2 "$URL" 2>/dev/null | grep -qi "SETKA"; then
-  echo "SETKA LOCAL FRONT · ALREADY RUNNING · $URL"
+# Current B2 server already alive: simply reopen it.
+if command -v curl >/dev/null 2>&1 && curl -fsS --max-time 2 "$HEALTH" 2>/dev/null | grep -q "SETKA_LOCAL_FRONT_B2_READY"; then
+  echo "SETKA LOCAL FRONT · ALREADY RUNNING · B2 · $URL"
   (open "$URL" >/dev/null 2>&1 &) || true
   exit 0
 fi
 
-# If something else owns the port, stop explicitly instead of printing a Python traceback.
+# Upgrade only our known legacy plain http.server. Never kill an unknown owner of the port.
 if command -v lsof >/dev/null 2>&1 && lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
-  echo "STOP · SETKA LOCAL FRONT · PORT $PORT IS ALREADY IN USE BY ANOTHER PROCESS"
-  echo "No second server was started."
-  exit 48
+  PID="$(lsof -nP -t -iTCP:"$PORT" -sTCP:LISTEN 2>/dev/null | head -1)"
+  CMD="$(ps -p "$PID" -o command= 2>/dev/null || true)"
+  if printf '%s' "$CMD" | grep -q "python3 -m http.server $PORT"; then
+    echo "SETKA LOCAL FRONT · upgrading legacy localhost server to B2 bridge"
+    kill "$PID" 2>/dev/null || true
+    for _ in 1 2 3 4 5 6 7 8 9 10; do
+      lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1 || break
+      sleep 0.2
+    done
+  else
+    echo "STOP · SETKA LOCAL FRONT · PORT $PORT IS OWNED BY ANOTHER PROCESS"
+    echo "$CMD"
+    exit 48
+  fi
 fi
 
-cd "$FRONT_DIR"
-echo "SETKA LOCAL FRONT · STARTING · $URL"
-(sleep 0.25; open "$URL" >/dev/null 2>&1) &
-exec python3 -m http.server "$PORT" --bind 127.0.0.1
+echo "SETKA LOCAL FRONT · STARTING B2 · $URL"
+(sleep 0.35; open "$URL" >/dev/null 2>&1) &
+exec python3 "$BRIDGE" --port "$PORT"
