@@ -4,12 +4,19 @@
   const esc = (v) => String(v ?? "—").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
   const pretty = (v) => typeof v === "string" ? v : JSON.stringify(v, null, 2);
   const currentMode = () => qs('.mode-button.active')?.dataset?.mode || 'INTEGRATION';
+  const normalizeCommand = (v) => String(v || '').trim().toUpperCase().replace(/\s+/g,' ');
+  const EXECUTABLE = new Set([
+    'STATUS','/STATUS','SNAPSHOT','/SNAPSHOT','GRAPH','/GRAPH','EVENTS','/EVENTS','REPORT','/REPORT',
+    'RUN MOTORWAY','RUN MOTORWAY-LAB','ACTIVATE MOTORWAY','ACTIVATE MOTORWAY-LAB',
+    'RUN LINEAR','ACTIVATE LINEAR','RUN SELF','RUN SELF-ORGANIZED','ACTIVATE SELF-ORGANIZED',
+    'RUN INTEGRATION','ACTIVATE INTEGRATION','RUN CANON','ACTIVATE CANON'
+  ]);
 
   const style = document.createElement('style');
   style.textContent = `
     .b2-local-badge{padding:7px 9px;border:1px solid rgba(135,233,255,.5);border-radius:9px;color:var(--cyan);font-size:8px;letter-spacing:.09em;white-space:nowrap}
-    #computer-panel{padding-bottom:182px}
-    #computer-panel>.panel-scroll{height:calc(100% - 55px);padding-bottom:190px}
+    #computer-panel{padding-bottom:196px}
+    #computer-panel>.panel-scroll{height:calc(100% - 55px);padding-bottom:204px}
     .b2-command-dock{position:absolute;z-index:4;left:0;right:0;bottom:0;padding:10px 12px;background:rgba(5,7,8,.98);border-top:1px solid var(--line)}
     .b2-quick{display:flex;gap:5px;overflow-x:auto;margin-bottom:8px;scrollbar-width:none}.b2-quick::-webkit-scrollbar{display:none}
     .b2-quick button,.b2-tabs button,.b2-load{border:1px solid var(--line);background:#0b0e10;color:var(--text);border-radius:7px;padding:7px 8px;font:inherit;font-size:8px;white-space:nowrap;cursor:pointer}
@@ -17,7 +24,8 @@
     .b2-command-row{display:grid;grid-template-columns:1fr auto;gap:6px}
     .b2-command-row input,.b2-search{width:100%;border:1px solid var(--line);background:#07090a;color:var(--text);border-radius:7px;padding:9px;font:inherit;font-size:9px;outline:none}
     .b2-command-row button{border:1px solid rgba(157,255,190,.55);background:#0d1711;color:var(--green);border-radius:7px;padding:0 11px;font:inherit;font-size:9px;cursor:pointer}
-    .b2-command-state{margin-top:7px;color:var(--muted);font-size:8px;line-height:1.4;max-height:48px;overflow:auto;white-space:pre-wrap}
+    .b2-command-state{margin-top:7px;color:var(--muted);font-size:8px;line-height:1.42;max-height:66px;overflow:auto;white-space:pre-wrap}
+    .b2-command-state.spotlight{color:var(--green)}
     .b2-tabs{display:flex;gap:5px;padding:8px 10px;border-bottom:1px solid var(--line);background:rgba(5,7,8,.96);overflow-x:auto;scrollbar-width:none}.b2-tabs::-webkit-scrollbar{display:none}
     .b2-full{display:none;height:calc(100% - 96px);overflow:auto;padding:9px 10px 18px}.b2-full.open{display:block}
     .b2-transcript-head{display:grid;grid-template-columns:1fr auto;gap:7px;align-items:center;margin-bottom:8px;position:sticky;top:0;background:rgba(12,15,17,.98);padding:3px 0 8px;z-index:2}
@@ -33,7 +41,7 @@
   function addLocalBadge(){
     const actions = qs('.top-actions');
     if(actions && !qs('.b2-local-badge',actions)){
-      const b=document.createElement('span'); b.className='b2-local-badge'; b.textContent='B2 · LOCAL COMMAND';
+      const b=document.createElement('span'); b.className='b2-local-badge'; b.textContent='B2.1 · SPOTLIGHT';
       actions.insertBefore(b, actions.firstChild);
     }
   }
@@ -45,6 +53,37 @@
     return data;
   }
 
+  async function graphBridge(timeoutMs=1600){
+    const started=Date.now();
+    while(Date.now()-started<timeoutMs){
+      const bridge=window.SETKA_GRAPH_BRIDGE;
+      if(bridge?.ready?.()) return bridge;
+      await new Promise(r=>setTimeout(r,40));
+    }
+    return window.SETKA_GRAPH_BRIDGE || null;
+  }
+
+  function isExecutableCommand(command){
+    const norm=normalizeCommand(command);
+    if(EXECUTABLE.has(norm)) return true;
+    if(norm.startsWith('/')) return true;
+    if(/^[A-Z0-9_-]+(?:\.[A-Z0-9_-]+)+$/.test(norm)) return true;
+    return false;
+  }
+
+  async function recordSpotlightRequest(command){
+    try{
+      return await api('/api/b2/command',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({command,mode:currentMode()})
+      });
+    }catch(e){
+      console.warn('SETKA spotlight ledger record unavailable',e);
+      return null;
+    }
+  }
+
   function installCommandDock(){
     const panel=qs('#computer-panel');
     if(!panel || qs('.b2-command-dock',panel)) return;
@@ -53,20 +92,38 @@
       <div class="b2-quick">
         ${['STATUS','SNAPSHOT','GRAPH','EVENTS','REPORT'].map(c=>`<button type="button" data-b2-command="${c}">${c}</button>`).join('')}
       </div>
-      <div class="b2-command-row"><input id="b2-command-input" placeholder="Поручение SETKA…" autocomplete="off"><button id="b2-command-send" type="button">SEND</button></div>
-      <div class="b2-command-state" id="b2-command-state">LOCAL PRESIDENT INGRESS · non-CANON bounded commands</div>`;
+      <div class="b2-command-row"><input id="b2-command-input" placeholder="Команда или слово для подсветки…" autocomplete="off"><button id="b2-command-send" type="button">SEND</button></div>
+      <div class="b2-command-state" id="b2-command-state">LOCAL PRESIDENT INGRESS · command → else semantic spotlight · real graph only</div>`;
     panel.appendChild(dock);
 
-    const input=qs('#b2-command-input',dock), state=qs('#b2-command-state',dock), send=qs('#b2-command-send',dock);
+    const input=qs('#b2-command-input',dock), status=qs('#b2-command-state',dock), send=qs('#b2-command-send',dock);
     const run=async(command)=>{
       command=String(command||'').trim(); if(!command) return;
-      state.textContent=`SENDING · ${command}`; send.disabled=true;
+      status.classList.remove('spotlight');
+      status.textContent=`ROUTING · ${command}`; send.disabled=true;
       try{
+        if(!isExecutableCommand(command)){
+          const bridge=await graphBridge();
+          const spot=bridge?.spotlight?.(command);
+          if(spot?.ok && Number(spot.directMatches)>0){
+            status.classList.add('spotlight');
+            status.textContent=[
+              `SPOTLIGHT · ${command.toUpperCase()}`,
+              `MATCH: ${spot.matchKind} · DIRECT ${spot.directMatches} · RELATED ${spot.relatedNodes} · REAL EDGES ${spot.realEdges}`,
+              `SNAPSHOT: ${spot.snapshotRef || '—'} · TOPOLOGY UNCHANGED`,
+              spot.rendered?.truncated ? 'VIEW LIMITED FOR PERFORMANCE · COUNTS ABOVE ARE FULL' : 'REAL GRAPH ONLY · NO SYNTHETIC RELATIONS'
+            ].join('\n');
+            const ledger=await recordSpotlightRequest(command);
+            if(ledger?.commandRef) status.textContent += `\nRECORDED · ${ledger.commandRef}`;
+            return;
+          }
+        }
+
         const result=await api('/api/b2/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({command,mode:currentMode()})});
         const inner=result.result||result;
-        state.textContent=`${result.state || 'DONE'} · ${result.commandRef || ''}\n${pretty(inner).slice(0,1500)}`;
-        if(result.state==='RUNTIME_ACTIVATION_NOT_BOUND' || inner?.state==='RUNTIME_ACTIVATION_NOT_BOUND') state.textContent=`RUNTIME ACTIVATION NOT BOUND · view ≠ execution\n${pretty(inner)}`;
-      }catch(e){ state.textContent=`STOP · ${e.data?.state || e.message}\n${pretty(e.data||'')}`; }
+        status.textContent=`${result.state || 'DONE'} · ${result.commandRef || ''}\n${pretty(inner).slice(0,1500)}`;
+        if(result.state==='RUNTIME_ACTIVATION_NOT_BOUND' || inner?.state==='RUNTIME_ACTIVATION_NOT_BOUND') status.textContent=`RUNTIME ACTIVATION NOT BOUND · view ≠ execution\n${pretty(inner)}`;
+      }catch(e){ status.textContent=`STOP · ${e.data?.state || e.message}\n${pretty(e.data||'')}`; }
       finally{send.disabled=false;}
     };
     qsa('[data-b2-command]',dock).forEach(b=>b.addEventListener('click',()=>run(b.dataset.b2Command)));
@@ -120,8 +177,8 @@
   async function health(){
     try{
       const h=await api('/api/b2/health');
-      console.info('SETKA B2',h);
-    }catch(e){console.warn('SETKA B2 bridge unavailable',e);}
+      console.info('SETKA B2.1',h);
+    }catch(e){console.warn('SETKA B2.1 bridge unavailable',e);}
   }
 
   function boot(){ addLocalBadge(); installCommandDock(); installTranscript(); health(); }
