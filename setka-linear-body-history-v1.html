@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="color-scheme" content="dark" />
+<title>SETKA · LINEAR BODY HISTORY · PRE-B1</title>
+<style>
+:root{color-scheme:dark;--bg:#050607;--panel:rgba(8,11,12,.93);--line:#283136;--text:#edf3f1;--muted:#84918f;--green:#9dffbe;--amber:#ffd27d;--cyan:#87e9ff;font-family:"SFMono-Regular","Roboto Mono",Consolas,monospace}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;background:var(--bg);color:var(--text);overflow:hidden}.app{height:100%;display:grid;grid-template-rows:auto 1fr auto}.top{padding:max(10px,env(safe-area-inset-top)) 12px 8px;border-bottom:1px solid var(--line);background:var(--panel);backdrop-filter:blur(14px)}.brand{display:flex;gap:10px;align-items:center}.sigil{width:34px;height:34px;border:1px solid #72817f;border-radius:50%;display:grid;place-items:center;color:var(--green)}h1{font-size:12px;letter-spacing:.14em;margin:0}small{color:var(--muted)}.truth{margin-top:7px;font-size:8px;color:var(--amber);line-height:1.45}.stage{position:relative;min-height:0}.stage iframe{border:0;width:100%;height:100%;display:block;background:#050607}.overlay{position:absolute;z-index:4;left:10px;top:10px;max-width:min(420px,calc(100vw - 20px));padding:10px;border:1px solid var(--line);border-radius:10px;background:rgba(5,7,8,.84);backdrop-filter:blur(12px);pointer-events:none}.row{display:flex;justify-content:space-between;gap:12px;font-size:8px;line-height:1.5}.row b{font-weight:500}.row span:last-child{text-align:right;color:var(--green)}.controls{padding:9px 12px calc(9px + env(safe-area-inset-bottom));border-top:1px solid var(--line);background:var(--panel)}.nav{display:grid;grid-template-columns:auto auto 1fr auto auto;gap:7px;align-items:center}.nav button,.open{border:1px solid var(--line);background:#0b0e10;color:var(--text);border-radius:8px;padding:8px 10px;font:inherit;font-size:9px;cursor:pointer}.nav button:hover,.open:hover{border-color:var(--green)}input[type=range]{width:100%;accent-color:#9dffbe}.meta{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:8px}.metric{border:1px solid var(--line);border-radius:8px;padding:7px;background:#080a0b}.metric b{display:block;font-size:10px;font-weight:500}.metric span{display:block;margin-top:2px;font-size:7px;color:var(--muted)}.delta{color:var(--cyan)!important}.footerline{margin-top:7px;display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:7px;color:var(--muted)}@media(max-width:700px){.meta{grid-template-columns:repeat(2,minmax(0,1fr))}.truth{font-size:7px}.overlay{top:6px;left:6px}.nav{grid-template-columns:auto auto 1fr auto}.open{display:none}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand"><div class="sigil">S</div><div><h1>SETKA / LINEAR BODY HISTORY · PRE-B1</h1><small id="subtitle">22 real frozen snapshots · chronological replay</small></div></div>
+    <div class="truth">Это не запущенная LINEAR-ветка. Это реальная хронологическая последовательность сохранённых BODY AS GROWN слепков до общей точки B1. Геометрия каждого кадра берётся из стандартного SETKA viewer без дорисованных узлов/рёбер.</div>
+  </header>
+  <main class="stage">
+    <iframe id="viewer" title="SETKA frozen body snapshot"></iframe>
+    <div class="overlay">
+      <div class="row"><b id="step">FRAME 1 / 22</b><span id="time">—</span></div>
+      <div class="row"><small id="snap">—</small></div>
+      <div class="row"><small id="run">—</small></div>
+    </div>
+  </main>
+  <section class="controls">
+    <div class="nav"><button id="prev">←</button><button id="play">PLAY</button><input id="range" type="range" min="0" max="21" step="1" value="21"/><button id="next">→</button><button id="open" class="open">OPEN FRAME</button></div>
+    <div class="meta">
+      <div class="metric"><b id="nodes">—</b><span>GRAPH NODES · <i class="delta" id="dnodes"></i></span></div>
+      <div class="metric"><b id="grown">—</b><span>GROWN NODES · <i class="delta" id="dgrown"></i></span></div>
+      <div class="metric"><b id="edges">—</b><span>INTERNAL EDGES · <i class="delta" id="dedges"></i></span></div>
+      <div class="metric"><b id="disc">—</b><span>DISCONNECTED · <i class="delta" id="ddisc"></i></span></div>
+    </div>
+    <div class="footerline"><span id="packet">—</span><span>B1 END = BODY-GROWN-SNAPSHOT-767E5532A5F04217</span></div>
+  </section>
+</div>
+<script>
+const H=[
+{snap:'BODY-GROWN-SNAPSHOT-927501A0353C4CE6',run:'BODY-GROWN-0D0059A79631462F',time:'2026-09-07T21:55:44.842074Z',nodes:14810,grown:14778,disc:32,edges:43840,dn:0,dg:0,dd:0,de:0,packet:'VIS-D2301543320A4629'},
+{snap:'BODY-GROWN-SNAPSHOT-AA054EDE41DB47EA',run:'BODY-GROWN-8A721F0D9CF944F8',time:'2026-09-08T02:42:45.913639Z',nodes:14927,grown:14808,disc:119,edges:43893,dn:117,dg:30,dd:87,de:53,packet:'VIS-8B90EB8F87B14D96'},
+{snap:'BODY-GROWN-SNAPSHOT-4E00491563594937',run:'BODY-GROWN-BBBAD1E994124410',time:'2026-09-08T02:47:50.511070Z',nodes:14929,grown:14810,disc:119,edges:43895,dn:2,dg:2,dd:0,de:2,packet:'VIS-C82B4FECAD5D457D'},
+{snap:'BODY-GROWN-SNAPSHOT-B2928850A24A4E99',run:'BODY-GROWN-54F557D145DD487B',time:'2026-09-08T02:49:38.411082Z',nodes:14929,grown:14810,disc:119,edges:43895,dn:0,dg:0,dd:0,de:0,packet:'VIS-41D893117D6E468E'},
+{snap:'BODY-GROWN-SNAPSHOT-02A92B89371A427E',run:'BODY-GROWN-16049A68E1E64782',time:'2026-09-08T14:02:31.885633Z',nodes:14929,grown:14810,disc:119,edges:43895,dn:0,dg:0,dd:0,de:0,packet:'VIS-7836114F30CC423C'},
+{snap:'BODY-GROWN-SNAPSHOT-F186AE27ACE74306',run:'BODY-INCR-337344A097954706',time:'2026-09-08T16:53:19.131929Z',nodes:14929,grown:14810,disc:119,edges:43895,dn:0,dg:0,dd:0,de:0,packet:'VIS-69BDB8304D234B3C'},
+{snap:'BODY-GROWN-SNAPSHOT-64C45856CD624CEE',run:'BODY-INCR-0B9F10FCE6CD44B1',time:'2026-09-08T16:55:49.165485Z',nodes:14929,grown:14810,disc:119,edges:43895,dn:0,dg:0,dd:0,de:0,packet:'VIS-5A58455F6B064139'},
+{snap:'BODY-GROWN-SNAPSHOT-2009DD509A0C4DC1',run:'BODY-INCR-3716EF757D8A4CF5',time:'2026-09-08T18:56:15.818787Z',nodes:14933,grown:14812,disc:121,edges:43901,dn:4,dg:2,dd:2,de:6,packet:'VIS-D9D9999477A449C9'},
+{snap:'BODY-GROWN-SNAPSHOT-C5D737A0FBAA4EF5',run:'BODY-GROWN-7E33126AC24F4F35',time:'2026-09-09T00:08:52.869417Z',nodes:14936,grown:14813,disc:123,edges:43904,dn:3,dg:1,dd:2,de:3,packet:'VIS-ABB5E18E2EF54DAD'},
+{snap:'BODY-GROWN-SNAPSHOT-D37A74AF31644D9D',run:'BODY-GROWN-FEAC42BBB31D4AF8',time:'2026-09-09T01:11:39.872043Z',nodes:14937,grown:14816,disc:121,edges:43908,dn:1,dg:3,dd:-2,de:4,packet:'VIS-93358FD84CD64FBE'},
+{snap:'BODY-GROWN-SNAPSHOT-2EF50B255B6E45D4',run:'BODY-GROWN-352F146439DD4B6D',time:'2026-09-09T13:57:47.121161Z',nodes:14945,grown:14824,disc:121,edges:43932,dn:8,dg:8,dd:0,de:24,packet:'VIS-4858120885AE4E33'},
+{snap:'BODY-GROWN-SNAPSHOT-FF5A3DBE53404C78',run:'BODY-GROWN-31E7EC7DD45B483E',time:'2026-09-09T20:36:02.576951Z',nodes:14978,grown:14826,disc:152,edges:43934,dn:33,dg:2,dd:31,de:2,packet:'VIS-48A6A088E5D04B90'},
+{snap:'BODY-GROWN-SNAPSHOT-2202931AA3F14639',run:'BODY-GROWN-A82095E794C14EB8',time:'2026-09-09T20:37:23.757025Z',nodes:14978,grown:14854,disc:124,edges:43968,dn:0,dg:28,dd:-28,de:34,packet:'VIS-CFCBB40FD2134463'},
+{snap:'BODY-GROWN-SNAPSHOT-B093A0287CA04DC8',run:'BODY-GROWN-6B0EE34CA6E143B5',time:'2026-09-09T21:41:18.353279Z',nodes:14958,grown:14827,disc:131,edges:43935,dn:-20,dg:-27,dd:7,de:-33,packet:'VIS-06AF86BA8AF74AD7'},
+{snap:'BODY-GROWN-SNAPSHOT-6A105BC139F74A5D',run:'BODY-GROWN-D9F0E550C1BD4DC8',time:'2026-09-09T21:43:12.458903Z',nodes:14978,grown:14854,disc:124,edges:43968,dn:20,dg:27,dd:-7,de:33,packet:'VIS-885B4ACBCFE340A8'},
+{snap:'BODY-GROWN-SNAPSHOT-E27EE8126DE844EC',run:'BODY-GROWN-575EC4D961BC4F18',time:'2026-09-09T21:47:33.740106Z',nodes:14955,grown:14831,disc:124,edges:43940,dn:-23,dg:-23,dd:0,de:-28,packet:'VIS-34F565FA91BA4BFE'},
+{snap:'BODY-GROWN-SNAPSHOT-4A2195B9BE044B53',run:'BODY-GROWN-DFF2C422BB60440E',time:'2026-09-09T21:50:34.802471Z',nodes:14955,grown:14831,disc:124,edges:43940,dn:0,dg:0,dd:0,de:0,packet:'VIS-E1E87314D2CE4C2B'},
+{snap:'BODY-GROWN-SNAPSHOT-1A8F786CAF8E48D1',run:'BODY-GROWN-20A08361362C4AF0',time:'2026-09-10T02:19:20.237221Z',nodes:14955,grown:14831,disc:124,edges:43940,dn:0,dg:0,dd:0,de:0,packet:'VIS-911AB060FF0841BF'},
+{snap:'BODY-GROWN-SNAPSHOT-85A96B37D38143C4',run:'BODY-INCR-EFA019C9F0ED4890',time:'2026-09-10T12:23:58.100149Z',nodes:14948,grown:14824,disc:124,edges:43932,dn:-7,dg:-7,dd:0,de:-8,packet:'VIS-EF36E4082E144877'},
+{snap:'BODY-GROWN-SNAPSHOT-775197FD80E04084',run:'BODY-DTR-INCR-00AEA4FA7732412D',time:'2026-09-10T12:33:50.290113Z',nodes:14955,grown:14831,disc:124,edges:43940,dn:7,dg:7,dd:0,de:8,packet:'VIS-E1A88282A1CD4004'},
+{snap:'BODY-GROWN-SNAPSHOT-0724F0627BC24DA8',run:'BODY-DTR-SCOPED-794D737F317240EA',time:'2026-09-10T12:47:33.043806Z',nodes:14955,grown:14831,disc:124,edges:43940,dn:0,dg:0,dd:0,de:0,packet:'VIS-3A26150B75934FD2'},
+{snap:'BODY-GROWN-SNAPSHOT-767E5532A5F04217',run:'BODY-DTR-SCOPED-9190FE6B9FEB42DA',time:'2026-09-10T12:47:33.043806Z',nodes:14962,grown:14838,disc:124,edges:43948,dn:7,dg:7,dd:0,de:8,packet:'VIS-7D3FE910D0B44247'}
+];
+const $=id=>document.getElementById(id);let i=H.length-1,timer=null;
+const signed=n=>`${n>0?'+':''}${n}`;
+function render(){const h=H[i];$('range').value=i;$('step').textContent=`FRAME ${i+1} / ${H.length}`;$('time').textContent=new Date(h.time).toLocaleString('ru-RU');$('snap').textContent=h.snap;$('run').textContent=h.run;$('nodes').textContent=h.nodes.toLocaleString('ru-RU');$('grown').textContent=h.grown.toLocaleString('ru-RU');$('edges').textContent=h.edges.toLocaleString('ru-RU');$('disc').textContent=h.disc.toLocaleString('ru-RU');$('dnodes').textContent=signed(h.dn);$('dgrown').textContent=signed(h.dg);$('dedges').textContent=signed(h.de);$('ddisc').textContent=signed(h.dd);$('packet').textContent=h.packet;const url=`setka-visualization.html?packet=${encodeURIComponent(h.packet)}&linear_frame=${i+1}`;$('viewer').src=url;history.replaceState(null,'',`?frame=${i+1}`)}
+function move(d){i=Math.max(0,Math.min(H.length-1,i+d));render()}
+$('prev').onclick=()=>move(-1);$('next').onclick=()=>move(1);$('range').oninput=e=>{i=Number(e.target.value);render()};$('open').onclick=()=>window.open(`setka-visualization.html?packet=${encodeURIComponent(H[i].packet)}`,'_blank');$('play').onclick=()=>{if(timer){clearInterval(timer);timer=null;$('play').textContent='PLAY';return} $('play').textContent='PAUSE';timer=setInterval(()=>{if(i>=H.length-1){clearInterval(timer);timer=null;$('play').textContent='PLAY';return}i++;render()},5000)};
+const q=new URLSearchParams(location.search);if(q.has('frame')) i=Math.max(0,Math.min(H.length-1,Number(q.get('frame'))-1||0));render();
+</script>
+</body>
+</html>
