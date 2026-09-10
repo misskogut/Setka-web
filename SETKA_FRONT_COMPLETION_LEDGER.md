@@ -36,9 +36,12 @@ These remain **observation branch views** until an authoritative runtime activat
 - focus root
 - presentation color mode cycle: `GENERATION / TYPE / FAMILY`
 - semantic spotlight from free text
+- B2.4 recorded-event trace replay on the real frozen graph when explicit trace data exists
 
 Color modes are deterministic presentation only. They do not create ontology or change graph facts.
 Spotlight colors: direct match = green; related real nodes = cyan; real incident edges = amber.
+Trace colors: recorded/ingress = cyan; route = violet; execution/materialization = amber; success = green; failure = red.
+Temporal trace connectors show recorded order only and are **not graph edges**.
 
 ### Onboard computer
 - STATUS
@@ -54,15 +57,34 @@ Spotlight colors: direct match = green; related real nodes = cyan; real incident
 - full SYSTEM transcript by cursor
 - selected BRANCH transcript by cursor
 - client-side search over loaded records
-- click loaded record to open event summary card
+- click SYSTEM/BRANCH record to open B2.4 event inspector
+- full recorded `details` view
+- clickable recorded refs and related-event navigation
+- `ТРАССЫ / TRACES` index for events already present in explicit replay/causal-trace tables
+- TRACE controls: play / pause / previous / next / seek / clear
+
+## B2.4 truth boundary
+
+**EVENT INSPECTOR = IMPLEMENTED for SYSTEM and BRANCH transcript records.**
+The inspector exposes the recorded event fields, details, refs and same-entity/source navigation.
+
+**CAUSAL TRACE PLAYER = IMPLEMENTED only where SETKA already has an explicit recorded trace/replay.**
+Current evidence sources include:
+- `foundation.full_body_causal_update_replays_v1`
+- `foundation.self_extension_integration_replays_v1`
+- `foundation.body_update_assimilation_replays_v1`
+- recorded command lifecycle when a request ref is explicitly available
+
+If an event exists but no causal execution trace was recorded, the front must state that clearly and must not infer a path.
+An unmapped recorded step stays unplaced on the graph.
+Therefore **per-event trace coverage is still incomplete** even though the player itself now exists.
 
 ## Open gaps — must not be represented as DONE
 
-1. **EVENT INSPECTOR FULL + CAUSAL TRACE REPLAY**
-   - President must be able to click any transcript event and see all authorized recorded fields and provenance.
-   - TRACE must replay only recorded activity/mappings.
-   - Unmapped trace steps must say `TRACE STEP RECORDED · GRAPH ENTITY NOT MAPPED`.
-   - Real topology changes must be distinguishable from activity pulses.
+1. **TRACE COVERAGE / PROVENANCE COMPLETENESS**
+   - Not every historical event has a causal trace.
+   - New important runtime tasks should persist trace stages and entity mappings as part of normal execution so the front can replay them later.
+   - FRONT_COMMAND records without a mapped system/branch event need a first-class inspector binding.
 
 2. **BRANCH RUNTIME ACTIVATION**
    - VIEW != ACTIVATE.
