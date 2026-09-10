@@ -43,8 +43,9 @@ if [ ! -x "$SETKA_BIN" ]; then
 fi
 
 echo "[1/4] VERIFIED CORE UPDATE"
-if ! "$SETKA_BIN" update; then
-  rc=$?
+"$SETKA_BIN" update
+rc=$?
+if [ "$rc" -ne 0 ]; then
   echo "STOP · CORE UPDATE FAILED · rc=$rc"
   notify "Обновление SETKA остановлено: core update failed"
   finish_wait
