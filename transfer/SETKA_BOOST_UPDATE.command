@@ -2,15 +2,22 @@
 set -u
 
 ROOT="$HOME/.setka"
+BIN_DIR="$ROOT/bin"
 LOG_DIR="$ROOT/logs"
 FRONT_DIR="$ROOT/front"
+DESKTOP="$HOME/Desktop"
 FRONT_URL="https://raw.githubusercontent.com/misskogut/Setka-web/main/setka-minimal-front-b1.html"
+FRONT_LAUNCHER_URL="https://raw.githubusercontent.com/misskogut/Setka-web/main/setka-front-local.command"
+SELF_URL="https://raw.githubusercontent.com/misskogut/Setka-web/main/setka-boost-update.command"
 SETKA_BIN="$HOME/bin/setka"
 REPO="${SETKA_REPO:-$HOME/SETKA_LOCAL/WORKSPACE/Setka-web}"
+SELF_TARGET="$BIN_DIR/SETKA_BOOST_UPDATE.command"
+SELF_NEXT="$BIN_DIR/SETKA_BOOST_UPDATE.command.next"
+FRONT_LAUNCHER_TARGET="$BIN_DIR/SETKA_FRONT.command"
 STAMP="$(date '+%Y%m%d-%H%M%S')"
 LOG="$LOG_DIR/update-$STAMP.log"
 
-mkdir -p "$LOG_DIR" "$FRONT_DIR"
+mkdir -p "$BIN_DIR" "$LOG_DIR" "$FRONT_DIR" "$DESKTOP"
 exec > >(tee -a "$LOG") 2>&1
 
 notify() {
@@ -33,6 +40,31 @@ echo "$(date)"
 echo "============================================"
 echo
 
+echo "[0/5] TOOLING REFRESH"
+TOOLING_REFRESHED=false
+if command -v curl >/dev/null 2>&1; then
+  if curl -fsSL "$FRONT_LAUNCHER_URL" -o "$FRONT_LAUNCHER_TARGET.tmp"; then
+    mv "$FRONT_LAUNCHER_TARGET.tmp" "$FRONT_LAUNCHER_TARGET"
+    chmod 700 "$FRONT_LAUNCHER_TARGET"
+    ln -sfn "$FRONT_LAUNCHER_TARGET" "$DESKTOP/SETKA_FRONT.command"
+    echo "PASS · SETKA_FRONT launcher refreshed"
+  else
+    rm -f "$FRONT_LAUNCHER_TARGET.tmp"
+    echo "HOLD · launcher refresh unavailable; existing launcher preserved"
+  fi
+
+  if curl -fsSL "$SELF_URL" -o "$SELF_NEXT"; then
+    chmod 700 "$SELF_NEXT"
+    TOOLING_REFRESHED=true
+    echo "PASS · next updater staged"
+  else
+    rm -f "$SELF_NEXT"
+    echo "HOLD · updater self-refresh unavailable; current updater preserved"
+  fi
+else
+  echo "HOLD · curl unavailable; tooling refresh skipped"
+fi
+
 if [ ! -x "$SETKA_BIN" ]; then
   echo "STOP · SETKA CLI NOT FOUND: $SETKA_BIN"
   notify "Обновление остановлено: SETKA CLI не найден"
@@ -40,7 +72,8 @@ if [ ! -x "$SETKA_BIN" ]; then
   exit 2
 fi
 
-echo "[1/4] VERIFIED CORE UPDATE"
+echo
+echo "[1/5] VERIFIED CORE UPDATE"
 "$SETKA_BIN" update
 rc=$?
 if [ "$rc" -ne 0 ]; then
@@ -51,7 +84,7 @@ if [ "$rc" -ne 0 ]; then
 fi
 
 echo
-echo "[2/4] LOCAL FRONT MIRROR REFRESH"
+echo "[2/5] LOCAL FRONT MIRROR REFRESH"
 TMP="$FRONT_DIR/index.html.tmp"
 TARGET="$FRONT_DIR/index.html"
 if command -v curl >/dev/null 2>&1 && curl -fsSL "$FRONT_URL" -o "$TMP"; then
@@ -68,7 +101,7 @@ else
 fi
 
 echo
-echo "[3/4] DEVELOPMENT REFS SYNC"
+echo "[3/5] DEVELOPMENT REFS SYNC"
 if [ -d "$REPO/.git" ]; then
   if git -C "$REPO" fetch origin --prune; then
     echo "PASS · Git refs fetched"
@@ -88,18 +121,29 @@ else
 fi
 
 echo
-echo "[4/4] STATUS"
+echo "[4/5] STATUS"
 "$SETKA_BIN" status || true
 
 echo
+echo "[5/5] COMMIT TOOLING REFRESH"
+if [ "$TOOLING_REFRESHED" = true ] && [ -f "$SELF_NEXT" ]; then
+  mv "$SELF_NEXT" "$SELF_TARGET"
+  chmod 700 "$SELF_TARGET"
+  ln -sfn "$SELF_TARGET" "$DESKTOP/UPDATE_SETKA.command"
+  echo "PASS · updater refreshed for next launch"
+else
+  echo "HOLD · no staged updater; current updater remains active"
+fi
+
 cat <<'TXT'
 ============================================
 SETKA BOOST UPDATE · COMPLETE
 - scoped update path used
+- updater and front launcher refresh themselves when network is available
+- repeated SETKA_FRONT double-click reopens existing localhost instead of spawning a second server
 - no service_role required on Mac
 - no CANON promotion performed
 - no Git merge performed
-- local front cache refreshed when network allowed
 ============================================
 TXT
 
