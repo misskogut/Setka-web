@@ -1,0 +1,63 @@
+{
+  "format": "SETKA_MAC_TRANSFER_INDEX_V2",
+  "versionRef": "SETKA-SYS-20260910-B1",
+  "versionIntegrityHash": "063e15c406d2211ac67b2a5cfec3d11436e5efabb9dd81455f907b26a7fba27b",
+  "parentVersionRef": "SETKA-SYS-20260908-B0",
+  "branchRef": "SETKA-BRANCH-MAC-VNEXT",
+  "githubBranch": "setka/mac-vnext-20260908",
+  "privatePackageRef": "MAC-XFER2-CCAF5F8122FC490F",
+  "privatePackageFormat": "SETKA_MAC_VERSION_TRANSFER_V2",
+  "privatePackageSha256": "857453d63fa5567e57b8d49cb2ba100c16aa7ca10e457153aa01900aae65a026",
+  "portableFilename": "SETKA-SYS-20260910-B1__MAC_TRANSFER_V2.json",
+  "pocketCore": {
+    "ref": "SETKA-POCKET-CORE-SEED-20260910-B1",
+    "manifestSha256": "6d82303baaf625c040e4b126e5adb0ce954fa7e716bb952278479c638fa2eb48",
+    "stateHash": "c28b5a1a216fa78c26db1114ab4d9161591035e31cd63579363005ca399ebf47",
+    "isolatedRehydrate": "PASS_ISOLATED_MANIFEST_REHYDRATION",
+    "freshMachineColdBoot": "PENDING"
+  },
+  "body": {
+    "snapshotRef": "BODY-GROWN-SNAPSHOT-767E5532A5F04217",
+    "graphNodes": 14962,
+    "grownNodes": 14838,
+    "internalEdges": 43948,
+    "disconnectedNodes": 124,
+    "multiDaughterPersistence": "PASS"
+  },
+  "experiments": {
+    "archiveSnapshotRef": "EXPERIMENT-ARCHIVE-F5CC210310604E1F",
+    "archiveHash": "1c9ea7216519154b0fc0221605fe2f4cedb90f34c195778fdbe1b60f4dbb07a6",
+    "experimentCount": 52
+  },
+  "systemState": {
+    "snapshotRef": "STATE-20260910-125428.947",
+    "digestRef": "DIGEST-20260910-125441.908",
+    "digestHash": "36d075832ae12af225a8b05f3ef5201e022f174bcf721fb3b2e111c22ecb6945"
+  },
+  "canon": {
+    "version": "V1.5",
+    "mutatedByThisCheckpoint": false
+  },
+  "validatedExperimentalCapabilities": {
+    "multiDaughterScopedNative": "PASS_EXPERIMENTAL_NOT_CANON",
+    "daughterLocalDeltaMotorway": "AB_AND_MULTI_DAUGHTER_VALIDATED_NOT_CRYSTALLIZED",
+    "motorwayCrystallized": false
+  },
+  "bootContract": [
+    "VERIFY_PRIVATE_PACKAGE_SHA256",
+    "VERIFY_POCKET_CORE_MANIFEST_AND_STATE_HASH",
+    "REHYDRATE_POCKET_CORE",
+    "VERIFY_IDENTITY_MISSION_CAPABILITIES_DUTIES_MEMORY_PROTOCOL",
+    "VERIFY_BRANCH_LINEAGE_AND_VERSION_INTEGRITY",
+    "VERIFY_TRANSCRIPT_AND_STATE_CONTINUATION",
+    "DECLARE_FRESH_MACHINE_COLD_BOOT_PASS_OR_FAIL"
+  ],
+  "truth": {
+    "containsSecrets": false,
+    "containsFullDatabaseDump": false,
+    "containsPocketCorePayload": false,
+    "sourceHistoryRewrite": false,
+    "freshMachineBootPerformed": false,
+    "freshMachineBootPending": true
+  }
+}
