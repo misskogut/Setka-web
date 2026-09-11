@@ -1,7 +1,6 @@
 (() => {
   const qs = (s, r=document) => r.querySelector(s);
   const qsa = (s, r=document) => [...r.querySelectorAll(s)];
-  const esc = (v) => String(v ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
   const runtime = { busy:false, last:null, rejected:0 };
 
   document.documentElement.dataset.setkaFrontRuntimeProjection = 'B2.7.1';
@@ -67,10 +66,7 @@
     if (spec.placement) return spec;
     const col = i % 3;
     const row = Math.floor(i / 3);
-    return {
-      ...spec,
-      placement:{left:18 + col * 168, top:145 + row * 58, z:97 + i}
-    };
+    return {...spec, placement:{left:18 + col * 168, top:145 + row * 58, z:97 + i}};
   }
 
   function upsertProven(spec, index=0) {
@@ -97,7 +93,7 @@
       <div class="head"><strong>ВЫРАСТИТЬ ЭЛЕМЕНТ ИЗ СИСТЕМЫ</strong><button type="button" data-close>ЗАКРЫТЬ</button></div>
       <div class="body">
         <div class="query"><input type="text" autocomplete="off" spellcheck="false" placeholder="Например: связи Вектор / системный отчёт / 3D-граф"><button type="button" data-grow>СОЗДАТЬ</button></div>
-        <div class="examples"><button type="button" data-example="системный отчёт">СИСТЕМНЫЙ ОТЧЁТ</button><button type="button" data-example="3D граф">3D ГРАФ</button><button type="button" data-example="карточка сущности">СУЩНОСТЬ</button></div>
+        <div class="examples"><button type="button" data-example="системный отчёт">СИСТЕМНЫЙ ОТЧЁТ</button><button type="button" data-example="3D граф">3D ГРАФ</button><button type="button" data-example="связи Вектор">СВЯЗИ ВЕКТОРА</button></div>
         <div class="status">Готово к запросу.</div>
         <div class="truth">FRONT TRUTH GATE · системный элемент появляется только если backend вернул существующий sourceRef. Положение, имя и скрытие не меняют binding.</div>
       </div>`;
@@ -140,17 +136,46 @@
     return btn;
   }
 
+  function relationIntent(intent) {
+    return /(связ|relation|цепоч)/i.test(String(intent || ''));
+  }
+
+  function entitySearchIntent(intent) {
+    return String(intent || '')
+      .replace(/\b(связи|связь|связей|relation|relations|цепочка|цепочки|цепь)\b/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  async function fetchProjectionContext({intent='',entityType=null,entityRef=null,limit=8}={}) {
+    const q = new URLSearchParams({intent:String(intent || ''),mode:mode(),limit:String(limit)});
+    if (entityType) q.set('entity_type', entityType);
+    if (entityRef) q.set('entity_ref', entityRef);
+    return api(`/api/b27/project?${q.toString()}`);
+  }
+
   async function requestProjections({intent='', entityType=null, entityRef=null, limit=8}={}) {
     if (runtime.busy) return null;
     runtime.busy = true;
     status('SETKA ищет только реальные функции / сущности / связи…');
     try {
-      const q = new URLSearchParams({intent:String(intent || ''),mode:mode(),limit:String(limit)});
-      if (entityType) q.set('entity_type', entityType);
-      if (entityRef) q.set('entity_ref', entityRef);
-      const data = await api(`/api/b27/project?${q.toString()}`);
+      const wantsRelations = relationIntent(intent) && !entityRef;
+      const primaryIntent = wantsRelations ? (entitySearchIntent(intent) || intent) : intent;
+      let data = await fetchProjectionContext({intent:primaryIntent,entityType,entityRef,limit});
+      let projections = Array.isArray(data.projections) ? [...data.projections] : [];
+
+      if (wantsRelations) {
+        const entityProjection = projections.find(p => p?.binding?.bindingKind === 'ENTITY_CARD');
+        if (entityProjection) {
+          const b = entityProjection.binding;
+          const relationData = await fetchProjectionContext({intent:'связи',entityType:b.entityType,entityRef:b.entityRef,limit:4});
+          const relationProjections = (relationData.projections || []).filter(p => p?.binding?.bindingKind === 'ENTITY_RELATIONS');
+          projections = [...projections, ...relationProjections];
+          data = {...data, relationContext:relationData, projections};
+        }
+      }
+
       runtime.last = data;
-      const projections = Array.isArray(data.projections) ? data.projections : [];
       let accepted = 0;
       projections.forEach((spec, i) => { if (upsertProven(spec, i)) accepted += 1; });
       if (accepted) {
@@ -208,17 +233,12 @@
 
   document.addEventListener('setka:context:request', (event) => {
     const d = event.detail || {};
-    requestProjections({
-      intent:d.intent || '',
-      entityType:d.entityType || d.entity_type || null,
-      entityRef:d.entityRef || d.entity_ref || null,
-      limit:d.limit || 8
-    });
+    requestProjections({intent:d.intent || '',entityType:d.entityType || d.entity_type || null,entityRef:d.entityRef || d.entity_ref || null,limit:d.limit || 8});
   });
 
   document.addEventListener('setka:projection:request', (event) => {
     const d = event.detail || {};
-    requestProjections({intent:d.intent || '', entityType:d.entityType || null, entityRef:d.entityRef || null, limit:d.limit || 8});
+    requestProjections({intent:d.intent || '',entityType:d.entityType || null,entityRef:d.entityRef || null,limit:d.limit || 8});
   });
 
   const observer = new MutationObserver(() => ensureToolbarButton());
@@ -237,12 +257,7 @@
     closeGrower:()=>toggleGrower(false),
     state:()=>({busy:runtime.busy,last:runtime.last,rejected:runtime.rejected}),
     truthGate:'PROVEN_BACKEND_SOURCE_REF_REQUIRED',
-    sources:[
-      'foundation.capability_command_catalog',
-      'foundation.capability_recipe_registry_v1',
-      'foundation.entity_card_registry_v1',
-      'foundation.entity_relation_registry_v2'
-    ],
+    sources:['foundation.capability_command_catalog','foundation.capability_recipe_registry_v1','foundation.entity_card_registry_v1','foundation.entity_relation_registry_v2'],
     commandExecution:false,
     canonMutation:false,
     runtimeMutation:false
