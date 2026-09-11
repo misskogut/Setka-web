@@ -46,135 +46,161 @@ exec > >(tee -a "$LOG") 2>&1
 
 notify(){ local msg="$1"; command -v osascript >/dev/null 2>&1 && osascript -e "display notification \"$msg\" with title \"SETKA\"" >/dev/null 2>&1 || true; }
 finish_wait(){ echo; echo "Log: $LOG"; echo; read -r -p "Нажми Enter, чтобы закрыть окно... " _ || true; }
-download_atomic(){ local url="$1" target="$2" mode="${3:-600}" tmp="$2.tmp"; if curl -fsSL "$url" -o "$tmp"; then mv "$tmp" "$target"; chmod "$mode" "$target" 2>/dev/null || true; return 0; fi; rm -f "$tmp"; return 1; }
 stop(){ echo "STOP · $1"; notify "$1"; finish_wait; exit "${2:-2}"; }
 
-echo "============================================================"
+retry_download(){
+  local url="$1" target="$2" mode="${3:-600}" tmp="$2.tmp"
+  local attempt
+  for attempt in 1 2 3 4 5; do
+    rm -f "$tmp"
+    if curl -fL --retry 2 --retry-delay 1 --retry-all-errors --connect-timeout 15 --max-time 180 -sS "$url" -o "$tmp"; then
+      mv "$tmp" "$target"
+      chmod "$mode" "$target" 2>/dev/null || true
+      return 0
+    fi
+    echo "RETRY · download $attempt/5 · $url"
+    sleep "$attempt"
+  done
+  rm -f "$tmp"
+  return 1
+}
+
+retry_cmd(){
+  local label="$1"; shift
+  local attempt rc=1
+  for attempt in 1 2 3; do
+    "$@" && return 0
+    rc=$?
+    echo "RETRY · $label · $attempt/3 · rc=$rc"
+    sleep $((attempt*3))
+  done
+  return "$rc"
+}
+
+echo "================================================================"
 echo "SETKA · ONE BUTTON UPDATE · FULL MAC MIRROR V1 · FRONT B2.7.4"
 echo "$(date)"
-echo "============================================================"
-echo "Этот запуск сначала фиксирует полный Git mirror и полный SETKA data mirror на Mac."
-echo "Новая версия считается завершённой только после PASS full mirror receipt."
+echo "================================================================"
+echo "Порядок: tooling → полный Mac mirror → core → front → PASS receipt."
+echo "Сетевой сбой не уничтожает предыдущий проверенный mirror."
 echo
 
-TOOLING_REFRESHED=false
-
-echo "[0/7] TOOLING STAGE"
 command -v curl >/dev/null 2>&1 || stop "curl unavailable"
 command -v python3 >/dev/null 2>&1 || stop "python3 unavailable"
 command -v git >/dev/null 2>&1 || stop "git unavailable"
 
-download_atomic "$FRONT_LAUNCHER_URL" "$FRONT_LAUNCHER_TARGET" 700 || stop "front launcher refresh failed"
-ln -sfn "$FRONT_LAUNCHER_TARGET" "$DESKTOP/SETKA_FRONT.command"
-download_atomic "$FULL_SYNC_URL" "$FULL_SYNC_TARGET" 700 || stop "full Mac mirror sync script refresh failed"
+# 0. Tooling + immediate self-heal. New updater is promoted before any network-heavy work.
+echo "[0/7] TOOLING + SELF-HEAL"
+retry_download "$SELF_URL" "$SELF_NEXT" 700 || stop "updater self-refresh failed"
+mv "$SELF_NEXT" "$SELF_TARGET"
+chmod 700 "$SELF_TARGET"
+ln -sfn "$SELF_TARGET" "$DESKTOP/UPDATE_SETKA.command"
+echo "PASS · updater self-healed before long operations"
 
-download_atomic "$OVERLAY_B23_URL" "$OVERLAY_B23" 600 || stop "B2.3 layer refresh failed"
-download_atomic "$OVERLAY_B24_URL" "$OVERLAY_B24" 600 || stop "B2.4 layer refresh failed"
-download_atomic "$OVERLAY_B25_URL" "$OVERLAY_B25" 600 || stop "B2.5 layer refresh failed"
-download_atomic "$OVERLAY_CORE_URL" "$OVERLAY_CORE" 600 || stop "B2.7.4 projection core refresh failed"
-download_atomic "$OVERLAY_B271_URL" "$OVERLAY_B271" 600 || stop "B2.7.1 runtime projection UI refresh failed"
-download_atomic "$OVERLAY_B274_URL" "$OVERLAY_B274" 600 || stop "B2.7.4 workbench refresh failed"
+retry_download "$FRONT_LAUNCHER_URL" "$FRONT_LAUNCHER_TARGET" 700 || stop "front launcher refresh failed"
+ln -sfn "$FRONT_LAUNCHER_TARGET" "$DESKTOP/SETKA_FRONT.command"
+retry_download "$FULL_SYNC_URL" "$FULL_SYNC_TARGET" 700 || stop "full Mac mirror sync script refresh failed"
+
+retry_download "$OVERLAY_B23_URL" "$OVERLAY_B23" 600 || stop "B2.3 layer refresh failed"
+retry_download "$OVERLAY_B24_URL" "$OVERLAY_B24" 600 || stop "B2.4 layer refresh failed"
+retry_download "$OVERLAY_B25_URL" "$OVERLAY_B25" 600 || stop "B2.5 layer refresh failed"
+retry_download "$OVERLAY_CORE_URL" "$OVERLAY_CORE" 600 || stop "B2.7.4 projection core refresh failed"
+retry_download "$OVERLAY_B271_URL" "$OVERLAY_B271" 600 || stop "B2.7.1 runtime projection UI refresh failed"
+retry_download "$OVERLAY_B274_URL" "$OVERLAY_B274" 600 || stop "B2.7.4 workbench refresh failed"
 cat "$OVERLAY_B23" "$OVERLAY_B24" "$OVERLAY_B25" "$OVERLAY_CORE" "$OVERLAY_B271" "$OVERLAY_B274" > "$OVERLAY.tmp" || stop "combined overlay build failed"
 mv "$OVERLAY.tmp" "$OVERLAY"
 chmod 600 "$OVERLAY" 2>/dev/null || true
 
-download_atomic "$BRIDGE_B23_URL" "$BRIDGE_B23" 700 || stop "bridge B2.3 refresh failed"
-download_atomic "$BRIDGE_B24_URL" "$BRIDGE_B24" 700 || stop "bridge B2.4 refresh failed"
-download_atomic "$BRIDGE_B25_URL" "$BRIDGE_B25" 700 || stop "bridge B2.5 refresh failed"
-download_atomic "$BRIDGE_B27_URL" "$BRIDGE" 700 || stop "bridge B2.7.4 refresh failed"
+retry_download "$BRIDGE_B23_URL" "$BRIDGE_B23" 700 || stop "bridge B2.3 refresh failed"
+retry_download "$BRIDGE_B24_URL" "$BRIDGE_B24" 700 || stop "bridge B2.4 refresh failed"
+retry_download "$BRIDGE_B25_URL" "$BRIDGE_B25" 700 || stop "bridge B2.5 refresh failed"
+retry_download "$BRIDGE_B27_URL" "$BRIDGE" 700 || stop "bridge B2.7.4 refresh failed"
 
-if curl -fsSL "$SELF_URL" -o "$SELF_NEXT"; then
-  chmod 700 "$SELF_NEXT"
-  TOOLING_REFRESHED=true
-  echo "PASS · next updater staged"
-else
-  rm -f "$SELF_NEXT"
-  echo "HOLD · updater self-refresh unavailable; current updater remains usable"
-fi
-
-echo; echo "[1/7] VERIFIED CORE UPDATE"
-[ -x "$SETKA_BIN" ] || stop "SETKA CLI NOT FOUND: $SETKA_BIN"
-"$SETKA_BIN" update
-rc=$?
-[ "$rc" -eq 0 ] || stop "CORE UPDATE FAILED · rc=$rc" "$rc"
-
-echo; echo "[2/7] LOCAL FRONT BASE REFRESH"
-TMP="$FRONT_DIR/index.html.tmp"; TARGET="$FRONT_DIR/index.html"
-curl -fsSL "$FRONT_URL" -o "$TMP" || stop "base front refresh failed"
-mv "$TMP" "$TARGET"
-chmod 600 "$TARGET" 2>/dev/null || true
-echo "PASS · front shell staged"
-
-echo; echo "[3/7] DEVELOPMENT REFS FETCH"
-if [ -d "$REPO/.git" ]; then
-  if git -C "$REPO" fetch origin --prune; then
-    branch="$(git -C "$REPO" branch --show-current 2>/dev/null || true)"
-    dirty="$(git -C "$REPO" status --porcelain 2>/dev/null || true)"
-    echo "PASS · development refs fetched · branch ${branch:-DETACHED}"
-    [ -n "$dirty" ] && echo "SAFE · user working tree has local changes; untouched" || echo "SAFE · user working tree clean; no merge performed"
-  else
-    stop "development Git refs fetch failed"
-  fi
-else
-  echo "INFO · no development working tree at $REPO; dedicated full Git mirror will still be created"
-fi
-
-echo; echo "[4/7] FULL MAC MIRROR"
-echo "Это самый длинный шаг. Предыдущий проверенный mirror не удаляется, пока новый не завершён."
-python3 "$FULL_SYNC_TARGET"
+# 1. Full mirror FIRST. This is the durable truth boundary.
+echo; echo "[1/7] FULL MAC MIRROR"
+echo "Первый запуск длинный. Новый mirror собирается в staging; current не заменяется до полного PASS."
+retry_cmd "full Mac mirror" python3 "$FULL_SYNC_TARGET"
 rc=$?
 [ "$rc" -eq 0 ] || stop "FULL MAC MIRROR FAILED · previous verified mirror preserved · rc=$rc" "$rc"
 [ -f "$ROOT/mirror/LATEST.json" ] || stop "FULL MAC MIRROR receipt missing"
 echo "PASS · full Git history + full SETKA database mirror recorded on Mac"
 
-echo; echo "[5/7] STATUS"
+# 2. Legacy/core updater is useful but is no longer allowed to block data preservation.
+echo; echo "[2/7] VERIFIED CORE UPDATE"
+[ -x "$SETKA_BIN" ] || stop "SETKA CLI NOT FOUND: $SETKA_BIN"
+retry_cmd "verified core update" "$SETKA_BIN" update
+rc=$?
+[ "$rc" -eq 0 ] || stop "CORE UPDATE FAILED AFTER MIRROR PASS · mirror preserved · rc=$rc" "$rc"
+echo "PASS · verified core update"
+
+# 3. Front shell
+echo; echo "[3/7] LOCAL FRONT BASE REFRESH"
+TMP="$FRONT_DIR/index.html.tmp"; TARGET="$FRONT_DIR/index.html"
+retry_download "$FRONT_URL" "$TMP" 600 || stop "base front refresh failed"
+mv "$TMP" "$TARGET"
+chmod 600 "$TARGET" 2>/dev/null || true
+echo "PASS · front shell staged"
+
+# 4. Optional development working-tree refs. Dedicated Git mirror already contains full repo history.
+echo; echo "[4/7] DEVELOPMENT REFS FETCH"
+if [ -d "$REPO/.git" ]; then
+  if retry_cmd "development refs fetch" git -C "$REPO" fetch origin --prune; then
+    branch="$(git -C "$REPO" branch --show-current 2>/dev/null || true)"
+    dirty="$(git -C "$REPO" status --porcelain 2>/dev/null || true)"
+    echo "PASS · development refs fetched · branch ${branch:-DETACHED}"
+    [ -n "$dirty" ] && echo "SAFE · user working tree has local changes; untouched" || echo "SAFE · user working tree clean; no merge performed"
+  else
+    echo "HOLD · development working-tree fetch failed; full dedicated Git mirror remains PASS"
+  fi
+else
+  echo "INFO · no development working tree; dedicated full Git mirror is authoritative for transfer"
+fi
+
+# 5. Status and receipt
+echo; echo "[5/7] VERIFIED RECEIPT"
 "$SETKA_BIN" status || true
 python3 - <<'PY'
 import json
 from pathlib import Path
 p=Path.home()/'.setka/mirror/LATEST.json'
-try:
-    d=json.loads(p.read_text())
-    print('MAC MIRROR:', d.get('state'))
-    print('CODE COMMIT:', d.get('codeCommit'))
-    print('SOURCE TIP:', d.get('sourceTranscriptTip'))
-    print('TABLES:', d.get('tableCount'))
-    print('ROWS:', d.get('rowCount'))
-    print('SERVER RECEIPT:', d.get('serverReceiptRef'))
-except Exception as e:
-    print('MAC MIRROR RECEIPT READ FAIL:', e)
+d=json.loads(p.read_text())
+required=['state','codeCommit','sourceTranscriptTip','tableCount','rowCount','manifestSha256','localDbSha256','serverReceiptRef']
+missing=[k for k in required if not d.get(k) and d.get(k)!=0]
+if d.get('state')!='PASS_FULL_SETKA_MIRROR' or missing:
+    raise SystemExit('RECEIPT_FAIL missing='+','.join(missing))
+print('MAC MIRROR:', d['state'])
+print('CODE COMMIT:', d['codeCommit'])
+print('SOURCE TIP:', d['sourceTranscriptTip'])
+print('TABLES:', d['tableCount'])
+print('ROWS:', d['rowCount'])
+print('SERVER RECEIPT:', d['serverReceiptRef'])
 PY
+rc=$?
+[ "$rc" -eq 0 ] || stop "LOCAL MIRROR RECEIPT VERIFICATION FAILED" "$rc"
 
-echo; echo "[6/7] COMMIT UPDATER + OPEN FRONT"
-if [ "$TOOLING_REFRESHED" = true ] && [ -f "$SELF_NEXT" ]; then
-  mv "$SELF_NEXT" "$SELF_TARGET"
-  chmod 700 "$SELF_TARGET"
-  ln -sfn "$SELF_TARGET" "$DESKTOP/UPDATE_SETKA.command"
-  echo "PASS · updater refreshed for next one-button run"
-else
-  echo "HOLD · current updater remains active"
-fi
-
+# 6. Open front only after transfer + core + receipt all passed.
+echo; echo "[6/7] OPEN VERIFIED FRONT"
 if [ -x "$FRONT_LAUNCHER_TARGET" ]; then
   nohup "$FRONT_LAUNCHER_TARGET" >"$LOG_DIR/front-launch-$STAMP.log" 2>&1 &
   echo "PASS · B2.7.4 front launcher invoked"
 fi
 
 cat <<'TXT'
-============================================================
+================================================================
 SETKA ONE BUTTON UPDATE · COMPLETE
-- dedicated bare Git mirror on Mac contains repository history/refs
-- all manifested SETKA base-table rows are copied into local compressed SQLite mirror
-- mirrored schemas include foundation, diamond, public, setka_private, experiment_* schemas, supabase_migrations, cron and net
-- PostgreSQL views/functions/indexes/constraints/triggers/sequences/policies are mirrored as schema objects
-- local mirror is promoted atomically only after all table/schema steps pass
-- previous verified mirror is kept until replacement succeeds
-- each PASS writes a local receipt and a server-side Mac mirror receipt
-- auth.users and storage.objects were audited empty before this contract
-- provider-managed secret values are not copied into the plain local mirror
-- front B2.7.4 remains a projection layer and does not redefine backend truth
+- updater self-heals before long network operations
+- full Mac mirror runs before legacy/core update
+- transient downloads/core calls retry automatically
+- dedicated bare Git mirror contains full repository history/refs
+- all manifested SETKA base-table rows are copied into compressed local SQLite
+- PostgreSQL schema objects are mirrored separately
+- new mirror becomes current only after complete verification
+- previous verified mirror survives any failed update
+- PASS requires local receipt + server-side Mac receipt
+- provider-managed secret values are not copied into plaintext mirror
+- front opens only after verified transfer boundary
 - CANON is not promoted by this updater
-============================================================
+================================================================
 TXT
 notify "SETKA full Mac mirror + front update complete"
 finish_wait
