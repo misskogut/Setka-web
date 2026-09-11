@@ -17,6 +17,8 @@
     .setka-layout-editing [data-setka-move-key]{outline:1px dashed rgba(135,233,255,.34);outline-offset:2px}
     .setka-layout-editing [data-setka-direct-drag='1']{cursor:grab!important;touch-action:none!important;user-select:none!important}
     .setka-layout-editing .graph-meta,.setka-layout-editing .source-bar,.setka-layout-editing .graph-stats{pointer-events:auto!important}
+    .setka-card-direct-drag>.panel-head{cursor:grab;touch-action:none;user-select:none}
+    .setka-card-direct-drag>.panel-head button,.setka-card-direct-drag>.panel-head a,.setka-card-direct-drag>.panel-head input,.setka-card-direct-drag>.panel-head select,.setka-card-direct-drag>.panel-head textarea{cursor:pointer;touch-action:auto;user-select:auto}
     body.setka-layout-dragging,body.setka-layout-dragging *{cursor:grabbing!important;user-select:none!important}
     #setka-layout-toolbar{position:fixed;z-index:100000;left:50%;top:calc(var(--safe-top) + 8px);transform:translateX(-50%);display:none;align-items:center;gap:6px;padding:6px;border:1px solid rgba(135,233,255,.52);border-radius:10px;background:rgba(5,7,8,.96);backdrop-filter:blur(16px);box-shadow:0 16px 50px rgba(0,0,0,.42)}
     #setka-layout-toolbar.open{display:flex}
@@ -82,10 +84,25 @@
     el.appendChild(h);
   }
 
+  function bindDirectCardDrag(el, key, opts={}) {
+    if (!el || el.dataset.setkaCardDirectBound === '1') return;
+    const head = el.querySelector(':scope > .panel-head');
+    if (!head) return;
+    el.dataset.setkaCardDirectBound = '1';
+    el.classList.add('setka-card-direct-drag');
+    head.title = head.title || 'Перетащи карточку';
+    head.addEventListener('pointerdown', e => {
+      if (e.button > 0) return;
+      if (e.target.closest('button,a,input,select,textarea,[contenteditable="true"],[data-layout-ui="1"]')) return;
+      startDrag(e, el, key, {...opts, always:true});
+    });
+  }
+
   function registerMajor(el, key, opts={}) {
     if (!el) return;
     el.dataset.setkaMoveKey = key;
     addHandle(el, key, opts);
+    if (opts.directCard) bindDirectCardDrag(el, key, opts);
     if (saved[key]?.free) applyFree(el, key, saved[key], opts);
   }
 
@@ -103,7 +120,7 @@
   }
 
   function startDrag(e, el, key, opts={}) {
-    if (!runtime.editing || e.button > 0) return;
+    if ((!runtime.editing && !opts.always) || e.button > 0) return;
     e.preventDefault();
     e.stopPropagation();
     const rect = el.getBoundingClientRect();
@@ -181,7 +198,7 @@
     btn.className = 'action';
     btn.type = 'button';
     btn.dataset.layoutUi = '1';
-    btn.title = 'Свободная раскладка рабочего стола';
+    btn.title = 'Свободная раскладка прочих элементов рабочего стола';
     btn.innerHTML = '✣ <span>Раскладка</span>';
     host.appendChild(btn);
     btn.addEventListener('click', () => setEditing(!runtime.editing));
@@ -204,9 +221,9 @@
     registerMajor(qs('.graph-stats'), 'major:graph-stats');
     registerMajor(qs('.source-bar'), 'major:source-bar');
     registerMajor(qs('.graph-controls'), 'major:graph-controls');
-    registerMajor(qs('#computer-panel'), 'major:computer-panel', {panel:true});
-    registerMajor(qs('#feed-panel'), 'major:feed-panel', {panel:true});
-    registerMajor(qs('#entity-card'), 'major:entity-card', {panel:true});
+    registerMajor(qs('#computer-panel'), 'major:computer-panel', {panel:true,directCard:true});
+    registerMajor(qs('#feed-panel'), 'major:feed-panel', {panel:true,directCard:true});
+    registerMajor(qs('#entity-card'), 'major:entity-card', {panel:true,directCard:true});
     const contextChip = qs('#b25-context-chip');
     if (contextChip) registerMajor(contextChip, 'major:event-context-chip');
 
@@ -244,6 +261,8 @@
     enter:()=>setEditing(true),
     done:()=>setEditing(false),
     reset:()=>{ localStorage.removeItem(STORAGE_KEY); location.reload(); },
+    directCardDrag:true,
+    directCardDragTargets:['computer-panel','feed-panel','entity-card'],
     persistedLocally:true,
     canonMutation:false,
     runtimeMutation:false
