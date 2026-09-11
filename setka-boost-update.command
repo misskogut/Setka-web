@@ -13,9 +13,12 @@ OVERLAY_B23_URL="$BASE_URL/setka-front-b23.js"
 OVERLAY_B24_URL="$BASE_URL/setka-front-b24.js"
 OVERLAY_B25_URL="$BASE_URL/setka-front-b25.js"
 OVERLAY_B26_URL="$BASE_URL/setka-front-b26.js"
+OVERLAY_B27_URL="$BASE_URL/setka-front-b261-recovery.js"
+OVERLAY_B271_URL="$BASE_URL/setka-front-b271-runtime.js"
 BRIDGE_B23_URL="$BASE_URL/setka-front-bridge-b23.py"
 BRIDGE_B24_URL="$BASE_URL/setka-front-bridge-b24.py"
 BRIDGE_B25_URL="$BASE_URL/setka-front-bridge-b25.py"
+BRIDGE_B27_URL="$BASE_URL/setka-front-bridge-b27.py"
 SELF_URL="$BASE_URL/setka-boost-update.command"
 SETKA_BIN="$HOME/bin/setka"
 REPO="${SETKA_REPO:-$HOME/SETKA_LOCAL/WORKSPACE/Setka-web}"
@@ -26,9 +29,12 @@ OVERLAY_B23="$FRONT_DIR/setka-b23-base.js"
 OVERLAY_B24="$FRONT_DIR/setka-b24-trace.js"
 OVERLAY_B25="$FRONT_DIR/setka-b25-context.js"
 OVERLAY_B26="$FRONT_DIR/setka-b26-workspace.js"
+OVERLAY_B27="$FRONT_DIR/setka-b27-projections.js"
+OVERLAY_B271="$FRONT_DIR/setka-b271-runtime.js"
 OVERLAY="$FRONT_DIR/setka-b2.js"
 BRIDGE_B23="$FRONT_DIR/setka-front-bridge-b23.py"
 BRIDGE_B24="$FRONT_DIR/setka-front-bridge-b24.py"
+BRIDGE_B25="$FRONT_DIR/setka-front-bridge-b25.py"
 BRIDGE="$FRONT_DIR/setka-front-bridge.py"
 STAMP="$(date '+%Y%m%d-%H%M%S')"
 LOG="$LOG_DIR/update-$STAMP.log"
@@ -63,7 +69,7 @@ download_atomic() {
 }
 
 echo "============================================"
-echo "SETKA · BOOST UPDATE · FRONT B2.6 · DATA B1"
+echo "SETKA · BOOST UPDATE · FRONT B2.7.1 · DATA B1"
 echo "$(date)"
 echo "============================================"
 echo
@@ -73,7 +79,7 @@ TOOLING_REFRESHED=false
 if command -v curl >/dev/null 2>&1; then
   if download_atomic "$FRONT_LAUNCHER_URL" "$FRONT_LAUNCHER_TARGET" 700; then
     ln -sfn "$FRONT_LAUNCHER_TARGET" "$DESKTOP/SETKA_FRONT.command"
-    echo "PASS · B2.6 launcher refreshed"
+    echo "PASS · B2.7.1 launcher refreshed"
   else
     echo "HOLD · launcher refresh unavailable; existing launcher preserved"
   fi
@@ -81,16 +87,20 @@ if command -v curl >/dev/null 2>&1; then
   download_atomic "$OVERLAY_B23_URL" "$OVERLAY_B23" 600 && echo "PASS · B2.3 human/color layer refreshed" || echo "HOLD · B2.3 layer refresh unavailable"
   download_atomic "$OVERLAY_B24_URL" "$OVERLAY_B24" 600 && echo "PASS · B2.4 trace layer refreshed" || echo "HOLD · B2.4 layer refresh unavailable"
   download_atomic "$OVERLAY_B25_URL" "$OVERLAY_B25" 600 && echo "PASS · B2.5 event-context layer refreshed" || echo "HOLD · B2.5 event-context layer refresh unavailable"
-  download_atomic "$OVERLAY_B26_URL" "$OVERLAY_B26" 600 && echo "PASS · B2.6 workspace layer refreshed" || echo "HOLD · B2.6 workspace layer refresh unavailable"
-  if [ -f "$OVERLAY_B23" ] && [ -f "$OVERLAY_B24" ] && [ -f "$OVERLAY_B25" ] && [ -f "$OVERLAY_B26" ]; then
-    cat "$OVERLAY_B23" "$OVERLAY_B24" "$OVERLAY_B25" "$OVERLAY_B26" > "$OVERLAY.tmp" && mv "$OVERLAY.tmp" "$OVERLAY"
+  download_atomic "$OVERLAY_B26_URL" "$OVERLAY_B26" 600 && echo "PASS · B2.6 movement layer refreshed" || echo "HOLD · B2.6 movement layer refresh unavailable"
+  download_atomic "$OVERLAY_B27_URL" "$OVERLAY_B27" 600 && echo "PASS · B2.7 projection workspace refreshed" || echo "HOLD · B2.7 projection workspace refresh unavailable"
+  download_atomic "$OVERLAY_B271_URL" "$OVERLAY_B271" 600 && echo "PASS · B2.7.1 runtime projection layer refreshed" || echo "HOLD · B2.7.1 runtime layer refresh unavailable"
+
+  if [ -f "$OVERLAY_B23" ] && [ -f "$OVERLAY_B24" ] && [ -f "$OVERLAY_B25" ] && [ -f "$OVERLAY_B26" ] && [ -f "$OVERLAY_B27" ] && [ -f "$OVERLAY_B271" ]; then
+    cat "$OVERLAY_B23" "$OVERLAY_B24" "$OVERLAY_B25" "$OVERLAY_B26" "$OVERLAY_B27" "$OVERLAY_B271" > "$OVERLAY.tmp" && mv "$OVERLAY.tmp" "$OVERLAY"
     chmod 600 "$OVERLAY" 2>/dev/null || true
-    echo "PASS · B2.6 combined overlay ready"
+    echo "PASS · B2.7.1 combined overlay ready"
   fi
 
   download_atomic "$BRIDGE_B23_URL" "$BRIDGE_B23" 700 && echo "PASS · B2.3 bridge refreshed" || echo "HOLD · B2.3 bridge refresh unavailable"
   download_atomic "$BRIDGE_B24_URL" "$BRIDGE_B24" 700 && echo "PASS · B2.4 bridge refreshed" || echo "HOLD · B2.4 bridge refresh unavailable"
-  download_atomic "$BRIDGE_B25_URL" "$BRIDGE" 700 && echo "PASS · B2.5 data bridge refreshed" || echo "HOLD · B2.5 bridge refresh unavailable"
+  download_atomic "$BRIDGE_B25_URL" "$BRIDGE_B25" 700 && echo "PASS · B2.5 bridge refreshed" || echo "HOLD · B2.5 bridge refresh unavailable"
+  download_atomic "$BRIDGE_B27_URL" "$BRIDGE" 700 && echo "PASS · B2.7.1 runtime bridge refreshed" || echo "HOLD · B2.7.1 runtime bridge refresh unavailable"
 
   if curl -fsSL "$SELF_URL" -o "$SELF_NEXT"; then
     chmod 700 "$SELF_NEXT"
@@ -168,25 +178,25 @@ fi
 
 if [ -x "$FRONT_LAUNCHER_TARGET" ]; then
   nohup "$FRONT_LAUNCHER_TARGET" >"$LOG_DIR/front-launch-$STAMP.log" 2>&1 &
-  echo "PASS · B2.6 front launcher invoked"
+  echo "PASS · B2.7.1 front launcher invoked"
 fi
 
 cat <<'TXT'
 ============================================
-SETKA BOOST UPDATE · COMPLETE · FRONT B2.6 / DATA B1
-- free workspace layout added over the existing B2.5 event-time context front
-- cards, panels and control strips can be moved anywhere on the desktop
-- persistent top/mode/graph controls can be detached and positioned individually
-- layout is stored locally on this Mac and restored on reload
-- layout mode prevents accidental command/button execution while arranging controls
-- one-click RESET restores the canonical default front arrangement
-- B2.5 event context, recorded trace player and frozen snapshots remain unchanged
+SETKA BOOST UPDATE · COMPLETE · FRONT B2.7.1 / DATA B1
+- B2.7 movable/renameable/removable workspace preserved
+- system-generated front projections now come through a real runtime bridge
+- truth gate accepts only existing backend sourceRef bindings
+- current bound sources: command catalog, capability recipes, entity cards, entity relations
+- context request can grow buttons/tabs/cards from proven backend objects
+- clicking a generated function inspects its live system binding; mutating command execution is not enabled in B2.7.1
+- deleting or renaming a projection changes presentation only, never the underlying function/entity/relation
+- B2.5 event-time context and explicit recorded trace behavior remain unchanged
 - device token remains in macOS Keychain and is not exposed to browser JS
-- no runtime data mutation from layout actions
 - no CANON promotion performed
 - no Git merge performed
 ============================================
 TXT
 
-notify "SETKA FRONT B2.6 workspace update complete"
+notify "SETKA FRONT B2.7.1 runtime projection update complete"
 finish_wait
