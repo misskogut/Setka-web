@@ -19,6 +19,9 @@ function bearer(req:Request,body:Record<string,unknown>):string{
   if(auth.toLowerCase().startsWith("bearer "))return auth.slice(7).trim();
   return String(body.token??"");
 }
+async function authorized(deviceRef:string,tokenHash:string){
+  return await rpc("setka_mac_delta_manifest_internal_v1",{p_device_ref:deviceRef,p_token_hash:tokenHash,p_after_event_id:0});
+}
 
 Deno.serve(async(req:Request)=>{
   if(req.method!=="POST")return json(405,{ok:false,state:"METHOD_NOT_ALLOWED"});
@@ -29,6 +32,12 @@ Deno.serve(async(req:Request)=>{
   const token=bearer(req,body); if(token.length<32)return json(401,{ok:false,state:"DEVICE_TOKEN_MISSING"});
   const tokenHash=await sha256Hex(token); const action=String(body.action??"delta_manifest");
 
+  if(action==="system_index_refresh"){
+    const auth=await authorized(deviceRef,tokenHash);
+    if(auth.ok!==true)return json(403,auth);
+    const result=await rpc("setka_system_index_refresh_v2",{});
+    return json(result.ok===true?200:500,result);
+  }
   if(action==="delta_manifest"){
     const after=Number(body.afterEventId??0);
     const result=await rpc("setka_mac_delta_manifest_internal_v1",{p_device_ref:deviceRef,p_token_hash:tokenHash,p_after_event_id:Number.isFinite(after)?Math.max(0,Math.trunc(after)):0});
