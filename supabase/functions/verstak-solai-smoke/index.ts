@@ -1,0 +1,1 @@
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";Deno.serve(()=>new Response(JSON.stringify({ok:false,state:'RETIRED_SMOKE_ENDPOINT'}),{status:410,headers:{'content-type':'application/json','cache-control':'no-store'}}));
