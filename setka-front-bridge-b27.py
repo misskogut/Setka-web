@@ -19,7 +19,7 @@ spec.loader.exec_module(b25)
 
 
 class Handler(b25.Handler):
-    server_version = "SETKAFrontB2.7.3/1.0"
+    server_version = "SETKAFrontB2.7.4/1.0"
 
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
@@ -27,17 +27,24 @@ class Handler(b25.Handler):
 
         if path == "/api/b2/health":
             overlay_ok = False
+            legacy_writer_present = False
             try:
-                overlay_ok = OVERLAY_PATH.exists() and b"B2.7.3-SAFE-WORKBENCH" in OVERLAY_PATH.read_bytes()
+                raw = OVERLAY_PATH.read_bytes() if OVERLAY_PATH.exists() else b""
+                overlay_ok = b"B2.7.4-SINGLE-WRITER-LAYOUT" in raw and b"B2.7.4" in raw
+                legacy_writer_present = b"setka.front.b26.workspace.v1" in raw
             except Exception:
                 overlay_ok = False
-            return self._json(200 if overlay_ok else 503, {
-                "ok": overlay_ok,
-                "state": "SETKA_LOCAL_FRONT_B273_READY" if overlay_ok else "B273_OVERLAY_MISSING",
-                "frontVersion": "B2.7.3",
+            ok = overlay_ok and not legacy_writer_present
+            return self._json(200 if ok else 503, {
+                "ok": ok,
+                "state": "SETKA_LOCAL_FRONT_B274_READY" if ok else "B274_LAYOUT_ISOLATION_FAILED",
+                "frontVersion": "B2.7.4",
                 "dataBaseline": "B1",
                 "eventContext": "B2.5",
-                "workspace": "B2.7.3",
+                "workspace": "B2.7.4",
+                "positionAuthority": "B2.7.4_ONLY",
+                "legacyLayoutWriterPresent": legacy_writer_present,
+                "projectionCore": "B2.7.4",
                 "runtimeProjectionBridge": True,
                 "systemGeneratedProjectionTruthGate": True,
                 "visualWorkbench": {
@@ -47,9 +54,11 @@ class Handler(b25.Handler):
                     "renameSelectedProjection": True,
                     "hideSelectedProjection": True,
                     "candidateStagingBeforeAdd": True,
+                    "positionsPersistOnDrop": True,
+                    "positionsPersistOnDone": True,
+                    "positionsRestoreOnBoot": True,
                     "layoutActivationMutatesDom": False,
-                    "mutationObserver": False,
-                    "pollingLoop": False,
+                    "legacyLayoutWriterExcluded": True,
                 },
                 "projectionSources": [
                     "foundation.capability_command_catalog",
@@ -71,7 +80,7 @@ class Handler(b25.Handler):
             self.send_response(200)
             self.send_header("Content-Type", "text/javascript; charset=utf-8")
             self.send_header("Cache-Control", "no-store")
-            self.send_header("X-SETKA-FRONT", "B2.7.3")
+            self.send_header("X-SETKA-FRONT", "B2.7.4")
             self.send_header("Content-Length", str(len(data)))
             self.end_headers()
             self.wfile.write(data)
@@ -104,12 +113,7 @@ class Handler(b25.Handler):
                     return self._json(422, result)
                 return self._json(200, result)
             except Exception as e:
-                return self._json(500, {
-                    "ok": False,
-                    "state": "B273_RUNTIME_PROJECTION_BRIDGE_ERROR",
-                    "message": str(e),
-                    "frontVersion": "B2.7.3",
-                })
+                return self._json(500, {"ok": False, "state": "B274_RUNTIME_PROJECTION_BRIDGE_ERROR", "message": str(e), "frontVersion": "B2.7.4"})
 
         if path == "/api/b27/binding":
             if not self._local_origin_ok():
@@ -133,12 +137,7 @@ class Handler(b25.Handler):
                     return self._json(422, result)
                 return self._json(200, result)
             except Exception as e:
-                return self._json(500, {
-                    "ok": False,
-                    "state": "B273_BINDING_BRIDGE_ERROR",
-                    "message": str(e),
-                    "frontVersion": "B2.7.3",
-                })
+                return self._json(500, {"ok": False, "state": "B274_BINDING_BRIDGE_ERROR", "message": str(e), "frontVersion": "B2.7.4"})
 
         return super().do_GET()
 
@@ -148,12 +147,12 @@ def main():
     parser.add_argument("--port", type=int, default=8765)
     args = parser.parse_args()
     server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
-    print(f"SETKA LOCAL FRONT B2.7.3 · http://127.0.0.1:{args.port}/")
-    print("SETKA B2.7.3 · layout activation is O(1): no DOM scan, observer, polling or reparenting")
-    print("SETKA B2.7.3 · selected projection itself is movable / renameable / hideable")
-    print("SETKA B2.7.3 · flower is an element vault only")
-    print("SETKA B2.7.3 · candidates require proven backend sourceRef before add")
-    print("SETKA B2.7.3 · command bindings remain inspect-only; CANON mutation unavailable")
+    print(f"SETKA LOCAL FRONT B2.7.4 · http://127.0.0.1:{args.port}/")
+    print("SETKA B2.7.4 · position authority is single-writer: B2.7.4 only")
+    print("SETKA B2.7.4 · legacy B2.6/B2.7 layout writers are excluded from overlay")
+    print("SETKA B2.7.4 · positions persist on drop and DONE and restore on boot")
+    print("SETKA B2.7.4 · system binding is independent from screen coordinates")
+    print("SETKA B2.7.4 · device token stays in macOS Keychain; CANON mutation unavailable")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
