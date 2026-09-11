@@ -487,7 +487,6 @@
   const observer = new MutationObserver(()=>{
     ensureAnchor();
     restoreStoredPositions();
-    if(state.vaultOpen) renderHidden();
   });
   observer.observe(document.body,{childList:true,subtree:true});
 
