@@ -78,7 +78,7 @@ Deno.serve(async (req: Request) => {
     const tableName = String(body.tableName ?? "");
     const cursor = (body.cursor && typeof body.cursor === "object") ? body.cursor : null;
     const offset = Number(body.offset ?? 0);
-    const limit = Number(body.limit ?? 200);
+    const limit = Number(body.limit ?? 1000);
     const includeCount = body.includeCount === true;
     const result = await rpc("setka_mac_full_mirror_chunk_internal_v1", {
       p_device_ref:deviceRef,
@@ -87,7 +87,7 @@ Deno.serve(async (req: Request) => {
       p_table_name:tableName,
       p_cursor:cursor,
       p_offset:Number.isFinite(offset)?Math.max(0,Math.trunc(offset)):0,
-      p_limit:Number.isFinite(limit)?Math.max(1,Math.min(500,Math.trunc(limit))):200,
+      p_limit:Number.isFinite(limit)?Math.max(1,Math.min(3000,Math.trunc(limit))):1000,
       p_include_count:includeCount,
     });
     return json(result.ok===true?200:403,result);
