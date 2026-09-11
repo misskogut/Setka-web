@@ -42,7 +42,7 @@ class Handler(b25.Handler):
         if path == "/api/b2/health":
             return self._json(200, {
                 "ok": True,
-                "state": "SETKA_LOCAL_FRONT_B271_READY",
+                "state": "SETKA_LOCAL_FRONT_B272_READY",
                 "frontVersion": "B2.7.2",
                 "dataBaseline": "B1",
                 "eventContext": "B2.5",
