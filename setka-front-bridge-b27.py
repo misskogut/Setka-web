@@ -2,12 +2,15 @@
 import argparse
 import importlib.util
 import urllib.parse
+import urllib.request
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 
 ROOT = Path.home() / ".setka"
 FRONT_DIR = ROOT / "front"
 B25_PATH = FRONT_DIR / "setka-front-bridge-b25.py"
+OVERLAY_PATH = FRONT_DIR / "setka-b2.js"
+B272_REMOTE = "https://raw.githubusercontent.com/misskogut/Setka-web/main/setka-front-b272-workbench.js"
 
 if not B25_PATH.exists():
     raise RuntimeError("SETKA_B25_BASE_BRIDGE_MISSING")
@@ -17,8 +20,20 @@ b25 = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(b25)
 
 
+def load_b272_patch():
+    try:
+        with urllib.request.urlopen(B272_REMOTE, timeout=12) as r:
+            raw = r.read()
+            if not raw or b"SETKA_VISUAL_WORKBENCH" not in raw:
+                return b""
+            return raw
+    except Exception as e:
+        print(f"SETKA B2.7.2 · visual patch fetch unavailable · {e}")
+        return b""
+
+
 class Handler(b25.Handler):
-    server_version = "SETKAFrontB2.7.1/1.0"
+    server_version = "SETKAFrontB2.7.2/1.0"
 
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
@@ -28,12 +43,20 @@ class Handler(b25.Handler):
             return self._json(200, {
                 "ok": True,
                 "state": "SETKA_LOCAL_FRONT_B271_READY",
-                "frontVersion": "B2.7.1",
+                "frontVersion": "B2.7.2",
                 "dataBaseline": "B1",
                 "eventContext": "B2.5",
-                "workspace": "B2.7",
+                "workspace": "B2.7.2",
                 "runtimeProjectionBridge": True,
                 "systemGeneratedProjectionTruthGate": True,
+                "visualWorkbench": {
+                    "flowerRole": "ELEMENT_VAULT_ONLY",
+                    "layoutDirectSelection": True,
+                    "layoutDirectDrag": True,
+                    "renameSelectedProjection": True,
+                    "hideSelectedProjection": True,
+                    "candidateStagingBeforeAdd": True,
+                },
                 "projectionSources": [
                     "foundation.capability_command_catalog",
                     "foundation.capability_recipe_registry_v1",
@@ -45,6 +68,22 @@ class Handler(b25.Handler):
                 "commandTokenExposed": False,
                 "canonMutation": False,
             })
+
+        if path == "/setka-b2.js":
+            if not OVERLAY_PATH.exists():
+                self.send_error(404)
+                return
+            base = OVERLAY_PATH.read_bytes()
+            patch = load_b272_patch()
+            data = base + (b"\n\n/* SETKA B2.7.2 visual workbench */\n" + patch if patch else b"")
+            self.send_response(200)
+            self.send_header("Content-Type", "text/javascript; charset=utf-8")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("X-SETKA-FRONT", "B2.7.2")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+            return
 
         if path == "/api/b27/project":
             if not self._local_origin_ok():
@@ -75,9 +114,9 @@ class Handler(b25.Handler):
             except Exception as e:
                 return self._json(500, {
                     "ok": False,
-                    "state": "B271_RUNTIME_PROJECTION_BRIDGE_ERROR",
+                    "state": "B272_RUNTIME_PROJECTION_BRIDGE_ERROR",
                     "message": str(e),
-                    "frontVersion": "B2.7.1",
+                    "frontVersion": "B2.7.2",
                 })
 
         if path == "/api/b27/binding":
@@ -104,9 +143,9 @@ class Handler(b25.Handler):
             except Exception as e:
                 return self._json(500, {
                     "ok": False,
-                    "state": "B271_BINDING_BRIDGE_ERROR",
+                    "state": "B272_BINDING_BRIDGE_ERROR",
                     "message": str(e),
-                    "frontVersion": "B2.7.1",
+                    "frontVersion": "B2.7.2",
                 })
 
         return super().do_GET()
@@ -117,11 +156,14 @@ def main():
     parser.add_argument("--port", type=int, default=8765)
     args = parser.parse_args()
     server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
-    print(f"SETKA LOCAL FRONT B2.7.1 · http://127.0.0.1:{args.port}/")
-    print("SETKA B2.7.1 · runtime projections are emitted only from proven backend objects")
-    print("SETKA B2.7.1 · projection position/name/visibility do not mutate system binding")
-    print("SETKA B2.7.1 · command bindings are inspect-only; no mutating command execution")
-    print("SETKA B2.7.1 · device token stays in macOS Keychain; CANON mutation unavailable")
+    print(f"SETKA LOCAL FRONT B2.7.2 · http://127.0.0.1:{args.port}/")
+    print("SETKA B2.7.2 · flower is an element vault, never a layout-mode switch")
+    print("SETKA B2.7.2 · layout selects and moves the chosen projection itself")
+    print("SETKA B2.7.2 · removed projections remain system-bound and restorable")
+    print("SETKA B2.7.2 · candidates stay in the vault until explicitly added")
+    print("SETKA B2.7.2 · system-generated projections still require proven backend sourceRef")
+    print("SETKA B2.7.2 · command bindings are inspect-only; no mutating command execution")
+    print("SETKA B2.7.2 · device token stays in macOS Keychain; CANON mutation unavailable")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
