@@ -20,6 +20,7 @@ BRIDGE_B24_URL="$BASE_URL/setka-front-bridge-b24.py"
 BRIDGE_B25_URL="$BASE_URL/setka-front-bridge-b25.py"
 BRIDGE_B27_URL="$BASE_URL/setka-front-bridge-b27.py"
 FULL_SYNC_URL="$BASE_URL/setka-mac-full-sync.py"
+DELTA_SYNC_URL="$BASE_URL/setka-mac-delta-sync.py"
 SELF_URL="$BASE_URL/setka-boost-update.command"
 SETKA_BIN="$HOME/bin/setka"
 REPO="${SETKA_REPO:-$HOME/SETKA_LOCAL/WORKSPACE/Setka-web}"
@@ -27,6 +28,8 @@ SELF_TARGET="$BIN_DIR/SETKA_BOOST_UPDATE.command"
 SELF_NEXT="$BIN_DIR/SETKA_BOOST_UPDATE.command.next"
 FRONT_LAUNCHER_TARGET="$BIN_DIR/SETKA_FRONT.command"
 FULL_SYNC_TARGET="$BIN_DIR/setka-mac-full-sync.py"
+DELTA_SYNC_TARGET="$BIN_DIR/setka-mac-delta-sync.py"
+LATEST="$ROOT/mirror/LATEST.json"
 OVERLAY_B23="$FRONT_DIR/setka-b23-base.js"
 OVERLAY_B24="$FRONT_DIR/setka-b24-trace.js"
 OVERLAY_B25="$FRONT_DIR/setka-b25-context.js"
@@ -47,59 +50,47 @@ exec > >(tee -a "$LOG") 2>&1
 notify(){ local msg="$1"; command -v osascript >/dev/null 2>&1 && osascript -e "display notification \"$msg\" with title \"SETKA\"" >/dev/null 2>&1 || true; }
 finish_wait(){ echo; echo "Log: $LOG"; echo; read -r -p "Нажми Enter, чтобы закрыть окно... " _ || true; }
 stop(){ echo "STOP · $1"; notify "$1"; finish_wait; exit "${2:-2}"; }
-
 retry_download(){
-  local url="$1" target="$2" mode="${3:-600}" tmp="$2.tmp"
-  local attempt
+  local url="$1" target="$2" mode="${3:-600}" tmp="$2.tmp" attempt
   for attempt in 1 2 3 4 5; do
     rm -f "$tmp"
     if curl -fL --retry 2 --retry-delay 1 --retry-all-errors --connect-timeout 15 --max-time 180 -sS "$url" -o "$tmp"; then
-      mv "$tmp" "$target"
-      chmod "$mode" "$target" 2>/dev/null || true
-      return 0
+      mv "$tmp" "$target"; chmod "$mode" "$target" 2>/dev/null || true; return 0
     fi
-    echo "RETRY · download $attempt/5 · $url"
-    sleep "$attempt"
+    echo "RETRY · download $attempt/5 · $url"; sleep "$attempt"
   done
-  rm -f "$tmp"
-  return 1
+  rm -f "$tmp"; return 1
 }
-
 retry_cmd(){
-  local label="$1"; shift
-  local attempt rc=1
+  local label="$1"; shift; local attempt rc=1
   for attempt in 1 2 3; do
     "$@" && return 0
-    rc=$?
-    echo "RETRY · $label · $attempt/3 · rc=$rc"
-    sleep $((attempt*3))
+    rc=$?; echo "RETRY · $label · $attempt/3 · rc=$rc"; sleep $((attempt*3))
   done
   return "$rc"
 }
 
 echo "================================================================"
-echo "SETKA · ONE BUTTON UPDATE · FULL MAC MIRROR V1 · FRONT B2.7.4"
+echo "SETKA · ONE BUTTON UPDATE · BASELINE + DELTA V1 · FRONT B2.7.4"
 echo "$(date)"
 echo "================================================================"
-echo "Порядок: tooling → полный Mac mirror → core → front → PASS receipt."
-echo "Сетевой сбой не уничтожает предыдущий проверенный mirror."
+echo "GitHub + Supabase = development truth; Mac = receipt-verified mirror."
+echo "После первого полного baseline следующие обновления переносят только dirty relations + schema/code delta."
 echo
 
 command -v curl >/dev/null 2>&1 || stop "curl unavailable"
 command -v python3 >/dev/null 2>&1 || stop "python3 unavailable"
 command -v git >/dev/null 2>&1 || stop "git unavailable"
 
-# 0. Tooling + immediate self-heal. New updater is promoted before any network-heavy work.
+# 0. Tooling and immediate self-heal.
 echo "[0/7] TOOLING + SELF-HEAL"
 retry_download "$SELF_URL" "$SELF_NEXT" 700 || stop "updater self-refresh failed"
-mv "$SELF_NEXT" "$SELF_TARGET"
-chmod 700 "$SELF_TARGET"
-ln -sfn "$SELF_TARGET" "$DESKTOP/UPDATE_SETKA.command"
+mv "$SELF_NEXT" "$SELF_TARGET"; chmod 700 "$SELF_TARGET"; ln -sfn "$SELF_TARGET" "$DESKTOP/UPDATE_SETKA.command"
 echo "PASS · updater self-healed before long operations"
-
 retry_download "$FRONT_LAUNCHER_URL" "$FRONT_LAUNCHER_TARGET" 700 || stop "front launcher refresh failed"
 ln -sfn "$FRONT_LAUNCHER_TARGET" "$DESKTOP/SETKA_FRONT.command"
-retry_download "$FULL_SYNC_URL" "$FULL_SYNC_TARGET" 700 || stop "full Mac mirror sync script refresh failed"
+retry_download "$FULL_SYNC_URL" "$FULL_SYNC_TARGET" 700 || stop "full Mac mirror helper refresh failed"
+retry_download "$DELTA_SYNC_URL" "$DELTA_SYNC_TARGET" 700 || stop "delta Mac mirror helper refresh failed"
 
 retry_download "$OVERLAY_B23_URL" "$OVERLAY_B23" 600 || stop "B2.3 layer refresh failed"
 retry_download "$OVERLAY_B24_URL" "$OVERLAY_B24" 600 || stop "B2.4 layer refresh failed"
@@ -108,24 +99,38 @@ retry_download "$OVERLAY_CORE_URL" "$OVERLAY_CORE" 600 || stop "B2.7.4 projectio
 retry_download "$OVERLAY_B271_URL" "$OVERLAY_B271" 600 || stop "B2.7.1 runtime projection UI refresh failed"
 retry_download "$OVERLAY_B274_URL" "$OVERLAY_B274" 600 || stop "B2.7.4 workbench refresh failed"
 cat "$OVERLAY_B23" "$OVERLAY_B24" "$OVERLAY_B25" "$OVERLAY_CORE" "$OVERLAY_B271" "$OVERLAY_B274" > "$OVERLAY.tmp" || stop "combined overlay build failed"
-mv "$OVERLAY.tmp" "$OVERLAY"
-chmod 600 "$OVERLAY" 2>/dev/null || true
-
+mv "$OVERLAY.tmp" "$OVERLAY"; chmod 600 "$OVERLAY" 2>/dev/null || true
 retry_download "$BRIDGE_B23_URL" "$BRIDGE_B23" 700 || stop "bridge B2.3 refresh failed"
 retry_download "$BRIDGE_B24_URL" "$BRIDGE_B24" 700 || stop "bridge B2.4 refresh failed"
 retry_download "$BRIDGE_B25_URL" "$BRIDGE_B25" 700 || stop "bridge B2.5 refresh failed"
 retry_download "$BRIDGE_B27_URL" "$BRIDGE" 700 || stop "bridge B2.7.4 refresh failed"
 
-# 1. Full mirror FIRST. This is the durable truth boundary.
-echo; echo "[1/7] FULL MAC MIRROR"
-echo "Первый запуск длинный. Новый mirror собирается в staging; current не заменяется до полного PASS."
-retry_cmd "full Mac mirror" python3 "$FULL_SYNC_TARGET"
-rc=$?
-[ "$rc" -eq 0 ] || stop "FULL MAC MIRROR FAILED · previous verified mirror preserved · rc=$rc" "$rc"
-[ -f "$ROOT/mirror/LATEST.json" ] || stop "FULL MAC MIRROR receipt missing"
-echo "PASS · full Git history + full SETKA database mirror recorded on Mac"
+# 1. Durable Mac transfer boundary. Full only when no verified baseline exists.
+echo; echo "[1/7] VERIFIED MAC MIRROR"
+MIRROR_MODE="FULL"
+if [ -f "$LATEST" ]; then
+  MIRROR_MODE="$(python3 - "$LATEST" <<'PY'
+import json,sys
+try:
+ d=json.load(open(sys.argv[1])); print('DELTA' if d.get('state') in ('PASS_FULL_SETKA_MIRROR','PASS_DELTA_SETKA_MIRROR') else 'FULL')
+except Exception: print('FULL')
+PY
+)"
+fi
+if [ "$MIRROR_MODE" = "DELTA" ]; then
+  echo "MODE · DELTA · verified baseline found"
+  retry_cmd "Mac delta mirror" python3 "$DELTA_SYNC_TARGET"
+  rc=$?
+  [ "$rc" -eq 0 ] || stop "MAC DELTA MIRROR FAILED · previous verified mirror preserved · rc=$rc" "$rc"
+else
+  echo "MODE · FULL · no verified baseline"
+  retry_cmd "full Mac mirror" python3 "$FULL_SYNC_TARGET"
+  rc=$?
+  [ "$rc" -eq 0 ] || stop "FULL MAC MIRROR FAILED · previous verified mirror preserved · rc=$rc" "$rc"
+fi
+[ -f "$LATEST" ] || stop "Mac mirror receipt missing"
 
-# 2. Legacy/core updater is useful but is no longer allowed to block data preservation.
+# 2. Existing core updater may fail independently; mirror preservation comes first.
 echo; echo "[2/7] VERIFIED CORE UPDATE"
 [ -x "$SETKA_BIN" ] || stop "SETKA CLI NOT FOUND: $SETKA_BIN"
 retry_cmd "verified core update" "$SETKA_BIN" update
@@ -133,15 +138,14 @@ rc=$?
 [ "$rc" -eq 0 ] || stop "CORE UPDATE FAILED AFTER MIRROR PASS · mirror preserved · rc=$rc" "$rc"
 echo "PASS · verified core update"
 
-# 3. Front shell
+# 3. Front shell.
 echo; echo "[3/7] LOCAL FRONT BASE REFRESH"
 TMP="$FRONT_DIR/index.html.tmp"; TARGET="$FRONT_DIR/index.html"
 retry_download "$FRONT_URL" "$TMP" 600 || stop "base front refresh failed"
-mv "$TMP" "$TARGET"
-chmod 600 "$TARGET" 2>/dev/null || true
+mv "$TMP" "$TARGET"; chmod 600 "$TARGET" 2>/dev/null || true
 echo "PASS · front shell staged"
 
-# 4. Optional development working-tree refs. Dedicated Git mirror already contains full repo history.
+# 4. Optional developer working tree. Dedicated bare Git mirror is transfer truth.
 echo; echo "[4/7] DEVELOPMENT REFS FETCH"
 if [ -d "$REPO/.git" ]; then
   if retry_cmd "development refs fetch" git -C "$REPO" fetch origin --prune; then
@@ -150,35 +154,35 @@ if [ -d "$REPO/.git" ]; then
     echo "PASS · development refs fetched · branch ${branch:-DETACHED}"
     [ -n "$dirty" ] && echo "SAFE · user working tree has local changes; untouched" || echo "SAFE · user working tree clean; no merge performed"
   else
-    echo "HOLD · development working-tree fetch failed; full dedicated Git mirror remains PASS"
+    echo "HOLD · development working-tree fetch failed; dedicated Git mirror remains authoritative"
   fi
 else
-  echo "INFO · no development working tree; dedicated full Git mirror is authoritative for transfer"
+  echo "INFO · no development working tree; dedicated bare Git mirror remains authoritative"
 fi
 
-# 5. Status and receipt
+# 5. Local proof must be complete enough to identify the exact Mac state.
 echo; echo "[5/7] VERIFIED RECEIPT"
 "$SETKA_BIN" status || true
-python3 - <<'PY'
-import json
-from pathlib import Path
-p=Path.home()/'.setka/mirror/LATEST.json'
-d=json.loads(p.read_text())
-required=['state','codeCommit','sourceTranscriptTip','tableCount','rowCount','manifestSha256','localDbSha256','serverReceiptRef']
-missing=[k for k in required if not d.get(k) and d.get(k)!=0]
-if d.get('state')!='PASS_FULL_SETKA_MIRROR' or missing:
+python3 - "$LATEST" <<'PY'
+import json,sys
+p=sys.argv[1]; d=json.load(open(p))
+allowed={'PASS_FULL_SETKA_MIRROR','PASS_DELTA_SETKA_MIRROR'}
+required=['state','codeCommit','sourceTranscriptTip','tableCount','rowCount','localDbSha256','serverReceiptRef']
+missing=[k for k in required if d.get(k) in (None,'')]
+if d.get('state') not in allowed or missing:
     raise SystemExit('RECEIPT_FAIL missing='+','.join(missing))
 print('MAC MIRROR:', d['state'])
 print('CODE COMMIT:', d['codeCommit'])
 print('SOURCE TIP:', d['sourceTranscriptTip'])
 print('TABLES:', d['tableCount'])
 print('ROWS:', d['rowCount'])
+if 'deltaToEventId' in d: print('DELTA TIP:', d['deltaToEventId'])
 print('SERVER RECEIPT:', d['serverReceiptRef'])
 PY
 rc=$?
 [ "$rc" -eq 0 ] || stop "LOCAL MIRROR RECEIPT VERIFICATION FAILED" "$rc"
 
-# 6. Open front only after transfer + core + receipt all passed.
+# 6. Open front only after verified transfer + core.
 echo; echo "[6/7] OPEN VERIFIED FRONT"
 if [ -x "$FRONT_LAUNCHER_TARGET" ]; then
   nohup "$FRONT_LAUNCHER_TARGET" >"$LOG_DIR/front-launch-$STAMP.log" 2>&1 &
@@ -188,19 +192,17 @@ fi
 cat <<'TXT'
 ================================================================
 SETKA ONE BUTTON UPDATE · COMPLETE
-- updater self-heals before long network operations
-- full Mac mirror runs before legacy/core update
-- transient downloads/core calls retry automatically
-- dedicated bare Git mirror contains full repository history/refs
-- all manifested SETKA base-table rows are copied into compressed local SQLite
-- PostgreSQL schema objects are mirrored separately
-- new mirror becomes current only after complete verification
-- previous verified mirror survives any failed update
-- PASS requires local receipt + server-side Mac receipt
+- verified full baseline is retained on Mac
+- later updates use statement-level dirty-relation journal + schema inventory comparison
+- first delta after tracker installation performs one reconciliation pass to close the pre-tracker gap
+- writes after a delta high-water mark remain queued for the next update
+- dedicated bare Git mirror refreshes all repository history/refs
+- local SQLite mirror is promoted atomically; previous verified mirror survives failure
+- every PASS has a local receipt and a server-side receipt
+- frontend remains a projection layer; backend truth is not inferred from layout
 - provider-managed secret values are not copied into plaintext mirror
-- front opens only after verified transfer boundary
 - CANON is not promoted by this updater
 ================================================================
 TXT
-notify "SETKA full Mac mirror + front update complete"
+notify "SETKA verified Mac delta + front update complete"
 finish_wait
