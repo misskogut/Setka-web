@@ -22,7 +22,7 @@ CODE_MIRROR = CODE_ROOT / "Setka-web.git"
 GIT_URL = "https://github.com/misskogut/Setka-web.git"
 KEYCHAIN_SERVICE = "SETKA_MAC_DEVICE_TOKEN"
 SCHEMA_KINDS = ["VIEW", "FUNCTION", "INDEX", "CONSTRAINT", "TRIGGER", "SEQUENCE", "POLICY"]
-TARGET_PAGE_BYTES = 700_000
+TARGET_PAGE_BYTES = 2_000_000
 
 
 def utc_now():
@@ -124,9 +124,9 @@ def page_limit(table):
     est = int(table.get("estimatedRows") or 0)
     total = int(table.get("totalBytes") or 0)
     if est <= 0:
-        return 200
+        return 1000
     avg = max(256.0, total / max(est, 1))
-    return max(1, min(500, int(TARGET_PAGE_BYTES / avg)))
+    return max(1, min(3000, int(TARGET_PAGE_BYTES / avg)))
 
 
 def relation_sqlite_name(schema_name, table_name):
