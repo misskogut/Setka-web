@@ -1,7 +1,9 @@
 #!/bin/bash
 set -u
 
-FRONT_DIR="$HOME/.setka/front"
+ROOT="$HOME/.setka"
+BIN_DIR="$ROOT/bin"
+FRONT_DIR="$ROOT/front"
 PORT="${SETKA_FRONT_PORT:-8765}"
 BASE_URL="https://raw.githubusercontent.com/misskogut/Setka-web/main"
 FRONT_URL="$BASE_URL/setka-minimal-front-b1.html"
@@ -15,6 +17,9 @@ BRIDGE_B23_URL="$BASE_URL/setka-front-bridge-b23.py"
 BRIDGE_B24_URL="$BASE_URL/setka-front-bridge-b24.py"
 BRIDGE_B25_URL="$BASE_URL/setka-front-bridge-b25.py"
 BRIDGE_B27_URL="$BASE_URL/setka-front-bridge-b27.py"
+FULL_SYNC_URL="$BASE_URL/setka-mac-full-sync.py"
+FULL_SYNC_TARGET="$BIN_DIR/setka-mac-full-sync.py"
+MIRROR_LATEST="$ROOT/mirror/LATEST.json"
 
 TARGET="$FRONT_DIR/index.html"
 OVERLAY_B23="$FRONT_DIR/setka-b23-base.js"
@@ -34,8 +39,10 @@ OPEN_URL="${URL}?front=B2.7.4"
 HEALTH="${URL}api/b2/health"
 EXPECTED_HEALTH="SETKA_LOCAL_FRONT_B274_READY"
 
-mkdir -p "$FRONT_DIR"
+mkdir -p "$FRONT_DIR" "$BIN_DIR"
 echo "SETKA LOCAL FRONT · preparing B2.7.4 single-writer workbench / DATA B1"
+
+notify(){ local msg="$1"; command -v osascript >/dev/null 2>&1 && osascript -e "display notification \"$msg\" with title \"SETKA\"" >/dev/null 2>&1 || true; }
 
 refresh_file() {
   local remote="$1" target="$2" tmp="$2.tmp"
@@ -47,6 +54,37 @@ refresh_file() {
   rm -f "$tmp"
   return 1
 }
+
+mirror_pass=false
+if [ -f "$MIRROR_LATEST" ]; then
+  mirror_pass="$(python3 - "$MIRROR_LATEST" <<'PY'
+import json,sys
+try:
+    d=json.load(open(sys.argv[1]))
+    print('true' if d.get('state')=='PASS_FULL_SETKA_MIRROR' else 'false')
+except Exception:
+    print('false')
+PY
+)"
+fi
+
+if [ "$mirror_pass" != "true" ]; then
+  echo "SETKA MAC MIRROR · no verified full mirror yet · bootstrap required"
+  notify "SETKA: начинаю первый полный перенос системы на Mac"
+  command -v curl >/dev/null 2>&1 || { echo "STOP · curl unavailable for Mac mirror bootstrap"; exit 52; }
+  command -v python3 >/dev/null 2>&1 || { echo "STOP · python3 unavailable for Mac mirror bootstrap"; exit 53; }
+  command -v git >/dev/null 2>&1 || { echo "STOP · git unavailable for Mac mirror bootstrap"; exit 54; }
+  refresh_file "$FULL_SYNC_URL" "$FULL_SYNC_TARGET" || { echo "STOP · full mirror sync script unavailable"; exit 55; }
+  chmod 700 "$FULL_SYNC_TARGET" 2>/dev/null || true
+  python3 "$FULL_SYNC_TARGET"
+  rc=$?
+  if [ "$rc" -ne 0 ]; then
+    echo "STOP · first full Mac mirror failed · previous verified mirror (if any) preserved"
+    notify "SETKA: полный перенос на Mac остановлен, старое проверенное состояние сохранено"
+    exit "$rc"
+  fi
+  notify "SETKA: полный Mac mirror подтвержден"
+fi
 
 refresh_file "$FRONT_URL" "$TARGET" && echo "PASS · base shell" || echo "HOLD · base shell cache"
 refresh_file "$OVERLAY_B23_URL" "$OVERLAY_B23" && echo "PASS · B2.3" || echo "HOLD · B2.3 cache"
