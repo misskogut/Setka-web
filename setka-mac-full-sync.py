@@ -22,7 +22,7 @@ CODE_MIRROR = CODE_ROOT / "Setka-web.git"
 GIT_URL = "https://github.com/misskogut/Setka-web.git"
 KEYCHAIN_SERVICE = "SETKA_MAC_DEVICE_TOKEN"
 SCHEMA_KINDS = ["VIEW", "FUNCTION", "INDEX", "CONSTRAINT", "TRIGGER", "SEQUENCE", "POLICY"]
-TARGET_PAGE_BYTES = 2_000_000
+TARGET_PAGE_BYTES = 900_000
 
 
 def utc_now():
@@ -83,7 +83,7 @@ def edge_call(device_ref, token, payload, *, timeout=240, attempts=5):
                 "Authorization": f"Bearer {token}",
                 "Content-Type": "application/json",
                 "Accept": "application/json",
-                "User-Agent": "SETKA-Mac-Full-Mirror/1.0",
+                "User-Agent": "SETKA-Mac-Full-Mirror/1.1",
             },
         )
         try:
@@ -124,9 +124,9 @@ def page_limit(table):
     est = int(table.get("estimatedRows") or 0)
     total = int(table.get("totalBytes") or 0)
     if est <= 0:
-        return 1000
+        return 1 if total >= TARGET_PAGE_BYTES else 500
     avg = max(256.0, total / max(est, 1))
-    return max(1, min(3000, int(TARGET_PAGE_BYTES / avg)))
+    return max(1, min(2000, int(TARGET_PAGE_BYTES / avg)))
 
 
 def relation_sqlite_name(schema_name, table_name):
@@ -134,12 +134,16 @@ def relation_sqlite_name(schema_name, table_name):
     return "r_" + hashlib.sha256(key).hexdigest()[:20]
 
 
-def init_db(path: Path):
-    conn = sqlite3.connect(path)
+def configure_db(conn):
     conn.execute("PRAGMA journal_mode=OFF")
     conn.execute("PRAGMA synchronous=OFF")
     conn.execute("PRAGMA temp_store=MEMORY")
     conn.execute("PRAGMA locking_mode=EXCLUSIVE")
+    return conn
+
+
+def init_db(path: Path):
+    conn = configure_db(sqlite3.connect(path))
     conn.execute("CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT NOT NULL)")
     conn.execute("""
       CREATE TABLE relations(
@@ -167,6 +171,37 @@ def init_db(path: Path):
     """)
     conn.commit()
     return conn
+
+
+def meta_value(conn, key):
+    try:
+        row = conn.execute("SELECT value FROM meta WHERE key=?", (key,)).fetchone()
+        return row[0] if row else None
+    except Exception:
+        return None
+
+
+def find_resumable_staging(staging_root: Path, source_tip: int):
+    if not staging_root.exists():
+        return None
+    candidates = sorted(
+        [p for p in staging_root.iterdir() if p.is_dir()],
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
+    )
+    for candidate in candidates:
+        db_path = candidate / "setka-full-mirror.sqlite3"
+        if not db_path.exists():
+            continue
+        try:
+            conn = sqlite3.connect(db_path)
+            tip = meta_value(conn, "sourceTranscriptTip")
+            conn.close()
+            if tip == str(source_tip):
+                return candidate
+        except Exception:
+            continue
+    return None
 
 
 def insert_relation_row(conn, sqlite_name, pk_json, row):
@@ -209,7 +244,18 @@ def mirror_table(conn, device_ref, token, table, table_index, table_total):
             "limit": limit,
             "includeCount": pages == 0,
         }
-        result = edge_call(device_ref, token, payload)
+        try:
+            result = edge_call(device_ref, token, payload, attempts=3)
+        except Exception as e:
+            if limit > 1:
+                smaller = max(1, limit // 2)
+                print(
+                    f"DATA · {table_index:03d}/{table_total:03d} · {schema_name}.{table_name} · page timeout/error · reducing {limit} → {smaller}",
+                    flush=True,
+                )
+                limit = smaller
+                continue
+            raise e
         rows = result.get("rows") or []
         if not isinstance(rows, list):
             raise RuntimeError(f"ROWS_NOT_LIST:{schema_name}.{table_name}")
@@ -257,9 +303,39 @@ def mirror_table(conn, device_ref, token, table, table_index, table_total):
     }
 
 
+def existing_relation_receipt(conn, table):
+    row = conn.execute(
+        "SELECT expected_total,fetched_total,pages,cursor_kind,estimated_bytes,state FROM relations WHERE schema_name=? AND table_name=?",
+        (table["schemaName"], table["tableName"]),
+    ).fetchone()
+    if not row or row[5] != "PASS":
+        return None
+    return {
+        "schemaName": table["schemaName"],
+        "tableName": table["tableName"],
+        "expectedAtStart": row[0],
+        "fetched": int(row[1] or 0),
+        "pages": int(row[2] or 0),
+        "cursorKind": row[3],
+        "estimatedBytes": int(row[4] or 0),
+    }
+
+
+def prune_stale_relations(conn, tables):
+    wanted = {(t["schemaName"], t["tableName"]) for t in tables}
+    rows = conn.execute("SELECT schema_name,table_name,sqlite_name FROM relations").fetchall()
+    for schema_name, table_name, sqlite_name in rows:
+        if (schema_name, table_name) not in wanted:
+            conn.execute(f'DROP TABLE IF EXISTS "{sqlite_name}"')
+            conn.execute("DELETE FROM relations WHERE schema_name=? AND table_name=?", (schema_name, table_name))
+    conn.commit()
+
+
 def mirror_schema_objects(conn, device_ref, token, kinds):
     counts = {}
     for kind in kinds:
+        conn.execute("DELETE FROM schema_objects WHERE kind=?", (kind,))
+        conn.commit()
         offset = 0
         ordinal = 0
         while True:
@@ -328,34 +404,54 @@ def main():
 
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     staging_root = MIRROR_ROOT / "staging"
-    if staging_root.exists():
-        shutil.rmtree(staging_root)
-    staging = staging_root / f"{stamp}-E{source_tip}"
-    staging.mkdir(parents=True, exist_ok=True)
-    db_path = staging / "setka-full-mirror.sqlite3"
+    staging_root.mkdir(parents=True, exist_ok=True)
+    staging = find_resumable_staging(staging_root, source_tip)
+    if staging is not None:
+        db_path = staging / "setka-full-mirror.sqlite3"
+        conn = configure_db(sqlite3.connect(db_path))
+        completed = conn.execute("SELECT count(*) FROM relations WHERE state='PASS'").fetchone()[0]
+        print(f"RESUME · recovered staging at transcript tip {source_tip} · {completed}/{len(tables)} tables already PASS", flush=True)
+    else:
+        staging = staging_root / f"{stamp}-E{source_tip}"
+        staging.mkdir(parents=True, exist_ok=True)
+        db_path = staging / "setka-full-mirror.sqlite3"
+        conn = init_db(db_path)
+        print("RESUME · no compatible staging found · starting fresh mirror", flush=True)
+
     (staging / "manifest.json").write_bytes(manifest_bytes)
     (staging / "code-main-commit.txt").write_text(code_commit + "\n", encoding="utf-8")
 
-    conn = init_db(db_path)
-    conn.execute("INSERT INTO meta(key,value) VALUES('format','SETKA_MAC_FULL_MIRROR_SQLITE_V1')")
-    conn.execute("INSERT INTO meta(key,value) VALUES('deviceRef',?)", (device_ref,))
-    conn.execute("INSERT INTO meta(key,value) VALUES('codeCommit',?)", (code_commit,))
-    conn.execute("INSERT INTO meta(key,value) VALUES('manifestSha256',?)", (manifest_sha,))
-    conn.execute("INSERT INTO meta(key,value) VALUES('sourceTranscriptTip',?)", (str(source_tip),))
-    conn.execute("INSERT INTO meta(key,value) VALUES('sourceGeneratedAt',?)", (str(source_generated_at),))
+    meta = {
+        "format": "SETKA_MAC_FULL_MIRROR_SQLITE_V1",
+        "deviceRef": device_ref,
+        "codeCommit": code_commit,
+        "manifestSha256": manifest_sha,
+        "sourceTranscriptTip": str(source_tip),
+        "sourceGeneratedAt": str(source_generated_at),
+    }
+    for key, value in meta.items():
+        conn.execute("INSERT OR REPLACE INTO meta(key,value) VALUES(?,?)", (key, value))
     conn.commit()
+    prune_stale_relations(conn, tables)
 
     table_receipts = []
     total_rows = 0
     try:
         for i, table in enumerate(tables, start=1):
-            rec = mirror_table(conn, device_ref, token, table, i, len(tables))
+            rec = existing_relation_receipt(conn, table)
+            if rec is not None:
+                print(
+                    f"RESUME · {i:03d}/{len(tables):03d} · {table['schemaName']}.{table['tableName']} · {rec['fetched']:,} rows already PASS",
+                    flush=True,
+                )
+            else:
+                rec = mirror_table(conn, device_ref, token, table, i, len(tables))
             table_receipts.append(rec)
             total_rows += rec["fetched"]
         schema_counts = mirror_schema_objects(conn, device_ref, token, manifest.get("schemaObjectKinds") or SCHEMA_KINDS)
-        conn.execute("INSERT INTO meta(key,value) VALUES('tableCount',?)", (str(len(tables)),))
-        conn.execute("INSERT INTO meta(key,value) VALUES('rowCount',?)", (str(total_rows),))
-        conn.execute("INSERT INTO meta(key,value) VALUES('schemaObjectCounts',?)", (canonical_json(schema_counts),))
+        conn.execute("INSERT OR REPLACE INTO meta(key,value) VALUES('tableCount',?)", (str(len(tables)),))
+        conn.execute("INSERT OR REPLACE INTO meta(key,value) VALUES('rowCount',?)", (str(total_rows),))
+        conn.execute("INSERT OR REPLACE INTO meta(key,value) VALUES('schemaObjectCounts',?)", (canonical_json(schema_counts),))
         conn.commit()
     finally:
         conn.close()
@@ -385,6 +481,7 @@ def main():
             "schemaDefinitionsCopied": True,
             "gitHistoryMirrored": True,
             "localPromotionAtomic": True,
+            "resumableTransport": True,
             "providerManagedSecretsCopied": False,
             "authUsersAtDesignAudit": 0,
             "storageObjectsAtDesignAudit": 0,
@@ -411,6 +508,7 @@ def main():
             "schemaObjectCounts": schema_counts,
             "gitHistoryMirrored": True,
             "allManifestedBaseTablesCopied": True,
+            "resumableTransport": True,
             "providerManagedSecretsCopied": False,
         },
     })
