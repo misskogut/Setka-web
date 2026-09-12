@@ -119,6 +119,37 @@ PY
 fi
 if [ "$MIRROR_MODE" = "DELTA" ]; then
   echo "MODE · DELTA · verified baseline found"
+
+  # Never keep retrying a corrupted interrupted staging database.
+  # The verified CURRENT mirror is checked first and is never deleted here.
+  python3 - "$ROOT/mirror/current/setka-full-mirror.sqlite3" "$ROOT/mirror/delta-staging" <<'PY'
+import shutil, sqlite3, sys
+from pathlib import Path
+current=Path(sys.argv[1]); staging_root=Path(sys.argv[2])
+
+def quick_ok(path):
+    try:
+        c=sqlite3.connect(path)
+        row=c.execute('PRAGMA quick_check').fetchone()
+        c.close()
+        return bool(row and str(row[0]).lower()=='ok')
+    except Exception:
+        return False
+
+if not current.exists() or not quick_ok(current):
+    print('FAIL · verified CURRENT SQLite integrity check failed')
+    raise SystemExit(12)
+print('PASS · verified CURRENT SQLite integrity ok')
+if staging_root.exists():
+    for stage in sorted([p for p in staging_root.iterdir() if p.is_dir()]):
+        db=stage/'setka-full-mirror.sqlite3'
+        if db.exists() and not quick_ok(db):
+            print(f'RECOVERY · malformed delta staging discarded · {stage.name}')
+            shutil.rmtree(stage, ignore_errors=True)
+PY
+  rc=$?
+  [ "$rc" -eq 0 ] || stop "MAC VERIFIED BASELINE INTEGRITY FAILED · no local deletion performed" "$rc"
+
   retry_cmd "Mac delta mirror" python3 "$DELTA_SYNC_TARGET"
   rc=$?
   [ "$rc" -eq 0 ] || stop "MAC DELTA MIRROR FAILED · previous verified mirror preserved · rc=$rc" "$rc"
@@ -198,6 +229,7 @@ SETKA ONE BUTTON UPDATE · COMPLETE
 - writes after a delta high-water mark remain queued for the next update
 - dedicated bare Git mirror refreshes all repository history/refs
 - local SQLite mirror is promoted atomically; previous verified mirror survives failure
+- malformed interrupted delta staging is discarded automatically; verified CURRENT is integrity-checked first
 - every PASS has a local receipt and a server-side receipt
 - frontend remains a projection layer; backend truth is not inferred from layout
 - provider-managed secret values are not copied into plaintext mirror
