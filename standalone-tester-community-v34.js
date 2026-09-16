@@ -27,7 +27,7 @@
   style.textContent = `
     .st37-section{margin:18px 0 4px}.st37-section-title{font-size:10px;letter-spacing:.12em;color:rgba(255,255,255,.38);margin:0 0 8px}
     .st37-id-card{border:1px solid rgba(255,255,255,.14);border-radius:20px;padding:15px;background:#090909;margin:8px 0}.st37-id-value{font-size:18px;font-weight:650;letter-spacing:.04em;margin-bottom:5px}.st37-id-copy,.st37-privacy{font-size:11px;line-height:1.5;color:rgba(255,255,255,.48)}
-    .st37-note-action{width:100%;height:42px;border:1px solid rgba(255,255,255,.2);border-radius:21px;background:transparent;color:#fff;font-size:11px;margin-top:10px}.st37-note-action.published{color:rgba(255,255,255,.55);border-color:rgba(255,255,255,.12)}
+    .st37-note-action{width:100%;min-height:42px;border:1px solid rgba(255,255,255,.2);border-radius:21px;background:transparent;color:#fff;font-size:11px;padding:0 14px;margin-top:10px}.st37-note-action.pending{color:rgba(255,255,255,.72);border-style:dashed}.st37-note-action.published{color:rgba(255,255,255,.62);border-color:rgba(255,255,255,.12)}.st37-note-action.rejected{color:rgba(255,255,255,.52);border-color:rgba(255,255,255,.12)}
     .st37-note-origin{font-size:10px;color:rgba(255,255,255,.35);margin-top:10px;text-align:center}
     .st37-community-meta{font-size:10px;color:rgba(255,255,255,.38);margin:7px 0 12px}.st37-community-preview{display:block;width:100%;aspect-ratio:1.42/1;background:#000;border-radius:18px}.st37-community-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.st37-community-actions button{height:42px;border-radius:21px;font-size:11px}.st37-open{border:1px solid rgba(255,255,255,.22);background:transparent;color:#fff}.st37-save{border:0;background:#fff;color:#000;font-weight:650}.st37-save.saved{background:#151515;color:rgba(255,255,255,.45);border:1px solid rgba(255,255,255,.12)}
   `;
@@ -123,7 +123,7 @@
     const s = sessions.at?.(-1) || {}, n = notes.at?.(-1) || {}, p = phys.at?.(-1) || {};
     return [
       sessions.length, s.id || "", s.phase || "", s.measuredActiveMs || 0, s.afterFeedbackActiveMs || 0, (s.usage || []).length,
-      notes.length, n.id || "", n.visualSnapshot?.capturedAt || "", n.publicPublished ? 1 : 0, n.publicNoteId || "",
+      notes.length, n.id || "", n.visualSnapshot?.capturedAt || "", n.publicModerationStatus || "", n.publicNoteId || "",
       symptoms.length, checkins.length, phys.length, p.id || "", favorites.length, favorites.map(x => x.id).join(",")
     ].join("|");
   }
@@ -177,12 +177,30 @@
     return {...out, privateArchiveSynced:!!privateArchive};
   }
 
+  function reconcileLocalModeration() {
+    const notes = C.getData?.()?.notes || [];
+    let changed = false;
+    for (const note of notes) {
+      const state = pub.get(String(note.id));
+      if (!state) continue;
+      const status = state.status || (state.isPublic ? "published" : "private");
+      if (note.publicModerationStatus !== status || note.publicPublished !== (status === "published") || (state.id && note.publicNoteId !== state.id)) {
+        note.publicModerationStatus = status;
+        note.publicPublished = status === "published";
+        if (state.id) note.publicNoteId = state.id;
+        changed = true;
+      }
+    }
+    if (changed) C.save?.();
+  }
+
   async function refreshPub(force = false) {
     if (pubLoaded && !force) return pub;
     try {
       const out = await noteApi("my-status");
       pub = new Map((out.items || []).map(x => [String(x.sourceNoteKey), x]));
       pubLoaded = true;
+      reconcileLocalModeration();
     } catch (_) {}
     return pub;
   }
@@ -198,6 +216,15 @@
       try { return meta.startsWith(C.dt?.(n.observedAt) || ""); }
       catch (_) { return false; }
     }) || same.at(-1) || null;
+  }
+
+  function statusOf(note) {
+    const state = pub.get(String(note.id));
+    if (state?.status) return state.status;
+    if (state?.isPublic) return "published";
+    if (note.publicModerationStatus) return note.publicModerationStatus;
+    if (note.publicPublished) return "published";
+    return "private";
   }
 
   function enhance(card) {
@@ -223,14 +250,24 @@
       button.type = "button";
       card.appendChild(button);
     }
-    const state = pub.get(String(note.id));
-    const isPublic = !!note.publicPublished || !!state?.isPublic;
-    button.classList.toggle("published", isPublic);
-    button.textContent = isPublic ? "Опубликовано анонимно · убрать" : "Опубликовать анонимно";
+    const status = statusOf(note);
+    button.classList.remove("pending","published","rejected");
+    if (status === "pending") {
+      button.classList.add("pending");
+      button.textContent = "На модерации · отозвать";
+    } else if (status === "published") {
+      button.classList.add("published");
+      button.textContent = "Опубликовано анонимно · убрать";
+    } else if (status === "rejected") {
+      button.classList.add("rejected");
+      button.textContent = "Не опубликовано · предложить снова";
+    } else {
+      button.textContent = "Предложить к публикации";
+    }
     button.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
-      togglePublish(note, button);
+      togglePublication(note, button);
     };
   }
 
@@ -239,33 +276,48 @@
     for (const card of cards) enhance(card);
   }
 
-  async function togglePublish(note, button) {
+  function setLocalStatus(note, status, publicNoteId = null) {
+    note.publicModerationStatus = status;
+    note.publicPublished = status === "published";
+    if (publicNoteId) note.publicNoteId = publicNoteId;
+    C.save?.();
+  }
+
+  async function togglePublication(note, button) {
     if (publicationBusy) return;
     publicationBusy = true;
     button.disabled = true;
     try {
-      await refreshPub();
-      const current = pub.get(String(note.id)) || (note.publicPublished ? {id:note.publicNoteId || null, sourceNoteKey:note.id, isPublic:true} : null);
-      if (current?.isPublic) {
+      await refreshPub(true);
+      const current = pub.get(String(note.id));
+      const status = current?.status || statusOf(note);
+      if (status === "published") {
         if (!confirm("Убрать эту заметку из анонимного сообщества? Личная заметка останется у тебя.")) return;
         await noteApi("unpublish", {sourceNoteKey:note.id});
-        pub.set(String(note.id), {...current, isPublic:false});
-        note.publicPublished = false;
-        C.save?.();
+        const next = {...current, id:current?.id || note.publicNoteId || null, sourceNoteKey:note.id, status:"private", isPublic:false};
+        pub.set(String(note.id), next);
+        setLocalStatus(note, "private", next.id);
         C.recordEvent?.("public_note_unpublish", {noteId:note.id}, false);
+      } else if (status === "pending") {
+        if (!confirm("Отозвать запрос на публикацию? Личная заметка останется у тебя.")) return;
+        await noteApi("cancel-submission", {sourceNoteKey:note.id});
+        const next = {...current, id:current?.id || note.publicNoteId || null, sourceNoteKey:note.id, status:"private", isPublic:false};
+        pub.set(String(note.id), next);
+        setLocalStatus(note, "private", next.id);
+        C.recordEvent?.("public_note_moderation_withdraw", {noteId:note.id}, false);
       } else {
-        if (!confirm("Опубликовать эту заметку анонимно? В сообщество попадут только текст заметки и связанный паттерн. ID, сессия, симптомы, пульс и личная история не публикуются.")) return;
+        if (!confirm("Отправить эту заметку на модерацию? Если SETKA одобрит её, в сообщество попадут только текст и связанный визуальный паттерн. ID тестировщика, сессия, симптомы, пульс и личная история публично не показываются.")) return;
         await C.sandbox?.sync?.();
-        const out = await noteApi("publish", {note:clone(note)});
-        pub.set(String(note.id), {id:out.id, sourceNoteKey:note.id, isPublic:true});
-        note.publicPublished = true;
-        note.publicNoteId = out.id;
-        C.save?.();
-        C.recordEvent?.("public_note_publish", {noteId:note.id, publicNoteId:out.id, patternId:note.patternId || note.config?.patternId || null}, false);
+        const out = await noteApi("submit", {note:clone(note)});
+        const next = {id:out.id, sourceNoteKey:note.id, status:out.status || "pending", isPublic:false, submittedAt:out.submittedAt || new Date().toISOString()};
+        pub.set(String(note.id), next);
+        setLocalStatus(note, next.status, out.id);
+        C.recordEvent?.("public_note_moderation_submit", {noteId:note.id, publicNoteId:out.id, patternId:note.patternId || note.config?.patternId || null}, false);
       }
       schedulePrivateArchive(500);
-    } catch (_) {
-      alert("Не удалось изменить публикацию.");
+    } catch (e) {
+      console.warn("SETKA note moderation action failed", e);
+      alert("Не удалось изменить запрос на публикацию.");
     } finally {
       publicationBusy = false;
       button.disabled = false;
@@ -348,10 +400,10 @@
 
   async function showFeed() {
     C.setNav?.("me");
-    const body = C.screen("Заметки сообщества", "Только заметки, которые люди сами решили опубликовать. Авторские ID здесь не показываются.", "АНОНИМНОЕ СООБЩЕСТВО", C.showMe);
+    const body = C.screen("Заметки сообщества", "Только заметки, которые автор предложил и SETKA одобрила после модерации.", "АНОНИМНОЕ СООБЩЕСТВО", C.showMe);
     const privacy = document.createElement("div");
     privacy.className = "st37-privacy";
-    privacy.textContent = "Публичная заметка содержит только текст и связанный визуальный паттерн. Личная история автора остаётся закрытой.";
+    privacy.textContent = "Публичная заметка содержит только текст и связанный визуальный паттерн. ID тестировщика и личная история автора остаются закрытыми.";
     body.appendChild(privacy);
     const loading = document.createElement("div");
     loading.className = "st-empty";
@@ -362,7 +414,7 @@
       loading.remove();
       const items = out.items || [];
       if (!items.length) {
-        body.insertAdjacentHTML("beforeend", '<div class="st-empty">Пока никто не опубликовал заметку.</div>');
+        body.insertAdjacentHTML("beforeend", '<div class="st-empty">Пока нет заметок, прошедших модерацию.</div>');
         return;
       }
       for (const note of items) {
@@ -384,7 +436,9 @@
         open.textContent = "Открыть паттерн";
         open.onclick = () => {
           C.hideLayer?.();
-          Setka.openConfig?.(clone(note.config || {}), {type:"public_note", id:note.id, patternId:note.patternId, baseId:note.patternId, noteId:note.id});
+          const pid = note.patternId || note.config?.patternId || null;
+          const cfg = {...clone(note.config || {}), ...(pid ? {patternId:pid} : {})};
+          Setka.openConfig?.(cfg, {type:"public_note", id:note.id, patternId:pid, baseId:pid, noteId:note.id});
         };
         const save = document.createElement("button");
         save.className = "st37-save";
@@ -460,7 +514,7 @@
     }
     const community = document.createElement("button");
     community.className = "st-action";
-    community.innerHTML = "<b>Анонимные заметки сообщества</b><span>Публичны только заметки, которые автор сам решил опубликовать</span>";
+    community.innerHTML = "<b>Анонимные заметки сообщества</b><span>Здесь только заметки, одобренные после модерации SETKA</span>";
     community.onclick = showFeed;
     wrap.appendChild(community);
     body.appendChild(wrap);
@@ -494,5 +548,5 @@
 
   C.testerIdentity = {status:refreshTester, claim, syncPrivateArchive:() => syncPrivateArchive(true)};
   C.publicNotes = {feed:showFeed, refresh:() => refreshPub(true)};
-  window.__SETKA_TESTER_COMMUNITY_V34__ = 4;
+  window.__SETKA_TESTER_COMMUNITY_V34__ = 5;
 })();
