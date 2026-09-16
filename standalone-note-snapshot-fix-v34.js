@@ -25,13 +25,7 @@
       ctx.drawImage(canvas, 0, 0, out.width, out.height);
       let dataUrl = out.toDataURL("image/webp", 0.74);
       if (!String(dataUrl).startsWith("data:image/webp")) dataUrl = out.toDataURL("image/jpeg", 0.78);
-      return {
-        dataUrl,
-        width: out.width,
-        height: out.height,
-        sourceWidth: canvas.width,
-        sourceHeight: canvas.height
-      };
+      return {dataUrl,width:out.width,height:out.height,sourceWidth:canvas.width,sourceHeight:canvas.height};
     } catch (e) {
       console.warn("SETKA note live canvas capture failed", e);
       return null;
@@ -42,12 +36,7 @@
     try {
       const state = Setka.getState?.();
       if (!state || state.view !== "game") return null;
-      const canvasShot = captureCanvas(document.getElementById("patternCanvas"));
-      return {
-        capturedAt: new Date().toISOString(),
-        state: clone(state),
-        canvasShot
-      };
+      return {capturedAt:new Date().toISOString(),state:clone(state),canvasShot:captureCanvas(document.getElementById("patternCanvas"))};
     } catch (e) {
       console.warn("SETKA note live moment capture failed", e);
       return null;
@@ -58,7 +47,6 @@
     if (!note || !moment?.state) return;
     const st = moment.state;
     const pid = st.patternId || st.config?.patternId || note.patternId || null;
-
     note.patternId = pid;
     note.patternVersion = st.patternVersion || note.patternVersion || 1;
     note.sourceType = st.sourceType ?? note.sourceType ?? null;
@@ -68,25 +56,19 @@
     note.config = st.config ? clone(st.config) : note.config;
     note.frame = Number.isFinite(Number(st.frame)) ? Number(st.frame) : note.frame;
     note.state = clone(st);
-
     if (moment.canvasShot?.dataUrl) {
       note.visualSnapshot = {
-        version: 1,
-        kind: "canvas-frame",
-        patternId: pid,
-        patternVersion: note.patternVersion,
-        frame: note.frame ?? null,
-        configHash: note.configHash || null,
-        capturedAt: moment.capturedAt,
-        width: moment.canvasShot.width,
-        height: moment.canvasShot.height,
-        sourceWidth: moment.canvasShot.sourceWidth,
-        sourceHeight: moment.canvasShot.sourceHeight,
-        dataUrl: moment.canvasShot.dataUrl
+        version:1,kind:"canvas-frame",patternId:pid,patternVersion:note.patternVersion,
+        frame:note.frame ?? null,configHash:note.configHash || null,capturedAt:moment.capturedAt,
+        width:moment.canvasShot.width,height:moment.canvasShot.height,
+        sourceWidth:moment.canvasShot.sourceWidth,sourceHeight:moment.canvasShot.sourceHeight,
+        dataUrl:moment.canvasShot.dataUrl
       };
     }
-
     C.save?.();
+    // note_create can schedule a sync before the live bitmap is attached. Force a second
+    // canonical sync only after the exact visual moment has been bound to the note.
+    window.dispatchEvent(new CustomEvent("setka:v34-sync-request"));
   }
 
   function installLiveBinding() {
@@ -94,12 +76,10 @@
     if (!noteBtn || noteBtn.dataset.liveSnapshotBound === "1") return;
     const originalOpen = noteBtn.onclick;
     if (typeof originalOpen !== "function") return;
-
     noteBtn.onclick = function (event) {
       const moment = captureLiveMoment();
       const before = new Set((C.getData?.()?.notes || []).map(n => n.id));
       const result = originalOpen.call(this, event);
-
       const saveButtons = [...document.querySelectorAll("#st34Layer .st-primary")];
       const saveBtn = saveButtons.find(b => String(b.textContent || "").trim() === "Сохранить");
       if (saveBtn && typeof saveBtn.onclick === "function" && saveBtn.dataset.liveSnapshotSaveBound !== "1") {
@@ -124,10 +104,7 @@
     const notes = Array.isArray(C.getData?.()?.notes) ? C.getData().notes : [];
     const sameText = notes.filter(n => String(n?.text ?? "") === text);
     if (sameText.length === 1) return sameText[0];
-    const byTime = sameText.find(n => {
-      try { return meta.startsWith(C.dt?.(n.observedAt) || ""); }
-      catch (_) { return false; }
-    });
+    const byTime = sameText.find(n => {try { return meta.startsWith(C.dt?.(n.observedAt) || ""); } catch (_) { return false; }});
     return byTime || sameText.at(-1) || null;
   }
 
@@ -135,32 +112,22 @@
     if (!canvas || !snapshot?.dataUrl) return false;
     const img = new Image();
     img.onload = () => {
-      const ctx = canvas.getContext("2d");
-      const w = canvas.width, h = canvas.height;
-      ctx.fillStyle = "#000";
-      ctx.fillRect(0, 0, w, h);
-      const scale = Math.min(w / img.width, h / img.height);
-      const dw = img.width * scale, dh = img.height * scale;
+      const ctx = canvas.getContext("2d"), w = canvas.width, h = canvas.height;
+      ctx.fillStyle = "#000";ctx.fillRect(0, 0, w, h);
+      const scale = Math.min(w / img.width, h / img.height), dw = img.width * scale, dh = img.height * scale;
       ctx.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
       canvas.dataset.snapshotSource = "captured-live-canvas";
     };
-    img.onerror = () => {
-      canvas.dataset.snapshotSource = "captured-live-canvas-error";
-    };
+    img.onerror = () => {canvas.dataset.snapshotSource = "captured-live-canvas-error";};
     img.src = snapshot.dataUrl;
     return true;
   }
 
   function drawSemanticSnapshot(canvas, note, pid) {
     if (!canvas || !note?.config || typeof Setka.renderPreview !== "function") return;
-    try {
-      Setka.renderPreview(canvas, clone(note.config), note.frame ?? 44, pid);
-      canvas.dataset.snapshotSource = "semantic-replay";
-    } catch (e) {
-      console.warn("SETKA note semantic snapshot preview failed", e);
-    }
+    try {Setka.renderPreview(canvas, clone(note.config), note.frame ?? 44, pid);canvas.dataset.snapshotSource = "semantic-replay";}
+    catch (e) {console.warn("SETKA note semantic snapshot preview failed", e);}
   }
-
   function drawNoteSnapshot(canvas, note, pid) {
     if (!drawImageSnapshot(canvas, note?.visualSnapshot)) drawSemanticSnapshot(canvas, note, pid);
     canvas.dataset.snapshotPatternId = pid || "";
@@ -170,60 +137,30 @@
     if (!(card instanceof Element)) return;
     const note = resolveNote(card);
     if (!note?.config) return;
-
-    const pid = patternIdOf(note);
-    const canvas = card.querySelector("canvas.st34-note-preview");
+    const pid = patternIdOf(note), canvas = card.querySelector("canvas.st34-note-preview");
     if (canvas) {
-      // standalone-user-ui schedules its legacy preview in requestAnimationFrame.
-      // Render after it, so the legacy tentacle preview can never overwrite the bound note moment.
       drawNoteSnapshot(canvas, note, pid);
       requestAnimationFrame(() => requestAnimationFrame(() => drawNoteSnapshot(canvas, note, pid)));
     }
-
     const open = card.querySelector(".st34-note-preview-button");
-    if (open) {
-      open.onclick = e => {
-        e?.preventDefault?.();
-        e?.stopPropagation?.();
-        C.hideLayer?.();
-        Setka.openConfig?.(clone(note.config), {
-          type: "memory",
-          id: note.id,
-          patternId: pid,
-          baseId: pid,
-          communityId: note.communityId || null,
-          noteId: note.id
-        });
-      };
-    }
-
+    if (open) open.onclick = e => {
+      e?.preventDefault?.();e?.stopPropagation?.();C.hideLayer?.();
+      Setka.openConfig?.(clone(note.config), {type:"memory",id:note.id,patternId:pid,baseId:pid,communityId:note.communityId || null,noteId:note.id});
+    };
     const label = card.querySelector(".st34-note-preview-label");
     if (label) {
       const title = pid && Setka.getPatternTitle?.(pid);
-      label.textContent = title
-        ? `ПАТТЕРН В МОМЕНТ ЗАМЕТКИ · ${String(title).toUpperCase()}`
-        : "ПАТТЕРН В МОМЕНТ ЗАМЕТКИ";
+      label.textContent = title ? `ПАТТЕРН В МОМЕНТ ЗАМЕТКИ · ${String(title).toUpperCase()}` : "ПАТТЕРН В МОМЕНТ ЗАМЕТКИ";
     }
-
-    card.dataset.noteSnapshotFixed = "2";
+    card.dataset.noteSnapshotFixed = "3";
   }
 
   function scan(root = document) {
     const cards = root.matches?.(".st34-note-card") ? [root] : root.querySelectorAll?.(".st34-note-card") || [];
     for (const card of cards) repairCard(card);
   }
-
-  const observer = new MutationObserver(records => {
-    for (const record of records) {
-      for (const node of record.addedNodes) {
-        if (node.nodeType === 1) scan(node);
-      }
-    }
-  });
-
+  const observer = new MutationObserver(records => {for (const record of records) for (const node of record.addedNodes) if (node.nodeType === 1) scan(node);});
   observer.observe(document.documentElement, { childList: true, subtree: true });
-  installLiveBinding();
-  scan();
-
-  window.__SETKA_NOTE_SNAPSHOT_FIX_V34__ = 2;
+  installLiveBinding();scan();
+  window.__SETKA_NOTE_SNAPSHOT_FIX_V34__ = 3;
 })();
