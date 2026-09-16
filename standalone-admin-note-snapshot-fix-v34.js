@@ -52,28 +52,55 @@
     document.body.appendChild(frame);
   }
 
-  function renderCanvas(canvas, note) {
-    if (!canvas || !note?.config || !previewApp?.renderPreview) return;
+  function sizeCanvas(canvas) {
     const rect = canvas.getBoundingClientRect();
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const width = Math.max(1, Math.round((rect.width || 320) * dpr));
     const height = Math.max(1, Math.round((rect.height || 220) * dpr));
     if (canvas.width !== width) canvas.width = width;
     if (canvas.height !== height) canvas.height = height;
-    const pid = note.pattern_id || note.patternId || note.config?.patternId || null;
-    try {
-      previewApp.renderPreview(canvas, note.config, note.preview_frame ?? note.frame ?? 44, pid);
-      canvas.dataset.snapshotPatternId = pid || "";
-      const caption = canvas.parentElement?.querySelector?.(".v4-preview-caption");
-      const title = pid && previewApp.getPatternTitle?.(pid);
-      if (caption && title) caption.textContent = `ПАТТЕРН В МОМЕНТ ЗАМЕТКИ · ${String(title).toUpperCase()}`;
-    } catch (e) {
-      console.warn("SETKA admin note snapshot repair failed", e);
+  }
+
+  function drawExactSnapshot(canvas, snapshot) {
+    const src = snapshot?.dataUrl;
+    if (!src) return false;
+    const token = `${snapshot.capturedAt || ""}|${src.length}`;
+    if (canvas.dataset.exactSnapshotToken === token) return true;
+    const img = new Image();
+    img.onload = () => {
+      sizeCanvas(canvas);
+      const ctx = canvas.getContext("2d"), w = canvas.width, h = canvas.height;
+      ctx.fillStyle = "#000";ctx.fillRect(0,0,w,h);
+      const scale = Math.min(w / img.width, h / img.height);
+      const dw = img.width * scale, dh = img.height * scale;
+      ctx.drawImage(img,(w-dw)/2,(h-dh)/2,dw,dh);
+      canvas.dataset.exactSnapshotToken = token;
+    };
+    img.src = src;
+    return true;
+  }
+
+  function renderCanvas(canvas, note) {
+    if (!canvas || !note) return;
+    sizeCanvas(canvas);
+    const snapshot = note.visual_snapshot || note.visualSnapshot || null;
+    const pid = snapshot?.patternId || note.pattern_id || note.patternId || note.config?.patternId || null;
+
+    if (!drawExactSnapshot(canvas, snapshot)) {
+      if (!note.config || !previewApp?.renderPreview) return;
+      try { previewApp.renderPreview(canvas, note.config, note.preview_frame ?? note.frame ?? 44, pid); }
+      catch (e) { console.warn("SETKA admin note preview failed", e); }
     }
+
+    canvas.dataset.snapshotPatternId = pid || "";
+    canvas.dataset.snapshotKind = snapshot?.dataUrl ? "exact" : "semantic";
+    const caption = canvas.parentElement?.querySelector?.(".v4-preview-caption");
+    const title = pid && previewApp?.getPatternTitle?.(pid);
+    if (caption) caption.textContent = `ПАТТЕРН В МОМЕНТ ЗАМЕТКИ${title ? ` · ${String(title).toUpperCase()}` : ""}`;
   }
 
   function repair() {
-    if (!previewApp?.renderPreview || !notes.length) return;
+    if (!notes.length) return;
     document.querySelectorAll("canvas[data-note-preview]").forEach(canvas => {
       const index = Number(canvas.dataset.notePreview);
       if (!Number.isInteger(index) || !notes[index]) return;
@@ -85,7 +112,7 @@
   function scheduleRepair() {
     clearTimeout(repairTimer);
     requestAnimationFrame(() => requestAnimationFrame(repair));
-    repairTimer = setTimeout(repair, 120);
+    repairTimer = setTimeout(repair, 150);
   }
 
   function loadTesterAdmin() {
@@ -96,14 +123,12 @@
     document.head.appendChild(s);
   }
 
-  const observer = new MutationObserver(records => {
+  new MutationObserver(records => {
     if (records.some(r => [...r.addedNodes].some(n => n.nodeType === 1))) scheduleRepair();
-  });
+  }).observe(document.documentElement, { childList: true, subtree: true });
 
-  observer.observe(document.documentElement, { childList: true, subtree: true });
   makePreviewEngine();
   loadTesterAdmin();
   window.addEventListener("resize", scheduleRepair);
-
-  window.__SETKA_ADMIN_NOTE_SNAPSHOT_FIX_V34__ = true;
+  window.__SETKA_ADMIN_NOTE_SNAPSHOT_FIX_V34__ = {version:2, repair:scheduleRepair};
 })();
