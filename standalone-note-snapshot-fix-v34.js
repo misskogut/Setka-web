@@ -6,9 +6,74 @@
   if (!C || !Setka) return;
 
   const clone = v => v == null ? v : JSON.parse(JSON.stringify(v));
+  const KNOWN_PATTERN_IDS = [
+    "tentacle-orbit",
+    "dandelion",
+    "fish-wave",
+    "breathing-fractal",
+    "breathing-fractal-growth",
+    "rgb-glitch-rings",
+    "stereo-dna"
+  ];
+
+  function configOf(note) {
+    const replay = note?.replaySnapshot?.config;
+    if (replay && typeof replay === "object" && Object.keys(replay).length) return replay;
+    const stateConfig = note?.state?.config;
+    if (stateConfig && typeof stateConfig === "object" && Object.keys(stateConfig).length) return stateConfig;
+    return note?.config || null;
+  }
+
+  function patternIdFromHash(note) {
+    const values = [
+      note?.replaySnapshot?.configHash,
+      note?.configHash,
+      note?.state?.configKey,
+      note?.visualSnapshot?.configHash
+    ].filter(Boolean).map(String);
+    for (const value of values) {
+      for (const id of KNOWN_PATTERN_IDS) {
+        if (value === id || value.startsWith(`${id}|`)) return id;
+      }
+    }
+    return null;
+  }
+
+  function patternIdFromConfig(config) {
+    const c = config || {};
+    if (c.eyeSeparation != null || c.stereoAngle != null || (c.angleStep != null && c.numPoints != null)) return "stereo-dna";
+    if (c.numRings != null || c.baseSpacing != null || c.invertDirection != null) return "rgb-glitch-rings";
+    if (c.numLayers != null || c.ringSpacing != null) return "fish-wave";
+    if (c.maxDepth != null || c.levelSpeedRatio != null || c.firstLevelFactor != null || (c.pulseSpeed != null && c.branches != null)) return "breathing-fractal-growth";
+    if (c.pulseSpd != null || c.pulseAmp != null || (c.layers != null && c.branches != null)) return "breathing-fractal";
+    if (c.v1 != null || c.numShapes != null || c.angleSpeed != null || c.tSpeed != null || c.backgroundAlpha != null) return "dandelion";
+    if (c.numTentacles != null || c.tentacleLength != null || c.circleSize != null || c.segmentStep != null) return "tentacle-orbit";
+    return null;
+  }
 
   function patternIdOf(note) {
-    return note?.visualSnapshot?.patternId || note?.patternId || note?.state?.patternId || note?.config?.patternId || null;
+    const cfg = configOf(note);
+    return patternIdFromHash(note)
+      || patternIdFromConfig(cfg)
+      || note?.replaySnapshot?.patternId
+      || note?.state?.patternId
+      || note?.visualSnapshot?.patternId
+      || note?.patternId
+      || cfg?.patternId
+      || null;
+  }
+
+  function replayOf(note) {
+    const pid = patternIdOf(note);
+    const raw = configOf(note);
+    const config = raw ? {...clone(raw), ...(pid ? {patternId:pid} : {})} : null;
+    const frameCandidates = [note?.replaySnapshot?.frame, note?.visualSnapshot?.frame, note?.frame, note?.state?.frame];
+    let frame = null;
+    for (const value of frameCandidates) {
+      const n = Number(value);
+      if (Number.isFinite(n)) { frame = n; break; }
+    }
+    return {pid, config, frame};
   }
 
   function captureCanvas(canvas) {
@@ -46,16 +111,25 @@
   function bindMomentToNote(note, moment) {
     if (!note || !moment?.state) return;
     const st = moment.state;
-    const pid = st.patternId || st.config?.patternId || note.patternId || null;
+    const structuralPid = patternIdFromConfig(st.config);
+    const pid = structuralPid || st.patternId || st.config?.patternId || note.patternId || null;
     note.patternId = pid;
     note.patternVersion = st.patternVersion || note.patternVersion || 1;
     note.sourceType = st.sourceType ?? note.sourceType ?? null;
     note.sourceId = st.sourceId ?? note.sourceId ?? null;
     note.communityId = st.communityId ?? note.communityId ?? null;
     note.configHash = st.configKey ?? note.configHash ?? null;
-    note.config = st.config ? clone(st.config) : note.config;
+    note.config = st.config ? {...clone(st.config), ...(pid ? {patternId:pid} : {})} : note.config;
     note.frame = Number.isFinite(Number(st.frame)) ? Number(st.frame) : note.frame;
-    note.state = clone(st);
+    note.state = clone({...st, patternId:pid, config:note.config});
+    note.replaySnapshot = {
+      version:1,
+      patternId:pid,
+      patternVersion:note.patternVersion,
+      frame:note.frame ?? null,
+      configHash:note.configHash || null,
+      config:clone(note.config)
+    };
     if (moment.canvasShot?.dataUrl) {
       note.visualSnapshot = {
         version:1,kind:"canvas-frame",patternId:pid,patternVersion:note.patternVersion,
@@ -66,8 +140,6 @@
       };
     }
     C.save?.();
-    // note_create can schedule a sync before the live bitmap is attached. Force a second
-    // canonical sync only after the exact visual moment has been bound to the note.
     window.dispatchEvent(new CustomEvent("setka:v34-sync-request"));
   }
 
@@ -123,44 +195,63 @@
     return true;
   }
 
-  function drawSemanticSnapshot(canvas, note, pid) {
-    if (!canvas || !note?.config || typeof Setka.renderPreview !== "function") return;
-    try {Setka.renderPreview(canvas, clone(note.config), note.frame ?? 44, pid);canvas.dataset.snapshotSource = "semantic-replay";}
-    catch (e) {console.warn("SETKA note semantic snapshot preview failed", e);}
+  function drawSemanticSnapshot(canvas, note, replay) {
+    if (!canvas || !replay?.config || typeof Setka.renderPreview !== "function") return;
+    try {
+      Setka.renderPreview(canvas, clone(replay.config), replay.frame ?? 44, replay.pid);
+      canvas.dataset.snapshotSource = "semantic-replay";
+    } catch (e) { console.warn("SETKA note semantic snapshot preview failed", e); }
   }
-  function drawNoteSnapshot(canvas, note, pid) {
-    if (!drawImageSnapshot(canvas, note?.visualSnapshot)) drawSemanticSnapshot(canvas, note, pid);
-    canvas.dataset.snapshotPatternId = pid || "";
+
+  function drawNoteSnapshot(canvas, note, replay) {
+    if (!drawImageSnapshot(canvas, note?.visualSnapshot)) drawSemanticSnapshot(canvas, note, replay);
+    canvas.dataset.snapshotPatternId = replay?.pid || "";
   }
 
   function repairCard(card) {
     if (!(card instanceof Element)) return;
     const note = resolveNote(card);
-    if (!note?.config) return;
-    const pid = patternIdOf(note), canvas = card.querySelector("canvas.st34-note-preview");
+    if (!note) return;
+    const replay = replayOf(note);
+    if (!replay.config) return;
+    const canvas = card.querySelector("canvas.st34-note-preview");
     if (canvas) {
-      drawNoteSnapshot(canvas, note, pid);
-      requestAnimationFrame(() => requestAnimationFrame(() => drawNoteSnapshot(canvas, note, pid)));
+      drawNoteSnapshot(canvas, note, replay);
+      requestAnimationFrame(() => requestAnimationFrame(() => drawNoteSnapshot(canvas, note, replay)));
     }
     const open = card.querySelector(".st34-note-preview-button");
     if (open) open.onclick = e => {
-      e?.preventDefault?.();e?.stopPropagation?.();C.hideLayer?.();
-      Setka.openConfig?.(clone(note.config), {type:"memory",id:note.id,patternId:pid,baseId:pid,communityId:note.communityId || null,noteId:note.id});
+      e?.preventDefault?.();
+      e?.stopPropagation?.();
+      C.hideLayer?.();
+      Setka.openConfig?.(clone(replay.config), {
+        type:"memory",
+        id:note.id,
+        patternId:replay.pid,
+        baseId:replay.pid,
+        communityId:note.communityId || null,
+        noteId:note.id,
+        frame:replay.frame
+      });
     };
     const label = card.querySelector(".st34-note-preview-label");
     if (label) {
-      const title = pid && Setka.getPatternTitle?.(pid);
+      const title = replay.pid && Setka.getPatternTitle?.(replay.pid);
       label.textContent = title ? `ПАТТЕРН В МОМЕНТ ЗАМЕТКИ · ${String(title).toUpperCase()}` : "ПАТТЕРН В МОМЕНТ ЗАМЕТКИ";
     }
-    card.dataset.noteSnapshotFixed = "3";
+    card.dataset.noteSnapshotFixed = "4";
   }
 
   function scan(root = document) {
     const cards = root.matches?.(".st34-note-card") ? [root] : root.querySelectorAll?.(".st34-note-card") || [];
     for (const card of cards) repairCard(card);
   }
-  const observer = new MutationObserver(records => {for (const record of records) for (const node of record.addedNodes) if (node.nodeType === 1) scan(node);});
-  observer.observe(document.documentElement, { childList: true, subtree: true });
-  installLiveBinding();scan();
-  window.__SETKA_NOTE_SNAPSHOT_FIX_V34__ = 3;
+
+  const observer = new MutationObserver(records => {
+    for (const record of records) for (const node of record.addedNodes) if (node.nodeType === 1) scan(node);
+  });
+  observer.observe(document.documentElement, {childList:true, subtree:true});
+  installLiveBinding();
+  scan();
+  window.__SETKA_NOTE_SNAPSHOT_FIX_V34__ = 4;
 })();
