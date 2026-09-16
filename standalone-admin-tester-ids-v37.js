@@ -42,7 +42,7 @@
   modal.innerHTML = `
     <div class="st37-admin-panel" role="dialog" aria-modal="true" aria-labelledby="st37TesterTitle">
       <div class="st37-admin-head">
-        <div><h2 id="st37TesterTitle">ID тестировщиков</h2><p>Создай одноразовый код и отправь его человеку. Он вводит код в том же браузере, где уже пользовался SETKA — накопленная история привязывается к его тестовому ID и выгружается в приватный облачный архив.</p></div>
+        <div><h2 id="st37TesterTitle">ID тестировщиков</h2><p>Создай одноразовый код и отправь его человеку. Он вводит код в том же браузере, где уже пользовался SETKA — существующий device и вся накопленная история связываются с tester ID.</p></div>
         <div class="spacer"></div><button class="st37-admin-close" type="button" aria-label="Закрыть">×</button>
       </div>
       <button id="st37GenerateTester" class="st37-admin-create" type="button">+ Создать новый tester ID</button>
@@ -83,9 +83,9 @@
       <div class="st37-admin-new">
         <div class="st37-admin-new-title">НОВЫЙ ОДНОРАЗОВЫЙ КОД</div>
         <div class="st37-admin-code">${esc(item.code)}</div>
-        <div class="st37-admin-tid">Внутренний tester ID: ${esc(item.testerId)}</div>
+        <div class="st37-admin-tid">Tester ID: ${esc(item.testerId)}</div>
         <button class="st37-admin-copy" type="button">Скопировать код</button>
-        <div class="st37-admin-warning">Отправь тестировщику именно код SETKA-…. Он показывается здесь при создании; на сервере хранится только его хэш. После первой привязки код нельзя использовать на другом устройстве.</div>
+        <div class="st37-admin-warning">Отправь тестировщику именно код SETKA-…. На сервере хранится только его хэш. После привязки этот код нельзя использовать на другом устройстве.</div>
       </div>`;
     const copy = newEl.querySelector(".st37-admin-copy");
     copy.onclick = async () => {
@@ -125,21 +125,20 @@
   }
 
   function installButton() {
-    if (document.getElementById("testerIdV37Btn")) return;
-    const anchor = document.getElementById("createCodeBtn");
-    const top = anchor?.parentElement || document.querySelector(".top");
-    if (!top) return;
-    const b = document.createElement("button");
-    b.id = "testerIdV37Btn";
-    b.className = "btn primary";
-    b.type = "button";
-    b.textContent = "+ TESTER ID";
-    b.onclick = open;
-    if (anchor?.nextSibling) top.insertBefore(b, anchor.nextSibling);
-    else top.appendChild(b);
+    const old = document.getElementById("createCodeBtn");
+    if (!old || old.dataset.testerIdCanonical === "1") return;
+    const button = old.cloneNode(true);
+    button.id = "createCodeBtn";
+    button.type = "button";
+    button.className = "btn primary";
+    button.textContent = "+ ID тестировщика";
+    button.dataset.testerIdCanonical = "1";
+    old.replaceWith(button);
+    button.onclick = open;
+    document.getElementById("testerIdV37Btn")?.remove();
   }
 
   installButton();
   document.addEventListener("DOMContentLoaded", installButton, {once:true});
-  window.__SETKA_ADMIN_TESTER_IDS_V37__ = true;
+  window.__SETKA_ADMIN_TESTER_IDS_V37__ = {open,loadList};
 })();
