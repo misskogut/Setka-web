@@ -24,13 +24,28 @@
   }catch(_){deviceId=makeId();firstSeen=new Date().toISOString()}
   function visitStartedAt(){try{let v=sessionStorage.getItem(VISIT_STARTED_KEY);if(!v){v=new Date().toISOString();sessionStorage.setItem(VISIT_STARTED_KEY,v)}return v}catch(_){return new Date().toISOString()}}
 
-  let busy=false,lastSignature="",timer=0,lastOkAt=null,lastError=null,lastPolicy=null;
-  function favorites(){try{return (window.SetkaApp?.getFavorites?.()||[]).map(f=>({id:f.id,patternId:f.baseId||f.patternId,baseId:f.baseId,config:f.config,createdAt:f.createdAt,sourceType:"favorite"}))}catch(_){return[]}}
+  let busy=false,lastSignature="",timer=0,lastOkAt=null,lastError=null,lastPolicy=null,lastFavoriteStats={local:0,unique:0};
+
+  function favorites(){
+    try{
+      const app=window.SetkaApp,raw=app?.getFavorites?.()||[],byKey=new Map();
+      for(const f of raw){
+        const patternId=f.baseId||f.patternId||f.config?.patternId||"tentacle-orbit";
+        const config=f.config||{};
+        const configKey=app?.configKey?.(config,patternId)||`${patternId}|${JSON.stringify(config)}`;
+        const item={id:f.id,patternId,baseId:f.baseId||patternId,configKey,config,createdAt:f.createdAt,sourceType:"favorite"};
+        const prev=byKey.get(configKey);
+        if(!prev||Number(item.createdAt||0)>=Number(prev.createdAt||0))byKey.set(configKey,item);
+      }
+      lastFavoriteStats={local:raw.length,unique:byKey.size};
+      return [...byKey.values()];
+    }catch(_){lastFavoriteStats={local:0,unique:0};return[]}
+  }
   function exposures(){const x=C.getData()?.patternExposures;return Array.isArray(x)?x:[]}
   function signature(){
     const d=C.getData(),p=d.physio?.samples||[],fav=favorites(),exp=exposures();
     const lastSession=d.sessions?.at?.(-1),lastEvent=d.events?.at?.(-1),lastNote=d.notes?.at?.(-1),lastCheck=d.checkins?.at?.(-1),lastExposure=exp.at?.(-1);
-    return [d.sessions?.length||0,lastSession?.id||"",lastSession?.phase||"",lastSession?.measuredActiveMs||0,lastSession?.afterFeedbackActiveMs||0,d.events?.length||0,lastEvent?.id||"",d.notes?.length||0,lastNote?.id||"",d.checkins?.length||0,lastCheck?.id||"",p.length,p.at?.(-1)?.id||"",fav.length,fav.map(x=>x.id).join(","),exp.length,lastExposure?.exposureId||"",lastExposure?.endedAt||""].join("|");
+    return [d.sessions?.length||0,lastSession?.id||"",lastSession?.phase||"",lastSession?.measuredActiveMs||0,lastSession?.afterFeedbackActiveMs||0,d.events?.length||0,lastEvent?.id||"",d.notes?.length||0,lastNote?.id||"",d.checkins?.length||0,lastCheck?.id||"",p.length,p.at?.(-1)?.id||"",fav.length,fav.map(x=>`${x.configKey}:${x.id}`).join(","),exp.length,lastExposure?.exposureId||"",lastExposure?.endedAt||""].join("|");
   }
   function viewport(){return{width:innerWidth,height:innerHeight,dpr:devicePixelRatio||1,screenWidth:screen?.width||null,screenHeight:screen?.height||null}}
   function deltaByCursor(list,cursor,idKey){if(!Array.isArray(list)||!list.length)return[];if(!cursor)return list.slice();const i=list.findIndex(e=>e?.[idKey]===cursor);return i>=0?list.slice(i+1):list.slice()}
@@ -38,8 +53,9 @@
   function applyServerPolicy(out){lastPolicy={retentionDays:out.retentionDays||90,sampleHz:out.sampleHz||8,rawCutoffAt:out.rawCutoffAt||null};window.dispatchEvent(new CustomEvent("setka:v34-replay-policy",{detail:lastPolicy}))}
   async function syncSemantic(fav,expDelta,keepalive=false){
     const r=await fetch(SEMANTIC_API,{method:"POST",headers:{"Content-Type":"application/json","apikey":API_KEY},body:JSON.stringify({action:"sync",channel:CHANNEL,deviceId,favorites:fav,exposuresDelta:expDelta,visit:{id:C.patternExposure?.visitId||null,startedAt:visitStartedAt(),lastSeenAt:new Date().toISOString()}}),keepalive});
-    if(!r.ok)throw new Error(`semantic_${r.status}`);
-    return r.json().catch(()=>({}));
+    const out=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(`semantic_${r.status}${out?.detail?`:${out.detail}`:""}`);
+    return out;
   }
   async function sync(force=false,keepalive=false){
     if(busy)return false;const sig=signature();if(!force&&sig===lastSignature)return true;busy=true;lastError=null;
@@ -47,12 +63,12 @@
       const d=C.getData(),delta=deltaByCursor(d.events||[],eventCursor,"id"),fav=favorites(),exp=exposures(),expDelta=deltaByCursor(exp,exposureCursor,"exposureId"),visitId=C.patternExposure?.visitId||null;
       const body={action:"sync",channel:CHANNEL,deviceId,visitId,firstSeenAt:firstSeen,userAgent:navigator.userAgent,viewport:viewport(),archive:lightArchive(d),eventsDelta:delta};
       const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json","apikey":API_KEY},body:JSON.stringify(body),keepalive});if(!r.ok)throw new Error(`sync_${r.status}`);const out=await r.json();
-      await syncSemantic(fav,expDelta,keepalive);
+      const semantic=await syncSemantic(fav,expDelta,keepalive);
       if(delta.length){eventCursor=delta.at(-1)?.id||eventCursor;try{localStorage.setItem(EVENT_CURSOR_KEY,eventCursor)}catch(_){}}
       if(expDelta.length){exposureCursor=expDelta.at(-1)?.exposureId||exposureCursor;try{localStorage.setItem(EXPOSURE_CURSOR_KEY,exposureCursor)}catch(_){}}
       lastSignature=signature();lastOkAt=out.updatedAt||new Date().toISOString();applyServerPolicy(out);try{localStorage.setItem(STATUS_KEY,lastOkAt)}catch(_){}
-      window.dispatchEvent(new CustomEvent("setka:v34-sync",{detail:{ok:true,label:"Юля",deviceId,updatedAt:lastOkAt,acceptedEvents:out.acceptedEvents||0,acceptedExposures:expDelta.length,retentionDays:out.retentionDays||90}}));return true;
-    }catch(e){lastError=String(e?.message||e);window.dispatchEvent(new CustomEvent("setka:v34-sync",{detail:{ok:false,label:"Юля",deviceId,error:lastError}}));return false}
+      window.dispatchEvent(new CustomEvent("setka:v34-sync",{detail:{ok:true,label:out.label||"Юля",subjectKey:out.subjectKey||null,deviceId,updatedAt:lastOkAt,acceptedEvents:out.acceptedEvents||0,acceptedExposures:expDelta.length,favoritesLocal:lastFavoriteStats.local,favoritesUnique:lastFavoriteStats.unique,favoritesCloud:semantic?.favorites??fav.length,retentionDays:out.retentionDays||90}}));return true;
+    }catch(e){lastError=String(e?.message||e);window.dispatchEvent(new CustomEvent("setka:v34-sync",{detail:{ok:false,label:"Юля",deviceId,error:lastError,favoritesLocal:lastFavoriteStats.local,favoritesUnique:lastFavoriteStats.unique}}));return false}
     finally{busy=false}
   }
   function schedule(ms=900){clearTimeout(timer);timer=setTimeout(()=>sync(false),ms)}
@@ -66,5 +82,5 @@
   window.addEventListener("pagehide",()=>sync(true,true));
   setInterval(()=>sync(false),12000);setTimeout(()=>sync(true),500);
 
-  C.sandbox={label:"Юля",channel:CHANNEL,deviceId,firstSeenAt:firstSeen,sync:()=>sync(true),status:()=>({deviceId,label:"Юля",lastOkAt,lastError,replayPolicy:lastPolicy,eventCursor,exposureCursor})};
+  C.sandbox={label:"Юля",channel:CHANNEL,deviceId,firstSeenAt:firstSeen,sync:()=>sync(true),status:()=>({deviceId,label:"Юля",lastOkAt,lastError,replayPolicy:lastPolicy,eventCursor,exposureCursor,favorites:lastFavoriteStats})};
 })();
