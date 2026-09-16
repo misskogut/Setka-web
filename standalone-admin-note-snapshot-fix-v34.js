@@ -88,12 +88,21 @@
     repairTimer = setTimeout(repair, 120);
   }
 
+  function loadTesterAdmin() {
+    if (document.querySelector('script[data-setka-tester-admin="1"]')) return;
+    const s = document.createElement("script");
+    s.src = "standalone-admin-testers-v34.js?v=37-testers-1";
+    s.dataset.setkaTesterAdmin = "1";
+    document.head.appendChild(s);
+  }
+
   const observer = new MutationObserver(records => {
     if (records.some(r => [...r.addedNodes].some(n => n.nodeType === 1))) scheduleRepair();
   });
 
   observer.observe(document.documentElement, { childList: true, subtree: true });
   makePreviewEngine();
+  loadTesterAdmin();
   window.addEventListener("resize", scheduleRepair);
 
   window.__SETKA_ADMIN_NOTE_SNAPSHOT_FIX_V34__ = true;
