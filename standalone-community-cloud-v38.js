@@ -3,7 +3,8 @@
   const C=window.SetkaStandaloneV34,Setka=window.SetkaApp;
   if(!C||!Setka)return;
   const API="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-community-patterns-v38";
-  let items=[],busy=false,timer=0,lastOkAt=null;
+  const API_KEY="sb_publishable_1jL-x9_kp6rpfGghpSp_OA_OiXDnvsv";
+  let items=[],busy=false,timer=0,lastOkAt=null,lastError=null;
 
   function data(){return C.getData?.()||{}}
   function clearLegacyLocal(){try{const d=data();if(Array.isArray(d.localCommunity)&&d.localCommunity.length){d.localCommunity=[];C.save?.()}}catch(_){}
@@ -41,22 +42,21 @@
     window.dispatchEvent(new CustomEvent("setka:community-cloud",{detail:{ok:true,count:shown.length,mode:mode(),updatedAt:lastOkAt}}));
   }
   async function refresh(){
-    if(busy)return;busy=true;
+    if(busy)return;busy=true;lastError=null;
     try{
-      const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"feed",limit:300})});
-      if(!r.ok)throw new Error(`community_${r.status}`);
-      const out=await r.json();
+      const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json","apikey":API_KEY},body:JSON.stringify({action:"feed",limit:300})});
+      const out=await r.json().catch(()=>({}));
+      if(!r.ok)throw new Error(out.error||`community_${r.status}`);
       items=Array.isArray(out.items)?out.items.map(x=>({...x,createdAt:x.created_at||x.createdAt||null,localOnly:false})):[];
       lastOkAt=new Date().toISOString();apply();
     }catch(e){
-      clearLegacyLocal();
+      lastError=String(e?.message||e);clearLegacyLocal();
       if(!items.length){C.publicCommunity=[];Setka.setCommunity?.([])}
-      window.dispatchEvent(new CustomEvent("setka:community-cloud",{detail:{ok:false,error:String(e?.message||e)}}));
+      window.dispatchEvent(new CustomEvent("setka:community-cloud",{detail:{ok:false,error:lastError}}));
     }finally{busy=false}
   }
   function schedule(ms=600){clearTimeout(timer);timer=setTimeout(refresh,ms)}
 
-  // Capture mode clicks before advanced-v34 can rebuild a legacy/local feed.
   document.addEventListener("click",e=>{
     const b=e.target?.closest?.("#st34CommunityModes button[data-m]");if(!b)return;
     e.preventDefault();e.stopImmediatePropagation();
@@ -65,10 +65,16 @@
 
   window.addEventListener("setka:favorite-saved",()=>{clearLegacyLocal();apply();schedule(900)});
   window.addEventListener("setka:favorite-removed",()=>{clearLegacyLocal();apply();schedule(900)});
-  window.addEventListener("setka:v34-sync",()=>schedule(250));
+  window.addEventListener("setka:v34-sync",e=>{if(e.detail?.ok)schedule(120);else schedule(1200)});
   window.addEventListener("setka:library-page",e=>{if(e.detail?.page==="community")schedule(0)});
 
-  clearLegacyLocal();refresh();setTimeout(refresh,3200);
-  C.cloudCommunity={refresh,status:()=>({count:items.length,lastOkAt,mode:mode()})};
-  window.__SETKA_CLOUD_COMMUNITY_V38__=2;
+  async function bootstrap(){
+    clearLegacyLocal();
+    try{await C.sandbox?.sync?.()}catch(_){}
+    await refresh();
+    setTimeout(refresh,1800);
+  }
+  bootstrap();
+  C.cloudCommunity={refresh,status:()=>({count:items.length,lastOkAt,lastError,mode:mode()})};
+  window.__SETKA_CLOUD_COMMUNITY_V38__=3;
 })();
