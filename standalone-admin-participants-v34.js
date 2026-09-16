@@ -3,6 +3,7 @@
 
   const SANDBOX_API="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-standalone-v34";
   const ALIAS_API="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-standalone-v34-alias";
+  const TESTER_API="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-tester-identity-v37";
   const API_KEY="sb_publishable_1jL-x9_kp6rpfGghpSp_OA_OiXDnvsv";
   const TARGETS=["setka-research-api","setka-research-extensions","setka-research-v5","setka-journey","setka-guest-v11","setka-sensors-v13"];
   const previousFetch=window.fetch.bind(window);
@@ -23,15 +24,17 @@
     if(!force&&cache&&Date.now()-cacheAt<2500)return cache;
     if(loading)return loading;
     loading=(async()=>{
-      const [overview,aliasData]=await Promise.all([
+      const [overview,aliasData,testerData]=await Promise.all([
         post(SANDBOX_API,{action:"admin-overview",adminKey}),
-        post(ALIAS_API,{action:"admin-list-aliases",adminKey})
+        post(ALIAS_API,{action:"admin-list-aliases",adminKey}),
+        post(TESTER_API,{action:"admin-list",adminKey,limit:500})
       ]);
       const devices=arr(overview.devices).slice().sort((a,b)=>Date.parse(a.first_seen_at||0)-Date.parse(b.first_seen_at||0)||String(a.device_id).localeCompare(String(b.device_id)));
       const details=await Promise.all(devices.map(d=>post(SANDBOX_API,{action:"admin-device",adminKey,deviceId:d.device_id}).catch(()=>null)));
       const byDevice=new Map(details.filter(Boolean).map(x=>[x.device.device_id,x]));
       const aliases=new Map(arr(aliasData.items).map(x=>[x.device_id,x.label]));
-      cache={devices,byDevice,aliases,overview};cacheAt=Date.now();loading=null;return cache;
+      const testerByDevice=new Map(arr(testerData.items).filter(x=>x.claimed&&x.deviceId).map(x=>[x.deviceId,x.testerId]));
+      cache={devices,byDevice,aliases,testerByDevice,overview};cacheAt=Date.now();loading=null;return cache;
     })();
     try{return await loading}catch(e){loading=null;throw e}
   }
@@ -45,12 +48,15 @@
     const visible=participantDevices(r),idx=Math.max(0,visible.findIndex(x=>x.device_id===deviceId));
     const ordinal=`Участник ${idx+1}`;
     const alias=String(r.aliases.get(deviceId)||"").trim();
-    return{deviceId,id:participantId(deviceId),ordinal,alias,display:alias||ordinal,secondary:alias?ordinal:"Без имени"};
+    const testerId=String(r.testerByDevice.get(deviceId)||"").trim();
+    const display=testerId||alias||ordinal;
+    const secondary=testerId?(alias||ordinal):(alias?ordinal:"Без tester ID");
+    return{deviceId,id:participantId(deviceId),ordinal,alias,testerId,display,secondary};
   }
-  function decorateParticipantRef(r,deviceId){const m=meta(r,deviceId);return{id:m.id,access_code:m.display,label:m.secondary}}
+  function decorateParticipantRef(r,deviceId){const m=meta(r,deviceId);return{id:m.id,access_code:m.display,label:m.secondary,tester_id:m.testerId||null}}
   function participantRow(r,d){
     const m=meta(r,d.device_id),p=payloadFor(r,d.device_id),sessions=arr(p.sessions),days=new Set(sessions.map(s=>String(s.startedAt||"").slice(0,10)).filter(Boolean));
-    return{id:m.id,access_code:m.display,label:m.secondary,active:d.active!==false,bound:true,device_hash:d.device_id,bound_at:d.first_seen_at,created_at:d.first_seen_at,last_seen_at:d.last_seen_at,sessionCount:sessions.length,activeDays:days.size,symptomCount:arr(p.symptoms).filter(x=>x.active!==false).length,inviteCount:arr(p.invites).length,profile:null};
+    return{id:m.id,access_code:m.display,label:m.secondary,tester_id:m.testerId||null,active:d.active!==false,bound:true,device_hash:d.device_id,bound_at:d.first_seen_at,created_at:d.first_seen_at,last_seen_at:d.last_seen_at,sessionCount:sessions.length,activeDays:days.size,symptomCount:arr(p.symptoms).filter(x=>x.active!==false).length,inviteCount:arr(p.invites).length,profile:null};
   }
   function rewriteSession(r,s){
     const deviceId=s.device_hash||deviceFromSession(s.id);if(!deviceId)return s;const ref=decorateParticipantRef(r,deviceId);
@@ -71,7 +77,10 @@
   }
   function noteRows(r){
     const out=[];
-    for(const d of participantDevices(r)){const ref=decorateParticipantRef(r,d.device_id),p=payloadFor(r,d.device_id);for(const x of arr(p.notes))out.push({id:`${d.device_id}::${x.id}`,participant_id:ref.id,session_id:x.sessionId?`pv34::${d.device_id}::${x.sessionId}`:null,note_text:x.text,phase:x.phase==="free"?"standalone":x.phase,observed_at:x.observedAt,local_offset_minutes:x.localOffsetMinutes,session_elapsed_ms:x.sessionElapsedMs,request_key:x.requestKey,pattern_id:x.patternId,pattern_version:x.patternVersion,source_type:x.sourceType,source_id:x.sourceId,community_config_id:null,config_hash:x.configHash,config:x.config||x.state?.config||{},preview_frame:x.frame??x.state?.frame??44,participants:ref})}
+    for(const d of participantDevices(r)){
+      const ref=decorateParticipantRef(r,d.device_id),p=payloadFor(r,d.device_id);
+      for(const x of arr(p.notes))out.push({id:`${d.device_id}::${x.id}`,participant_id:ref.id,session_id:x.sessionId?`pv34::${d.device_id}::${x.sessionId}`:null,note_text:x.text,phase:x.phase==="free"?"standalone":x.phase,observed_at:x.observedAt,local_offset_minutes:x.localOffsetMinutes,session_elapsed_ms:x.sessionElapsedMs,request_key:x.requestKey,pattern_id:x.patternId,pattern_version:x.patternVersion,source_type:x.sourceType,source_id:x.sourceId,community_config_id:null,config_hash:x.configHash,config:x.config||x.state?.config||{},preview_frame:x.frame??x.state?.frame??44,visual_snapshot:x.visualSnapshot||null,participants:ref});
+    }
     return out.sort((a,b)=>Date.parse(b.observed_at||0)-Date.parse(a.observed_at||0));
   }
   function inviteRows(r){
