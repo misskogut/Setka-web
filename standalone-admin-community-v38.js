@@ -15,10 +15,12 @@
     .st38-mod-card{border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:12px;background:#080808}
     .st38-mod-card canvas{width:100%;height:auto;display:block;border-radius:14px;background:#000}
     .st38-mod-text{font-size:14px;line-height:1.45;white-space:pre-wrap;margin-top:10px}
-    .st38-mod-meta{font-size:11px;line-height:1.45;color:rgba(255,255,255,.48);margin-top:8px}
+    .st38-mod-meta{font-size:11px;line-height:1.5;color:rgba(255,255,255,.48);margin-top:8px}
     .st38-mod-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
     .st38-mod-actions .btn{width:100%}.st38-approve{background:#fff!important;color:#000!important}.st38-reject{border-color:rgba(255,255,255,.18)!important}
-    .st38-status{display:inline-flex;align-items:center;min-height:24px;padding:0 9px;border-radius:12px;border:1px solid rgba(255,255,255,.14);font-size:10px;letter-spacing:.06em;text-transform:uppercase}.st38-status.pending{border-style:dashed}.st38-status.published{opacity:.65}
+    .st38-status{display:inline-flex;align-items:center;min-height:24px;padding:0 9px;border-radius:12px;border:1px solid rgba(255,255,255,.14);font-size:10px;letter-spacing:.06em;text-transform:uppercase}
+    .st38-status.pending{border-style:dashed}.st38-status.published{opacity:.7}.st38-status.rejected{opacity:.55}.st38-status.unpublished{opacity:.55}
+    .st38-reason{margin-top:7px;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.04);font-size:11px;line-height:1.45;color:rgba(255,255,255,.58)}
   `;
   document.head.appendChild(style);
 
@@ -30,13 +32,19 @@
   function kpi(v,l){return `<div class="card kpi"><div class="v">${esc(v)}</div><div class="l">${esc(l)}</div></div>`}
   function preview(){return window.__SETKA_ADMIN_NOTE_SNAPSHOT_FIX_V34__||null}
   function titleOf(x){const p=preview();return p?.getPatternTitle?.(x.patternId)||x.patternId||"Паттерн"}
+  function historyOf(data){
+    const rejected=Array.isArray(data?.history?.rejected)?data.history.rejected:[];
+    const unpublished=Array.isArray(data?.history?.unpublished)?data.history.unpublished:[];
+    return [...rejected,...unpublished].sort((a,b)=>Date.parse(b.moderatedAt||b.createdAt||0)-Date.parse(a.moderatedAt||a.createdAt||0));
+  }
 
   function drawAll(){
     const p=preview();if(!p?.renderCanvas||!last)return;
-    const patterns=last.patterns||[],notes=last.notes||[],moderation=last.moderation||[];
+    const patterns=last.patterns||[],notes=last.notes||[],moderation=last.moderation||[],history=historyOf(last);
     communityEl.querySelectorAll('canvas[data-v38-pattern]').forEach(c=>p.renderCanvas(c,patterns[Number(c.dataset.v38Pattern)]));
     communityEl.querySelectorAll('canvas[data-v38-note]').forEach(c=>p.renderCanvas(c,notes[Number(c.dataset.v38Note)]));
     moderationEl.querySelectorAll('canvas[data-v38-moderation]').forEach(c=>p.renderCanvas(c,moderation[Number(c.dataset.v38Moderation)]));
+    moderationEl.querySelectorAll('canvas[data-v38-history]').forEach(c=>p.renderCanvas(c,history[Number(c.dataset.v38History)]));
   }
 
   async function moderate(action,item){
@@ -44,7 +52,7 @@
       if(!confirm("Опубликовать эту заметку анонимно в сообществе?"))return;
       await call("approve",{id:item.id});
     }else if(action==="reject"){
-      const reason=prompt("Причина отклонения (необязательно, видна только в рабочем контуре):","");
+      const reason=prompt("Причина отклонения (необязательно, остаётся в рабочем контуре):","");
       if(reason===null)return;
       await call("reject",{id:item.id,reason});
     }else if(action==="unpublish"){
@@ -55,19 +63,28 @@
   }
 
   function renderModeration(data){
-    const items=Array.isArray(data.moderation)?data.moderation:[];
+    const items=Array.isArray(data.moderation)?data.moderation:[],history=historyOf(data),counts=data.counts||{};
     moderationEl.innerHTML=`
-      <div class="grid kpis">${kpi(items.length,"ждут решения")}${kpi((data.notes||[]).length,"уже опубликовано")}</div>
-      <div class="card"><div class="section-title">Модерация заметок</div><div class="small muted">Пользователь только предлагает заметку. Пока здесь не принято решение, она остаётся приватной и не попадает в публичное сообщество. Tester ID виден только в этой закрытой админке.</div></div>
-      <div id="st38ModerationGrid" class="st38-mod-grid"></div>`;
-    const grid=moderationEl.querySelector("#st38ModerationGrid");
-    if(!items.length){grid.innerHTML='<div class="card empty" style="grid-column:1/-1">Очередь пуста. Нет заметок, ожидающих модерации.</div>';return}
+      <div class="grid kpis">${kpi(items.length,"ждут решения")}${kpi(counts.published??(data.notes||[]).length,"опубликовано")}${kpi(counts.rejected??0,"отклонено")}${kpi(counts.unpublished??0,"снято")}</div>
+      <div class="card"><div class="section-title">Модерация заметок</div><div class="small muted">Пользователь только предлагает заметку. Пока здесь не принято решение, она остаётся приватной и не попадает в публичное сообщество. Tester ID виден только в закрытой админке.</div></div>
+      <div class="card" style="margin-top:12px"><div class="section-title">Ждут решения</div><div id="st38ModerationGrid" class="st38-mod-grid"></div></div>
+      <div class="card" style="margin-top:12px"><div class="section-title">История решений</div><div class="small muted">Отклонённые и снятые с публикации заметки остаются в истории, но не видны сообществу.</div><div id="st38ModerationHistory" class="st38-mod-grid"></div></div>`;
+    const grid=moderationEl.querySelector("#st38ModerationGrid"),hg=moderationEl.querySelector("#st38ModerationHistory");
+    if(!items.length)grid.innerHTML='<div class="empty" style="grid-column:1/-1">Очередь пуста. Нет заметок, ожидающих модерации.</div>';
     items.forEach((x,i)=>{
       const card=document.createElement("article");card.className="st38-mod-card";
       card.innerHTML=`<canvas width="320" height="220" data-v38-moderation="${i}"></canvas><div class="st38-mod-text">${esc(x.text)}</div><div class="st38-mod-meta"><span class="st38-status pending">на модерации</span><br>${esc(titleOf(x))} · отправлено ${esc(dt(x.submittedAt||x.createdAt))}<br>Tester ID: <b>${esc(x.testerId||"не привязан")}</b></div><div class="st38-mod-actions"><button class="btn st38-approve" type="button">Опубликовать</button><button class="btn st38-reject" type="button">Отклонить</button></div>`;
       card.querySelector(".st38-approve").onclick=()=>moderate("approve",x).catch(e=>alert(`Не удалось опубликовать: ${e.message}`));
       card.querySelector(".st38-reject").onclick=()=>moderate("reject",x).catch(e=>alert(`Не удалось отклонить: ${e.message}`));
       grid.appendChild(card);
+    });
+    if(!history.length)hg.innerHTML='<div class="empty" style="grid-column:1/-1">Истории решений пока нет.</div>';
+    history.forEach((x,i)=>{
+      const card=document.createElement("article");card.className="st38-mod-card";
+      const label=x.status==="rejected"?"отклонено":"снято с публикации";
+      const reason=x.reason?`<div class="st38-reason">Причина: ${esc(x.reason)}</div>`:"";
+      card.innerHTML=`<canvas width="320" height="220" data-v38-history="${i}"></canvas><div class="st38-mod-text">${esc(x.text)}</div><div class="st38-mod-meta"><span class="st38-status ${esc(x.status)}">${label}</span><br>${esc(titleOf(x))} · решение ${esc(dt(x.moderatedAt||x.createdAt))}<br>Tester ID: <b>${esc(x.testerId||"не привязан")}</b></div>${reason}`;
+      hg.appendChild(card);
     });
   }
 
@@ -76,7 +93,7 @@
     const totalPatternSaves=ps.reduce((a,x)=>a+(Number(x.saveCount)||0),0),totalNoteSaves=notes.reduce((a,x)=>a+(Number(x.saves)||0),0);
     communityEl.innerHTML=`
       <div class="grid kpis">${kpi(ps.length,"уникальных конфигураций")}${kpi(totalPatternSaves,"реальных сохранений")}${kpi(notes.length,"публичных заметок")}${kpi(totalNoteSaves,"сохранений заметок")}</div>
-      <div class="card"><div class="section-title">Публичное сообщество</div><div class="small muted">Здесь только то, что реально опубликовано. Заметка появляется после решения в разделе «Модерация». Tester/device ID, сессии, симптомы и физиология в публичную проекцию не входят.</div></div>
+      <div class="card"><div class="section-title">Публичное сообщество</div><div class="small muted">Здесь только реально опубликованные данные. Заметка появляется после решения в разделе «Модерация». Tester/device ID, сессии, симптомы и физиология в публичную проекцию не входят.</div></div>
       <div class="card" style="margin-top:12px"><div class="section-title">Опубликованные заметки</div><div id="st38PublicNotes" class="st38-mod-grid"></div></div>
       <div class="card" style="margin-top:12px"><div class="section-title">Сохранённые паттерны</div><div id="st38PatternCards" class="grid community-grid" style="margin-top:10px"></div></div>`;
     const ng=communityEl.querySelector("#st38PublicNotes"),pg=communityEl.querySelector("#st38PatternCards");
