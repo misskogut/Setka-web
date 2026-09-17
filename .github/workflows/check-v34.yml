@@ -21,6 +21,7 @@ on:
       - 'standalone-bootstrap-v34.js'
       - 'standalone-config-links-v34.js'
       - 'standalone-controls-v34.js'
+      - 'standalone-privacy-egress-v40.js'
       - 'standalone-sync-v34.js'
       - 'standalone-navigation-v34.js'
       - 'standalone-note-snapshot-fix-v34.js'
@@ -73,6 +74,7 @@ jobs:
       - run: node --check standalone-bootstrap-v34.js
       - run: node --check standalone-config-links-v34.js
       - run: node --check standalone-controls-v34.js
+      - run: node --check standalone-privacy-egress-v40.js
       - run: node --check standalone-sync-v34.js
       - run: node --check standalone-navigation-v34.js
       - run: node --check standalone-note-snapshot-fix-v34.js
