@@ -1,0 +1,7 @@
+(() => {
+  "use strict";
+  const style=document.createElement("style");style.textContent=`.st40-privacy-banner{border:1px solid rgba(255,255,255,.16);border-radius:16px;padding:12px 14px;background:#0a0a0a;margin:0 0 12px}.st40-privacy-banner b{font-size:12px}.st40-privacy-banner p{font-size:10px;line-height:1.5;color:rgba(255,255,255,.48);margin:5px 0 0}`;document.head.appendChild(style);
+  const legacy=new Set(["journey","timing","symptoms","notes","insights"]);
+  function install(){for(const page of document.querySelectorAll(".tab-page")){const key=page.id.replace("tab-","");if(page.dataset.privacyV40==="1")continue;const box=document.createElement("div");box.className="st40-privacy-banner";if(key==="overview")box.innerHTML='<b>V40 · LOCAL PERSONAL CORPUS</b><p>Новые личные сессии, заметки, состояния, симптомы, пульс и raw-жесты не синхронизируются в исследовательскую базу. Текущий исследовательский слой — обезличенные вклады в «Карточки паттернов». Старые серверные записи сохранены только как legacy read-only.</p>';else if(legacy.has(key))box.innerHTML='<b>LEGACY · исторические данные</b><p>Эта вкладка показывает данные, собранные до перехода на local-first privacy contract. Новые тестировщики не наполняют этот раздел личным корпусом.</p>';else continue;page.prepend(box);page.dataset.privacyV40="1"}}
+  const mo=new MutationObserver(()=>install());mo.observe(document.getElementById("dashboard")||document.body,{childList:true,subtree:true});install();
+})();
