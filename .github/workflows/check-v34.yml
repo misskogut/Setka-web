@@ -24,6 +24,7 @@ on:
       - 'standalone-visual-cache-v40.js'
       - 'standalone-privacy-egress-v40.js'
       - 'standalone-privacy-contract-v40.js'
+      - 'standalone-public-visual-capsules-v40.js'
       - 'standalone-sync-v34.js'
       - 'standalone-navigation-v34.js'
       - 'standalone-note-snapshot-fix-v34.js'
@@ -43,11 +44,13 @@ on:
       - 'standalone-admin-community-v38.js'
       - 'standalone-admin-pattern-knowledge-v40.js'
       - 'standalone-admin-visual-assets-v40.js'
+      - 'standalone-admin-mother-snapshots-v40.js'
       - 'standalone-admin-privacy-v40.js'
       - 'standalone-admin-evolution-login-v35.js'
       - 'standalone-admin-evolution-v35.js'
       - 'standalone-admin-evolution-pattern-lab-v35.js'
       - 'admin-replay-first-v34.js'
+      - 'standalone-renderer-v40.html'
       - 'standalone-admin-v34.html'
       - 'standalone-admin-evolution-v35.html'
       - 'standalone-v34.html'
@@ -82,6 +85,7 @@ jobs:
       - run: node --check standalone-visual-cache-v40.js
       - run: node --check standalone-privacy-egress-v40.js
       - run: node --check standalone-privacy-contract-v40.js
+      - run: node --check standalone-public-visual-capsules-v40.js
       - run: node --check standalone-sync-v34.js
       - run: node --check standalone-navigation-v34.js
       - run: node --check standalone-note-snapshot-fix-v34.js
@@ -101,6 +105,7 @@ jobs:
       - run: node --check standalone-admin-community-v38.js
       - run: node --check standalone-admin-pattern-knowledge-v40.js
       - run: node --check standalone-admin-visual-assets-v40.js
+      - run: node --check standalone-admin-mother-snapshots-v40.js
       - run: node --check standalone-admin-privacy-v40.js
       - run: node --check standalone-admin-evolution-login-v35.js
       - run: node --check standalone-admin-evolution-v35.js
