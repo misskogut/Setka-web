@@ -42,6 +42,7 @@ on:
       - 'standalone-admin-tester-ids-v37.js'
       - 'standalone-admin-community-v38.js'
       - 'standalone-admin-pattern-knowledge-v40.js'
+      - 'standalone-admin-visual-assets-v40.js'
       - 'standalone-admin-privacy-v40.js'
       - 'standalone-admin-evolution-login-v35.js'
       - 'standalone-admin-evolution-v35.js'
@@ -99,6 +100,7 @@ jobs:
       - run: node --check standalone-admin-tester-ids-v37.js
       - run: node --check standalone-admin-community-v38.js
       - run: node --check standalone-admin-pattern-knowledge-v40.js
+      - run: node --check standalone-admin-visual-assets-v40.js
       - run: node --check standalone-admin-privacy-v40.js
       - run: node --check standalone-admin-evolution-login-v35.js
       - run: node --check standalone-admin-evolution-v35.js
