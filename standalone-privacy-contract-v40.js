@@ -6,7 +6,7 @@
   const OLD_VERSION="research-v1-2026-09-17";
   const NEW_VERSION="research-v2-2026-09-17";
   const OLD_CONSENT="SETKA не запрашивает имя, телефон или электронную почту. Личная история, заметки, состояния и персональная аналитика хранятся на этом устройстве. Для исследовательского контура отправляются только обезличенные показатели взаимодействия с паттернами и конфигурациями; они агрегируются в карточках паттернов. Публичная публикация заметок возможна только отдельным действием пользователя и после модерации.";
-  const NEW_CONSENT="SETKA не запрашивает имя, телефон или электронную почту. Личная история, заметки, состояния и персональная аналитика могут храниться в приватном контуре SETKA и использоваться системой для персонализации, динамики и восстановления кабинета. Эти данные не публикуются и не показываются другим пользователям. Для общего исследовательского слоя используются отдельные обезличенные показатели паттернов и конфигураций. Публичная публикация заметки возможна только отдельным действием пользователя и после модерации.";
+  const NEW_CONSENT="SETKA не запрашивает имя, телефон или электронную почту. Личная история, заметки, состояния и персональная аналитика могут храниться в приватном контуре SETKA и использоваться системой для персонализации, динамики и восстановления кабинета. Эти данные не публикуются и не показываются другим пользователям. Визуальные превью паттернов по умолчанию создаются на устройстве и хранятся только во временном локальном кэше; источник истины — числовой рецепт паттерна. Для общего исследовательского слоя используются отдельные обезличенные показатели паттернов и конфигураций. Публичная публикация заметки возможна только отдельным действием пользователя и после модерации.";
   const CORPUS_KEY="setka-v40:private-corpus-status";
   const previousFetch=window.fetch.bind(window);
 
@@ -42,13 +42,15 @@
       if(next!==value)node.nodeValue=next;
     }
   }
-  function renderStatus(){
+  async function renderStatus(){
     const wrap=document.getElementById("st40TesterCabinet");if(!wrap)return;
     let box=document.getElementById("st40PrivateCorpusStatus");if(!box){box=document.createElement("div");box.id="st40PrivateCorpusStatus";box.className="st40-card";wrap.appendChild(box)}
     const st=corpusStatus();
-    if(!st?.enabled){box.innerHTML='<div class="st40-copy">Приватный персональный корпус подключится после входа в кабинет. Публичная SETKA при этом остаётся доступной без входа.</div>';return}
+    let cacheCopy="Визуальные превью создаются на устройстве и могут быть очищены без потери заметок или конфигураций.";
+    try{const s=await window.__SETKA_VISUAL_CACHE_V40__?.stats?.();if(s?.available)cacheCopy=`Визуальный кэш: ${Number(s.items)||0} превью · ${Math.round((Number(s.bytes)||0)/1024/1024*10)/10} МБ. Его можно очистить без потери данных.`}catch(_){}
+    if(!st?.enabled){box.innerHTML=`<div class="st40-copy">Приватный персональный корпус подключится после входа в кабинет. Публичная SETKA при этом остаётся доступной без входа.</div><div class="st40-copy" style="margin-top:8px">${cacheCopy}</div>`;return}
     const c=st.counts||{};
-    box.innerHTML=`<div class="st40-ok"><span class="st40-dot ${st.ok?"":"off"}"></span>${st.ok?"Приватный корпус синхронизирован":"Приватный корпус ожидает синхронизации"}</div><div class="st40-copy">${Number(c.sessions)||0} сессий · ${Number(c.notes)||0} личных заметок · ${Number(c.exposures)||0} экспозиций. Эти данные не публикуются другим пользователям.</div>`;
+    box.innerHTML=`<div class="st40-ok"><span class="st40-dot ${st.ok?"":"off"}"></span>${st.ok?"Приватный корпус синхронизирован":"Приватный корпус ожидает синхронизации"}</div><div class="st40-copy">${Number(c.sessions)||0} сессий · ${Number(c.notes)||0} личных заметок · ${Number(c.exposures)||0} экспозиций. Эти данные не публикуются другим пользователям.</div><div class="st40-copy" style="margin-top:8px">${cacheCopy}</div>`;
   }
   function apply(){replaceText(document);renderStatus()}
   const mo=new MutationObserver(()=>{clearTimeout(window.__setkaPrivacyContractTimer);window.__setkaPrivacyContractTimer=setTimeout(apply,20)});mo.observe(document.body,{childList:true,subtree:true,characterData:true});
@@ -56,5 +58,5 @@
   window.addEventListener("setka:v40-account",apply);
   setTimeout(apply,300);
 
-  window.__SETKA_PRIVACY_CONTRACT_V40__={version:2,consentVersion:NEW_VERSION,mode:"private-system-public-separated"};
+  window.__SETKA_PRIVACY_CONTRACT_V40__={version:3,consentVersion:NEW_VERSION,mode:"private-system-public-separated",visuals:"recipe-plus-device-cache"};
 })();
