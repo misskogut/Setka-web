@@ -22,6 +22,7 @@ on:
       - 'standalone-config-links-v34.js'
       - 'standalone-controls-v34.js'
       - 'standalone-privacy-egress-v40.js'
+      - 'standalone-privacy-contract-v40.js'
       - 'standalone-sync-v34.js'
       - 'standalone-navigation-v34.js'
       - 'standalone-note-snapshot-fix-v34.js'
@@ -31,6 +32,7 @@ on:
       - 'standalone-research-bridge-v40.js'
       - 'standalone-community-cloud-v38.js'
       - 'standalone-admin-bridge-v34b.js'
+      - 'standalone-admin-private-corpus-v40.js'
       - 'standalone-admin-participants-v34.js'
       - 'standalone-admin-activity-v34.js'
       - 'standalone-admin-retention-v34.js'
@@ -76,6 +78,7 @@ jobs:
       - run: node --check standalone-config-links-v34.js
       - run: node --check standalone-controls-v34.js
       - run: node --check standalone-privacy-egress-v40.js
+      - run: node --check standalone-privacy-contract-v40.js
       - run: node --check standalone-sync-v34.js
       - run: node --check standalone-navigation-v34.js
       - run: node --check standalone-note-snapshot-fix-v34.js
@@ -85,6 +88,7 @@ jobs:
       - run: node --check standalone-research-bridge-v40.js
       - run: node --check standalone-community-cloud-v38.js
       - run: node --check standalone-admin-bridge-v34b.js
+      - run: node --check standalone-admin-private-corpus-v40.js
       - run: node --check standalone-admin-participants-v34.js
       - run: node --check standalone-admin-activity-v34.js
       - run: node --check standalone-admin-retention-v34.js
