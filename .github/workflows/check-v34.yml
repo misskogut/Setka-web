@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - 'app-v3-multipattern.js'
+      - 'app-v7-multipattern.js'
       - 'standalone-multipattern-bridge-v34.js'
       - 'standalone-core-v34.js'
       - 'standalone-runtime-v34.js'
@@ -22,11 +23,21 @@ on:
       - 'standalone-controls-v34.js'
       - 'standalone-sync-v34.js'
       - 'standalone-navigation-v34.js'
+      - 'standalone-note-snapshot-fix-v34.js'
+      - 'standalone-tester-community-v34.js'
+      - 'standalone-tester-cabinet-v40.js'
+      - 'standalone-research-bridge-v40.js'
+      - 'standalone-community-cloud-v38.js'
       - 'standalone-admin-bridge-v34b.js'
       - 'standalone-admin-participants-v34.js'
       - 'standalone-admin-activity-v34.js'
       - 'standalone-admin-retention-v34.js'
       - 'standalone-admin-participant-modal-v34.js'
+      - 'standalone-admin-note-snapshot-fix-v34.js'
+      - 'standalone-admin-tester-ids-v37.js'
+      - 'standalone-admin-community-v38.js'
+      - 'standalone-admin-pattern-knowledge-v40.js'
+      - 'standalone-admin-privacy-v40.js'
       - 'standalone-admin-evolution-login-v35.js'
       - 'standalone-admin-evolution-v35.js'
       - 'standalone-admin-evolution-pattern-lab-v35.js'
@@ -44,6 +55,7 @@ jobs:
         with:
           node-version: '22'
       - run: node --check app-v3-multipattern.js
+      - run: node --check app-v7-multipattern.js
       - run: node --check standalone-multipattern-bridge-v34.js
       - run: node --check standalone-core-v34.js
       - run: node --check standalone-runtime-v34.js
@@ -63,11 +75,21 @@ jobs:
       - run: node --check standalone-controls-v34.js
       - run: node --check standalone-sync-v34.js
       - run: node --check standalone-navigation-v34.js
+      - run: node --check standalone-note-snapshot-fix-v34.js
+      - run: node --check standalone-tester-community-v34.js
+      - run: node --check standalone-tester-cabinet-v40.js
+      - run: node --check standalone-research-bridge-v40.js
+      - run: node --check standalone-community-cloud-v38.js
       - run: node --check standalone-admin-bridge-v34b.js
       - run: node --check standalone-admin-participants-v34.js
       - run: node --check standalone-admin-activity-v34.js
       - run: node --check standalone-admin-retention-v34.js
       - run: node --check standalone-admin-participant-modal-v34.js
+      - run: node --check standalone-admin-note-snapshot-fix-v34.js
+      - run: node --check standalone-admin-tester-ids-v37.js
+      - run: node --check standalone-admin-community-v38.js
+      - run: node --check standalone-admin-pattern-knowledge-v40.js
+      - run: node --check standalone-admin-privacy-v40.js
       - run: node --check standalone-admin-evolution-login-v35.js
       - run: node --check standalone-admin-evolution-v35.js
       - run: node --check standalone-admin-evolution-pattern-lab-v35.js
