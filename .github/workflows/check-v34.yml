@@ -27,6 +27,7 @@ on:
       - 'standalone-note-snapshot-fix-v34.js'
       - 'standalone-tester-community-v34.js'
       - 'standalone-tester-cabinet-v40.js'
+      - 'standalone-private-corpus-v40.js'
       - 'standalone-research-bridge-v40.js'
       - 'standalone-community-cloud-v38.js'
       - 'standalone-admin-bridge-v34b.js'
@@ -80,6 +81,7 @@ jobs:
       - run: node --check standalone-note-snapshot-fix-v34.js
       - run: node --check standalone-tester-community-v34.js
       - run: node --check standalone-tester-cabinet-v40.js
+      - run: node --check standalone-private-corpus-v40.js
       - run: node --check standalone-research-bridge-v40.js
       - run: node --check standalone-community-cloud-v38.js
       - run: node --check standalone-admin-bridge-v34b.js
