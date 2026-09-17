@@ -9,22 +9,16 @@
   const CHANNEL="yulia_lab_v34";
   const DEVICE_KEY="setka-standalone:v34-yulia-device";
   const FIRST_KEY="setka-standalone:v34-yulia-first-seen";
-  const STATUS_KEY="setka-standalone:v34-yulia-last-sync";
-  const EVENT_CURSOR_KEY="setka-standalone:v34-last-event-sync";
-  const EXPOSURE_CURSOR_KEY="setka-standalone:v35-last-exposure-sync";
-  const VISIT_STARTED_KEY="setka-v35:visit-started";
+  const STATUS_KEY="setka-standalone:v40-last-heartbeat";
 
-  function makeId(){try{return crypto.randomUUID()}catch(_){return `yulia-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,12)}`}}
-  let deviceId="",firstSeen="",eventCursor="",exposureCursor="";
+  function makeId(){try{return crypto.randomUUID()}catch(_){return `device-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,12)}`}}
+  let deviceId="",firstSeen="";
   try{
     deviceId=localStorage.getItem(DEVICE_KEY)||makeId();localStorage.setItem(DEVICE_KEY,deviceId);
     firstSeen=localStorage.getItem(FIRST_KEY)||new Date().toISOString();localStorage.setItem(FIRST_KEY,firstSeen);
-    eventCursor=localStorage.getItem(EVENT_CURSOR_KEY)||"";
-    exposureCursor=localStorage.getItem(EXPOSURE_CURSOR_KEY)||"";
   }catch(_){deviceId=makeId();firstSeen=new Date().toISOString()}
-  function visitStartedAt(){try{let v=sessionStorage.getItem(VISIT_STARTED_KEY);if(!v){v=new Date().toISOString();sessionStorage.setItem(VISIT_STARTED_KEY,v)}return v}catch(_){return new Date().toISOString()}}
 
-  let busy=false,lastSignature="",timer=0,lastOkAt=null,lastError=null,lastPolicy=null,lastFavoriteStats={local:0,unique:0};
+  let busy=false,lastSignature="",timer=0,lastOkAt=null,lastError=null,lastFavoriteStats={local:0,unique:0,cloud:0},lastSubjectKey=null;
 
   function favorites(){
     try{
@@ -37,50 +31,47 @@
         const prev=byKey.get(configKey);
         if(!prev||Number(item.createdAt||0)>=Number(prev.createdAt||0))byKey.set(configKey,item);
       }
-      lastFavoriteStats={local:raw.length,unique:byKey.size};
+      lastFavoriteStats={...lastFavoriteStats,local:raw.length,unique:byKey.size};
       return [...byKey.values()];
-    }catch(_){lastFavoriteStats={local:0,unique:0};return[]}
+    }catch(_){lastFavoriteStats={local:0,unique:0,cloud:0};return[]}
   }
-  function exposures(){const x=C.getData()?.patternExposures;return Array.isArray(x)?x:[]}
-  function signature(){
-    const d=C.getData(),p=d.physio?.samples||[],fav=favorites(),exp=exposures();
-    const lastSession=d.sessions?.at?.(-1),lastEvent=d.events?.at?.(-1),lastNote=d.notes?.at?.(-1),lastCheck=d.checkins?.at?.(-1),lastExposure=exp.at?.(-1);
-    return [d.sessions?.length||0,lastSession?.id||"",lastSession?.phase||"",lastSession?.measuredActiveMs||0,lastSession?.afterFeedbackActiveMs||0,d.events?.length||0,lastEvent?.id||"",d.notes?.length||0,lastNote?.id||"",d.checkins?.length||0,lastCheck?.id||"",p.length,p.at?.(-1)?.id||"",fav.length,fav.map(x=>`${x.configKey}:${x.id}`).join(","),exp.length,lastExposure?.exposureId||"",lastExposure?.endedAt||""].join("|");
+
+  function signature(){const fav=favorites();return fav.map(x=>`${x.configKey}:${x.id||""}`).join(",")}
+  async function post(url,payload,keepalive=false){
+    const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json",apikey:API_KEY},body:JSON.stringify(payload),keepalive});
+    const out=await r.json().catch(()=>({}));if(!r.ok)throw new Error(out.error||`http_${r.status}`);return out;
   }
-  function viewport(){return{width:innerWidth,height:innerHeight,dpr:devicePixelRatio||1,screenWidth:screen?.width||null,screenHeight:screen?.height||null}}
-  function deltaByCursor(list,cursor,idKey){if(!Array.isArray(list)||!list.length)return[];if(!cursor)return list.slice();const i=list.findIndex(e=>e?.[idKey]===cursor);return i>=0?list.slice(i+1):list.slice()}
-  function lightArchive(d){const {patternExposures:_drop,...rest}=d||{};return{...rest,events:[]}}
-  function applyServerPolicy(out){lastPolicy={retentionDays:out.retentionDays||90,sampleHz:out.sampleHz||8,rawCutoffAt:out.rawCutoffAt||null};window.dispatchEvent(new CustomEvent("setka:v34-replay-policy",{detail:lastPolicy}))}
-  async function syncSemantic(fav,expDelta,keepalive=false){
-    const r=await fetch(SEMANTIC_API,{method:"POST",headers:{"Content-Type":"application/json","apikey":API_KEY},body:JSON.stringify({action:"sync",channel:CHANNEL,deviceId,favorites:fav,exposuresDelta:expDelta,visit:{id:C.patternExposure?.visitId||null,startedAt:visitStartedAt(),lastSeenAt:new Date().toISOString()}}),keepalive});
-    const out=await r.json().catch(()=>({}));
-    if(!r.ok)throw new Error(`semantic_${r.status}${out?.detail?`:${out.detail}`:""}`);
-    return out;
+  async function syncSemantic(fav,keepalive=false){
+    return post(SEMANTIC_API,{action:"sync",channel:CHANNEL,deviceId,favorites:fav},keepalive);
   }
   async function sync(force=false,keepalive=false){
-    if(busy)return false;const sig=signature();if(!force&&sig===lastSignature)return true;busy=true;lastError=null;
+    if(busy)return false;const sig=signature();if(!force&&sig===lastSignature&&lastOkAt&&Date.now()-Date.parse(lastOkAt)<60000)return true;
+    busy=true;lastError=null;
     try{
-      const d=C.getData(),delta=deltaByCursor(d.events||[],eventCursor,"id"),fav=favorites(),exp=exposures(),expDelta=deltaByCursor(exp,exposureCursor,"exposureId"),visitId=C.patternExposure?.visitId||null;
-      const body={action:"sync",channel:CHANNEL,deviceId,visitId,firstSeenAt:firstSeen,userAgent:navigator.userAgent,viewport:viewport(),archive:lightArchive(d),eventsDelta:delta};
-      const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json","apikey":API_KEY},body:JSON.stringify(body),keepalive});if(!r.ok)throw new Error(`sync_${r.status}`);const out=await r.json();
-      const semantic=await syncSemantic(fav,expDelta,keepalive);
-      if(delta.length){eventCursor=delta.at(-1)?.id||eventCursor;try{localStorage.setItem(EVENT_CURSOR_KEY,eventCursor)}catch(_){}}
-      if(expDelta.length){exposureCursor=expDelta.at(-1)?.exposureId||exposureCursor;try{localStorage.setItem(EXPOSURE_CURSOR_KEY,exposureCursor)}catch(_){}}
-      lastSignature=signature();lastOkAt=out.updatedAt||new Date().toISOString();applyServerPolicy(out);try{localStorage.setItem(STATUS_KEY,lastOkAt)}catch(_){}
-      window.dispatchEvent(new CustomEvent("setka:v34-sync",{detail:{ok:true,label:out.label||"Юля",subjectKey:out.subjectKey||null,deviceId,updatedAt:lastOkAt,acceptedEvents:out.acceptedEvents||0,acceptedExposures:expDelta.length,favoritesLocal:lastFavoriteStats.local,favoritesUnique:lastFavoriteStats.unique,favoritesCloud:semantic?.favorites??fav.length,retentionDays:out.retentionDays||90}}));return true;
-    }catch(e){lastError=String(e?.message||e);window.dispatchEvent(new CustomEvent("setka:v34-sync",{detail:{ok:false,label:"Юля",deviceId,error:lastError,favoritesLocal:lastFavoriteStats.local,favoritesUnique:lastFavoriteStats.unique}}));return false}
-    finally{busy=false}
+      // Privacy contract: no sessions, notes, states, symptoms, pulse, raw events or exposure timeline leave the device here.
+      const heartbeat=await post(API,{action:"sync",channel:CHANNEL,deviceId,firstSeenAt:firstSeen,build:"v40-private-local"},keepalive);
+      const fav=favorites(),semantic=await syncSemantic(fav,keepalive);
+      lastSignature=sig;lastOkAt=heartbeat.updatedAt||new Date().toISOString();lastSubjectKey=heartbeat.subjectKey||null;
+      lastFavoriteStats={...lastFavoriteStats,cloud:Number(semantic?.favorites??fav.length)||0};
+      try{localStorage.setItem(STATUS_KEY,lastOkAt)}catch(_){}
+      window.dispatchEvent(new CustomEvent("setka:v34-sync",{detail:{ok:true,label:heartbeat.label||"Гость",subjectKey:lastSubjectKey,deviceId,updatedAt:lastOkAt,acceptedEvents:0,acceptedExposures:0,favoritesLocal:lastFavoriteStats.local,favoritesUnique:lastFavoriteStats.unique,favoritesCloud:lastFavoriteStats.cloud,privacyMode:"local-personal-corpus"}}));
+      return true;
+    }catch(e){
+      lastError=String(e?.message||e);window.dispatchEvent(new CustomEvent("setka:v34-sync",{detail:{ok:false,label:"Гость",deviceId,error:lastError,privacyMode:"local-personal-corpus",favoritesLocal:lastFavoriteStats.local,favoritesUnique:lastFavoriteStats.unique}}));return false;
+    }finally{busy=false}
   }
   function schedule(ms=900){clearTimeout(timer);timer=setTimeout(()=>sync(false),ms)}
 
-  window.addEventListener("setka:standalone-event",()=>schedule(700));
-  window.addEventListener("setka:pattern-exposure",()=>schedule(250));
-  window.addEventListener("setka:favorite-saved",()=>schedule(300));
-  window.addEventListener("setka:favorite-removed",()=>schedule(300));
+  window.addEventListener("setka:favorite-saved",()=>schedule(200));
+  window.addEventListener("setka:favorite-removed",()=>schedule(200));
   window.addEventListener("setka:v34-sync-request",()=>sync(true));
-  document.addEventListener("visibilitychange",()=>{if(document.hidden)sync(true,true);else schedule(300)});
+  document.addEventListener("visibilitychange",()=>{if(document.hidden)sync(true,true);else schedule(500)});
   window.addEventListener("pagehide",()=>sync(true,true));
-  setInterval(()=>sync(false),12000);setTimeout(()=>sync(true),500);
+  setInterval(()=>sync(false),60000);setTimeout(()=>sync(true),500);
 
-  C.sandbox={label:"Юля",channel:CHANNEL,deviceId,firstSeenAt:firstSeen,sync:()=>sync(true),status:()=>({deviceId,label:"Юля",lastOkAt,lastError,replayPolicy:lastPolicy,eventCursor,exposureCursor,favorites:lastFavoriteStats})};
+  C.sandbox={
+    label:"Гость",channel:CHANNEL,deviceId,firstSeenAt:firstSeen,
+    sync:()=>sync(true),
+    status:()=>({deviceId,label:String(lastSubjectKey||"").startsWith("T-")?"Тестировщик":"Гость",subjectKey:lastSubjectKey,lastOkAt,lastError,favorites:lastFavoriteStats,privacyMode:"local-personal-corpus",personalArchiveSynced:false,rawTelemetrySynced:false})
+  };
 })();
