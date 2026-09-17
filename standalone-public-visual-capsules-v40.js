@@ -3,6 +3,7 @@
   if (window.__SETKA_PUBLIC_VISUAL_CAPSULES_V40__) return;
 
   const NOTE_PATH = "/functions/v1/setka-public-notes-v37";
+  const RENDERER_VERSION = "app-v7-multipattern@5b94738f2739691ddcbd899865d757408c44e8dc";
   const rawFetch = window.fetch.bind(window);
   const clone = v => v == null ? v : JSON.parse(JSON.stringify(v));
   const finite = (v,d=null) => Number.isFinite(Number(v)) ? Number(v) : d;
@@ -23,7 +24,8 @@
     const frame = finite(source.frame ?? note.frame ?? note.visualSnapshot?.frame, 44);
     return {
       version: 1,
-      rendererVersion: "app-v7",
+      rendererVersion: RENDERER_VERSION,
+      rendererAsset: "app-v7-multipattern.js",
       patternId,
       patternVersion: Math.max(1, Math.round(finite(source.patternVersion ?? note.patternVersion, patternVersion(patternId)))),
       configHash,
@@ -63,7 +65,7 @@
   window.fetch = async function(input, init = {}) {
     const url = urlOf(input), body = bodyOf(init);
     const isNotes = url.includes(NOTE_PATH);
-    let action = body?.action || null;
+    const action = body?.action || null;
 
     if (isNotes && body && (action === "submit" || action === "publish") && body.note) {
       try {
@@ -93,5 +95,5 @@
     return response;
   };
 
-  window.__SETKA_PUBLIC_VISUAL_CAPSULES_V40__ = {version:1, recipeFor, encodePreview, mode:"capsule-plus-small-server-preview"};
+  window.__SETKA_PUBLIC_VISUAL_CAPSULES_V40__ = {version:2, rendererVersion:RENDERER_VERSION, recipeFor, encodePreview, mode:"capsule-plus-small-server-preview"};
 })();
