@@ -268,13 +268,59 @@
     return out;
   }
 
+  function installPreviewCache() {
+    const S = window.SetkaApp;
+    if (!S?.renderPreview || S.renderPreview.__setkaVisualCacheWrapped) return;
+    const raw = S.renderPreview.bind(S);
+    const wrapped = function(canvas, config, frame = 44, patternId = null) {
+      const pid = patternId || config?.patternId || "tentacle-orbit";
+      let version = 1;
+      try { version = S.getPatterns?.().find(x => x.id === pid)?.version || 1; } catch (_) {}
+      let configHash = null;
+      try { configHash = S.configKey?.(config, pid) || null; } catch (_) {}
+      const r = recipe({patternId:pid,patternVersion:version,configHash,frame,config});
+      raw(canvas, config, frame, pid);
+      draw(canvas, cacheKey(r)).then(hit => { if (!hit) putCanvas(canvas, r).catch(() => {}); }).catch(() => {});
+    };
+    wrapped.__setkaVisualCacheWrapped = true;
+    wrapped.__setkaRaw = raw;
+    S.renderPreview = wrapped;
+  }
+
+  function drawCanonicalImage(canvas, url) {
+    if (!canvas || !url || canvas.dataset.canonicalAssetUrl === url) return;
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const ctx=canvas.getContext("2d"),w=canvas.width,h=canvas.height,s=Math.min(w/img.width,h/img.height),dw=img.width*s,dh=img.height*s;
+        ctx.fillStyle="#000";ctx.fillRect(0,0,w,h);ctx.drawImage(img,(w-dw)/2,(h-dh)/2,dw,dh);
+        canvas.dataset.canonicalAssetUrl=url;
+        canvas.dataset.snapshotSource="server-canonical-asset";
+      } catch (_) {}
+    };
+    img.src=url;
+  }
+
+  async function applyCanonicalBaseAssets(root = document) {
+    const map = await loadPolicies();
+    const tiles = root.matches?.(".pattern-tile.base-tile") ? [root] : root.querySelectorAll?.(".pattern-tile.base-tile") || [];
+    for (const tile of tiles) {
+      const pid=tile.dataset.patternId, p=map.get(String(pid||""));
+      if (p?.imagePolicy !== "server_preferred" || !p?.canonicalImageUrl) continue;
+      const canvas=tile.querySelector("canvas.thumb-canvas");
+      drawCanonicalImage(canvas,p.canonicalImageUrl);
+    }
+  }
+
   window.__SETKA_VISUAL_CACHE_V40__ = {
-    version:1,
+    version:2,
     rendererVersion:RENDERER_VERSION,
     limits:{maxItems:MAX_ITEMS,maxBytes:MAX_BYTES,maxSide:MAX_SIDE},
-    recipe,cacheKey,metadata,putCanvas,putDataUrl,get,draw,renderOrCache,prune,stats,clear,loadPolicies,policy,stripHeavyVisuals,
+    recipe,cacheKey,metadata,putCanvas,putDataUrl,get,draw,renderOrCache,prune,stats,clear,loadPolicies,policy,stripHeavyVisuals,applyCanonicalBaseAssets,
     motherPatternIds:[...MOTHER_IDS]
   };
 
-  loadPolicies().catch(() => {});
+  installPreviewCache();
+  loadPolicies().then(()=>applyCanonicalBaseAssets()).catch(() => {});
+  new MutationObserver(records=>{for(const rec of records)for(const n of rec.addedNodes)if(n.nodeType===1)applyCanonicalBaseAssets(n)}).observe(document.documentElement,{childList:true,subtree:true});
 })();
