@@ -4,6 +4,7 @@
   let notes = [];
   let previewApp = null;
   const originalFetch = window.fetch.bind(window);
+  const VC = window.__SETKA_VISUAL_CACHE_V40__;
 
   window.fetch = async function(input, init) {
     const response = await originalFetch(input, init);
@@ -46,11 +47,34 @@
     if (canvas.height !== height) canvas.height = height;
   }
 
-  function drawExactSnapshot(canvas, snapshot) {
+  function pidOf(item) {
+    const c = item?.config || {};
+    if (c.eyeSeparation != null || c.stereoAngle != null || (c.angleStep != null && c.numPoints != null)) return "stereo-dna";
+    if (c.numRings != null || c.baseSpacing != null || c.invertDirection != null) return "rgb-glitch-rings";
+    if (c.numLayers != null || c.ringSpacing != null) return "fish-wave";
+    if (c.maxDepth != null || c.levelSpeedRatio != null || c.firstLevelFactor != null || (c.pulseSpeed != null && c.branches != null)) return "breathing-fractal-growth";
+    if (c.pulseSpd != null || c.pulseAmp != null || (c.layers != null && c.branches != null)) return "breathing-fractal";
+    if (c.v1 != null || c.numShapes != null || c.angleSpeed != null || c.tSpeed != null || c.backgroundAlpha != null) return "dandelion";
+    if (c.numTentacles != null || c.tentacleLength != null || c.circleSize != null || c.segmentStep != null) return "tentacle-orbit";
+    return item?.visualRecipe?.patternId || item?.visual_snapshot?.patternId || item?.visualSnapshot?.patternId || item?.pattern_id || item?.patternId || c.patternId || null;
+  }
+
+  function recipeOf(item) {
+    const pid = pidOf(item), snap = item?.visual_snapshot || item?.visualSnapshot || {}, vr = item?.visualRecipe || {};
+    const base = {
+      patternId:pid,
+      patternVersion:vr.patternVersion || snap.patternVersion || item?.pattern_version || item?.patternVersion || 1,
+      configHash:vr.configHash || snap.configHash || item?.config_hash || item?.configKey || null,
+      frame:vr.frame ?? snap.frame ?? item?.preview_frame ?? item?.previewFrame ?? item?.frame ?? 44,
+      seed:vr.seed ?? snap.seed ?? null,
+      config:item?.config || vr.config || {}
+    };
+    return VC?.recipe ? VC.recipe(base) : {...base,recipeVersion:1,rendererVersion:"app-v7"};
+  }
+
+  function drawLegacySnapshot(canvas, snapshot, recipe) {
     const src = snapshot?.dataUrl;
     if (!src) return false;
-    const token = `${snapshot.capturedAt || ""}|${src.length}`;
-    if (canvas.dataset.exactSnapshotToken === token) return true;
     const img = new Image();
     img.onload = () => {
       sizeCanvas(canvas);
@@ -58,27 +82,37 @@
       ctx.fillStyle = "#000"; ctx.fillRect(0,0,w,h);
       const scale = Math.min(w / img.width, h / img.height), dw = img.width * scale, dh = img.height * scale;
       ctx.drawImage(img,(w-dw)/2,(h-dh)/2,dw,dh);
-      canvas.dataset.exactSnapshotToken = token;
+      canvas.dataset.snapshotKind = "legacy-exact";
+      VC?.putDataUrl?.(src,recipe).catch?.(() => {});
     };
     img.src = src;
     return true;
   }
 
+  function renderSemantic(canvas, item, recipe) {
+    if (!item?.config || !previewApp?.renderPreview) return false;
+    try {
+      previewApp.renderPreview(canvas, item.config, recipe.frame ?? 44, recipe.patternId);
+      canvas.dataset.snapshotKind = "reconstructed";
+      return true;
+    } catch (e) { console.warn("SETKA admin preview failed", e); return false; }
+  }
+
   function renderCanvas(canvas, item) {
     if (!canvas || !item) return false;
     sizeCanvas(canvas);
-    const snapshot = item.visual_snapshot || item.visualSnapshot || null;
-    const pid = snapshot?.patternId || item.pattern_id || item.patternId || item.config?.patternId || null;
-    const exact = drawExactSnapshot(canvas, snapshot);
+    const recipe = recipeOf(item), snapshot = item.visual_snapshot || item.visualSnapshot || null;
+    const exact = drawLegacySnapshot(canvas, snapshot, recipe);
     if (!exact) {
-      if (!item.config || !previewApp?.renderPreview) return false;
-      try { previewApp.renderPreview(canvas, item.config, item.preview_frame ?? item.previewFrame ?? item.frame ?? 44, pid); }
-      catch (e) { console.warn("SETKA admin preview failed", e); return false; }
+      renderSemantic(canvas,item,recipe);
+      if (VC?.draw) VC.draw(canvas, VC.cacheKey(recipe)).then(hit => {
+        if (hit) canvas.dataset.snapshotKind = "device-cache";
+        else VC.putCanvas?.(canvas,recipe).catch?.(() => {});
+      }).catch(() => {});
     }
-    canvas.dataset.snapshotPatternId = pid || "";
-    canvas.dataset.snapshotKind = exact ? "exact" : "semantic";
-    const caption = canvas.parentElement?.querySelector?.(".v4-preview-caption"), title = pid && previewApp?.getPatternTitle?.(pid);
-    if (caption) caption.textContent = `${exact ? "ТОЧНЫЙ СЛЕПОК" : "КОНФИГУРАЦИЯ"} В МОМЕНТ ЗАМЕТКИ${title ? ` · ${String(title).toUpperCase()}` : ""}`;
+    canvas.dataset.snapshotPatternId = recipe.patternId || "";
+    const caption = canvas.parentElement?.querySelector?.(".v4-preview-caption"), title = recipe.patternId && previewApp?.getPatternTitle?.(recipe.patternId);
+    if (caption) caption.textContent = `ПАТТЕРН В МОМЕНТ ЗАМЕТКИ${title ? ` · ${String(title).toUpperCase()}` : ""}`;
     return true;
   }
 
@@ -103,11 +137,5 @@
 
   makePreviewEngine();
   window.addEventListener("resize", scheduleRepair);
-  window.__SETKA_ADMIN_NOTE_SNAPSHOT_FIX_V34__ = {
-    version:5,
-    repair:scheduleRepair,
-    renderCanvas,
-    getPatternTitle:id=>previewApp?.getPatternTitle?.(id)||id||"Паттерн",
-    get ready(){return !!previewApp?.renderPreview}
-  };
+  window.__SETKA_ADMIN_NOTE_SNAPSHOT_FIX_V34__ = {version:6,repair:scheduleRepair,renderCanvas,getPatternTitle:id=>previewApp?.getPatternTitle?.(id)||id||"Паттерн",get ready(){return !!previewApp?.renderPreview}};
 })();
