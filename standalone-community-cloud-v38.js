@@ -7,7 +7,12 @@
   let items=[],busy=false,timer=0,lastOkAt=null,lastError=null;
 
   function data(){return C.getData?.()||{}}
-  function clearLegacyLocal(){try{const d=data();if(Array.isArray(d.localCommunity)&&d.localCommunity.length){d.localCommunity=[];C.save?.()}}catch(_){}
+  function clearLegacyLocal(){
+    try{
+      const d=data();
+      if(Array.isArray(d.localCommunity)&&d.localCommunity.length){d.localCommunity=[];C.save?.()}
+    }catch(_){}
+  }
   function sessionUsages(){
     const out=[],d=data();
     for(const s of d.sessions||[]){
@@ -76,5 +81,5 @@
   }
   bootstrap();
   C.cloudCommunity={refresh,status:()=>({count:items.length,lastOkAt,lastError,mode:mode()})};
-  window.__SETKA_CLOUD_COMMUNITY_V38__=3;
+  window.__SETKA_CLOUD_COMMUNITY_V38__=4;
 })();
