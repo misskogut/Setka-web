@@ -56,7 +56,18 @@
     if(box.innerHTML!==html)box.innerHTML=html;
   }
   function apply(){replaceText(document);renderStatus()}
-  const mo=new MutationObserver(()=>{clearTimeout(window.__setkaPrivacyContractTimer);window.__setkaPrivacyContractTimer=setTimeout(apply,20)});mo.observe(document.body,{childList:true,subtree:true,characterData:true});
+  const mo=new MutationObserver(records=>{
+    let relevant=false;
+    for(const record of records){
+      for(const node of record.addedNodes){
+        if(node.nodeType!==1)continue;
+        if(node.matches?.("#st40TesterCabinet,.st40-form")||node.querySelector?.("#st40TesterCabinet,.st40-form")){relevant=true;break}
+      }
+      if(relevant)break;
+    }
+    if(relevant){clearTimeout(window.__setkaPrivacyContractTimer);window.__setkaPrivacyContractTimer=setTimeout(apply,20)}
+  });
+  mo.observe(document.body,{childList:true,subtree:true});
   window.addEventListener("setka:v40-private-corpus",apply);
   window.addEventListener("setka:v40-account",apply);
   setTimeout(apply,300);
