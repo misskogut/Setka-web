@@ -46,17 +46,42 @@
 
   async function showCabinet(){const st=await refresh(true);if(!st?.authenticated)return showLogin();const br=bridge()||{},cp=corpus()||{},b=screen("Кабинет тестировщика","Псевдонимный приватный кабинет без имени, почты и телефона.","МОЯ SETKA"),card=document.createElement("div");card.className="st40-card";card.innerHTML=`<div class="st40-id">${esc(st.testerId)}</div><div class="st40-copy">Личная история и персональная аналитика могут храниться в приватном корпусе SETKA и использоваться системой для персональной работы с тобой. Другим пользователям эти данные не показываются. Исследовательский слой получает отдельные обезличенные вклады.</div><div class="st40-grid"><div class="st40-metric"><b>${esc(cp.counts?.sessions??0)}</b><span>сессий в приватном корпусе</span></div><div class="st40-metric"><b>${esc(br.patterns??0)}</b><span>паттернов в обезличенном исследовательском слое</span></div></div><div class="st40-ok"><span class="st40-dot ${cp.ok?"":"off"}"></span>${cp.ok?"Приватный корпус синхронизирован":"Приватный корпус ожидает синхронизации"}</div><div class="st40-ok"><span class="st40-dot ${st.consented?"":"off"}"></span>${st.consented?"Исследовательский режим включён":"Нужно подтвердить актуальные условия"}</div><div class="st40-copy">Build: ${esc(window.__SETKA_PRIVATE_CORPUS_V40__?.build||"v40")} / ${esc(window.__SETKA_RESEARCH_BRIDGE_V40__?.build||"v40")}</div>`;b.appendChild(card);if(!st.consented)button(b,"Подтвердить актуальные условия",null,showConsent,true);button(b,"Сменить пароль",null,showChangePassword);button(b,"Выйти из кабинета","Публичная SETKA продолжит работать",logout);}
 
-  function renderMe(){const old=document.getElementById("st37MeTools"),body=old?.parentElement||document.querySelector("#stBody");if(!body)return;if(old)old.style.display="none";let wrap=document.getElementById("st40TesterCabinet");if(wrap)wrap.remove();wrap=document.createElement("div");wrap.id="st40TesterCabinet";wrap.className="st40-section";wrap.innerHTML='<div class="st40-label">ТЕСТИРОВАНИЕ И СООБЩЕСТВО</div>';const st=cached();
+  function isMeScreen(){
+    const layer=document.getElementById("st34Layer");
+    return !!layer&&!layer.classList.contains("hidden")&&layer.querySelector(".st-title")?.textContent?.trim()==="Я";
+  }
+  function renderMe(){
+    if(!isMeScreen())return;
+    const old=document.getElementById("st37MeTools"),body=old?.parentElement;
+    if(!old||!body)return;
+    old.style.display="none";
+    let wrap=document.getElementById("st40TesterCabinet");
+    let community=[...(wrap?.querySelectorAll("button")||[]),...old.querySelectorAll("button")].find(x=>x.textContent.includes("Анонимные заметки сообщества"))||null;
+    if(community)community.remove();
+    if(wrap)wrap.remove();
+    wrap=document.createElement("div");wrap.id="st40TesterCabinet";wrap.className="st40-section";wrap.innerHTML='<div class="st40-label">ТЕСТИРОВАНИЕ И СООБЩЕСТВО</div>';const st=cached();
     const card=document.createElement("div");card.className="st40-card";
     if(!st?.claimed){card.innerHTML='<div class="st40-id">Гость</div><div class="st40-copy">SETKA доступна без регистрации. Если у тебя есть код тестировщика, можно подключить приватный кабинет без имени, почты и телефона.</div>';button(card,"У меня есть код тестировщика",null,showClaim,true)}
     else if(!st.hasPassword){card.innerHTML=`<div class="st40-id">${esc(st.testerId)}</div><div class="st40-copy">Tester ID подключён. Создай пароль, чтобы SETKA могла безопасно синхронизировать твой приватный персональный корпус и использовать его для персонализации.</div>`;button(card,"Создать пароль кабинета",null,showSetPassword,true)}
     else if(!st.authenticated){card.innerHTML=`<div class="st40-id">${esc(st.testerId)}</div><div class="st40-copy">Tester ID подключён. Войди в кабинет своим паролем. Публичная SETKA работает и без входа.</div>`;button(card,"Войти в кабинет",null,showLogin,true)}
     else{const br=bridge()||{},cp=corpus()||{};card.innerHTML=`<div class="st40-id">${esc(st.testerId)}</div><div class="st40-copy">Кабинет активен. Личный корпус хранится приватно и используется SETKA для персональной работы; в публичную часть он не попадает.</div><div class="st40-ok"><span class="st40-dot ${cp.ok?"":"off"}"></span>${cp.ok?"Приватный корпус синхронизирован":"Синхронизация приватного корпуса ожидается"}</div><div class="st40-ok"><span class="st40-dot ${st.consented?"":"off"}"></span>${st.consented?`Исследовательский слой · ${Number(br.patterns)||0} паттернов`:"Нужно подтвердить актуальные условия"}</div>`;button(card,"Открыть кабинет",null,showCabinet,true)}
     wrap.appendChild(card);
-    if(old){const community=[...old.querySelectorAll("button")].find(x=>x.textContent.includes("Анонимные заметки сообщества"));if(community){community.style.display="";wrap.appendChild(community)}}
+    if(community){community.style.display="";wrap.appendChild(community)}
     body.appendChild(wrap);
   }
-  const mo=new MutationObserver(()=>{clearTimeout(timer);timer=setTimeout(renderMe,40)});mo.observe(document.body,{childList:true,subtree:true});
+  const layer=document.getElementById("st34Layer");
+  const mo=new MutationObserver(records=>{
+    let sawMeTools=false;
+    for(const record of records){
+      for(const node of record.addedNodes){
+        if(node.nodeType!==1)continue;
+        if(node.id==="st37MeTools"||node.querySelector?.("#st37MeTools")){sawMeTools=true;break}
+      }
+      if(sawMeTools)break;
+    }
+    if(sawMeTools){clearTimeout(timer);timer=setTimeout(renderMe,0)}
+  });
+  if(layer)mo.observe(layer,{childList:true,subtree:true});
   window.addEventListener("setka:v40-research-bridge",renderMe);window.addEventListener("setka:v40-private-corpus",renderMe);window.addEventListener("setka:v40-account",()=>{refresh(true);renderMe()});
   setTimeout(async()=>{cached();renderMe();await refresh(true);renderMe()},700);
   window.__SETKA_TESTER_CABINET_V40__={refresh:()=>refresh(true),show:showCabinet,state:()=>cached(),logout};
