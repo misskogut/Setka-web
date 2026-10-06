@@ -129,29 +129,8 @@
   }
 
   async function syncPrivateArchive(force = false) {
-    if (!cachedTester()?.claimed || !did()) return false;
-    if (archiveBusy) return false;
-    const sig = privateArchiveSignature();
-    if (!force && sig === archiveSignature) return true;
-    archiveBusy = true;
-    try {
-      const out = await post(ARCHIVE_API, {
-        action: "sync",
-        deviceId: did(),
-        capturedAt: new Date().toISOString(),
-        archive: exactPrivateArchive(),
-        favorites: currentFavorites()
-      });
-      archiveSignature = sig;
-      window.dispatchEvent(new CustomEvent("setka:v37-private-archive", {detail:{ok:true, testerId:out.testerId, updatedAt:out.updatedAt, counts:out.counts || {}}}));
-      return out;
-    } catch (e) {
-      console.warn("SETKA tester private archive sync failed", e);
-      window.dispatchEvent(new CustomEvent("setka:v37-private-archive", {detail:{ok:false, error:String(e?.message || e)}}));
-      return false;
-    } finally {
-      archiveBusy = false;
-    }
+    try { return await window.__SETKA_PRIVATE_CORPUS_V40__?.sync?.(); }
+    catch (_) { return false; }
   }
 
   function schedulePrivateArchive(ms = 1800) {
@@ -401,6 +380,24 @@
     }
   }
 
+  async function loadPublicNotes(limit = 100) {
+    const out = await noteApi("feed", {limit});
+    return Array.isArray(out.items) ? out.items : [];
+  }
+
+  async function savePublicNote(note) {
+    await noteApi("save", {id:note.id});
+    copyLocal(note);
+    return true;
+  }
+
+  function openPublicNote(note) {
+    const pid = note.patternId || note.config?.patternId || null;
+    const cfg = {...clone(note.config || {}), ...(pid ? {patternId:pid} : {})};
+    C.hideLayer?.();
+    Setka.openConfig?.(cfg, {type:"public_note", id:note.id, patternId:pid, baseId:pid, noteId:note.id, frame:note.frame ?? 44});
+  }
+
   async function showFeed() {
     C.setNav?.("me");
     const body = C.screen("Заметки сообщества", "Только заметки, которые автор предложил и SETKA одобрила после модерации.", "АНОНИМНОЕ СООБЩЕСТВО", C.showMe);
@@ -501,7 +498,7 @@
     const wrap = document.createElement("div");
     wrap.id = "st37MeTools";
     wrap.className = "st37-section";
-    wrap.innerHTML = '<div class="st37-section-title">ТЕСТИРОВАНИЕ И СООБЩЕСТВО</div>';
+    wrap.innerHTML = '<div class="st37-section-title">АККАУНТ SETKA</div>';
     const state = cachedTester();
     if (state?.claimed) {
       const card = document.createElement("div");
@@ -515,11 +512,6 @@
       connect.onclick = showClaim;
       wrap.appendChild(connect);
     }
-    const community = document.createElement("button");
-    community.className = "st-action";
-    community.innerHTML = "<b>Анонимные заметки сообщества</b><span>Здесь только заметки, одобренные после модерации SETKA</span>";
-    community.onclick = showFeed;
-    wrap.appendChild(community);
     body.appendChild(wrap);
   }
 
@@ -533,23 +525,15 @@
   });
   observer.observe(document.documentElement, {childList:true, subtree:true});
 
-  window.addEventListener("setka:v34-sync", e => { if (e.detail?.ok) schedulePrivateArchive(1200); });
-  window.addEventListener("setka:standalone-event", () => schedulePrivateArchive(2400));
-  window.addEventListener("setka:favorite-saved", () => schedulePrivateArchive(700));
-  window.addEventListener("setka:favorite-removed", () => schedulePrivateArchive(700));
-  document.addEventListener("visibilitychange", () => { if (document.hidden) syncPrivateArchive(false); });
-  setInterval(() => syncPrivateArchive(false), 30000);
-
   refreshTester().then(state => {
     const old = document.getElementById("st37MeTools");
     if (old) { old.remove(); injectMe(); }
-    if (state?.claimed) syncPrivateArchive(true);
   });
   refreshPub().then(() => scan());
   scan();
   injectMe();
 
   C.testerIdentity = {status:refreshTester, claim, syncPrivateArchive:() => syncPrivateArchive(true)};
-  C.publicNotes = {feed:showFeed, refresh:() => refreshPub(true)};
-  window.__SETKA_TESTER_COMMUNITY_V34__ = 5;
+  C.publicNotes = {feed:showFeed, load:loadPublicNotes, save:savePublicNote, open:openPublicNote, drawPreview, refresh:() => refreshPub(true)};
+  window.__SETKA_TESTER_COMMUNITY_V34__ = 6;
 })();
