@@ -18,7 +18,7 @@
     firstSeen=localStorage.getItem(FIRST_KEY)||new Date().toISOString();localStorage.setItem(FIRST_KEY,firstSeen);
   }catch(_){deviceId=makeId();firstSeen=new Date().toISOString()}
 
-  let busy=false,lastSignature="",timer=0,lastOkAt=null,lastError=null,lastFavoriteStats={local:0,unique:0,cloud:0},lastSubjectKey=null;
+  let busy=false,lastSignature="",timer=0,lastOkAt=null,lastError=null,lastFavoriteStats={local:0,unique:0,cloud:0},lastUsageStats={sessions:0,exposures:0},lastSubjectKey=null;
 
   function favorites(){
     try{
@@ -36,13 +36,32 @@
     }catch(_){lastFavoriteStats={local:0,unique:0,cloud:0};return[]}
   }
 
-  function signature(){const fav=favorites();return fav.map(x=>`${x.configKey}:${x.id||""}`).join(",")}
+  function serviceUsage(){
+    const d=C.getData?.()||{},sessions=[],exposures=[];
+    for(const s of (d.sessions||[])){
+      if(!s?.id)continue;
+      sessions.push({id:String(s.id),startedAt:s.startedAt||null,endedAt:s.endedAt||null,completed:!!(s.completed||s.endedAt)});
+      const base=Date.parse(s.startedAt||"");
+      for(const [i,u] of (s.usage||[]).entries()){
+        if(!u?.config||!(Number(u.durationMs)>0))continue;
+        const patternId=u.patternId||u.config?.patternId||"tentacle-orbit";
+        const configKey=u.configKey||window.SetkaApp?.configKey?.(u.config,patternId)||null;
+        const startedMs=Math.max(0,Number(u.startedMs)||0),endedMs=Math.max(startedMs,Number(u.endedMs)||startedMs+Math.max(0,Number(u.durationMs)||0));
+        const startedAt=Number.isFinite(base)?new Date(base+startedMs).toISOString():null,endedAt=Number.isFinite(base)?new Date(base+endedMs).toISOString():null;
+        exposures.push({exposureId:`svc-${s.id}-${i}-${u.phase||"view"}`,sessionId:String(s.id),patternId,configKey,durationMs:Math.max(0,Number(u.durationMs)||0),startedAt,endedAt});
+      }
+    }
+    lastUsageStats={sessions:sessions.length,exposures:exposures.length};
+    return{sessions:sessions.slice(-5000),exposures:exposures.slice(-20000)};
+  }
+  function signature(){const fav=favorites(),u=serviceUsage(),last=u.sessions.at(-1)||{};return [fav.map(x=>`${x.configKey}:${x.id||""}`).join(","),u.sessions.length,last.id||"",last.endedAt||"",u.exposures.length,u.exposures.reduce((a,x)=>a+(Number(x.durationMs)||0),0)].join("|")}
   async function post(url,payload,keepalive=false){
     const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json",apikey:API_KEY},body:JSON.stringify(payload),keepalive});
     const out=await r.json().catch(()=>({}));if(!r.ok)throw new Error(out.error||`http_${r.status}`);return out;
   }
   async function syncSemantic(fav,keepalive=false){
-    return post(SEMANTIC_API,{action:"sync",channel:CHANNEL,deviceId,favorites:fav},keepalive);
+    const u=serviceUsage();
+    return post(SEMANTIC_API,{action:"sync",channel:CHANNEL,deviceId,favorites:fav,sessions:u.sessions,exposures:u.exposures},keepalive);
   }
   async function sync(force=false,keepalive=false){
     if(busy)return false;const sig=signature();if(!force&&sig===lastSignature&&lastOkAt&&Date.now()-Date.parse(lastOkAt)<60000)return true;
@@ -53,15 +72,17 @@
       const fav=favorites(),semantic=await syncSemantic(fav,keepalive);
       lastSignature=sig;lastOkAt=heartbeat.updatedAt||new Date().toISOString();lastSubjectKey=heartbeat.subjectKey||null;
       lastFavoriteStats={...lastFavoriteStats,cloud:Number(semantic?.favorites??fav.length)||0};
+      lastUsageStats={sessions:Number(semantic?.acceptedSessions??lastUsageStats.sessions)||0,exposures:Number(semantic?.acceptedExposures??lastUsageStats.exposures)||0};
       try{localStorage.setItem(STATUS_KEY,lastOkAt)}catch(_){}
-      window.dispatchEvent(new CustomEvent("setka:v34-sync",{detail:{ok:true,label:heartbeat.label||"Гость",subjectKey:lastSubjectKey,deviceId,updatedAt:lastOkAt,acceptedEvents:0,acceptedExposures:0,favoritesLocal:lastFavoriteStats.local,favoritesUnique:lastFavoriteStats.unique,favoritesCloud:lastFavoriteStats.cloud,privacyMode:"local-personal-corpus"}}));
+      window.dispatchEvent(new CustomEvent("setka:v34-sync",{detail:{ok:true,label:heartbeat.label||"Гость",subjectKey:lastSubjectKey,deviceId,updatedAt:lastOkAt,acceptedEvents:0,acceptedSessions:lastUsageStats.sessions,acceptedExposures:lastUsageStats.exposures,favoritesLocal:lastFavoriteStats.local,favoritesUnique:lastFavoriteStats.unique,favoritesCloud:lastFavoriteStats.cloud,privacyMode:"private-personal+pseudonymous-service"}}));
       return true;
     }catch(e){
-      lastError=String(e?.message||e);window.dispatchEvent(new CustomEvent("setka:v34-sync",{detail:{ok:false,label:"Гость",deviceId,error:lastError,privacyMode:"local-personal-corpus",favoritesLocal:lastFavoriteStats.local,favoritesUnique:lastFavoriteStats.unique}}));return false;
+      lastError=String(e?.message||e);window.dispatchEvent(new CustomEvent("setka:v34-sync",{detail:{ok:false,label:"Гость",deviceId,error:lastError,privacyMode:"private-personal+pseudonymous-service",favoritesLocal:lastFavoriteStats.local,favoritesUnique:lastFavoriteStats.unique}}));return false;
     }finally{busy=false}
   }
   function schedule(ms=900){clearTimeout(timer);timer=setTimeout(()=>sync(false),ms)}
 
+  window.addEventListener("setka:standalone-event",()=>schedule(1200));
   window.addEventListener("setka:favorite-saved",()=>schedule(200));
   window.addEventListener("setka:favorite-removed",()=>schedule(200));
   window.addEventListener("setka:v34-sync-request",()=>sync(true));
@@ -72,6 +93,6 @@
   C.sandbox={
     label:"Гость",channel:CHANNEL,deviceId,firstSeenAt:firstSeen,
     sync:()=>sync(true),
-    status:()=>({deviceId,label:String(lastSubjectKey||"").startsWith("T-")?"Тестировщик":"Гость",subjectKey:lastSubjectKey,lastOkAt,lastError,favorites:lastFavoriteStats,privacyMode:"local-personal-corpus",personalArchiveSynced:false,rawTelemetrySynced:false})
+    status:()=>({deviceId,label:String(lastSubjectKey||"").startsWith("T-")?"Тестировщик":"Гость",subjectKey:lastSubjectKey,lastOkAt,lastError,favorites:lastFavoriteStats,serviceUsage:lastUsageStats,privacyMode:"private-personal+pseudonymous-service",personalArchiveSynced:false,rawTelemetrySynced:false})
   };
 })();
