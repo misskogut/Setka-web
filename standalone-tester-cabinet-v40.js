@@ -17,7 +17,13 @@
   `;document.head.appendChild(style);
 
   function did(){return C.sandbox?.deviceId||null}
-  function session(){try{return JSON.parse(localStorage.getItem(SESSION_KEY)||"null")}catch(_){return null}}
+  let liveSession=null;
+  function session(){
+    if(liveSession?.token)return liveSession;
+    try{const x=JSON.parse(localStorage.getItem(SESSION_KEY)||"null");if(x?.token){liveSession=x;return x}}catch(_){}
+    try{const x=JSON.parse(sessionStorage.getItem(SESSION_KEY)||"null");if(x?.token){liveSession=x;return x}}catch(_){}
+    return null;
+  }
   function bridge(){try{return JSON.parse(localStorage.getItem(BRIDGE_KEY)||"null")}catch(_){return null}}
   function corpus(){try{return JSON.parse(localStorage.getItem(CORPUS_KEY)||"null")}catch(_){return null}}
   function safeState(v){
@@ -35,8 +41,18 @@
     }catch(_){}
     return state;
   }
-  function setSession(token,expiresAt){sessionEpoch++;try{localStorage.setItem(SESSION_KEY,JSON.stringify({token,expiresAt}))}catch(_){}}
-  function clearSession(){sessionEpoch++;try{localStorage.removeItem(SESSION_KEY)}catch(_){} }
+  function setSession(token,expiresAt){
+    sessionEpoch++;
+    liveSession={token,expiresAt};
+    const raw=JSON.stringify(liveSession);
+    try{localStorage.setItem(SESSION_KEY,raw)}catch(_){}
+    try{sessionStorage.setItem(SESSION_KEY,raw)}catch(_){}
+  }
+  function clearSession(){
+    sessionEpoch++;liveSession=null;
+    try{localStorage.removeItem(SESSION_KEY)}catch(_){}
+    try{sessionStorage.removeItem(SESSION_KEY)}catch(_){}
+  }
   async function post(payload){const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json",apikey:KEY},body:JSON.stringify(payload)});const out=await r.json().catch(()=>({}));if(!r.ok){const e=new Error(out.error||`http_${r.status}`);e.status=r.status;throw e}return out}
   async function refresh(force=false){
     if(busy)return cached();
@@ -46,8 +62,15 @@
       const out=await post({action:"status",deviceId:did(),sessionToken:startedToken});
       const now=session();
       if(startedEpoch!==sessionEpoch||(now?.token||null)!==startedToken)return cached();
+      if(startedToken&&out?.sessionInvalid===true){
+        clearSession();
+        cache({...out,authenticated:false});
+        return out;
+      }
+      if(startedToken&&!out.authenticated){
+        return cached();
+      }
       cache(out);
-      if(startedToken&&!out.authenticated&&out.claimed)clearSession();
       return out;
     }catch(_){return cached()}finally{busy=false}
   }
@@ -59,10 +82,10 @@
 
   async function showClaim(){const b=screen("Подключить тестирование","Публичная SETKA остаётся доступной без входа. Код нужен только для подключения приватного кабинета тестировщика.","ТЕСТИРОВАНИЕ"),f=document.createElement("div");f.className="st40-form";b.appendChild(f);const code=field(f,"Одноразовый код тестировщика"),m=msg(f),go=button(f,"Подключить Tester ID","После создания пароля личная история сможет синхронизироваться с приватным контуром SETKA",async()=>{go.disabled=true;m.textContent="Проверяем код…";try{const out=await post({action:"claim",deviceId:did(),testerCode:code.value,userAgent:navigator.userAgent,viewport:{width:innerWidth,height:innerHeight,dpr:devicePixelRatio||1}});cache(out);window.dispatchEvent(new CustomEvent("setka:v40-account",{detail:out}));showSetPassword()}catch(e){m.textContent=friendly(e)}finally{go.disabled=false}},true);}
 
-  async function showSetPassword(){const st=await refresh(true);if(!st?.claimed)return showClaim();const b=screen("Создать пароль","Пароль нужен для приватного кабинета тестировщика. Имя, почта и телефон не требуются.","ТЕСТИРОВАНИЕ"),f=document.createElement("div");f.className="st40-form";b.appendChild(f);const p1=field(f,"Новый пароль","password"),p2=field(f,"Повтори пароль","password");const c=document.createElement("label");c.className="st40-check";const cb=document.createElement("input");cb.type="checkbox";const tx=document.createElement("span");tx.textContent=CONSENT_TEXT;c.append(cb,tx);f.appendChild(c);const m=msg(f),go=button(f,"Создать кабинет","Включит приватную синхронизацию и обезличенный исследовательский слой",async()=>{if(p1.value!==p2.value){m.textContent="Пароли не совпадают";return}if(!cb.checked){m.textContent="Нужно подтвердить условия приватного и исследовательского режима";return}go.disabled=true;m.textContent="Создаём кабинет…";try{const out=await post({action:"set-password",deviceId:did(),testerId:st.testerId,password:p1.value,acceptConsent:true,consentVersion:CONSENT_VERSION});setSession(out.sessionToken,out.sessionExpiresAt);cache(out);window.dispatchEvent(new CustomEvent("setka:v40-account",{detail:out}));C.showMe()}catch(e){m.textContent=friendly(e)}finally{go.disabled=false}},true);}
+  async function showSetPassword(){const st=await refresh(true);if(!st?.claimed)return showClaim();const b=screen("Создать пароль","Пароль нужен для приватного кабинета тестировщика. Имя, почта и телефон не требуются.","ТЕСТИРОВАНИЕ"),f=document.createElement("div");f.className="st40-form";b.appendChild(f);const p1=field(f,"Новый пароль","password"),p2=field(f,"Повтори пароль","password");const c=document.createElement("label");c.className="st40-check";const cb=document.createElement("input");cb.type="checkbox";const tx=document.createElement("span");tx.textContent=CONSENT_TEXT;c.append(cb,tx);f.appendChild(c);const m=msg(f),go=button(f,"Создать кабинет","Включит приватную синхронизацию и обезличенный исследовательский слой",async()=>{if(p1.value!==p2.value){m.textContent="Пароли не совпадают";return}if(!cb.checked){m.textContent="Нужно подтвердить условия приватного и исследовательского режима";return}go.disabled=true;m.textContent="Создаём кабинет…";try{const out=await post({action:"set-password",deviceId:did(),testerId:st.testerId,password:p1.value,acceptConsent:true,consentVersion:CONSENT_VERSION});setSession(out.sessionToken,out.sessionExpiresAt);cache({...out,authenticated:true});window.dispatchEvent(new CustomEvent("setka:v40-account",{detail:safeState({...out,authenticated:true})}));C.showMe();setTimeout(()=>refresh(true),900)}catch(e){m.textContent=friendly(e)}finally{go.disabled=false}},true);}
 
-  async function showRecover(){const st=await refresh(true),b=screen("Восстановить кабинет","Если пароль забыт, исследователь SETKA может выдать одноразовый recovery-код. Новый пароль задаёшь только ты.","ВОССТАНОВЛЕНИЕ"),f=document.createElement("div");f.className="st40-form";b.appendChild(f);const id=field(f,"Tester ID","text",st?.testerId||""),code=field(f,"Recovery-код","text"),p1=field(f,"Новый пароль","password"),p2=field(f,"Повтори новый пароль","password"),m=msg(f),go=button(f,"Задать новый пароль",null,async()=>{if(p1.value!==p2.value){m.textContent="Пароли не совпадают";return}go.disabled=true;m.textContent="Проверяем recovery-код…";try{const out=await post({action:"recover-password",testerId:id.value,recoveryCode:code.value,newPassword:p1.value,deviceId:did(),userAgent:navigator.userAgent,viewport:{width:innerWidth,height:innerHeight,dpr:devicePixelRatio||1}});setSession(out.sessionToken,out.sessionExpiresAt);cache(out);window.dispatchEvent(new CustomEvent("setka:v40-account",{detail:out}));C.showMe()}catch(e){m.textContent=friendly(e)}finally{go.disabled=false}},true);button(f,"Вернуться ко входу",null,showLogin);}
-  async function showLogin(){const st=await refresh(true),b=screen("Войти в кабинет","SETKA по-прежнему работает без входа. Авторизация нужна для доступа к приватному персональному контуру тестировщика.","ТЕСТИРОВАНИЕ"),f=document.createElement("div");f.className="st40-form";b.appendChild(f);const id=field(f,"Tester ID","text",st?.testerId||""),pw=field(f,"Пароль","password"),m=msg(f),go=button(f,"Войти",null,async()=>{go.disabled=true;m.textContent="Входим…";try{const out=await post({action:"login",testerId:id.value,password:pw.value,deviceId:did(),userAgent:navigator.userAgent,viewport:{width:innerWidth,height:innerHeight,dpr:devicePixelRatio||1}});setSession(out.sessionToken,out.sessionExpiresAt);cache(out);window.dispatchEvent(new CustomEvent("setka:v40-account",{detail:out}));C.showMe()}catch(e){m.textContent=friendly(e)}finally{go.disabled=false}},true);button(f,"Восстановить по recovery-коду","Если не помнишь пароль",showRecover);}
+  async function showRecover(){const st=await refresh(true),b=screen("Восстановить кабинет","Если пароль забыт, исследователь SETKA может выдать одноразовый recovery-код. Новый пароль задаёшь только ты.","ВОССТАНОВЛЕНИЕ"),f=document.createElement("div");f.className="st40-form";b.appendChild(f);const id=field(f,"Tester ID","text",st?.testerId||""),code=field(f,"Recovery-код","text"),p1=field(f,"Новый пароль","password"),p2=field(f,"Повтори новый пароль","password"),m=msg(f),go=button(f,"Задать новый пароль",null,async()=>{if(p1.value!==p2.value){m.textContent="Пароли не совпадают";return}go.disabled=true;m.textContent="Проверяем recovery-код…";try{const out=await post({action:"recover-password",testerId:id.value,recoveryCode:code.value,newPassword:p1.value,deviceId:did(),userAgent:navigator.userAgent,viewport:{width:innerWidth,height:innerHeight,dpr:devicePixelRatio||1}});setSession(out.sessionToken,out.sessionExpiresAt);cache({...out,authenticated:true});window.dispatchEvent(new CustomEvent("setka:v40-account",{detail:safeState({...out,authenticated:true})}));C.showMe();setTimeout(()=>refresh(true),900)}catch(e){m.textContent=friendly(e)}finally{go.disabled=false}},true);button(f,"Вернуться ко входу",null,showLogin);}
+  async function showLogin(){const st=await refresh(true),b=screen("Войти в кабинет","SETKA по-прежнему работает без входа. Авторизация нужна для доступа к приватному персональному контуру тестировщика.","ТЕСТИРОВАНИЕ"),f=document.createElement("div");f.className="st40-form";b.appendChild(f);const id=field(f,"Tester ID","text",st?.testerId||""),pw=field(f,"Пароль","password"),m=msg(f),go=button(f,"Войти",null,async()=>{go.disabled=true;m.textContent="Входим…";try{const out=await post({action:"login",testerId:id.value,password:pw.value,deviceId:did(),userAgent:navigator.userAgent,viewport:{width:innerWidth,height:innerHeight,dpr:devicePixelRatio||1}});setSession(out.sessionToken,out.sessionExpiresAt);cache({...out,authenticated:true});window.dispatchEvent(new CustomEvent("setka:v40-account",{detail:safeState({...out,authenticated:true})}));C.showMe();setTimeout(()=>refresh(true),900)}catch(e){m.textContent=friendly(e)}finally{go.disabled=false}},true);button(f,"Восстановить по recovery-коду","Если не помнишь пароль",showRecover);}
 
   async function showConsent(){const st=await refresh(true);if(!st?.authenticated)return showLogin();const b=screen("Приватность и исследовательский режим","Личный корпус доступен SETKA только внутри приватного кабинета и используется для персонализации. В общий исследовательский слой уходят отдельные обезличенные показатели.","ПРИВАТНОСТЬ"),f=document.createElement("div");f.className="st40-form";b.appendChild(f);const c=document.createElement("label");c.className="st40-check";const cb=document.createElement("input");cb.type="checkbox";const tx=document.createElement("span");tx.textContent=CONSENT_TEXT;c.append(cb,tx);f.appendChild(c);const m=msg(f),go=button(f,"Подтвердить участие",null,async()=>{if(!cb.checked){m.textContent="Нужно подтвердить текст выше";return}try{const s=session(),out=await post({action:"accept-consent",sessionToken:s?.token,acceptConsent:true,consentVersion:CONSENT_VERSION});cache(out);window.dispatchEvent(new CustomEvent("setka:v40-account",{detail:out}));C.showMe()}catch(e){m.textContent=friendly(e)}},true);}
 
@@ -108,7 +131,7 @@
     if(sawMeTools){clearTimeout(timer);timer=setTimeout(renderMe,0)}
   });
   if(layer)mo.observe(layer,{childList:true,subtree:true});
-  window.addEventListener("setka:v40-research-bridge",renderMe);window.addEventListener("setka:v40-private-corpus",renderMe);window.addEventListener("setka:v40-account",async e=>{const d=e?.detail;if(d?.authenticated)cache({...cached(),...safeState(d),authenticated:true});await refresh(true);renderMe()});
+  window.addEventListener("setka:v40-research-bridge",renderMe);window.addEventListener("setka:v40-private-corpus",renderMe);window.addEventListener("setka:v40-account",e=>{const d=e?.detail;if(d?.authenticated)cache({...cached(),...safeState(d),authenticated:true});renderMe()});
   setTimeout(async()=>{cached();renderMe();await refresh(true);renderMe()},700);
   window.__SETKA_TESTER_CABINET_V40__={refresh:()=>refresh(true),show:showCabinet,recover:showRecover,state:()=>cached(),logout};
 })();
