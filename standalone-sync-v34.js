@@ -10,6 +10,7 @@
   const DEVICE_KEY="setka-standalone:v34-yulia-device";
   const FIRST_KEY="setka-standalone:v34-yulia-first-seen";
   const STATUS_KEY="setka-standalone:v40-last-heartbeat";
+  const SESSION_KEY="setka-v40:cabinet-session";
 
   function makeId(){try{return crypto.randomUUID()}catch(_){return `device-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,12)}`}}
   let deviceId="",firstSeen="";
@@ -19,6 +20,13 @@
   }catch(_){deviceId=makeId();firstSeen=new Date().toISOString()}
 
   let busy=false,lastSignature="",timer=0,lastOkAt=null,lastError=null,lastFavoriteStats={local:0,unique:0,cloud:0},lastUsageStats={sessions:0,exposures:0},lastSubjectKey=null;
+
+  function accountSession(){
+    for(const store of [localStorage,sessionStorage]){
+      try{const x=JSON.parse(store.getItem(SESSION_KEY)||"null");if(x?.token)return x}catch(_){}
+    }
+    return null;
+  }
 
   function favorites(){
     try{
@@ -60,8 +68,8 @@
     const out=await r.json().catch(()=>({}));if(!r.ok)throw new Error(out.error||`http_${r.status}`);return out;
   }
   async function syncSemantic(fav,keepalive=false){
-    const u=serviceUsage();
-    return post(SEMANTIC_API,{action:"sync",channel:CHANNEL,deviceId,favorites:fav,sessions:u.sessions,exposures:u.exposures},keepalive);
+    const u=serviceUsage(),session=accountSession();
+    return post(SEMANTIC_API,{action:"sync",channel:CHANNEL,deviceId,sessionToken:session?.token||null,favorites:fav,sessions:u.sessions,exposures:u.exposures},keepalive);
   }
   async function sync(force=false,keepalive=false){
     if(busy)return false;const sig=signature();if(!force&&sig===lastSignature&&lastOkAt&&Date.now()-Date.parse(lastOkAt)<60000)return true;
@@ -71,7 +79,7 @@
       const heartbeat=await post(API,{action:"sync",channel:CHANNEL,deviceId,firstSeenAt:firstSeen,build:"v40-private-local"},keepalive);
       const fav=favorites(),semantic=await syncSemantic(fav,keepalive);
       lastSignature=sig;lastOkAt=heartbeat.updatedAt||new Date().toISOString();lastSubjectKey=heartbeat.subjectKey||null;
-      lastFavoriteStats={...lastFavoriteStats,cloud:Number(semantic?.favorites??fav.length)||0};
+      lastFavoriteStats={...lastFavoriteStats,cloud:Number(semantic?.favorites??0)||0};
       lastUsageStats={sessions:Number(semantic?.acceptedSessions??lastUsageStats.sessions)||0,exposures:Number(semantic?.acceptedExposures??lastUsageStats.exposures)||0};
       try{localStorage.setItem(STATUS_KEY,lastOkAt)}catch(_){}
       window.dispatchEvent(new CustomEvent("setka:v34-sync",{detail:{ok:true,label:heartbeat.label||"Гость",subjectKey:lastSubjectKey,deviceId,updatedAt:lastOkAt,acceptedEvents:0,acceptedSessions:lastUsageStats.sessions,acceptedExposures:lastUsageStats.exposures,favoritesLocal:lastFavoriteStats.local,favoritesUnique:lastFavoriteStats.unique,favoritesCloud:lastFavoriteStats.cloud,privacyMode:"private-personal+pseudonymous-service"}}));
@@ -86,6 +94,7 @@
   window.addEventListener("setka:favorite-saved",()=>schedule(200));
   window.addEventListener("setka:favorite-removed",()=>schedule(200));
   window.addEventListener("setka:v34-sync-request",()=>sync(true));
+  window.addEventListener("setka:v40-account",()=>sync(true));
   document.addEventListener("visibilitychange",()=>{if(document.hidden)sync(true,true);else schedule(500)});
   window.addEventListener("pagehide",()=>sync(true,true));
   setInterval(()=>sync(false),60000);setTimeout(()=>sync(true),500);
