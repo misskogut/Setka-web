@@ -5,7 +5,7 @@
   const API="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-community-patterns-v38";
   const API_KEY="sb_publishable_1jL-x9_kp6rpfGghpSp_OA_OiXDnvsv";
   const MODES=new Set(["for_me","popular","new","notes"]);
-  let items=[],metrics=null,patternMetrics=[],publicNotes=[],busy=false,notesBusy=false,timer=0,lastOkAt=null,lastError=null,lastPage=null;
+  let items=[],metrics=null,patternMetrics=[],publicNotes=[],busy=false,notesBusy=false,timer=0,lastOkAt=null,lastError=null,lastPage=Setka.getState?.()?.libraryPage||null,viewEpoch=0;
 
   const style=document.createElement("style");
   style.textContent=`
@@ -69,6 +69,7 @@
   }
 
   function renderPatterns(){
+    if(mode()==="notes")return;
     document.getElementById("st40CommunityNotes")?.remove();
     const title=document.getElementById("libraryTitle");if(title)title.textContent="Сообщество";
     const shown=sorted();C.publicCommunity=shown;Setka.setCommunity?.(shown);syncModeUi();cleanPatternTiles();
@@ -83,6 +84,7 @@
     return publicNotes;
   }
   function renderNotes(){
+    if(mode()!=="notes")return;
     const panel=document.getElementById("communityPanel");if(!panel)return;
     panel.replaceChildren();
     const wrap=document.createElement("div");wrap.id="st40CommunityNotes";
@@ -118,25 +120,30 @@
     }
     panel.appendChild(wrap);syncModeUi();
   }
-  async function showNotes(){
-    const title=document.getElementById("libraryTitle");if(title)title.textContent="Сообщество";
-    const panel=document.getElementById("communityPanel");if(panel)panel.innerHTML='<div class="st40-community-empty">Загружаю заметки…</div>';
-    await loadNotes(true);renderNotes();
-  }
   function applyMode(){
+    const epoch=++viewEpoch;
     syncModeUi();
-    if(mode()==="notes")showNotes();else renderPatterns();
+    if(mode()==="notes"){
+      renderNotes();
+      loadNotes(true).then(()=>{if(epoch===viewEpoch&&mode()==="notes")renderNotes()});
+    }else{
+      renderPatterns();
+    }
   }
 
   async function refresh(){
     if(busy)return;busy=true;lastError=null;
+    const epoch=viewEpoch;
     try{
       const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json","apikey":API_KEY},body:JSON.stringify({action:"feed",limit:300})});
       const out=await r.json().catch(()=>({}));if(!r.ok)throw new Error(out.error||`community_${r.status}`);
       items=Array.isArray(out.items)?out.items.map(x=>({...x,createdAt:x.created_at||x.createdAt||null,localOnly:false})):[];
       metrics=out.metrics&&typeof out.metrics==="object"?out.metrics:null;patternMetrics=Array.isArray(out.patternMetrics)?out.patternMetrics:[];
       lastOkAt=new Date().toISOString();
-      if(mode()==="notes"){await loadNotes(false);renderNotes()}else renderPatterns();
+      if(epoch===viewEpoch){
+        if(mode()==="notes"){await loadNotes(false);if(epoch===viewEpoch&&mode()==="notes")renderNotes()}
+        else renderPatterns();
+      }
       window.dispatchEvent(new CustomEvent("setka:community-cloud",{detail:{ok:true,count:items.length,mode:mode(),updatedAt:lastOkAt,metrics,patternMetrics}}));
     }catch(e){
       lastError=String(e?.message||e);clearLegacyLocal();
@@ -156,13 +163,15 @@
   window.addEventListener("setka:favorite-removed",()=>{clearLegacyLocal();if(mode()!=="notes")renderPatterns();schedule(900)});
   window.addEventListener("setka:v34-sync",e=>schedule(e.detail?.ok?120:1200));
   window.addEventListener("setka:library-page",e=>{
-    const page=e.detail?.page;
-    if(page==="community"&&lastPage!=="community"){
-      setMode("for_me");
-      ensureModeButton();renderPatterns();schedule(0);
+    const page=e.detail?.page,prev=lastPage;lastPage=page;
+    if(page==="community"){
+      if(prev&&prev!=="community")setMode("for_me");
+      ensureModeButton();applyMode();schedule(0);
     }
-    lastPage=page;
   });
+  document.getElementById("communityPagerButton")?.addEventListener("pointerdown",()=>{
+    if(Setka.getState?.()?.libraryPage!=="community")setMode("for_me");
+  },true);
 
   async function bootstrap(){
     clearLegacyLocal();ensureModeButton();
@@ -173,5 +182,5 @@
   }
   bootstrap();
   C.cloudCommunity={refresh,status:()=>({count:items.length,lastOkAt,lastError,mode:mode(),metrics,patternMetrics,publicNotes:publicNotes.length})};
-  window.__SETKA_CLOUD_COMMUNITY_V38__=7;
+  window.__SETKA_CLOUD_COMMUNITY_V38__=8;
 })();
