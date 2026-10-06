@@ -251,7 +251,7 @@
       card.appendChild(button);
     }
     const status = statusOf(note);
-    button.classList.remove("pending","published","rejected");
+    button.classList.remove("pending","published","rejected","unpublished");
     if (status === "pending") {
       button.classList.add("pending");
       button.textContent = "На модерации · отозвать";
@@ -261,6 +261,9 @@
     } else if (status === "rejected") {
       button.classList.add("rejected");
       button.textContent = "Не опубликовано · предложить снова";
+    } else if (status === "unpublished") {
+      button.classList.add("unpublished");
+      button.textContent = "Снято с публикации · предложить снова";
     } else {
       button.textContent = "Предложить к публикации";
     }
@@ -294,9 +297,9 @@
       if (status === "published") {
         if (!confirm("Убрать эту заметку из анонимного сообщества? Личная заметка останется у тебя.")) return;
         await noteApi("unpublish", {sourceNoteKey:note.id});
-        const next = {...current, id:current?.id || note.publicNoteId || null, sourceNoteKey:note.id, status:"private", isPublic:false};
+        const next = {...current, id:current?.id || note.publicNoteId || null, sourceNoteKey:note.id, status:"unpublished", isPublic:false};
         pub.set(String(note.id), next);
-        setLocalStatus(note, "private", next.id);
+        setLocalStatus(note, "unpublished", next.id);
         C.recordEvent?.("public_note_unpublish", {noteId:note.id}, false);
       } else if (status === "pending") {
         if (!confirm("Отозвать запрос на публикацию? Личная заметка останется у тебя.")) return;
