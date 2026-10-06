@@ -7,7 +7,7 @@
   const CONSENT_VERSION="research-v2-2026-09-17";
   const CONSENT_TEXT="SETKA не запрашивает имя, телефон или электронную почту. Личная история, заметки, состояния и персональная аналитика могут храниться в приватном контуре SETKA и использоваться системой для персонализации, динамики и восстановления кабинета. Эти данные не публикуются и не показываются другим пользователям. Визуальные превью паттернов по умолчанию создаются на устройстве и хранятся во временном локальном кэше; источником истины служит компактная кодовая капсула с числовым рецептом паттерна. Для общего исследовательского слоя используются отдельные обезличенные показатели паттернов и конфигураций. Публичная публикация заметки возможна только отдельным действием пользователя и после модерации. Для одобренной публичной заметки SETKA может хранить уменьшенную серверную миниатюру связанного визуала для быстрого отображения. После снятия публикации эта миниатюра перестаёт отдаваться публично, но может сохраняться во внутреннем архиве SETKA вместе с кодовой капсулой.";
   const esc=v=>String(v??"").replace(/[&<>\"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));
-  let state=null,busy=false,timer=0;
+  let state=null,busy=false,timer=0,sessionEpoch=0;
 
   const style=document.createElement("style");style.textContent=`
     #st37MeTools{display:none!important}.st40-section{margin:18px 0 4px}.st40-label{font-size:10px;letter-spacing:.14em;color:rgba(255,255,255,.38);margin:0 0 8px}
@@ -20,12 +20,37 @@
   function session(){try{return JSON.parse(localStorage.getItem(SESSION_KEY)||"null")}catch(_){return null}}
   function bridge(){try{return JSON.parse(localStorage.getItem(BRIDGE_KEY)||"null")}catch(_){return null}}
   function corpus(){try{return JSON.parse(localStorage.getItem(CORPUS_KEY)||"null")}catch(_){return null}}
-  function cache(v){state=v;try{localStorage.setItem(STATE_KEY,JSON.stringify(v))}catch(_){}renderMe()}
-  function cached(){if(state)return state;try{state=JSON.parse(localStorage.getItem(STATE_KEY)||"null")}catch(_){}return state}
-  function setSession(token,expiresAt){try{localStorage.setItem(SESSION_KEY,JSON.stringify({token,expiresAt}))}catch(_){} }
-  function clearSession(){try{localStorage.removeItem(SESSION_KEY)}catch(_){} }
+  function safeState(v){
+    if(!v||typeof v!=="object")return v;
+    const {sessionToken,recoveryCode,password,...safe}=v;
+    return safe;
+  }
+  function cache(v){state=safeState(v);try{localStorage.setItem(STATE_KEY,JSON.stringify(state))}catch(_){}renderMe()}
+  function cached(){
+    if(state)return state;
+    try{
+      const raw=JSON.parse(localStorage.getItem(STATE_KEY)||"null");
+      state=safeState(raw);
+      if(raw?.sessionToken)try{localStorage.setItem(STATE_KEY,JSON.stringify(state))}catch(_){}
+    }catch(_){}
+    return state;
+  }
+  function setSession(token,expiresAt){sessionEpoch++;try{localStorage.setItem(SESSION_KEY,JSON.stringify({token,expiresAt}))}catch(_){}}
+  function clearSession(){sessionEpoch++;try{localStorage.removeItem(SESSION_KEY)}catch(_){} }
   async function post(payload){const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json",apikey:KEY},body:JSON.stringify(payload)});const out=await r.json().catch(()=>({}));if(!r.ok){const e=new Error(out.error||`http_${r.status}`);e.status=r.status;throw e}return out}
-  async function refresh(force=false){if(busy)return cached();busy=true;try{const s=session(),out=await post({action:"status",deviceId:did(),sessionToken:s?.token||null});cache(out);if(s?.token&&!out.authenticated&&out.claimed)clearSession();return out}catch(_){return cached()}finally{busy=false}}
+  async function refresh(force=false){
+    if(busy)return cached();
+    busy=true;
+    const startedEpoch=sessionEpoch,s=session(),startedToken=s?.token||null;
+    try{
+      const out=await post({action:"status",deviceId:did(),sessionToken:startedToken});
+      const now=session();
+      if(startedEpoch!==sessionEpoch||(now?.token||null)!==startedToken)return cached();
+      cache(out);
+      if(startedToken&&!out.authenticated&&out.claimed)clearSession();
+      return out;
+    }catch(_){return cached()}finally{busy=false}
+  }
   function screen(title,copy,kicker="КАБИНЕТ"){return C.screen(title,copy,kicker,C.showMe)}
   function button(parent,title,sub,fn,primary=false){const b=document.createElement("button");b.type="button";b.className=`st40-btn${primary?" primary":""}`;b.innerHTML=sub?`<b>${esc(title)}</b><div style="font-size:10px;font-weight:400;opacity:.55;margin-top:3px">${esc(sub)}</div>`:esc(title);b.onclick=fn;parent.appendChild(b);return b}
   function field(parent,label,type="text",value=""){const l=document.createElement("label");l.className="st40-field";l.innerHTML=`<span>${esc(label)}</span>`;const i=document.createElement("input");i.type=type;i.value=value;i.autocomplete=type==="password"?"current-password":"off";l.appendChild(i);parent.appendChild(l);return i}
@@ -83,7 +108,7 @@
     if(sawMeTools){clearTimeout(timer);timer=setTimeout(renderMe,0)}
   });
   if(layer)mo.observe(layer,{childList:true,subtree:true});
-  window.addEventListener("setka:v40-research-bridge",renderMe);window.addEventListener("setka:v40-private-corpus",renderMe);window.addEventListener("setka:v40-account",()=>{refresh(true);renderMe()});
+  window.addEventListener("setka:v40-research-bridge",renderMe);window.addEventListener("setka:v40-private-corpus",renderMe);window.addEventListener("setka:v40-account",async e=>{const d=e?.detail;if(d?.authenticated)cache({...cached(),...safeState(d),authenticated:true});await refresh(true);renderMe()});
   setTimeout(async()=>{cached();renderMe();await refresh(true);renderMe()},700);
   window.__SETKA_TESTER_CABINET_V40__={refresh:()=>refresh(true),show:showCabinet,recover:showRecover,state:()=>cached(),logout};
 })();
