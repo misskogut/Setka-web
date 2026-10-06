@@ -11,6 +11,7 @@
   const ARCHIVE_API = "https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-tester-archive-v37";
   const TOKEN_KEY = "setka-v37:public-profile-token";
   const TESTER_KEY = "setka-v37:tester-status";
+  const SESSION_KEY = "setka-v40:cabinet-session";
 
   const clone = v => v == null ? v : JSON.parse(JSON.stringify(v));
   const esc = v => String(v ?? "").replace(/[&<>\"]/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));
@@ -35,6 +36,16 @@
 
   function did() {
     return C.sandbox?.deviceId || null;
+  }
+
+  function accountSession() {
+    for (const store of [localStorage, sessionStorage]) {
+      try {
+        const x = JSON.parse(store.getItem(SESSION_KEY) || "null");
+        if (x?.token) return x;
+      } catch (_) {}
+    }
+    return null;
   }
 
   function token() {
@@ -71,7 +82,7 @@
 
   async function noteApi(action, extra = {}) {
     if (!did()) throw new Error("device_not_ready");
-    return post(NOTE_API, {action, deviceId: did(), profileToken: token(), ...extra});
+    return post(NOTE_API, {action, deviceId: did(), profileToken: token(), sessionToken: accountSession()?.token || null, ...extra});
   }
 
   function cacheTester(v) {
@@ -175,6 +186,11 @@
 
   async function refreshPub(force = false) {
     if (pubLoaded && !force) return pub;
+    if (!accountSession()?.token) {
+      pub = new Map();
+      pubLoaded = true;
+      return pub;
+    }
     try {
       const out = await noteApi("my-status");
       pub = new Map((out.items || []).map(x => [String(x.sourceNoteKey), x]));
@@ -210,6 +226,10 @@
     if (!(card instanceof Element) || card.classList.contains("st37-public-card")) return;
     const note = resolve(card);
     if (!note?.id) return;
+    if (!accountSession()?.token) {
+      card.querySelector(".st37-note-action")?.remove();
+      return;
+    }
 
     if (note.sourceType === "public_note" || note.phase === "saved_from_community") {
       card.querySelector(".st37-note-action")?.remove();
