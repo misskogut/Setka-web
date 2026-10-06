@@ -510,33 +510,8 @@
     body.appendChild(button);
   }
 
-  function injectMe() {
-    const layer = document.getElementById("st34Layer");
-    if (!layer || layer.classList.contains("hidden") || layer.querySelector(".st-title")?.textContent?.trim() !== "Я") return;
-    const body = layer.querySelector("#stBody");
-    if (!body || body.querySelector("#st37MeTools")) return;
-    const wrap = document.createElement("div");
-    wrap.id = "st37MeTools";
-    wrap.className = "st37-section";
-    wrap.innerHTML = '<div class="st37-section-title">АККАУНТ SETKA</div>';
-    const state = cachedTester();
-    if (state?.claimed) {
-      const card = document.createElement("div");
-      card.className = "st37-id-card";
-      card.innerHTML = `<div class="st37-id-value">${esc(state.testerId)}</div><div class="st37-id-copy">ID тестировщика подключён. Личные данные синхронизируются с облаком и остаются приватными.</div>`;
-      wrap.appendChild(card);
-    } else {
-      const connect = document.createElement("button");
-      connect.className = "st-action";
-      connect.innerHTML = "<b>Подключить ID тестировщика</b><span>Привязать уже накопленную историю этого браузера</span>";
-      connect.onclick = showClaim;
-      wrap.appendChild(connect);
-    }
-    body.appendChild(wrap);
-  }
 
   const observer = new MutationObserver(records => {
-    injectMe();
     for (const record of records) {
       for (const node of record.addedNodes) {
         if (node.nodeType === 1) scan(node);
@@ -545,15 +520,11 @@
   });
   observer.observe(document.documentElement, {childList:true, subtree:true});
 
-  refreshTester().then(state => {
-    const old = document.getElementById("st37MeTools");
-    if (old) { old.remove(); injectMe(); }
-  });
+  refreshTester();
   refreshPub().then(() => scan());
   scan();
-  injectMe();
 
   C.testerIdentity = {status:refreshTester, claim, syncPrivateArchive:() => syncPrivateArchive(true)};
   C.publicNotes = {feed:showFeed, load:loadPublicNotes, save:savePublicNote, open:openPublicNote, drawPreview, refresh:() => refreshPub(true)};
-  window.__SETKA_TESTER_COMMUNITY_V34__ = 6;
+  window.__SETKA_TESTER_COMMUNITY_V34__ = 7;
 })();
