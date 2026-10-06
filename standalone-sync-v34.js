@@ -68,8 +68,8 @@
     const out=await r.json().catch(()=>({}));if(!r.ok)throw new Error(out.error||`http_${r.status}`);return out;
   }
   async function syncSemantic(fav,keepalive=false){
-    const u=serviceUsage(),session=accountSession();
-    return post(SEMANTIC_API,{action:"sync",channel:CHANNEL,deviceId,sessionToken:session?.token||null,favorites:fav,sessions:u.sessions,exposures:u.exposures},keepalive);
+    const u=serviceUsage(),session=accountSession(),corpus=window.__SETKA_PRIVATE_CORPUS_V40__?.status?.();
+    return post(SEMANTIC_API,{action:"sync",channel:CHANNEL,deviceId,sessionToken:session?.token||null,favoritesAuthoritative:!!corpus?.ok,favorites:fav,sessions:u.sessions,exposures:u.exposures},keepalive);
   }
   async function sync(force=false,keepalive=false){
     if(busy)return false;const sig=signature();if(!force&&sig===lastSignature&&lastOkAt&&Date.now()-Date.parse(lastOkAt)<60000)return true;
@@ -94,7 +94,12 @@
   window.addEventListener("setka:favorite-saved",()=>schedule(200));
   window.addEventListener("setka:favorite-removed",()=>schedule(200));
   window.addEventListener("setka:v34-sync-request",()=>sync(true));
-  window.addEventListener("setka:v40-account",()=>sync(true));
+  window.addEventListener("setka:v40-account",async e=>{
+    if(!e.detail?.authenticated)return;
+    try{await window.__SETKA_PRIVATE_CORPUS_V40__?.restore?.()}catch(_){}
+    setTimeout(()=>sync(true),120);
+  });
+  window.addEventListener("setka:v40-private-corpus-restored",()=>setTimeout(()=>sync(true),80));
   document.addEventListener("visibilitychange",()=>{if(document.hidden)sync(true,true);else schedule(500)});
   window.addEventListener("pagehide",()=>sync(true,true));
   setInterval(()=>sync(false),60000);setTimeout(()=>sync(true),500);
