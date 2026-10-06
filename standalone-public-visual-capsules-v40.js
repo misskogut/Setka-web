@@ -3,7 +3,7 @@
   if (window.__SETKA_PUBLIC_VISUAL_CAPSULES_V40__) return;
 
   const NOTE_PATH = "/functions/v1/setka-public-notes-v37";
-  const RENDERER_VERSION = "app-v7-multipattern@5b94738f2739691ddcbd899865d757408c44e8dc";
+  const RENDERER_VERSION = "app-v7-multipattern@3a8ba575f7d8905436b14073d77b56456316d6d6";
   const rawFetch = window.fetch.bind(window);
   const clone = v => v == null ? v : JSON.parse(JSON.stringify(v));
   const finite = (v,d=null) => Number.isFinite(Number(v)) ? Number(v) : d;
