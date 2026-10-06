@@ -73,19 +73,24 @@
   }
   async function sync(force=false,keepalive=false){
     if(busy)return false;const sig=signature();if(!force&&sig===lastSignature&&lastOkAt&&Date.now()-Date.parse(lastOkAt)<60000)return true;
+    const account=accountSession();
+    if(!account?.token){
+      lastSignature=sig;lastOkAt=new Date().toISOString();lastSubjectKey=null;lastFavoriteStats={...lastFavoriteStats,cloud:0};lastUsageStats={sessions:0,exposures:0};
+      window.dispatchEvent(new CustomEvent("setka:v34-sync",{detail:{ok:true,label:"Гость",subjectKey:null,deviceId:null,updatedAt:lastOkAt,acceptedEvents:0,acceptedSessions:0,acceptedExposures:0,favoritesLocal:lastFavoriteStats.local,favoritesUnique:lastFavoriteStats.unique,favoritesCloud:0,privacyMode:"local-only-guest"}}));
+      return true;
+    }
     busy=true;lastError=null;
     try{
-      // Privacy contract: no sessions, notes, states, symptoms, pulse, raw events or exposure timeline leave the device here.
-      const heartbeat=await post(API,{action:"sync",channel:CHANNEL,deviceId,firstSeenAt:firstSeen,build:"v40-private-local"},keepalive);
+      const heartbeat=await post(API,{action:"sync",channel:CHANNEL,deviceId,firstSeenAt:firstSeen,build:"v41-account-only"},keepalive);
       const fav=favorites(),semantic=await syncSemantic(fav,keepalive);
       lastSignature=sig;lastOkAt=heartbeat.updatedAt||new Date().toISOString();lastSubjectKey=heartbeat.subjectKey||null;
       lastFavoriteStats={...lastFavoriteStats,cloud:Number(semantic?.favorites??0)||0};
       lastUsageStats={sessions:Number(semantic?.acceptedSessions??lastUsageStats.sessions)||0,exposures:Number(semantic?.acceptedExposures??lastUsageStats.exposures)||0};
       try{localStorage.setItem(STATUS_KEY,lastOkAt)}catch(_){}
-      window.dispatchEvent(new CustomEvent("setka:v34-sync",{detail:{ok:true,label:heartbeat.label||"Гость",subjectKey:lastSubjectKey,deviceId,updatedAt:lastOkAt,acceptedEvents:0,acceptedSessions:lastUsageStats.sessions,acceptedExposures:lastUsageStats.exposures,favoritesLocal:lastFavoriteStats.local,favoritesUnique:lastFavoriteStats.unique,favoritesCloud:lastFavoriteStats.cloud,privacyMode:"private-personal+pseudonymous-service"}}));
+      window.dispatchEvent(new CustomEvent("setka:v34-sync",{detail:{ok:true,label:heartbeat.label||"Гость",subjectKey:lastSubjectKey,deviceId,updatedAt:lastOkAt,acceptedEvents:0,acceptedSessions:lastUsageStats.sessions,acceptedExposures:lastUsageStats.exposures,favoritesLocal:lastFavoriteStats.local,favoritesUnique:lastFavoriteStats.unique,favoritesCloud:lastFavoriteStats.cloud,privacyMode:"authenticated-account-only"}}));
       return true;
     }catch(e){
-      lastError=String(e?.message||e);window.dispatchEvent(new CustomEvent("setka:v34-sync",{detail:{ok:false,label:"Гость",deviceId,error:lastError,privacyMode:"private-personal+pseudonymous-service",favoritesLocal:lastFavoriteStats.local,favoritesUnique:lastFavoriteStats.unique}}));return false;
+      lastError=String(e?.message||e);window.dispatchEvent(new CustomEvent("setka:v34-sync",{detail:{ok:false,label:"Гость",deviceId,error:lastError,privacyMode:"authenticated-account-only",favoritesLocal:lastFavoriteStats.local,favoritesUnique:lastFavoriteStats.unique}}));return false;
     }finally{busy=false}
   }
   function schedule(ms=900){clearTimeout(timer);timer=setTimeout(()=>sync(false),ms)}
@@ -107,6 +112,6 @@
   C.sandbox={
     label:"Гость",channel:CHANNEL,deviceId,firstSeenAt:firstSeen,
     sync:()=>sync(true),
-    status:()=>({deviceId,label:String(lastSubjectKey||"").startsWith("T-")?"Тестировщик":"Гость",subjectKey:lastSubjectKey,lastOkAt,lastError,favorites:lastFavoriteStats,serviceUsage:lastUsageStats,privacyMode:"private-personal+pseudonymous-service",personalArchiveSynced:false,rawTelemetrySynced:false})
+    status:()=>({deviceId,label:String(lastSubjectKey||"").startsWith("T-")?"Тестировщик":"Гость",subjectKey:lastSubjectKey,lastOkAt,lastError,favorites:lastFavoriteStats,serviceUsage:lastUsageStats,privacyMode:"authenticated-account-only",personalArchiveSynced:false,rawTelemetrySynced:false})
   };
 })();
