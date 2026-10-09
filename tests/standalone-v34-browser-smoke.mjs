@@ -47,9 +47,13 @@ async function go(){
     assert.ok(before>25,patternIds[i]+" thumbnail is blank or too faint: "+before);
     const pid=await t.getAttribute("data-pattern-id");
     assert.equal(pid,patternIds[i]);
-    await t.locator(".st34-info").dispatchEvent("pointerup",{bubbles:true});
+    await t.locator(".st34-info").click({force:true});
     const modal=page.locator("#st34InfoOverlay");
-    await modal.waitFor({timeout:10000});
+    try{await modal.waitFor({timeout:10000})}
+    catch(e){
+      console.log("OVERLAY DEBUG",JSON.stringify({i,allOverlays:await page.locator("[id*=Info]").evaluateAll(nodes=>nodes.map(n=>n.id)),errors:errors.slice(0,20),tile:await t.evaluate(n=>n.outerHTML.slice(0,800))}));
+      throw e;
+    }
     await modal.locator("#st34InfoBody .st34-statbox strong").first().waitFor({timeout:10000});
     const title=await modal.locator("h2").innerText();
     assert.equal(title,names[i],patternIds[i]+" wrong title");
