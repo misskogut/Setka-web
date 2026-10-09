@@ -9,7 +9,7 @@
   #st34SensorQuick{position:absolute;z-index:46;right:21px;top:calc(env(safe-area-inset-top,0px) + 48px);width:40px;height:40px;border:1px solid rgba(255,255,255,.24);border-radius:50%;background:transparent;color:rgba(255,255,255,.72);display:grid;place-items:center;font-size:16px}#st34SensorQuick.live{border-color:#fff;color:#fff;background:rgba(255,255,255,.08)}#st34HrPill{position:absolute;z-index:141;right:20px;top:calc(env(safe-area-inset-top,0px) + 99px);height:27px;padding:0 10px;border:1px solid rgba(255,255,255,.22);border-radius:14px;background:rgba(0,0,0,.42);color:#fff;font-size:9px;display:none;align-items:center;gap:6px}#st34HrPill.show{display:flex}
   #st34Choice{position:fixed;inset:0;z-index:210000;background:rgba(0,0,0,.82);display:grid;place-items:center;padding:24px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;color:#fff}.st34-choice{width:min(100%,390px);border:1px solid rgba(255,255,255,.25);border-radius:26px;background:#050505;padding:24px 20px 18px;text-align:center}.st34-choice h2{font-size:20px;margin:0 0 8px}.st34-choice p{font-size:12px;line-height:1.5;color:rgba(255,255,255,.46);margin:0 0 17px}
   .st34-info{position:absolute;z-index:8;right:7px;bottom:7px;width:23px;height:23px;border:1px solid rgba(255,255,255,.34);border-radius:50%;display:grid;place-items:center;background:rgba(0,0,0,.58);color:rgba(255,255,255,.72);font:600 11px/1 -apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif}.st34-local{position:absolute;z-index:7;left:7px;bottom:7px;font-size:7px;letter-spacing:.08em;color:rgba(255,255,255,.55);border:1px solid rgba(255,255,255,.18);border-radius:9px;padding:3px 5px;background:rgba(0,0,0,.6)}
-  #st34InfoOverlay{position:fixed;inset:0;z-index:220000;background:rgba(0,0,0,.78);display:grid;align-items:end;padding:18px 14px calc(env(safe-area-inset-bottom,0px) + 14px);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;color:#fff;backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px)}.st34-sheet{width:min(100%,460px);max-height:80vh;overflow:auto;margin:0 auto;border:1px solid rgba(255,255,255,.25);border-radius:26px;background:#050505;padding:18px}.st34-sheet-head{display:flex;gap:13px;align-items:center}.st34-preview{width:84px;height:84px;border:1px solid rgba(255,255,255,.13);border-radius:17px;background:#000;flex:none}.st34-sheet h2{font-size:19px;margin:3px 0}.st34-close{margin-left:auto;width:34px;height:34px;border:1px solid rgba(255,255,255,.2);border-radius:50%;background:transparent;color:#fff;font-size:20px}.st34-statgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:15px}.st34-statbox{border:1px solid rgba(255,255,255,.11);border-radius:15px;padding:11px 9px}.st34-statbox strong{display:block;font-size:17px}.st34-statbox span{display:block;margin-top:3px;font-size:8px;color:rgba(255,255,255,.4)}
+  #st34InfoOverlay{position:fixed;inset:0;z-index:220000;background:rgba(0,0,0,.78);display:grid;align-items:end;padding:18px 14px calc(env(safe-area-inset-bottom,0px) + 14px);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;color:#fff;backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px)}.st34-sheet{width:min(100%,460px);max-height:80vh;overflow:auto;margin:0 auto;border:1px solid rgba(255,255,255,.25);border-radius:26px;background:#050505;padding:18px}.st34-sheet-head{display:flex;gap:13px;align-items:center}.st34-preview{width:84px;height:84px;border:1px solid rgba(255,255,255,.13);border-radius:17px;background:#000;flex:none}.st34-sheet h2{font-size:19px;margin:3px 0}.st34-close{margin-left:auto;width:34px;height:34px;border:1px solid rgba(255,255,255,.2);border-radius:50%;background:transparent;color:#fff;font-size:20px}.st34-statgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:15px}.st34-statbox{border:1px solid rgba(255,255,255,.11);border-radius:15px;padding:11px 9px}.st34-statbox strong{display:block;font-size:17px}.st34-statbox span{display:block;margin-top:3px;font-size:8px;color:rgba(255,255,255,.4)}.st34-stat-label{display:flex;align-items:center;gap:4px;margin-top:5px;min-height:22px}.st34-stat-label span{flex:1;min-width:0;margin:0;line-height:1.4}.st34-metric-help{width:22px;height:22px;flex:0 0 22px;border:1px solid rgba(255,255,255,.38);border-radius:50%;display:grid;place-items:center;padding:0;background:transparent;color:#c8c8c8;font:600 12px/1 -apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;cursor:pointer;touch-action:manipulation}.st34-metric-help[aria-expanded="true"]{background:#fff;color:#000;border-color:#fff}.st34-metric-help:focus-visible,.st34-help-dismiss:focus-visible{outline:2px solid #fff;outline-offset:2px}.st34-help-panel:not([hidden]){display:flex;gap:10px;align-items:flex-start;margin-top:12px;border:1px solid rgba(255,255,255,.25);border-radius:15px;padding:12px;background:#101010}.st34-help-panel[hidden]{display:none}.st34-help-copy{flex:1;min-width:0}.st34-help-copy strong{display:block;font-size:13px;line-height:1.3}.st34-help-copy p{font-size:12px;line-height:1.5;color:rgba(255,255,255,.67);margin:6px 0 0}.st34-help-dismiss{border:1px solid rgba(255,255,255,.24);border-radius:50%;width:26px;height:26px;flex:0 0 26px;background:transparent;color:#fff;font-size:18px;display:grid;place-items:center;padding:0}.st34-scenario-heading{display:flex;gap:8px;align-items:center;margin-top:22px}.st34-scenario-heading .st-label{margin:0;flex:1}.st34-scenarios-empty{font-size:12px;line-height:1.5;color:rgba(255,255,255,.55);margin-top:10px}.st34-info-scope{font-size:11px;line-height:1.45;color:rgba(255,255,255,.48);margin:11px 0 0}
   #st34CommunityModes{display:flex;justify-content:center;gap:6px;margin:-3px auto 14px;position:relative;z-index:8}#st34CommunityModes.hidden{display:none}#st34CommunityModes button{height:31px;border:1px solid rgba(255,255,255,.17);border-radius:16px;background:#050505;color:rgba(255,255,255,.48);font-size:9px;padding:0 10px}#st34CommunityModes button.active{background:#fff;color:#000}
   .st34-timeline{width:100%;height:220px;display:block;border:1px solid rgba(255,255,255,.11);border-radius:18px;background:#050505;margin-top:10px}.st34-legend{display:flex;gap:10px;flex-wrap:wrap;font-size:9px;color:rgba(255,255,255,.45);margin-top:8px}.st34-event{border-bottom:1px solid rgba(255,255,255,.09);padding:10px 0}.st34-event:last-child{border-bottom:0}.st34-event strong{font-size:11px}.st34-event div{font-size:9px;color:rgba(255,255,255,.4);margin-top:3px}.st34-replay-controls{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;margin-top:12px}.st34-replay-controls button{height:38px;border:1px solid rgba(255,255,255,.22);border-radius:19px;background:transparent;color:#fff;padding:0 12px}.st34-replay-controls input{width:100%}
   `;document.head.appendChild(style);
@@ -62,39 +62,158 @@
     return{kind,itemId,patternId:patternId||"tentacle-orbit",config:config||fallback,configKey:Setka.configKey?.(config||fallback,patternId),communityId}
   }
   function localStats(t){
-    const sessions=new Map(),intents=new Map();let saves=0,totalUsage=0,episodes=0;
-    for(const e of data().events){const st=e.payload?.state;if(!st)continue;const match=t.kind==="base"?st.patternId===t.patternId:st.configKey===t.configKey;if(!match)continue;episodes++;if(e.sessionId){const s=data().sessions.find(x=>x.id===e.sessionId);if(s){sessions.set(s.id,s);intents.set(s.requestKey,(intents.get(s.requestKey)||0)+1)}}if(e.type==="favorite_save")saves++}
-    const completed=[...sessions.values()].filter(s=>s.completed&&Number.isFinite(Number(s.preState))&&Number.isFinite(Number(s.postState))),deltas=completed.map(s=>Number(s.postState)-Number(s.preState));
-    totalUsage=[...sessions.values()].reduce((a,s)=>a+Number(s.measuredActiveMs||0),0);const sum=[...intents.values()].reduce((a,b)=>a+b,0)||1;
-    return{activityProfiles:sessions.size?1:0,sessions:sessions.size,exposures:episodes,saveCount:saves,totalUsageMs:totalUsage,completed:completed.length,avgDelta:deltas.length?deltas.reduce((a,b)=>a+b,0)/deltas.length:null,improvedRate:deltas.length?deltas.filter(x=>x>0).length/deltas.length:null,topIntents:[...intents].sort((a,b)=>b[1]-a[1]).slice(0,4).map(([key,n])=>({key,share:n/sum}))}
+    // Sessions and visual episodes are different units. Do not count every
+    // configuration switch as a new user intent or a new visit.
+    const d=data(),sessionById=new Map((d.sessions||[]).map(s=>[String(s.id),s]));
+    const sessions=new Set(),scenarios=new Map(),scenarioKeys=new Set();
+    const records=Array.isArray(d.patternExposures)?d.patternExposures:[];
+    const relevant=records.filter(x=>x&&x.patternId===t.patternId&&
+      (t.kind==="base"||(!!t.configKey&&String(x.configKey)===String(t.configKey))));
+    let totalUsage=0;
+    for(const e of relevant){
+      totalUsage+=Math.max(0,Number(e.durationMs)||0);
+      const sid=e.sessionId==null?"":String(e.sessionId);
+      if(!sid)continue;
+      const session=sessionById.get(sid);
+      if(session)sessions.add(sid);
+      // Session request is the canonical label. An episode's request is a
+      // fallback for migrated session histories only.
+      const key=session?.requestKey||e.requestKey||null;
+      if(!key)continue;
+      const pair=JSON.stringify([sid,key]);
+      if(scenarioKeys.has(pair))continue;
+      scenarioKeys.add(pair);
+      scenarios.set(key,(scenarios.get(key)||0)+1);
+    }
+    const favorites=(Setka.getFavorites?.()||[]).filter(f=>
+      (f.baseId||f.patternId||f.config?.patternId)===t.patternId&&
+      (t.kind==="base"||t.configKey===Setka.configKey?.(f.config,t.patternId)));
+    const totalScenarios=[...scenarios.values()].reduce((a,b)=>a+b,0);
+    const countConfigs=new Set(favorites.map(f=>Setka.configKey?.(f.config,t.patternId)).filter(Boolean)).size;
+    const isBase=t.kind==="base";
+    return{activityProfiles:relevant.length?1:0,sessions:sessions.size,exposures:relevant.length,
+      likeCount:isBase?(favorites.length?1:0):undefined,
+      configSaveCount:isBase?undefined:(favorites.length?1:0),
+      savedConfigurations:countConfigs,configurationSaves:favorites.length,
+      totalUsageMs:totalUsage,
+      scenarioSessions:scenarioKeys.size,
+      topIntents:[...scenarios].sort((a,b)=>b[1]-a[1]).slice(0,6).map(([key,count])=>
+        ({key,count,share:totalScenarios?count/totalScenarios:0})),source:"local"};
   }
+
   async function remoteStats(t){
-    const cloud=C.cloudCommunity?.status?.()||{};
+    // Do not render misleading local numbers while the connected-tester cloud feed
+    // is still loading. The async feed is the source of truth for public metrics.
+    let cloud=C.cloudCommunity?.status?.()||{};
+    if(!cloud.lastOkAt && C.cloudCommunity?.refresh){
+      const loaded=new Promise(resolve=>{
+        let timer=0;
+        const done=()=>{clearTimeout(timer);window.removeEventListener("setka:community-cloud",done);resolve()};
+        window.addEventListener("setka:community-cloud",done,{once:true});
+        timer=setTimeout(done,2500);
+      });
+      Promise.resolve().then(()=>C.cloudCommunity.refresh()).catch(()=>{});
+      await loaded;
+      cloud=C.cloudCommunity?.status?.()||{};
+    }
+    if(!cloud.lastOkAt)return null;
     if(t.kind==="base"){
       const p=(cloud.patternMetrics||[]).find(x=>x.patternId===t.patternId);
-      if(p)return{accounts:Number(p.viewingAccounts??p.activityAccounts??p.uniqueParticipants)||0,sessions:Number(p.sessions)||0,exposures:Number(p.exposures)||0,likeCount:Number(p.likes??p.saves)||0,savedConfigurations:Number(p.savedConfigurations??p.configurations)||0,configurationSaves:Number(p.configurationSaves)||0,totalUsageMs:Number(p.totalDurationMs)||0};
+      if(!p)return{accounts:0,sessions:0,exposures:0,likeCount:0,
+        totalUsageMs:0,source:"remote",noObservations:true};
+      return{accounts:Number(p.viewingAccounts??p.activityAccounts??p.uniqueParticipants??p.uniqueUsers)||0,
+        sessions:Number(p.sessions??p.sessionCount)||0,exposures:Number(p.exposures)||0,
+        likeCount:Number(p.likes??p.saves)||0,savedConfigurations:Number(p.savedConfigurations??p.configurations)||0,
+        configurationSaves:Number(p.configurationSaves)||0,totalUsageMs:Number(p.totalDurationMs??p.totalMs)||0,source:"remote"};
     }
-    const item=(C.publicCommunity||[]).find(x=>String(x.id)===String(t.itemId)||String(x.config_key||x.configKey||"")===String(t.configKey||""));
-    if(item)return{accounts:Number(item.uniqueParticipants)||0,sessions:Number(item.sessionCount)||0,exposures:Number(item.useCount)||0,configSaveCount:Number(item.saveCount)||0,totalUsageMs:Number(item.totalDurationMs)||0};
-    return null;
+    const item=(C.publicCommunity||[]).find(x=>
+      (t.itemId&&String(x.id)===String(t.itemId))||
+      (t.configKey&&String(x.config_key||x.configKey||"")===String(t.configKey)));
+    if(!item)return null;
+    return{accounts:Number(item.uniqueParticipants??item.uniqueUsers)||0,sessions:Number(item.sessionCount??item.sessions)||0,
+      exposures:Number(item.useCount??item.exposures)||0,configSaveCount:Number(item.saveCount??item.saves)||0,
+      totalUsageMs:Number(item.totalDurationMs??item.totalMs)||0,source:"remote"};
+  }
+
+  const INFO_HELP={
+    viewers:{title:"Кто смотрел",text:"Сколько разных участников просмотрели этот паттерн хотя бы раз. Показаны только просмотры, которые SETKA смогла учесть."},
+    localViewers:{title:"Просмотры на устройстве",text:"Был ли этот паттерн просмотрен на этом устройстве. Это не количество людей."},
+    sessions:{title:"Сессии",text:"Сколько отдельных сессий включали этот паттерн. В одной сессии можно несколько раз менять паттерны — она всё равно считается один раз."},
+    exposures:{title:"Просмотры",text:"Сколько отдельных отрезков просмотра было у паттерна. Если переключиться на другой вариант и вернуться, появится новый отрезок."},
+    likes:{title:"Сохранили в избранное",text:"Сколько участников сохранили себе хотя бы один вариант этого паттерна. Один участник учитывается один раз."},
+    localLikes:{title:"В избранном",text:"Показывает, есть ли у тебя сохранённый вариант этого паттерна на этом устройстве."},
+    configLikes:{title:"Сохранили вариант",text:"Сколько участников сохранили именно этот вариант паттерна."},
+    time:{title:"Время просмотра",text:"Общее записанное время, проведённое с этим паттерном. Внутри сессии считается только время самого паттерна, а не других вариантов."},
+    variants:{title:"Разных вариантов",text:"Сколько уникальных настроек этого паттерна люди сохранили в избранном. Одинаковые настройки считаются одним вариантом."},
+    saves:{title:"Всего сохранений",text:"Сколько сохранений настроек было сделано. Например, один и тот же вариант могут сохранить несколько человек — это несколько сохранений, но один уникальный вариант."},
+    delta:{title:"Изменение состояния",text:"Средняя разница между оценками состояния до и после завершённых сессий. Положительное число означает более высокую итоговую оценку. Это наблюдение, не доказательство эффекта паттерна."},
+    improved:{title:"Стало лучше после",text:"Доля завершённых сессий, в которых человек оценил своё состояние выше, чем до начала. Это не измерение эффективности паттерна."},
+    scenarios:{title:"Сценарии использования",text:"Для каких целей ты выбирала этот паттерн в своих сессиях. Одна сессия учитывается один раз, даже если ты несколько раз меняла настройки."}
+  };
+  function helpMark(key){
+    const h=INFO_HELP[key];if(!h)return"";
+    return `<button class="st34-metric-help" type="button" data-help="${key}" aria-label="Что означает: ${esc(h.title)}" aria-expanded="false">i</button>`;
+  }
+  function infoMetric(value,label,key){
+    return `<div class="st34-statbox"><strong>${esc(String(value))}</strong><div class="st34-stat-label"><span>${esc(label)}</span>${helpMark(key)}</div></div>`;
+  }
+  function setInfoHelp(body,key){
+    const host=body.querySelector(".st34-help-panel");if(!host)return;
+    const same=host.dataset.help===key&&!host.hidden;
+    body.querySelectorAll(".st34-metric-help").forEach(btn=>btn.setAttribute("aria-expanded","false"));
+    if(same||!INFO_HELP[key]){host.hidden=true;host.removeAttribute("data-help");host.replaceChildren();return}
+    const details=INFO_HELP[key];host.replaceChildren();host.dataset.help=key;host.hidden=false;
+    const wrap=document.createElement("div");wrap.className="st34-help-copy";
+    const title=document.createElement("strong");title.textContent=details.title;
+    const copy=document.createElement("p");copy.textContent=details.text;
+    wrap.append(title,copy);
+    const close=document.createElement("button");close.type="button";close.className="st34-help-dismiss";close.textContent="×";close.setAttribute("aria-label","Закрыть подсказку");
+    host.append(wrap,close);
+    body.querySelectorAll(".st34-metric-help").forEach(btn=>btn.setAttribute("aria-expanded",String(btn.dataset.help===key)));
   }
   async function showInfo(tile){
+    document.getElementById("st34InfoOverlay")?.remove();
     const t=tileTarget(tile),o=document.createElement("div"),title=Setka.getPatternTitle?.(t.patternId)||t.patternId;
-    o.id="st34InfoOverlay";o.innerHTML=`<div class="st34-sheet"><div class="st34-sheet-head"><canvas class="st34-preview" width="168" height="168"></canvas><div><div class="st-kicker">${t.kind==="base"?"ДАННЫЕ ПАТТЕРНА":"ДАННЫЕ КОНФИГУРАЦИИ"}</div><h2>${esc(t.kind==="base"?title:"Эта конфигурация")}</h2></div><button class="st34-close">×</button></div><div id="st34InfoBody" class="st-muted" style="padding:18px 0">Собираем статистику…</div></div>`;
+    o.id="st34InfoOverlay";o.innerHTML=`<div class="st34-sheet"><div class="st34-sheet-head"><canvas class="st34-preview" width="168" height="168"></canvas><div><div class="st-kicker">${t.kind==="base"?"ДАННЫЕ ПАТТЕРНА":"ДАННЫЕ КОНФИГУРАЦИИ"}</div><h2>${esc(t.kind==="base"?title:"Эта конфигурация")}</h2></div><button class="st34-close" type="button" aria-label="Закрыть">×</button></div><div id="st34InfoBody" class="st-muted" style="padding:18px 0">Загружаем данные…</div></div>`;
     document.body.appendChild(o);try{Setka.renderPreview?.(o.querySelector("canvas"),t.config,44,t.patternId)}catch(_){}
     o.querySelector(".st34-close").onclick=()=>o.remove();o.onclick=e=>{if(e.target===o)o.remove()};
     C.recordEvent("pattern_info",{kind:t.kind,patternId:t.patternId,communityId:t.communityId,configKey:t.configKey},false);
-    const local=localStats(t),remote=await remoteStats(t),s=remote||local,body=o.querySelector("#st34InfoBody");if(!body)return;const intentLabels=Object.fromEntries(C.INTENTS);
-    const accountCount=s.accounts??s.activityProfiles??0,heart=t.kind==="base"?(s.likeCount??s.saveCount??0):(s.configSaveCount??s.saveCount??0),heartLabel=t.kind==="base"?"ЛАЙКОВ ПАТТЕРНУ":"АККАУНТОВ СОХРАНИЛИ";
-    body.innerHTML=`<div class="st34-statgrid"><div class="st34-statbox"><strong>${accountCount||0}</strong><span>АККАУНТОВ С ПРОСМОТРАМИ</span></div><div class="st34-statbox"><strong>${s.sessions||0}</strong><span>СЕССИЙ</span></div><div class="st34-statbox"><strong>${s.exposures||0}</strong><span>ЭПИЗОДОВ ПРОСМОТРА</span></div><div class="st34-statbox"><strong>♥ ${heart||0}</strong><span>${heartLabel}</span></div><div class="st34-statbox"><strong>${Math.round((s.totalUsageMs||0)/60000)} мин</strong><span>В ПАТТЕРНЕ</span></div>${s.savedConfigurations!=null?`<div class="st34-statbox"><strong>${s.savedConfigurations}</strong><span>СОХРАНЁННЫХ КОНФИГУРАЦИЙ</span></div>`:""}${s.configurationSaves!=null?`<div class="st34-statbox"><strong>${s.configurationSaves}</strong><span>СОХРАНЕНИЙ КОНФИГУРАЦИЙ</span></div>`:""}${s.avgDelta!=null?`<div class="st34-statbox"><strong>${s.avgDelta>0?"+":""}${Number(s.avgDelta).toFixed(1)}</strong><span>СОСТОЯНИЕ Δ</span></div>`:""}${s.improvedRate!=null?`<div class="st34-statbox"><strong>${Math.round(Number(s.improvedRate)*100)}%</strong><span>ВЫШЕ ПОСЛЕ</span></div>`:""}</div>${(s.topIntents||[]).length?`<div class="st-label">Чаще используют для</div>${s.topIntents.map(x=>`<div class="st-row" style="margin:8px 0"><div class="st-grow st-muted">${esc(intentLabels[x.key]||x.key)}</div><div>${Math.round((x.share||0)*100)}%</div></div>`).join("")}`:""}<div class="st-muted" style="margin-top:16px">В этой статистике учитываются только подключённые Tester ID. Один аккаунт даёт материнскому паттерну максимум один лайк.</div>`;
+    const local=localStats(t),remote=await remoteStats(t),s=remote||local,body=o.querySelector("#st34InfoBody");if(!body)return;
+    const labels=Object.fromEntries(C.INTENTS),cloud=s.source==="remote";
+    const saved=t.kind==="base"?s.likeCount??0:s.configSaveCount??0;
+    const timeMs=Math.max(0,Number(s.totalUsageMs)||0),timeText=timeMs===0?"0 мин":timeMs<60000?Math.max(1,Math.round(timeMs/1000))+" сек":Math.round(timeMs/60000)+" мин";
+    const metrics=[
+      infoMetric(s.accounts??s.activityProfiles??0,cloud?"СМОТРЕЛИ":"ЕСТЬ ПРОСМОТРЫ",cloud?"viewers":"localViewers"),
+      infoMetric(s.sessions??0,"СЕССИЙ","sessions"),
+      infoMetric(s.exposures??0,"ПРОСМОТРОВ","exposures"),
+      infoMetric("♥ "+saved,t.kind==="base"?"СОХРАНИЛИ":cloud?"СОХРАНИЛИ ВАРИАНТ":"У МЕНЯ В ИЗБРАННОМ",t.kind==="base"?(cloud?"likes":"localLikes"):"configLikes"),
+      infoMetric(timeText,"ВРЕМЯ ПРОСМОТРА","time")
+    ];
+    if(s.savedConfigurations!=null)metrics.push(infoMetric(s.savedConfigurations,"РАЗНЫХ ВАРИАНТОВ","variants"));
+    if(s.configurationSaves!=null)metrics.push(infoMetric(s.configurationSaves,"ВСЕГО СОХРАНЕНИЙ","saves"));
+    if(s.avgDelta!=null)metrics.push(infoMetric((s.avgDelta>0?"+":"")+Number(s.avgDelta).toFixed(1),"СОСТОЯНИЕ ДО/ПОСЛЕ","delta"));
+    if(s.improvedRate!=null)metrics.push(infoMetric(Math.round(Number(s.improvedRate)*100)+"%","СТАЛО ЛУЧШЕ","improved"));
+    const scenarios=local.topIntents||[];
+    const scenarioHeader=`<div class="st34-scenario-heading"><div class="st-label">Для чего ты выбираешь паттерн</div>${helpMark("scenarios")}</div>`;
+    const scenarioHtml=scenarios.length?
+      `<section class="st34-pattern-scenarios">${scenarioHeader}${scenarios.map(x=>`<div class="st34-scenario-row" style="margin:10px 0"><div class="st-row"><div class="st-grow">${esc(labels[x.key]||x.key)}</div><strong>${Math.round((x.share||0)*100)}%</strong><span class="st-muted">· ${x.count} сесс.</span></div><div style="height:4px;margin-top:6px;border-radius:3px;background:rgba(255,255,255,.12)"><div style="height:4px;width:${Math.max(0,Math.min(100,100*x.share))}%;background:#fff;border-radius:3px"></div></div></div>`).join("")}</section>`:
+      `<section class="st34-pattern-scenarios">${scenarioHeader}<p class="st34-scenarios-empty">Здесь появятся твои любимые сценарии, когда накопится история сессий с выбранной целью.</p></section>`;
+    const empty=(s.exposures??0)===0;
+    const scope=empty&&cloud?"Для этого паттерна ещё нет записанных просмотров.":"";
+    body.innerHTML=`<div class="st34-statgrid">${metrics.join("")}</div><div class="st34-help-panel" role="status" aria-live="polite" hidden></div>${scenarioHtml}${scope?`<p class="st34-info-scope">${esc(scope)}</p>`:""}`;
+    body.addEventListener("click",event=>{
+      const btn=event.target.closest(".st34-metric-help");
+      if(btn){event.preventDefault();setInfoHelp(body,btn.dataset.help);return}
+      if(event.target.closest(".st34-help-dismiss")){event.preventDefault();setInfoHelp(body,null)}
+    });
   }
   window.addEventListener("pointerup",e=>{const info=e.target?.closest?.(".st34-info");if(!info)return;const tile=info.closest(".pattern-tile");if(!tile)return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation?.();showInfo(tile)},true);new MutationObserver(()=>{injectInfo();injectLocalBadges()}).observe(document.documentElement,{subtree:true,childList:true});injectInfo();
 
   // Choice before opening a pattern when no active measured/continuation phase.
   let bypass=false,pendingStarts=new Map();library.addEventListener("pointerdown",e=>{const tile=e.target.closest?.(".pattern-tile");if(tile&&!e.target.closest?.(".st34-info"))pendingStarts.set(e.pointerId,{x:e.clientX,y:e.clientY,at:Date.now()})},true);
   library.addEventListener("pointerup",e=>{const tile=e.target.closest?.(".pattern-tile");if(!tile||e.target.closest?.(".st34-info")||bypass)return;const p=pendingStarts.get(e.pointerId);pendingStarts.delete(e.pointerId);if(p&&(Date.now()-p.at>560||Math.hypot(e.clientX-p.x,e.clientY-p.y)>20))return;if(active()&&["measured","after_feedback"].includes(active().phase))return;e.preventDefault();e.stopImmediatePropagation();showChoice(tile)},true);
-  function directOpen(t){const target=tileTarget(t);bypass=true;setTimeout(()=>bypass=false,80);Setka.openConfig?.(target.config,{type:target.kind,id:target.itemId||"tentacle-orbit",communityId:target.communityId||null})}
-  function showChoice(tile){document.getElementById("st34Choice")?.remove();const o=document.createElement("div");o.id="st34Choice";o.innerHTML='<div class="st34-choice"><h2>Запустить новую сессию?</h2><p>Для измеряемой сессии сначала зафиксируем запрос, состояние и время. Или можно просто открыть паттерн без опроса.</p><button class="st-primary">Запустить сессию</button><button class="st-secondary">Просто посмотреть</button><button class="st-secondary st34-cancel" style="border:0;color:rgba(255,255,255,.4)">Отмена</button></div>';document.body.appendChild(o);o.querySelector(".st-primary").onclick=()=>{const t=tileTarget(tile);o.remove();C.preSurvey({config:t.config,source:{type:t.kind,id:t.itemId||"tentacle-orbit",communityId:t.communityId||null}})};o.querySelectorAll(".st-secondary")[0].onclick=()=>{o.remove();C.recordEvent("session_choice",{choice:"browse"},false);directOpen(tile)};o.querySelector(".st34-cancel").onclick=()=>{C.recordEvent("session_choice",{choice:"cancel"},false);o.remove()}}
+  function directOpen(t){const target=tileTarget(t);bypass=true;setTimeout(()=>bypass=false,80);Setka.openConfig?.(target.config,{type:target.kind,id:target.itemId||target.patternId,patternId:target.patternId,communityId:target.communityId||null})}
+  function showChoice(tile){document.getElementById("st34Choice")?.remove();const o=document.createElement("div");o.id="st34Choice";o.innerHTML='<div class="st34-choice"><h2>Запустить новую сессию?</h2><p>Для измеряемой сессии сначала зафиксируем запрос, состояние и время. Или можно просто открыть паттерн без опроса.</p><button class="st-primary">Запустить сессию</button><button class="st-secondary">Просто посмотреть</button><button class="st-secondary st34-cancel" style="border:0;color:rgba(255,255,255,.4)">Отмена</button></div>';document.body.appendChild(o);o.querySelector(".st-primary").onclick=()=>{const t=tileTarget(tile);o.remove();C.preSurvey({config:t.config,source:{type:t.kind,id:t.itemId||t.patternId,patternId:t.patternId,communityId:t.communityId||null}})};o.querySelectorAll(".st-secondary")[0].onclick=()=>{o.remove();C.recordEvent("session_choice",{choice:"browse"},false);directOpen(tile)};o.querySelector(".st34-cancel").onclick=()=>{C.recordEvent("session_choice",{choice:"cancel"},false);o.remove()}}
 
   // Combined session timeline and replay.
   const eventMark={pattern_open:"P",pattern_state:"G",color:"C",favorite_save:"♥",note_create:"+",physio:"·",session_start:"S",feedback_submit:"F",continuation_start:"→",session_end:"■"};

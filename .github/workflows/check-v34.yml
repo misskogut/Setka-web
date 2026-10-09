@@ -54,6 +54,8 @@ on:
       - 'standalone-admin-v34.html'
       - 'standalone-admin-evolution-v35.html'
       - 'standalone-v34.html'
+      - 'tests/standalone-v34-integrity.test.mjs'
+      - 'tests/standalone-v34-browser-smoke.mjs'
       - '.github/workflows/check-v34.yml'
 jobs:
   syntax:
@@ -111,3 +113,22 @@ jobs:
       - run: node --check standalone-admin-evolution-v35.js
       - run: node --check standalone-admin-evolution-pattern-lab-v35.js
       - run: node --check admin-replay-first-v34.js
+      - run: node --test tests/standalone-v34-integrity.test.mjs
+
+  browser-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts playwright
+      - run: npx playwright install --with-deps chromium
+      - run: node tests/standalone-v34-browser-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v34-browser-smoke
+          path: tests/visual-smoke/
+          if-no-files-found: ignore

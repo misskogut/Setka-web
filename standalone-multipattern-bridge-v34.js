@@ -52,25 +52,14 @@
     const s=C.getActiveSession?.();if(s&&["measured","after_feedback"].includes(s.phase))directOpen(t);else showChoice(t);
   },true);
 
-  function showInfo(tile){
-    const t=resolve(tile);if(!t)return;
-    document.getElementById("st34MpInfo")?.remove();
-    const o=document.createElement("div");o.id="st34MpInfo";o.innerHTML='<div class="st34mp-sheet"><div class="st34mp-head"><canvas class="st34mp-preview" width="180" height="180"></canvas><div><div class="st-kicker">ПАТТЕРН</div><div class="st-title" style="font-size:20px">Одуванчик</div></div><button class="st34mp-close">×</button></div><div class="st34mp-copy">SETKA пока собирает твою историю использования этого паттерна. Со временем здесь появятся понятные наблюдения: при каких целях ты чаще его выбираешь и какие его варианты возвращаются в твоих сессиях.</div></div>';
-    document.body.appendChild(o);Setka.renderPreview?.(o.querySelector("canvas"),t.config,44,t.patternId);o.querySelector(".st34mp-close").onclick=()=>o.remove();o.onclick=e=>{if(e.target===o)o.remove()};
-  }
-  window.addEventListener("pointerup",e=>{const info=e.target?.closest?.(".st34-info");if(!info)return;const tile=info.closest(".pattern-tile");if(!tile||!isDandelion(tile))return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();showInfo(tile)},true);
+  // Legacy Dandelion-only statistics sheet was a placeholder. The shared
+  // standalone-advanced-v34 handler now owns information for ALL patterns.
+  function showInfo(tile){ return null; }
 
-  function redrawUserPreviews(){
-    const notes=C.getData?.().notes||[];
-    document.querySelectorAll(".st34-note-card").forEach(card=>{
-      const canvas=card.querySelector(".st34-note-preview");if(!canvas||canvas.dataset.mpDone==="1")return;
-      const text=card.querySelector(".st34-note-text")?.textContent||"";
-      const n=notes.slice().reverse().find(x=>x.text===text&&x.config?.patternId===DANDELION);
-      if(!n)return;Setka.renderPreview?.(canvas,n.config,n.frame??44,DANDELION);canvas.dataset.mpDone="1";
-    });
-  }
-  new MutationObserver(()=>requestAnimationFrame(redrawUserPreviews)).observe(document.documentElement,{subtree:true,childList:true});
-  setInterval(redrawUserPreviews,1200);
+  // Do not intercept the information button: one statistics owner for every pattern.
+
+  // Note previews are rendered by the exact-ID snapshot module; matching by text
+  // and repainting every 1.2 seconds caused cross-note visual corruption.
 
   window.__SETKA_MULTIPATTERN_BRIDGE_V34__=true;
 })();

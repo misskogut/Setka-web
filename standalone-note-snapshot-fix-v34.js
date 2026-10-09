@@ -10,13 +10,11 @@
   const KNOWN_PATTERN_IDS = ["tentacle-orbit","dandelion","fish-wave","breathing-fractal","breathing-fractal-growth","rgb-glitch-rings","stereo-dna"];
 
   function configOf(note) {
-    const a = note?.visualRecipe?.config;
-    if (a && typeof a === "object" && Object.keys(a).length) return a;
-    const b = note?.replaySnapshot?.config;
-    if (b && typeof b === "object" && Object.keys(b).length) return b;
-    const c = note?.state?.config;
-    if (c && typeof c === "object" && Object.keys(c).length) return c;
-    return note?.config || null;
+    // Immutable creation-time replay first; mutable UI and older visual caches are fallback.
+    for (const c of [note?.replaySnapshot?.config,note?.config,note?.state?.config,note?.visualRecipe?.config]) {
+      if (c && typeof c === "object" && Object.keys(c).length) return c;
+    }
+    return null;
   }
 
   function patternIdFromConfig(config) {
@@ -39,14 +37,10 @@
 
   function patternIdOf(note) {
     const cfg = configOf(note);
-    return patternIdFromConfig(cfg)
+    const explicit = [note?.replaySnapshot?.patternId,note?.patternId,note?.state?.patternId,cfg?.patternId,note?.visualRecipe?.patternId,note?.visualSnapshot?.patternId];
+    return explicit.find(id=>KNOWN_PATTERN_IDS.includes(id))
       || patternIdFromHash(note)
-      || note?.visualRecipe?.patternId
-      || note?.replaySnapshot?.patternId
-      || note?.state?.patternId
-      || note?.visualSnapshot?.patternId
-      || note?.patternId
-      || cfg?.patternId
+      || patternIdFromConfig(cfg)
       || null;
   }
 
@@ -76,7 +70,7 @@
     try {
       const state = Setka.getState?.();
       if (!state || state.view !== "game") return null;
-      const replay = {pid:patternIdFromConfig(state.config) || state.patternId,config:clone(state.config),frame:Number(state.frame)||44};
+      const replay = {pid:state.patternId || state.config?.patternId || patternIdFromConfig(state.config),config:clone(state.config),frame:Number.isFinite(Number(state.frame))?Number(state.frame):44};
       const recipe = recipeFor({...state,patternVersion:state.patternVersion,configHash:state.configKey}, replay);
       const canvas = document.getElementById("patternCanvas");
       const cachePromise = VC?.putCanvas && canvas ? VC.putCanvas(canvas, recipe) : Promise.resolve(null);
@@ -87,9 +81,9 @@
     }
   }
 
-  async function bindMomentToNote(note, moment) {
+  function bindMomentToNote(note, moment) {
     if (!note || !moment?.state) return;
-    const st = moment.state, structuralPid = patternIdFromConfig(st.config), pid = structuralPid || st.patternId || st.config?.patternId || note.patternId || null;
+    const st = moment.state, pid = st.patternId || st.config?.patternId || patternIdFromConfig(st.config) || note.patternId || null;
     note.patternId = pid;
     note.patternVersion = st.patternVersion || note.patternVersion || 1;
     note.sourceType = st.sourceType ?? note.sourceType ?? null;
@@ -101,10 +95,16 @@
     note.state = clone({...st,patternId:pid,config:note.config});
     note.replaySnapshot = {version:2,patternId:pid,patternVersion:note.patternVersion,frame:note.frame ?? null,configHash:note.configHash || null,config:clone(note.config)};
     note.visualRecipe = recipeFor(note,{pid,config:note.config,frame:note.frame ?? 44});
-    const meta = await moment.cachePromise?.catch?.(() => null);
-    note.visualSnapshot = meta || (VC?.metadata ? VC.metadata(note.visualRecipe,{capturedAt:moment.capturedAt}) : {version:2,kind:"recipe-cache",capturedAt:moment.capturedAt,patternId:pid,patternVersion:note.patternVersion,frame:note.frame ?? null,configHash:note.configHash||null,storage:"device-cache"});
+    // Persist the identity and recipe synchronously BEFORE cloud hydration can read this note.
+    note.visualSnapshot = VC?.metadata ? VC.metadata(note.visualRecipe,{capturedAt:moment.capturedAt}) : {version:2,kind:"recipe-cache",capturedAt:moment.capturedAt,patternId:pid,patternVersion:note.patternVersion,frame:note.frame ?? null,configHash:note.configHash||null,storage:"device-cache"};
     C.save?.();
     window.dispatchEvent(new CustomEvent("setka:v34-sync-request"));
+    Promise.resolve(moment.cachePromise).then(meta=>{
+      if(!meta)return;
+      note.visualSnapshot=meta;
+      C.save?.();
+      window.dispatchEvent(new CustomEvent("setka:v34-sync-request"));
+    }).catch(e=>console.warn("SETKA note visual cache failed",e));
   }
 
   function installLiveBinding() {
@@ -122,7 +122,7 @@
         saveBtn.onclick = function(saveEvent) {
           const saved = originalSave.call(this,saveEvent);
           const created = [...(C.getData?.()?.notes || [])].reverse().find(n => !before.has(n.id));
-          if (created && moment) bindMomentToNote(created,moment).catch(() => {});
+          if (created && moment) bindMomentToNote(created,moment);
           return saved;
         };
         saveBtn.dataset.liveSnapshotSaveBound = "2";
@@ -133,11 +133,11 @@
   }
 
   function resolveNote(card) {
-    const text = card.querySelector(".st34-note-text")?.textContent || "", meta = card.querySelector(".st34-note-meta")?.textContent || "";
-    const notes = Array.isArray(C.getData?.()?.notes) ? C.getData().notes : [];
-    const same = notes.filter(n => String(n?.text ?? "") === text);
-    if (same.length === 1) return same[0];
-    return same.find(n => { try { return meta.startsWith(C.dt?.(n.observedAt)||""); } catch (_) { return false; } }) || same.at(-1) || null;
+    // Public community notes and local notes are separate entities.
+    if (card.classList.contains("st37-public-card")) return null;
+    const id=card.dataset.noteId;
+    if(!id)return null;
+    return (C.getData?.()?.notes || []).find(n=>String(n.id)===String(id)) || null;
   }
 
   function drawLegacyDataUrl(canvas, snapshot) {
@@ -185,7 +185,7 @@
     const note=resolveNote(card); if(!note) return;
     const replay=replayOf(note); if(!replay.config) return;
     const canvas=card.querySelector("canvas.st34-note-preview");
-    if (canvas) { drawNoteSnapshot(canvas,note,replay); requestAnimationFrame(()=>requestAnimationFrame(()=>drawNoteSnapshot(canvas,note,replay))); }
+    if (canvas) drawNoteSnapshot(canvas,note,replay).catch(e=>console.warn("SETKA note snapshot failed",e));
     const open=card.querySelector(".st34-note-preview-button");
     if (open) open.onclick=e=>{e?.preventDefault?.();e?.stopPropagation?.();C.hideLayer?.();Setka.openConfig?.(clone(replay.config),{type:"memory",id:note.id,patternId:replay.pid,baseId:replay.pid,communityId:note.communityId||null,noteId:note.id,frame:replay.frame});};
     const label=card.querySelector(".st34-note-preview-label");
@@ -200,5 +200,5 @@
 
   new MutationObserver(records=>{for(const record of records)for(const node of record.addedNodes)if(node.nodeType===1)scan(node)}).observe(document.documentElement,{childList:true,subtree:true});
   installLiveBinding(); scan();
-  window.__SETKA_NOTE_SNAPSHOT_FIX_V34__=5;
+  window.__SETKA_NOTE_SNAPSHOT_FIX_V34__=6;
 })();
