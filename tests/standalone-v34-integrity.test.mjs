@@ -122,8 +122,9 @@ test("source scopes stay distinct: cloud totals do not substitute a different pa
   const js=read("standalone-advanced-v34.js");
   assert.match(js,/const scenarios=local\.topIntents\|\|\[\]/);
   assert.match(js,/scenarioSessions/);
-  assert.match(js,/один сценарий считается один раз на сессию/i);
-  assert.match(js,/Облачная сводка подключённых тестировщиков не содержит распределения целей/i);
+  assert.match(js,/Одна сессия учитывается один раз/);
+  assert.match(js,/const scenarioHeader=/);
+  assert.match(js,/scenarios=local\.topIntents/);
   assert.match(js,/patternId:target\.patternId/);
 });
 
@@ -153,4 +154,17 @@ test("mixed-pattern feedback isn't counted as each pattern's own effect; recomme
 test("null post-state is not falsely interpreted as a valid self-report", () => {
   const js=read("standalone-user-ui-v34.js");
   assert.match(js,/s.preState!=null&&s.postState!=null&&Number.isFinite\(Number\(s.preState\)\)/);
+});
+
+test("pattern info shows user-readable help instead of internal technical footer", () => {
+  const js=read("standalone-advanced-v34.js");
+  for(const key of ["viewers","sessions","exposures","likes","time","variants","saves","delta","improved","scenarios"]){
+    assert.match(js,new RegExp("^\\\\s*"+key+":\\\\{title:", "m"),"missing explanation "+key);
+  }
+  assert.match(js,/function setInfoHelp\(body,key\)/);
+  assert.match(js,/aria-expanded/);
+  assert.match(js,/aria-live="polite"/);
+  assert.match(js,/helpMark\("scenarios"\)/);
+  assert.doesNotMatch(js,/>Источник: \$\{s\.source/);
+  assert.doesNotMatch(js,/Облачная сводка подключённых тестировщиков не содержит распределения целей/);
 });
