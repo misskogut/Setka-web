@@ -81,6 +81,6 @@ test("community Notes tab survives a pattern library re-render", () => {
 test("Stereo DNA preview gets visible center-cropped points, not 300 compressed into a dot", () => {
   const js=read("app-v7-multipattern.js");
   assert.match(js,/const previewPoints=thumb\?Math\.min\(72,c\.numPoints\)/);
-  assert.match(js,/drawDnaSpiral\(t,-c\.eyeSeparation\/2,-c\.stereoAngle,c,phase,previewPoints\)/);
+  assert.match(js,/drawDnaSpiral\(t,-c\.eyeSeparation\/2,-c\.stereoAngle,previewConfig,phase,previewPoints\)/);
   assert.match(js,/getPatternTitle:id=>IDS\.has\(id\)\?/);
 });
