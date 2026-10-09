@@ -65,6 +65,52 @@ async function go(){
     await modal.locator(".st34-close").click();
     result.push({patternId:pid,account,thumbBrightPixels:before,infoBrightPixels:bright});
   }
+  // One observed scenario per session, never per gesture/configuration change.
+  await page.evaluate(()=>{
+    const C=window.SetkaStandaloneV34,d=C.getData();
+    d.sessions.push({id:"audit-sleep-a",requestKey:"sleep"},{id:"audit-sleep-b",requestKey:"sleep"},{id:"audit-focus",requestKey:"focus"});
+    for(let i=0;i<70;i++)d.patternExposures.push({exposureId:"audit-e-"+i,patternId:"dandelion",sessionId:i<35?"audit-sleep-a":i<69?"audit-sleep-b":"audit-focus",requestKey:i<69?"sleep":"focus",durationMs:700,configKey:"dandelion|"+i});
+    C.save();
+  });
+  await tiles.nth(1).locator(".st34-info").click({force:true});
+  await page.locator("#st34InfoOverlay .st34-pattern-scenarios").waitFor();
+  const scenarioText=await page.locator("#st34InfoOverlay .st34-pattern-scenarios").innerText();
+  assert.match(scenarioText,/Сон/);
+  assert.match(scenarioText,/67%/);
+  assert.match(scenarioText,/2 сесс/);
+  assert.match(scenarioText,/33%/);
+  assert.match(scenarioText,/1 сесс/);
+  assert.doesNotMatch(scenarioText,/70 сесс/);
+  console.log("SCENARIO UNIQUE SESSION PASS",scenarioText.replace(/\\s+/g," ").slice(0,340));
+  await page.locator("#st34InfoOverlay .st34-close").click();
+
+  // Two identical note texts on two distinct mother patterns must keep
+  // their original pattern/config/preview links.
+  for(const pid of ["dandelion","stereo-dna"]){
+    await page.evaluate(id=>{
+      const S=window.SetkaApp;S.openConfig(S.getPatternDefaults(id),{type:"base",id,patternId:id});
+    },pid);
+    await page.locator("#st34Note").click();
+    await page.locator("#st34Layer textarea").fill("Одинаковая проверочная заметка");
+    await page.locator("#st34Layer .st-primary").filter({hasText:"Сохранить"}).click();
+  }
+  const saved=await page.evaluate(()=>window.SetkaStandaloneV34.getData().notes.slice(-2).map(n=>({
+    id:n.id,patternId:n.patternId,snapshotPatternId:n.replaySnapshot?.patternId,
+    configPatternId:n.replaySnapshot?.config?.patternId,frame:n.frame
+  })));
+  assert.equal(saved.length,2);
+  assert.notEqual(saved[0].id,saved[1].id);
+  assert.deepEqual(saved.map(n=>n.patternId),["dandelion","stereo-dna"]);
+  for(const n of saved){assert.equal(n.snapshotPatternId,n.patternId);assert.equal(n.configPatternId,n.patternId)}
+  console.log("TWO NOTE SNAPSHOTS PASS",JSON.stringify(saved));
+  await page.evaluate(()=>window.SetkaStandaloneV34.showNotes());
+  await page.locator(".st34-note-card").first().waitFor();
+  assert.equal(await page.locator("#st34Layer .st34-note-card").count(),2);
+  const noteLabels=await page.locator("#st34Layer .st34-note-preview-label").allInnerTexts();
+  assert.ok(noteLabels.some(x=>x.includes("STEREO DNA")));
+  assert.ok(noteLabels.some(x=>x.includes("ОДУВАНЧИК")));
+  console.log("NOTE CARD IDS",await page.locator("#st34Layer .st34-note-card").evaluateAll(nodes=>nodes.map(n=>n.dataset.noteId)));
+  await page.screenshot({path:"tests/visual-smoke/personal-notes.png",fullPage:true});
   await page.screenshot({path:"tests/visual-smoke/base-patterns.png",fullPage:true});
   console.log("ALL 7 PATTERNS PASS",JSON.stringify(result));
   console.log("Browser JS console errors:",JSON.stringify(errors.slice(0,10)));
