@@ -139,10 +139,14 @@
     if(thumb||f<2){t.fillStyle="#000";t.fillRect(0,0,w,h)}else{t.fillStyle="rgba(0,0,0,0.1176470588)";t.fillRect(0,0,w,h)}
     t.translate(w/2,h/2);
     const previewPoints=thumb?Math.min(72,c.numPoints):c.numPoints;
-    if(thumb){const vertical=(previewPoints/2)*c.spacing,horizontal=c.eyeSeparation/2+c.amplitude+8,ext=Math.max(vertical,horizontal),s=Math.min(.96,(Math.min(w,h)/2-5)/Math.max(1,ext));t.scale(s*c.zoom,s*c.zoom)}else t.scale(c.zoom,c.zoom);
+    let scale=c.zoom;
+    if(thumb){const vertical=(previewPoints/2)*c.spacing,horizontal=c.eyeSeparation/2+c.amplitude+8,ext=Math.max(vertical,horizontal);scale=Math.min(.96,(Math.min(w,h)/2-5)/Math.max(1,ext))*c.zoom}
+    t.scale(scale,scale);
+    // A normal-size DNA dot becomes subpixel at 180px; never let thumbnails disappear.
+    const previewConfig=thumb?{...c,pointSize:Math.max(c.pointSize,3.4/Math.max(.01,scale))}:c;
     const phase=f*c.timeSpeed;
-    drawDnaSpiral(t,-c.eyeSeparation/2,-c.stereoAngle,c,phase,previewPoints);
-    drawDnaSpiral(t,c.eyeSeparation/2,c.stereoAngle,c,phase,previewPoints);
+    drawDnaSpiral(t,-c.eyeSeparation/2,-c.stereoAngle,previewConfig,phase,previewPoints);
+    drawDnaSpiral(t,c.eyeSeparation/2,c.stereoAngle,previewConfig,phase,previewPoints);
     t.restore();
   }
 
