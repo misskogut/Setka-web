@@ -62,28 +62,45 @@
     return{kind,itemId,patternId:patternId||"tentacle-orbit",config:config||fallback,configKey:Setka.configKey?.(config||fallback,patternId),communityId}
   }
   function localStats(t){
-    // Canonical usage is PatternExposure, never the total duration of a mixed-pattern session.
-    const d=data(),sessions=new Map(),intents=new Map(),records=Array.isArray(d.patternExposures)?d.patternExposures:[];
-    const relevant=records.filter(x=>{
-      if(!x || !x.patternId)return false;
-      if(t.kind==="base")return x.patternId===t.patternId;
-      return !!t.configKey && x.patternId===t.patternId && String(x.configKey)===String(t.configKey);
-    });
+    // Sessions and visual episodes are different units. Do not count every
+    // configuration switch as a new user intent or a new visit.
+    const d=data(),sessionById=new Map((d.sessions||[]).map(s=>[String(s.id),s]));
+    const sessions=new Set(),scenarios=new Map(),scenarioKeys=new Set();
+    const records=Array.isArray(d.patternExposures)?d.patternExposures:[];
+    const relevant=records.filter(x=>x&&x.patternId===t.patternId&&
+      (t.kind==="base"||(!!t.configKey&&String(x.configKey)===String(t.configKey))));
     let totalUsage=0;
     for(const e of relevant){
       totalUsage+=Math.max(0,Number(e.durationMs)||0);
-      if(e.sessionId){
-        const session=(d.sessions||[]).find(x=>x.id===e.sessionId);
-        if(session)sessions.set(session.id,session);
-      }
-      if(e.requestKey)intents.set(e.requestKey,(intents.get(e.requestKey)||0)+Math.max(0,Number(e.durationMs)||0));
+      const sid=e.sessionId==null?"":String(e.sessionId);
+      if(!sid)continue;
+      const session=sessionById.get(sid);
+      if(session)sessions.add(sid);
+      // Session request is the canonical label. An episode's request is a
+      // fallback for migrated session histories only.
+      const key=session?.requestKey||e.requestKey||null;
+      if(!key)continue;
+      const pair=JSON.stringify([sid,key]);
+      if(scenarioKeys.has(pair))continue;
+      scenarioKeys.add(pair);
+      scenarios.set(key,(scenarios.get(key)||0)+1);
     }
-    const favorites=(Setka.getFavorites?.()||[]).filter(f=>t.kind==="base"?
-      f.baseId===t.patternId:(f.baseId===t.patternId&&t.configKey===Setka.configKey?.(f.config,f.baseId)));
-    const sum=[...intents.values()].reduce((a,b)=>a+b,0);
-    return{activityProfiles:relevant.length?1:0,sessions:sessions.size,exposures:relevant.length,saveCount:favorites.length,totalUsageMs:totalUsage,
-      topIntents:[...intents].sort((a,b)=>b[1]-a[1]).slice(0,4).map(([key,n])=>({key,share:sum?n/sum:0})),source:"local"};
+    const favorites=(Setka.getFavorites?.()||[]).filter(f=>
+      (f.baseId||f.patternId||f.config?.patternId)===t.patternId&&
+      (t.kind==="base"||t.configKey===Setka.configKey?.(f.config,t.patternId)));
+    const totalScenarios=[...scenarios.values()].reduce((a,b)=>a+b,0);
+    const countConfigs=new Set(favorites.map(f=>Setka.configKey?.(f.config,t.patternId)).filter(Boolean)).size;
+    const isBase=t.kind==="base";
+    return{activityProfiles:relevant.length?1:0,sessions:sessions.size,exposures:relevant.length,
+      likeCount:isBase?(favorites.length?1:0):undefined,
+      configSaveCount:isBase?undefined:(favorites.length?1:0),
+      savedConfigurations:countConfigs,configurationSaves:favorites.length,
+      totalUsageMs:totalUsage,
+      scenarioSessions:scenarioKeys.size,
+      topIntents:[...scenarios].sort((a,b)=>b[1]-a[1]).slice(0,6).map(([key,count])=>
+        ({key,count,share:totalScenarios?count/totalScenarios:0})),source:"local"};
   }
+
   async function remoteStats(t){
     // Do not render misleading local numbers while the connected-tester cloud feed
     // is still loading. The async feed is the source of truth for public metrics.
@@ -125,19 +142,23 @@
     o.querySelector(".st34-close").onclick=()=>o.remove();o.onclick=e=>{if(e.target===o)o.remove()};
     C.recordEvent("pattern_info",{kind:t.kind,patternId:t.patternId,communityId:t.communityId,configKey:t.configKey},false);
     const local=localStats(t),remote=await remoteStats(t),s=remote||local,body=o.querySelector("#st34InfoBody");if(!body)return;const intentLabels=Object.fromEntries(C.INTENTS);
-    const accountCount=s.accounts??s.activityProfiles??0,heart=t.kind==="base"?(s.likeCount??s.saveCount??0):(s.configSaveCount??s.saveCount??0),heartLabel=t.kind==="base"?"ЛАЙКОВ ПАТТЕРНУ":"АККАУНТОВ СОХРАНИЛИ";
+    const accountCount=s.accounts??s.activityProfiles??0,heart=t.kind==="base"?(s.likeCount??0):(s.configSaveCount??0),heartLabel=t.kind==="base"?"ЛАЙКОВ ПАТТЕРНУ":s.source==="remote"?"АККАУНТОВ СОХРАНИЛИ":"СОХРАНЕНО НА УСТРОЙСТВЕ";
     const timeMs=Math.max(0,Number(s.totalUsageMs)||0),timeText=timeMs===0?"0 мин":timeMs<60000?`${Math.round(timeMs/1000)} сек`:`${Math.round(timeMs/60000)} мин`;
     const noData=s.noObservations||(!s.exposures&&!(s.totalUsageMs>0));
-    const statusText=noData?"Просмотры этого паттерна пока не зарегистрированы среди подключённых тестировщиков. Это не означает, что его никто не использовал.":"Показатели относятся именно к этому паттерну.";
-    body.innerHTML=`<div class="st34-statgrid"><div class="st34-statbox"><strong>${accountCount||0}</strong><span>АККАУНТОВ С ПРОСМОТРАМИ</span></div><div class="st34-statbox"><strong>${s.sessions||0}</strong><span>СЕССИЙ</span></div><div class="st34-statbox"><strong>${s.exposures||0}</strong><span>ЭПИЗОДОВ ПРОСМОТРА</span></div><div class="st34-statbox"><strong>♥ ${heart||0}</strong><span>${heartLabel}</span></div><div class="st34-statbox"><strong>${timeText}</strong><span>В ПАТТЕРНЕ</span></div>${s.savedConfigurations!=null?`<div class="st34-statbox"><strong>${s.savedConfigurations}</strong><span>СОХРАНЁННЫХ КОНФИГУРАЦИЙ</span></div>`:""}${s.configurationSaves!=null?`<div class="st34-statbox"><strong>${s.configurationSaves}</strong><span>СОХРАНЕНИЙ КОНФИГУРАЦИЙ</span></div>`:""}${s.avgDelta!=null?`<div class="st34-statbox"><strong>${s.avgDelta>0?"+":""}${Number(s.avgDelta).toFixed(1)}</strong><span>СОСТОЯНИЕ Δ</span></div>`:""}${s.improvedRate!=null?`<div class="st34-statbox"><strong>${Math.round(Number(s.improvedRate)*100)}%</strong><span>ВЫШЕ ПОСЛЕ</span></div>`:""}</div>${(s.topIntents||[]).length?`<div class="st-label">Чаще используют для</div>${s.topIntents.map(x=>`<div class="st-row" style="margin:8px 0"><div class="st-grow st-muted">${esc(intentLabels[x.key]||x.key)}</div><div>${Math.round((x.share||0)*100)}%</div></div>`).join("")}`:""}<div class="st-muted" style="margin-top:16px">${esc(statusText)} Источник: ${s.source==="remote"?"подключённые тестировщики SETKA":"локальная история этого браузера; облако недоступно"}. Длительность считается по эпизодам конкретного паттерна, не по времени всей сессии.</div>`;
+    const statusText=noData?(s.source==="remote"?"В выборке подключённых тестировщиков нет зарегистрированных просмотров этого паттерна. Это не означает отсутствие использования вообще.":"В локальной истории пока нет просмотров этого паттерна."):"Показатели относятся именно к этому паттерну.";
+    const scenarios=local.topIntents||[];
+    const scenarioHtml=scenarios.length?
+      `<section class="st34-pattern-scenarios"><div class="st-label" style="margin-top:23px">По каким сценариям ты используешь паттерн</div><div class="st-muted" style="margin:7px 0 14px">Твоя сохранённая история · ${local.scenarioSessions} сесс. с указанной целью. Один сценарий считается один раз на сессию, независимо от числа изменений конфигурации.</div>${scenarios.map(x=>`<div class="st34-scenario-row" style="margin:10px 0"><div class="st-row"><div class="st-grow">${esc(intentLabels[x.key]||x.key)}</div><strong>${Math.round((x.share||0)*100)}%</strong><span class="st-muted">· ${x.count} сесс.</span></div><div style="height:4px;margin-top:6px;border-radius:3px;background:rgba(255,255,255,.12)"><div style="height:4px;width:${Math.max(0,Math.min(100,100*x.share))}%;background:#fff;border-radius:3px"></div></div></div>`).join("")}</section>`:
+      `<section class="st34-pattern-scenarios"><div class="st-label" style="margin-top:23px">Сценарии использования</div><div class="st-muted" style="margin-top:8px">Пока нет сессий с указанной целью для этого паттерна в сохранённой личной истории. Облачная сводка подключённых тестировщиков не содержит распределения целей. Мы не подменяем его чужими данными.</div></section>`;
+    body.innerHTML=`<div class="st34-statgrid"><div class="st34-statbox"><strong>${accountCount||0}</strong><span>${s.source==="remote"?"АККАУНТОВ С ПРОСМОТРАМИ":"УСТРОЙСТВ С ПРОСМОТРАМИ"}</span></div><div class="st34-statbox"><strong>${s.sessions||0}</strong><span>СЕССИЙ</span></div><div class="st34-statbox"><strong>${s.exposures||0}</strong><span>ЭПИЗОДОВ ПРОСМОТРА</span></div><div class="st34-statbox"><strong>♥ ${heart||0}</strong><span>${heartLabel}</span></div><div class="st34-statbox"><strong>${timeText}</strong><span>В ПАТТЕРНЕ</span></div>${s.savedConfigurations!=null?`<div class="st34-statbox"><strong>${s.savedConfigurations}</strong><span>СОХРАНЁННЫХ КОНФИГУРАЦИЙ</span></div>`:""}${s.configurationSaves!=null?`<div class="st34-statbox"><strong>${s.configurationSaves}</strong><span>СОХРАНЕНИЙ КОНФИГУРАЦИЙ</span></div>`:""}${s.avgDelta!=null?`<div class="st34-statbox"><strong>${s.avgDelta>0?"+":""}${Number(s.avgDelta).toFixed(1)}</strong><span>СОСТОЯНИЕ Δ</span></div>`:""}${s.improvedRate!=null?`<div class="st34-statbox"><strong>${Math.round(Number(s.improvedRate)*100)}%</strong><span>ВЫШЕ ПОСЛЕ</span></div>`:""}</div>${scenarioHtml}<div class="st-muted" style="margin-top:16px">${esc(statusText)} Источник: ${s.source==="remote"?"подключённые тестировщики SETKA":"локальная история этого браузера; облако недоступно"}. Длительность считается по эпизодам конкретного паттерна, не по времени всей сессии.</div>`;
   }
   window.addEventListener("pointerup",e=>{const info=e.target?.closest?.(".st34-info");if(!info)return;const tile=info.closest(".pattern-tile");if(!tile)return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation?.();showInfo(tile)},true);new MutationObserver(()=>{injectInfo();injectLocalBadges()}).observe(document.documentElement,{subtree:true,childList:true});injectInfo();
 
   // Choice before opening a pattern when no active measured/continuation phase.
   let bypass=false,pendingStarts=new Map();library.addEventListener("pointerdown",e=>{const tile=e.target.closest?.(".pattern-tile");if(tile&&!e.target.closest?.(".st34-info"))pendingStarts.set(e.pointerId,{x:e.clientX,y:e.clientY,at:Date.now()})},true);
   library.addEventListener("pointerup",e=>{const tile=e.target.closest?.(".pattern-tile");if(!tile||e.target.closest?.(".st34-info")||bypass)return;const p=pendingStarts.get(e.pointerId);pendingStarts.delete(e.pointerId);if(p&&(Date.now()-p.at>560||Math.hypot(e.clientX-p.x,e.clientY-p.y)>20))return;if(active()&&["measured","after_feedback"].includes(active().phase))return;e.preventDefault();e.stopImmediatePropagation();showChoice(tile)},true);
-  function directOpen(t){const target=tileTarget(t);bypass=true;setTimeout(()=>bypass=false,80);Setka.openConfig?.(target.config,{type:target.kind,id:target.itemId||"tentacle-orbit",communityId:target.communityId||null})}
-  function showChoice(tile){document.getElementById("st34Choice")?.remove();const o=document.createElement("div");o.id="st34Choice";o.innerHTML='<div class="st34-choice"><h2>Запустить новую сессию?</h2><p>Для измеряемой сессии сначала зафиксируем запрос, состояние и время. Или можно просто открыть паттерн без опроса.</p><button class="st-primary">Запустить сессию</button><button class="st-secondary">Просто посмотреть</button><button class="st-secondary st34-cancel" style="border:0;color:rgba(255,255,255,.4)">Отмена</button></div>';document.body.appendChild(o);o.querySelector(".st-primary").onclick=()=>{const t=tileTarget(tile);o.remove();C.preSurvey({config:t.config,source:{type:t.kind,id:t.itemId||"tentacle-orbit",communityId:t.communityId||null}})};o.querySelectorAll(".st-secondary")[0].onclick=()=>{o.remove();C.recordEvent("session_choice",{choice:"browse"},false);directOpen(tile)};o.querySelector(".st34-cancel").onclick=()=>{C.recordEvent("session_choice",{choice:"cancel"},false);o.remove()}}
+  function directOpen(t){const target=tileTarget(t);bypass=true;setTimeout(()=>bypass=false,80);Setka.openConfig?.(target.config,{type:target.kind,id:target.itemId||target.patternId,patternId:target.patternId,communityId:target.communityId||null})}
+  function showChoice(tile){document.getElementById("st34Choice")?.remove();const o=document.createElement("div");o.id="st34Choice";o.innerHTML='<div class="st34-choice"><h2>Запустить новую сессию?</h2><p>Для измеряемой сессии сначала зафиксируем запрос, состояние и время. Или можно просто открыть паттерн без опроса.</p><button class="st-primary">Запустить сессию</button><button class="st-secondary">Просто посмотреть</button><button class="st-secondary st34-cancel" style="border:0;color:rgba(255,255,255,.4)">Отмена</button></div>';document.body.appendChild(o);o.querySelector(".st-primary").onclick=()=>{const t=tileTarget(tile);o.remove();C.preSurvey({config:t.config,source:{type:t.kind,id:t.itemId||t.patternId,patternId:t.patternId,communityId:t.communityId||null}})};o.querySelectorAll(".st-secondary")[0].onclick=()=>{o.remove();C.recordEvent("session_choice",{choice:"browse"},false);directOpen(tile)};o.querySelector(".st34-cancel").onclick=()=>{C.recordEvent("session_choice",{choice:"cancel"},false);o.remove()}}
 
   // Combined session timeline and replay.
   const eventMark={pattern_open:"P",pattern_state:"G",color:"C",favorite_save:"♥",note_create:"+",physio:"·",session_start:"S",feedback_submit:"F",continuation_start:"→",session_end:"■"};
