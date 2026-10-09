@@ -91,11 +91,11 @@
   function openNoteMoment(n){
     if(!n?.config)return;
     C.hideLayer();
-    Setka.openConfig?.(clone(n.config),{type:"memory",id:n.id,communityId:n.communityId||null,noteId:n.id});
+    Setka.openConfig?.(clone(n.config),{type:"memory",id:n.id,patternId:n.patternId||n.config?.patternId||null,communityId:n.communityId||null,noteId:n.id,frame:n.frame??44});
   }
 
   function renderNoteCard(parent,n,{compact=false}={}){
-    const card=document.createElement("article");card.className="st34-note-card";
+    const card=document.createElement("article");card.className="st34-note-card";card.dataset.noteId=String(n.id);
     const context=[];
     if(n.requestKey)context.push(intentLabel(n.requestKey));
     if(n.sessionElapsedMs!=null&&n.sessionId)context.push(`${fmt(n.sessionElapsedMs)} от начала`);
@@ -108,7 +108,7 @@
       const mark=document.createElement("span");mark.className="st34-note-open-mark";mark.textContent="Открыть ↗";open.appendChild(mark);
       open.onclick=()=>openNoteMoment(n);card.appendChild(open);
       const label=document.createElement("div");label.className="st34-note-preview-label";label.textContent="ПАТТЕРН В МОМЕНТ ЗАМЕТКИ";card.appendChild(label);
-      requestAnimationFrame(()=>drawPatternPreview(canvas,n.config,n.frame));
+      requestAnimationFrame(()=>{try{Setka.renderPreview?.(canvas,clone(n.config),n.frame??44,n.patternId||n.config?.patternId||null)}catch(e){console.warn("SETKA note preview failed",e)}});
     }else if(!compact){
       const empty=document.createElement("div");empty.className="st34-note-no-preview";empty.textContent="У этой старой заметки визуальный момент не сохранился";card.appendChild(empty);
     }
