@@ -117,10 +117,12 @@
   function renderRgb(t,w,h,c,f,thumb){t.save();t.fillStyle="#000";t.fillRect(0,0,w,h);t.translate(w/2,h/2);const tt=f*c.waveSpeed;if(thumb){const maxD=c.numRings*c.baseSpacing+Math.abs(c.waveAmplitude),ext=maxD/2+c.glitchOffset+4,s=Math.min(1,(Math.min(w,h)/2-5)/Math.max(1,ext));t.scale(s,s)}const a=c.ringAlpha/255;for(let i=1;i<=c.numRings;i++){const phase=c.invertDirection?-i:i,off=Math.sin(tt+phase*.3)*c.waveAmplitude,d=i*c.baseSpacing+off;if(c.glitchEnabled){t.lineWidth=c.strokeW;t.strokeStyle=`rgba(255,0,0,${a})`;circle(t,-c.glitchOffset,d);t.strokeStyle=`rgba(0,255,0,${a})`;circle(t,0,d);t.strokeStyle=`rgba(0,100,255,${a})`;circle(t,c.glitchOffset,d)}if(c.colorModeIndex===1){t.lineWidth=.6;t.strokeStyle=`rgba(255,100,180,${a})`;circle(t,0,d)}else if(c.colorModeIndex===2){t.lineWidth=.6;t.strokeStyle=`hsla(${mod(tt*100+i*5,360)},100%,50%,${a})`;circle(t,0,d)}}t.restore()}
 
   function dnaPoint(t,x,y,size,color){t.fillStyle=color;t.beginPath();t.arc(x,y,Math.max(.5,size/2),0,Math.PI*2);t.fill()}
-  function drawDnaSpiral(t,xOffset,angleShift,c,phase){
+  function drawDnaSpiral(t,xOffset,angleShift,c,phase,pointLimit=c.numPoints){
     t.save();t.translate(xOffset,0);
     const alpha=clamp(c.glowStrength/255,0,1);
-    for(let i=0;i<c.numPoints;i++){
+    const start=Math.max(0,Math.floor((c.numPoints-pointLimit)/2));
+    const end=Math.min(c.numPoints,start+pointLimit);
+    for(let i=start;i<end;i++){
       const angle=i*c.angleStep+phase;
       const y=(i-c.numPoints/2)*c.spacing;
       const x1=Math.cos(angle+angleShift)*c.amplitude;
@@ -136,10 +138,11 @@
     t.save();
     if(thumb||f<2){t.fillStyle="#000";t.fillRect(0,0,w,h)}else{t.fillStyle="rgba(0,0,0,0.1176470588)";t.fillRect(0,0,w,h)}
     t.translate(w/2,h/2);
-    if(thumb){const vertical=(c.numPoints/2)*c.spacing,horizontal=c.eyeSeparation/2+c.amplitude+8,ext=Math.max(vertical,horizontal),s=Math.min(.96,(Math.min(w,h)/2-5)/Math.max(1,ext));t.scale(s*c.zoom,s*c.zoom)}else t.scale(c.zoom,c.zoom);
+    const previewPoints=thumb?Math.min(72,c.numPoints):c.numPoints;
+    if(thumb){const vertical=(previewPoints/2)*c.spacing,horizontal=c.eyeSeparation/2+c.amplitude+8,ext=Math.max(vertical,horizontal),s=Math.min(.96,(Math.min(w,h)/2-5)/Math.max(1,ext));t.scale(s*c.zoom,s*c.zoom)}else t.scale(c.zoom,c.zoom);
     const phase=f*c.timeSpeed;
-    drawDnaSpiral(t,-c.eyeSeparation/2,-c.stereoAngle,c,phase);
-    drawDnaSpiral(t,c.eyeSeparation/2,c.stereoAngle,c,phase);
+    drawDnaSpiral(t,-c.eyeSeparation/2,-c.stereoAngle,c,phase,previewPoints);
+    drawDnaSpiral(t,c.eyeSeparation/2,c.stereoAngle,c,phase,previewPoints);
     t.restore();
   }
 
@@ -187,6 +190,6 @@
   function cyclePattern(dir){let i=PATTERNS.findIndex(p=>p.id===runtimePatternId);if(i<0)i=0;i=(i+dir+PATTERNS.length)%PATTERNS.length;const p=PATTERNS[i];openConfig(p.defaults,{type:"base",id:p.id,patternId:p.id,communityId:null})}
   prevButton.addEventListener("click",()=>cyclePattern(-1));nextButton.addEventListener("click",()=>cyclePattern(1));libraryPagerButton.addEventListener("click",()=>setLibraryPage("all"));communityPagerButton.addEventListener("click",()=>setLibraryPage("community"));favoritesPagerButton.addEventListener("click",()=>setLibraryPage("favorites"));let swipe=null;librarySwipeArea.addEventListener("pointerdown",e=>{if(e.target.closest("button"))return;swipe={x:e.clientX,y:e.clientY}});librarySwipeArea.addEventListener("pointerup",e=>{if(!swipe)return;const dx=e.clientX-swipe.x,dy=e.clientY-swipe.y;swipe=null;if(Math.abs(dx)<55||Math.abs(dx)<Math.abs(dy)*1.2)return;let i=PAGE_ORDER.indexOf(activeLibraryPage);i+=dx<0?1:-1;setLibraryPage(PAGE_ORDER[clamp(i,0,PAGE_ORDER.length-1)])});librarySwipeArea.addEventListener("pointercancel",()=>swipe=null);window.addEventListener("resize",()=>{if(gameScreen.classList.contains("active"))resizeMainCanvas();renderLibrary()});document.addEventListener("visibilitychange",()=>{if(document.hidden)stopAnimation();else if(gameScreen.classList.contains("active"))startAnimation()});
 
-  window.SetkaApp={getState:()=>statePayload(),getConfig:()=>cloneConfig(runtimeConfig,runtimePatternId),getFavorites:()=>favorites.map(f=>({...f,config:cloneConfig(f.config,f.baseId)})),getPatterns:()=>PATTERNS.map(p=>({id:p.id,title:p.title,version:p.version,defaults:cloneConfig(p.defaults,p.id)})),getPatternDefaults:id=>cloneConfig(patternById(id).defaults,patternById(id).id),getPatternTitle:id=>patternById(id).title,cloneConfig,configKey,openConfig,renderPreview,setCommunity(items){communityItems=Array.isArray(items)?items.map(normalizeCommunityItem):[];renderLibrary()},setRecommendations(data={}){recommendedCommunity=new Set((data.community||[]).map(String));recommendedPatterns=new Set((data.patterns||[]).map(String));renderLibrary()},updateFavoriteMeta,refreshFavorites(){favorites=loadFavorites();renderLibrary();updateFavoriteButtonState()},renderLibrary,setLibraryPage,finishCurrentUsageHint(){return statePayload()},DEFAULT_CONFIG:cloneConfig(TENTACLE_DEFAULT,TENTACLE_ID),DANDELION_DEFAULT:cloneConfig(DANDELION_DEFAULT,DANDELION_ID),FISH_DEFAULT:cloneConfig(FISH_DEFAULT,FISH_ID),BREATHING_FRACTAL_DEFAULT:cloneConfig(BREATH_DEFAULT,BREATH_ID),BREATHING_GROWTH_DEFAULT:cloneConfig(GROWTH_DEFAULT,GROWTH_ID),RGB_RINGS_DEFAULT:cloneConfig(RGB_DEFAULT,RGB_ID),STEREO_DNA_DEFAULT:cloneConfig(DNA_DEFAULT,DNA_ID)};
+  window.SetkaApp={getState:()=>statePayload(),getConfig:()=>cloneConfig(runtimeConfig,runtimePatternId),getFavorites:()=>favorites.map(f=>({...f,config:cloneConfig(f.config,f.baseId)})),getPatterns:()=>PATTERNS.map(p=>({id:p.id,title:p.title,version:p.version,defaults:cloneConfig(p.defaults,p.id)})),getPatternDefaults:id=>IDS.has(id)?cloneConfig(patternById(id).defaults,id):null,getPatternTitle:id=>IDS.has(id)?patternById(id).title:(id||"Неизвестный паттерн"),cloneConfig,configKey,openConfig,renderPreview,setCommunity(items){communityItems=Array.isArray(items)?items.map(normalizeCommunityItem):[];renderLibrary()},setRecommendations(data={}){recommendedCommunity=new Set((data.community||[]).map(String));recommendedPatterns=new Set((data.patterns||[]).map(String));renderLibrary()},updateFavoriteMeta,refreshFavorites(){favorites=loadFavorites();renderLibrary();updateFavoriteButtonState()},renderLibrary,setLibraryPage,finishCurrentUsageHint(){return statePayload()},DEFAULT_CONFIG:cloneConfig(TENTACLE_DEFAULT,TENTACLE_ID),DANDELION_DEFAULT:cloneConfig(DANDELION_DEFAULT,DANDELION_ID),FISH_DEFAULT:cloneConfig(FISH_DEFAULT,FISH_ID),BREATHING_FRACTAL_DEFAULT:cloneConfig(BREATH_DEFAULT,BREATH_ID),BREATHING_GROWTH_DEFAULT:cloneConfig(GROWTH_DEFAULT,GROWTH_ID),RGB_RINGS_DEFAULT:cloneConfig(RGB_DEFAULT,RGB_ID),STEREO_DNA_DEFAULT:cloneConfig(DNA_DEFAULT,DNA_ID)};
   persistFavorites();buildColorDots();updateColorIndicator();updateFavoriteButtonState();renderLibrary();emit("ready",{});
 })();
