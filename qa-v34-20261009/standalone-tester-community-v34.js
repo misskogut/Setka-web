@@ -1,0 +1,524 @@
+(() => {
+  "use strict";
+
+  const C = window.SetkaStandaloneV34;
+  const Setka = window.SetkaApp;
+  if (!C || !Setka) return;
+
+  const KEY = "sb_publishable_1jL-x9_kp6rpfGghpSp_OA_OiXDnvsv";
+  const ID_API = "https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-tester-identity-v37";
+  const NOTE_API = "https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-public-notes-v37";
+  const ARCHIVE_API = "https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-tester-archive-v37";
+  const TOKEN_KEY = "setka-v37:public-profile-token";
+  const TESTER_KEY = "setka-v37:tester-status";
+  const SESSION_KEY = "setka-v40:cabinet-session";
+
+  const clone = v => v == null ? v : JSON.parse(JSON.stringify(v));
+  const esc = v => String(v ?? "").replace(/[&<>\"]/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));
+
+  let tester = null;
+  let pub = new Map();
+  let pubLoaded = false;
+  let publicationBusy = false;
+  let archiveBusy = false;
+  let archiveTimer = 0;
+  let archiveSignature = "";
+
+  const style = document.createElement("style");
+  style.textContent = `
+    .st37-section{margin:18px 0 4px}.st37-section-title{font-size:10px;letter-spacing:.12em;color:rgba(255,255,255,.38);margin:0 0 8px}
+    .st37-id-card{border:1px solid rgba(255,255,255,.14);border-radius:20px;padding:15px;background:#090909;margin:8px 0}.st37-id-value{font-size:18px;font-weight:650;letter-spacing:.04em;margin-bottom:5px}.st37-id-copy,.st37-privacy{font-size:11px;line-height:1.5;color:rgba(255,255,255,.48)}
+    .st37-note-action{width:100%;min-height:42px;border:1px solid rgba(255,255,255,.2);border-radius:21px;background:transparent;color:#fff;font-size:11px;padding:0 14px;margin-top:10px}.st37-note-action.pending{color:rgba(255,255,255,.72);border-style:dashed}.st37-note-action.published{color:rgba(255,255,255,.62);border-color:rgba(255,255,255,.12)}.st37-note-action.rejected{color:rgba(255,255,255,.52);border-color:rgba(255,255,255,.12)}
+    .st37-note-origin{font-size:10px;color:rgba(255,255,255,.35);margin-top:10px;text-align:center}
+    .st37-community-meta{font-size:10px;color:rgba(255,255,255,.38);margin:7px 0 12px}.st37-community-preview{display:block;width:100%;aspect-ratio:1.42/1;background:#000;border-radius:18px}.st37-community-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.st37-community-actions button{height:42px;border-radius:21px;font-size:11px}.st37-open{border:1px solid rgba(255,255,255,.22);background:transparent;color:#fff}.st37-save{border:0;background:#fff;color:#000;font-weight:650}.st37-save.saved{background:#151515;color:rgba(255,255,255,.45);border:1px solid rgba(255,255,255,.12)}
+  `;
+  document.head.appendChild(style);
+
+  function did() {
+    return C.sandbox?.deviceId || null;
+  }
+
+  function accountSession() {
+    for (const store of [localStorage, sessionStorage]) {
+      try {
+        const x = JSON.parse(store.getItem(SESSION_KEY) || "null");
+        if (x?.token) return x;
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  function token() {
+    try {
+      let t = localStorage.getItem(TOKEN_KEY);
+      if (!t) {
+        const a = new Uint8Array(32);
+        crypto.getRandomValues(a);
+        t = [...a].map(x => x.toString(16).padStart(2, "0")).join("");
+        localStorage.setItem(TOKEN_KEY, t);
+      }
+      return t;
+    } catch (_) {
+      return window.__setkaPublicToken || (window.__setkaPublicToken = `${Date.now()}${Math.random()}${Math.random()}`);
+    }
+  }
+
+  async function post(url, payload) {
+    const r = await fetch(url, {
+      method: "POST",
+      headers: {"Content-Type":"application/json", apikey: KEY},
+      body: JSON.stringify(payload)
+    });
+    let out = {};
+    try { out = await r.json(); } catch (_) {}
+    if (!r.ok) {
+      const e = new Error(out.error || `http_${r.status}`);
+      e.status = r.status;
+      e.payload = out;
+      throw e;
+    }
+    return out;
+  }
+
+  async function noteApi(action, extra = {}) {
+    if (!did()) throw new Error("device_not_ready");
+    return post(NOTE_API, {action, deviceId: did(), profileToken: token(), sessionToken: accountSession()?.token || null, ...extra});
+  }
+
+  function cacheTester(v) {
+    tester = v;
+    try { localStorage.setItem(TESTER_KEY, JSON.stringify(v)); } catch (_) {}
+  }
+
+  function cachedTester() {
+    if (tester) return tester;
+    try { tester = JSON.parse(localStorage.getItem(TESTER_KEY) || "null"); } catch (_) {}
+    return tester;
+  }
+
+  async function refreshTester() {
+    if (!did()) return cachedTester();
+    try {
+      const out = await post(ID_API, {action:"status", deviceId:did()});
+      cacheTester({claimed:!!out.claimed, testerId:out.testerId || null, claimedAt:out.claimedAt || null});
+    } catch (_) {
+      cachedTester();
+    }
+    return tester;
+  }
+
+  function exactPrivateArchive() {
+    const d = clone(C.getData?.() || {});
+    return {
+      version: d.version || 34,
+      createdAt: d.createdAt || null,
+      sessions: Array.isArray(d.sessions) ? d.sessions : [],
+      notes: Array.isArray(d.notes) ? d.notes : [],
+      symptoms: Array.isArray(d.symptoms) ? d.symptoms : [],
+      checkins: Array.isArray(d.checkins) ? d.checkins : [],
+      physio: d.physio || {samples:[], sources:[]},
+      invites: Array.isArray(d.invites) ? d.invites : [],
+      localCommunity: Array.isArray(d.localCommunity) ? d.localCommunity : [],
+      settings: d.settings || {}
+    };
+  }
+
+  function currentFavorites() {
+    try { return clone(Setka.getFavorites?.() || []); } catch (_) { return []; }
+  }
+
+  function privateArchiveSignature() {
+    const d = C.getData?.() || {};
+    const sessions = d.sessions || [], notes = d.notes || [], symptoms = d.symptoms || [], checkins = d.checkins || [];
+    const phys = d.physio?.samples || [], favorites = Setka.getFavorites?.() || [];
+    const s = sessions.at?.(-1) || {}, n = notes.at?.(-1) || {}, p = phys.at?.(-1) || {};
+    return [
+      sessions.length, s.id || "", s.phase || "", s.measuredActiveMs || 0, s.afterFeedbackActiveMs || 0, (s.usage || []).length,
+      notes.length, n.id || "", n.visualSnapshot?.capturedAt || "", n.publicModerationStatus || "", n.publicNoteId || "",
+      symptoms.length, checkins.length, phys.length, p.id || "", favorites.length, favorites.map(x => x.id).join(",")
+    ].join("|");
+  }
+
+  async function syncPrivateArchive(force = false) {
+    try { return await window.__SETKA_PRIVATE_CORPUS_V40__?.sync?.(); }
+    catch (_) { return false; }
+  }
+
+  function schedulePrivateArchive(ms = 1800) {
+    clearTimeout(archiveTimer);
+    archiveTimer = setTimeout(() => syncPrivateArchive(false), ms);
+  }
+
+  async function claim(code) {
+    if (!did()) throw new Error("device_not_ready");
+    await C.sandbox?.sync?.();
+    const out = await post(ID_API, {
+      action: "claim",
+      deviceId: did(),
+      testerCode: String(code || "").trim(),
+      userAgent: navigator.userAgent,
+      viewport: {width:innerWidth, height:innerHeight, dpr:devicePixelRatio || 1, screenWidth:screen?.width || null, screenHeight:screen?.height || null}
+    });
+    cacheTester({claimed:true, testerId:out.testerId, claimedAt:new Date().toISOString()});
+    await C.sandbox?.sync?.();
+    const privateArchive = await syncPrivateArchive(true);
+    C.recordEvent?.("tester_identity_claimed", {testerId:out.testerId, privateArchiveSynced:!!privateArchive}, false);
+    schedulePrivateArchive(600);
+    return {...out, privateArchiveSynced:!!privateArchive};
+  }
+
+  function reconcileLocalModeration() {
+    const notes = C.getData?.()?.notes || [];
+    let changed = false;
+    for (const note of notes) {
+      const state = pub.get(String(note.id));
+      if (!state) continue;
+      const status = state.status || (state.isPublic ? "published" : "private");
+      if (note.publicModerationStatus !== status || note.publicPublished !== (status === "published") || (state.id && note.publicNoteId !== state.id)) {
+        note.publicModerationStatus = status;
+        note.publicPublished = status === "published";
+        if (state.id) note.publicNoteId = state.id;
+        changed = true;
+      }
+    }
+    if (changed) C.save?.();
+  }
+
+  async function refreshPub(force = false) {
+    if (pubLoaded && !force) return pub;
+    if (!accountSession()?.token) {
+      pub = new Map();
+      pubLoaded = true;
+      return pub;
+    }
+    try {
+      const out = await noteApi("my-status");
+      pub = new Map((out.items || []).map(x => [String(x.sourceNoteKey), x]));
+      pubLoaded = true;
+      reconcileLocalModeration();
+    } catch (_) {}
+    return pub;
+  }
+
+  function resolve(card) {
+    if(!card || card.classList.contains("st37-public-card"))return null;
+    const id=card.dataset.noteId;
+    if(!id)return null;
+    return (C.getData?.()?.notes||[]).find(n=>String(n.id)===String(id))||null;
+  }
+
+  function statusOf(note) {
+    const state = pub.get(String(note.id));
+    if (state?.status) return state.status;
+    if (state?.isPublic) return "published";
+    if (note.publicModerationStatus) return note.publicModerationStatus;
+    if (note.publicPublished) return "published";
+    return "private";
+  }
+
+  function enhance(card) {
+    if (!(card instanceof Element) || card.classList.contains("st37-public-card")) return;
+    const note = resolve(card);
+    if (!note?.id) return;
+    if (!accountSession()?.token) {
+      card.querySelector(".st37-note-action")?.remove();
+      return;
+    }
+
+    if (note.sourceType === "public_note" || note.phase === "saved_from_community") {
+      card.querySelector(".st37-note-action")?.remove();
+      if (!card.querySelector(".st37-note-origin")) {
+        const origin = document.createElement("div");
+        origin.className = "st37-note-origin";
+        origin.textContent = "СОХРАНЕНО ИЗ АНОНИМНОГО СООБЩЕСТВА · ПРИВАТНАЯ КОПИЯ";
+        card.appendChild(origin);
+      }
+      return;
+    }
+
+    let button = card.querySelector(".st37-note-action");
+    if (!button) {
+      button = document.createElement("button");
+      button.className = "st37-note-action";
+      button.type = "button";
+      card.appendChild(button);
+    }
+    const status = statusOf(note);
+    button.classList.remove("pending","published","rejected","unpublished");
+    if (status === "pending") {
+      button.classList.add("pending");
+      button.textContent = "На модерации · отозвать";
+    } else if (status === "published") {
+      button.classList.add("published");
+      button.textContent = "Опубликовано анонимно · убрать";
+    } else if (status === "rejected") {
+      button.classList.add("rejected");
+      button.textContent = "Не опубликовано · предложить снова";
+    } else if (status === "unpublished") {
+      button.classList.add("unpublished");
+      button.textContent = "Снято с публикации · предложить снова";
+    } else {
+      button.textContent = "Предложить к публикации";
+    }
+    button.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      togglePublication(note, button);
+    };
+  }
+
+  function scan(root = document) {
+    const cards = root.matches?.(".st34-note-card") ? [root] : root.querySelectorAll?.(".st34-note-card") || [];
+    for (const card of cards) enhance(card);
+  }
+
+  function setLocalStatus(note, status, publicNoteId = null) {
+    note.publicModerationStatus = status;
+    note.publicPublished = status === "published";
+    if (publicNoteId) note.publicNoteId = publicNoteId;
+    C.save?.();
+  }
+
+  async function togglePublication(note, button) {
+    if (publicationBusy) return;
+    publicationBusy = true;
+    button.disabled = true;
+    try {
+      await refreshPub(true);
+      const current = pub.get(String(note.id));
+      const status = current?.status || statusOf(note);
+      if (status === "published") {
+        if (!confirm("Убрать эту заметку из анонимного сообщества? Личная заметка останется у тебя.")) return;
+        await noteApi("unpublish", {sourceNoteKey:note.id});
+        const next = {...current, id:current?.id || note.publicNoteId || null, sourceNoteKey:note.id, status:"unpublished", isPublic:false};
+        pub.set(String(note.id), next);
+        setLocalStatus(note, "unpublished", next.id);
+        C.recordEvent?.("public_note_unpublish", {noteId:note.id}, false);
+      } else if (status === "pending") {
+        if (!confirm("Отозвать запрос на публикацию? Личная заметка останется у тебя.")) return;
+        await noteApi("cancel-submission", {sourceNoteKey:note.id});
+        const next = {...current, id:current?.id || note.publicNoteId || null, sourceNoteKey:note.id, status:"private", isPublic:false};
+        pub.set(String(note.id), next);
+        setLocalStatus(note, "private", next.id);
+        C.recordEvent?.("public_note_moderation_withdraw", {noteId:note.id}, false);
+      } else {
+        if (!confirm("Отправить эту заметку на модерацию? Если SETKA одобрит её, в сообщество попадут только текст и связанный визуальный паттерн. ID тестировщика, сессия, симптомы, пульс и личная история публично не показываются.")) return;
+        await C.sandbox?.sync?.();
+        const out = await noteApi("submit", {note:clone(note)});
+        const next = {id:out.id, sourceNoteKey:note.id, status:out.status || "pending", isPublic:false, submittedAt:out.submittedAt || new Date().toISOString()};
+        pub.set(String(note.id), next);
+        setLocalStatus(note, next.status, out.id);
+        C.recordEvent?.("public_note_moderation_submit", {noteId:note.id, publicNoteId:out.id, patternId:note.patternId || note.config?.patternId || null}, false);
+      }
+      schedulePrivateArchive(500);
+    } catch (e) {
+      console.warn("SETKA note moderation action failed", e);
+      alert("Не удалось изменить запрос на публикацию.");
+    } finally {
+      publicationBusy = false;
+      button.disabled = false;
+      scan();
+    }
+  }
+
+  function drawPreview(canvas, note) {
+    if (note.visualSnapshot?.dataUrl) {
+      const img = new Image();
+      img.onload = () => {
+        const ctx = canvas.getContext("2d"), w = canvas.width, h = canvas.height;
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, w, h);
+        const s = Math.min(w / img.width, h / img.height), dw = img.width * s, dh = img.height * s;
+        ctx.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
+      };
+      img.src = note.visualSnapshot.dataUrl;
+      return;
+    }
+    try { Setka.renderPreview?.(canvas, clone(note.config), note.frame ?? 44, note.patternId); } catch (_) {}
+  }
+
+  function copyLocal(note) {
+    const d = C.getData?.();
+    if (!d?.notes || d.notes.some(x => x.publicNoteId === note.id && x.sourceType === "public_note")) return false;
+    const now = new Date().toISOString(), pid = note.patternId || note.config?.patternId || null;
+    const local = {
+      id: `public-note-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+      text: note.text,
+      observedAt: now,
+      localOffsetMinutes: -new Date().getTimezoneOffset(),
+      phase: "saved_from_community",
+      sessionId: null,
+      sessionElapsedMs: null,
+      requestKey: null,
+      patternId: pid,
+      patternVersion: note.patternVersion || 1,
+      sourceType: "public_note",
+      sourceId: note.id,
+      communityId: null,
+      publicNoteId: note.id,
+      originalPublishedAt: note.createdAt || null,
+      configHash: note.configKey || null,
+      config: clone(note.config || {}),
+      frame: note.frame ?? null,
+      visualSnapshot: clone(note.visualSnapshot || null),
+      state: {
+        view: "memory",
+        patternId: pid,
+        patternVersion: note.patternVersion || 1,
+        sourceType: "public_note",
+        sourceId: note.id,
+        communityId: null,
+        config: clone(note.config || {}),
+        configKey: note.configKey || null,
+        frame: note.frame ?? null
+      }
+    };
+    d.notes.push(local);
+    C.save?.();
+    C.recordEvent?.("public_note_saved_local", {publicNoteId:note.id, noteId:local.id, patternId:pid}, false);
+    window.dispatchEvent(new CustomEvent("setka:v34-sync-request"));
+    schedulePrivateArchive(400);
+    return true;
+  }
+
+  async function savePublic(note, button) {
+    button.disabled = true;
+    try {
+      await noteApi("save", {id:note.id});
+      copyLocal(note);
+      button.textContent = "Сохранено ✓";
+      button.classList.add("saved");
+    } catch (_) {
+      button.disabled = false;
+      alert("Не удалось сохранить заметку.");
+    }
+  }
+
+  async function loadPublicNotes(limit = 100) {
+    const out = await noteApi("feed", {limit});
+    return Array.isArray(out.items) ? out.items : [];
+  }
+
+  async function savePublicNote(note) {
+    await noteApi("save", {id:note.id});
+    copyLocal(note);
+    return true;
+  }
+
+  function openPublicNote(note) {
+    const pid = note.patternId || note.config?.patternId || null;
+    const cfg = {...clone(note.config || {}), ...(pid ? {patternId:pid} : {})};
+    C.hideLayer?.();
+    Setka.openConfig?.(cfg, {type:"public_note", id:note.id, patternId:pid, baseId:pid, noteId:note.id, frame:note.frame ?? 44});
+  }
+
+  async function showFeed() {
+    C.setNav?.("me");
+    const body = C.screen("Заметки сообщества", "Только заметки, которые автор предложил и SETKA одобрила после модерации.", "АНОНИМНОЕ СООБЩЕСТВО", C.showMe);
+    const privacy = document.createElement("div");
+    privacy.className = "st37-privacy";
+    privacy.textContent = "Публичная заметка содержит только текст и связанный визуальный паттерн. ID тестировщика и личная история автора остаются закрытыми.";
+    body.appendChild(privacy);
+    const loading = document.createElement("div");
+    loading.className = "st-empty";
+    loading.textContent = "Загружаю заметки…";
+    body.appendChild(loading);
+    try {
+      const out = await noteApi("feed", {limit:100});
+      loading.remove();
+      const items = out.items || [];
+      if (!items.length) {
+        body.insertAdjacentHTML("beforeend", '<div class="st-empty">Пока нет заметок, прошедших модерацию.</div>');
+        return;
+      }
+      for (const note of items) {
+        const card = document.createElement("article");
+        card.className = "st34-note-card st37-public-card";
+        card.innerHTML = `<div class="st34-note-text">${esc(note.text)}</div><div class="st37-community-meta">${esc(C.dt?.(note.createdAt) || "")}${note.saves ? ` · сохранили ${Number(note.saves)}` : ""}</div>`;
+        if (note.config) {
+          const canvas = document.createElement("canvas");
+          canvas.className = "st37-community-preview";
+          canvas.width = 720;
+          canvas.height = 500;
+          card.appendChild(canvas);
+          requestAnimationFrame(() => drawPreview(canvas, note));
+        }
+        const actions = document.createElement("div");
+        actions.className = "st37-community-actions";
+        const open = document.createElement("button");
+        open.className = "st37-open";
+        open.textContent = "Открыть паттерн";
+        open.onclick = () => {
+          C.hideLayer?.();
+          const pid = note.patternId || note.config?.patternId || null;
+          const cfg = {...clone(note.config || {}), ...(pid ? {patternId:pid} : {})};
+          Setka.openConfig?.(cfg, {type:"public_note", id:note.id, patternId:pid, baseId:pid, noteId:note.id});
+        };
+        const save = document.createElement("button");
+        save.className = "st37-save";
+        const already = C.getData?.()?.notes?.some(x => x.publicNoteId === note.id && x.sourceType === "public_note");
+        save.textContent = already ? "Сохранено ✓" : "Сохранить себе";
+        if (already) save.classList.add("saved");
+        else save.onclick = () => savePublic(note, save);
+        actions.append(open, save);
+        card.appendChild(actions);
+        body.appendChild(card);
+      }
+    } catch (_) {
+      loading.textContent = "Не удалось загрузить сообщество.";
+    }
+  }
+
+  function showClaim() {
+    C.setNav?.("me");
+    const body = C.screen("ID тестировщика", "Введи выданный SETKA ID на этом устройстве. Уже накопленная здесь история сразу привяжется к тестовому профилю.", "ТЕСТИРОВАНИЕ", C.showMe);
+    const privacy = document.createElement("div");
+    privacy.className = "st37-privacy";
+    privacy.textContent = "ID нужен только для связи этого браузера с исследовательскими данными. Он не показывается другим участникам и не появляется рядом с публичными заметками.";
+    body.appendChild(privacy);
+    const input = document.createElement("input");
+    input.className = "st-input";
+    input.autocapitalize = "characters";
+    input.autocomplete = "off";
+    input.placeholder = "SETKA-XXXX-XXXX-XXXX";
+    body.appendChild(input);
+    const button = document.createElement("button");
+    button.className = "st-primary";
+    button.textContent = "Подключить этот ID";
+    button.onclick = async () => {
+      if (!input.value.trim()) return;
+      button.disabled = true;
+      button.textContent = "Подключаю…";
+      try {
+        const out = await claim(input.value);
+        const archiveText = out.privateArchiveSynced
+          ? "Накопленная история этого браузера уже выгружена в приватное облачное хранилище. Новые данные будут синхронизироваться автоматически."
+          : "ID подключён. Основные данные привязаны; точный приватный архив повторит синхронизацию автоматически при следующем соединении.";
+        body.innerHTML = `<div class="st37-id-card"><div class="st37-id-value">${esc(out.testerId)}</div><div class="st37-id-copy">Готово. ${esc(archiveText)}</div></div>`;
+      } catch (e) {
+        button.disabled = false;
+        button.textContent = "Подключить этот ID";
+        alert(e?.status === 409 ? "Этот ID уже привязан к другому устройству." : "ID не найден или уже недействителен.");
+      }
+    };
+    body.appendChild(button);
+  }
+
+
+  const observer = new MutationObserver(records => {
+    for (const record of records) {
+      for (const node of record.addedNodes) {
+        if (node.nodeType === 1) scan(node);
+      }
+    }
+  });
+  observer.observe(document.documentElement, {childList:true, subtree:true});
+
+  refreshTester();
+  refreshPub().then(() => scan());
+  scan();
+
+  C.testerIdentity = {status:refreshTester, claim, syncPrivateArchive:() => syncPrivateArchive(true)};
+  C.publicNotes = {feed:showFeed, load:loadPublicNotes, save:savePublicNote, open:openPublicNote, drawPreview, refresh:() => refreshPub(true)};
+  window.__SETKA_TESTER_COMMUNITY_V34__ = 7;
+})();

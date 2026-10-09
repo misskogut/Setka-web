@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#000000" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <title>SETKA v34 · отдельная проверка GitHub Pages</title>
+  <link rel="stylesheet" href="styles.css?v=34-standalone" />
+  <link rel="stylesheet" href="experience-v2.css?v=39-library-scroll-2" />
+</head>
+<body>
+<main id="app">
+  <section id="libraryScreen" class="screen active" aria-label="Библиотека паттернов">
+    <div class="library-pager" aria-label="Разделы библиотеки">
+      <button id="libraryPagerButton" class="pager-button active" type="button" aria-label="Исходные паттерны"><span class="pager-dot-mark"></span></button>
+      <button id="communityPagerButton" class="pager-button" type="button" aria-label="Библиотека сообщества"><span class="community-mark"><span></span><i></i></span></button>
+      <button id="favoritesPagerButton" class="pager-button" type="button" aria-label="Мои сохраненные конфигурации"><span class="pager-heart">♥</span></button>
+    </div>
+    <div id="libraryTitle" class="library-title">Паттерны</div>
+    <div id="librarySwipeArea" class="panel-wrap">
+      <div id="allPatternsPanel" class="pattern-panel" aria-label="Исходные паттерны"></div>
+      <div id="communityPanel" class="pattern-panel hidden-right" aria-label="Конфигурации сообщества"></div>
+      <div id="favoritesPanel" class="pattern-panel hidden-right" aria-label="Мои сохраненные конфигурации"></div>
+    </div>
+    <div class="swipe-hint">СВАЙП ← → МЕЖДУ ПАНЕЛЯМИ</div>
+  </section>
+
+  <section id="gameScreen" class="screen" aria-label="Паттерн">
+    <canvas id="patternCanvas"></canvas>
+    <div class="game-ui">
+      <button id="favoriteButton" class="game-button" type="button" aria-label="Сохранить текущую конфигурацию">♡</button>
+      <button id="libraryButton" class="game-button" type="button" aria-label="Вернуться назад"><svg viewBox="0 0 30 30" aria-hidden="true"><g fill="#fff"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="12" y="3" width="6" height="6" rx="1"/><rect x="21" y="3" width="6" height="6" rx="1"/><rect x="3" y="12" width="6" height="6" rx="1"/><rect x="12" y="12" width="6" height="6" rx="1"/><rect x="21" y="12" width="6" height="6" rx="1"/><rect x="3" y="21" width="6" height="6" rx="1"/><rect x="12" y="21" width="6" height="6" rx="1"/><rect x="21" y="21" width="6" height="6" rx="1"/></g></svg></button>
+      <button id="prevButton" class="side-arrow" type="button" aria-label="Предыдущий паттерн"><svg viewBox="0 0 30 60" aria-hidden="true"><path d="M23 6 L8 30 L23 54" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button id="nextButton" class="side-arrow" type="button" aria-label="Следующий паттерн"><svg viewBox="0 0 30 60" aria-hidden="true"><path d="M7 6 L22 30 L7 54" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <div id="modeLabel" class="mode-label"></div>
+      <div class="bottom-controls">
+        <button id="colorButton" class="round-control" type="button" aria-label="Следующий цветовой режим"><div id="colorDots" aria-hidden="true"></div><span class="droplet" aria-hidden="true"></span></button>
+        <button id="instructionsButton" class="round-control" type="button" aria-label="Инструкция по свайпам"><svg class="key-icon" viewBox="0 0 36 36" aria-hidden="true"><circle cx="12" cy="13" r="7" fill="none" stroke="#fff" stroke-width="2.5"/><path d="M17 18 L31 32 M25 26 L29 22 M21 22 L25 18" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      </div>
+      <div id="instructionsModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="instructionsTitle"><div class="instructions"><h2 id="instructionsTitle">Управление паттерном</h2><div class="gesture-group"><strong>1 палец</strong><div class="gesture-row"><span>Слева ↑↓</span><span>Количество щупалец: вверх больше, вниз меньше</span></div><div class="gesture-row"><span>Справа ↑↓</span><span>Размер кругов: вверх больше, вниз меньше</span></div><div class="gesture-row"><span>Сверху ←→</span><span>Толщина линий</span></div><div class="gesture-row"><span>Снизу ←→</span><span>Скорость движения</span></div></div><div class="gesture-group"><strong>2 пальца</strong><div class="gesture-row"><span>Слева ↑↓</span><span>Длина щупалец: вверх длиннее, вниз короче</span></div><div class="gesture-row"><span>Справа ↑↓</span><span>Плотность кругов: вверх плотнее, вниз реже</span></div><div class="gesture-row"><span>Снизу ←→</span><span>Скорость перелива цвета</span></div></div><button id="closeInstructionsButton" class="close-modal" type="button">Понятно</button></div></div>
+      <div id="toast" class="toast" aria-live="polite"></div>
+    </div>
+  </section>
+</main>
+<script>
+/* Isolated test storage. Production SETKA and test SETKA share the Pages origin,
+   but MUST NOT share user notes, favorites, identity tokens or visual cache. */
+(function(){
+  "use strict";
+  const prefix="setka-qa-v34-20261009:";
+  try{
+    const p=Storage.prototype;
+    const get=p.getItem,put=p.setItem,remove=p.removeItem,key=p.key,clear=p.clear;
+    p.getItem=function(k){return get.call(this,prefix+String(k))};
+    p.setItem=function(k,v){return put.call(this,prefix+String(k),v)};
+    p.removeItem=function(k){return remove.call(this,prefix+String(k))};
+    p.key=function(i){
+      const keys=[];
+      for(let j=0;j<this.length;j++){const k=key.call(this,j);if(k&&k.startsWith(prefix))keys.push(k.slice(prefix.length))}
+      return keys[i]??null;
+    };
+    p.clear=function(){
+      const keys=[];
+      for(let j=0;j<this.length;j++){const k=key.call(this,j);if(k&&k.startsWith(prefix))keys.push(k)}
+      for(const k of keys)remove.call(this,k);
+    };
+  }catch(e){document.documentElement.dataset.qaStorageError="1";console.error("SETKA QA storage isolation unavailable",e)}
+  try{
+    const op=IDBFactory.prototype.open;
+    IDBFactory.prototype.open=function(name,...rest){return op.call(this,prefix+String(name),...rest)};
+  }catch(e){console.warn("SETKA QA IDB isolation unavailable",e)}
+})();
+</script>
+<script src="app-v7-multipattern.js?v=42-pattern-info-preview-2"></script>
+<script src="standalone-core-v34.js?v=34-standalone"></script>
+<script src="standalone-runtime-v34.js?v=35.2-exposure"></script>
+<script src="standalone-favorites-repair-v34.js?v=34-favorites-vault-1"></script>
+<script src="standalone-favorite-native-guard-v34.js?v=34-saved-native-2"></script>
+<script src="standalone-multipattern-bridge-v34.js?v=41-pattern-note-integrity-1"></script>
+<!-- Legacy all-pattern info overlay removed: it always used tentacle-orbit. -->
+<script src="standalone-advanced-v34.js?v=42-pattern-info-preview-2"></script>
+<script src="standalone-analysis-v34.js?v=34-standalone"></script>
+<script src="standalone-user-ui-v34.js?v=41-pattern-note-integrity-1"></script>
+<script src="standalone-session-patterns-v34.js?v=34-stable-usage-2"></script>
+<script src="standalone-states-v34.js?v=34-states-human-1"></script>
+<script src="standalone-state-timeline-v34.js?v=34-state-time-1"></script>
+<script src="standalone-session-states-v34.js?v=34-session-states-1"></script>
+<script src="standalone-explore-v34.js?v=34-explore-1"></script>
+<script src="standalone-bootstrap-v34.js?v=38-real-community"></script>
+<script src="standalone-config-links-v34.js?v=34-config-2"></script>
+<script src="standalone-controls-v34.js?v=34.9"></script>
+<script src="standalone-visual-cache-v40.js?v=40-visual-cache-2"></script>
+<script src="standalone-privacy-egress-v40.js?v=40-egress-3"></script>
+<script src="standalone-sync-v34.js?v=41-hydration-safe-sync-4"></script>
+<script src="standalone-navigation-v34.js?v=34-nav-2"></script>
+<script src="standalone-note-snapshot-fix-v34.js?v=41-pattern-note-integrity-1"></script>
+<script src="standalone-public-visual-capsules-v40.js?v=40-renderer-fingerprint-3"></script>
+<script src="standalone-tester-community-v34.js?v=41-pattern-note-integrity-1"></script>
+<script src="standalone-privacy-contract-v40.js?v=40-capsule-consent-1"></script>
+<script src="standalone-tester-cabinet-v40.js?v=40-integrated-account-9"></script>
+<script src="standalone-private-corpus-v40.js?v=41-session-bound-authority-3"></script>
+<script src="standalone-research-bridge-v40.js?v=40-consent-cutoff-3"></script>
+<script src="standalone-community-cloud-v38.js?v=41-pattern-note-integrity-1"></script>
+</body>
+</html>
