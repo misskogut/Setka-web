@@ -76,7 +76,7 @@ async function go(){
   await tiles.nth(1).locator(".st34-info").click({force:true});
   await page.locator("#st34InfoOverlay .st34-pattern-scenarios").waitFor();
   const scenarioText=await page.locator("#st34InfoOverlay .st34-pattern-scenarios").innerText();
-  assert.match(scenarioText,/Сон/);
+  assert.match(scenarioText,/Уснуть/);
   assert.match(scenarioText,/67%/);
   assert.match(scenarioText,/2 сесс/);
   assert.match(scenarioText,/33%/);
