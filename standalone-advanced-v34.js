@@ -85,10 +85,25 @@
       topIntents:[...intents].sort((a,b)=>b[1]-a[1]).slice(0,4).map(([key,n])=>({key,share:sum?n/sum:0})),source:"local"};
   }
   async function remoteStats(t){
-    const cloud=C.cloudCommunity?.status?.()||{};
+    // Do not render misleading local numbers while the connected-tester cloud feed
+    // is still loading. The async feed is the source of truth for public metrics.
+    let cloud=C.cloudCommunity?.status?.()||{};
+    if(!cloud.lastOkAt && C.cloudCommunity?.refresh){
+      await Promise.race([
+        new Promise(resolve=>{
+          const done=()=>{window.removeEventListener("setka:community-cloud",done);resolve()};
+          window.addEventListener("setka:community-cloud",done,{once:true});
+          setTimeout(done,2500);
+        }),
+        Promise.resolve(C.cloudCommunity.refresh()).then(()=>{}).catch(()=>{})
+      ]);
+      cloud=C.cloudCommunity?.status?.()||{};
+    }
+    if(!cloud.lastOkAt)return null;
     if(t.kind==="base"){
       const p=(cloud.patternMetrics||[]).find(x=>x.patternId===t.patternId);
-      if(!p)return null;
+      if(!p)return{accounts:0,sessions:0,exposures:0,likeCount:0,
+        totalUsageMs:0,source:"remote",noObservations:true};
       return{accounts:Number(p.viewingAccounts??p.activityAccounts??p.uniqueParticipants??p.uniqueUsers)||0,
         sessions:Number(p.sessions??p.sessionCount)||0,exposures:Number(p.exposures)||0,
         likeCount:Number(p.likes??p.saves)||0,savedConfigurations:Number(p.savedConfigurations??p.configurations)||0,
@@ -111,7 +126,10 @@
     C.recordEvent("pattern_info",{kind:t.kind,patternId:t.patternId,communityId:t.communityId,configKey:t.configKey},false);
     const local=localStats(t),remote=await remoteStats(t),s=remote||local,body=o.querySelector("#st34InfoBody");if(!body)return;const intentLabels=Object.fromEntries(C.INTENTS);
     const accountCount=s.accounts??s.activityProfiles??0,heart=t.kind==="base"?(s.likeCount??s.saveCount??0):(s.configSaveCount??s.saveCount??0),heartLabel=t.kind==="base"?"ЛАЙКОВ ПАТТЕРНУ":"АККАУНТОВ СОХРАНИЛИ";
-    body.innerHTML=`<div class="st34-statgrid"><div class="st34-statbox"><strong>${accountCount||0}</strong><span>АККАУНТОВ С ПРОСМОТРАМИ</span></div><div class="st34-statbox"><strong>${s.sessions||0}</strong><span>СЕССИЙ</span></div><div class="st34-statbox"><strong>${s.exposures||0}</strong><span>ЭПИЗОДОВ ПРОСМОТРА</span></div><div class="st34-statbox"><strong>♥ ${heart||0}</strong><span>${heartLabel}</span></div><div class="st34-statbox"><strong>${Math.round((s.totalUsageMs||0)/60000)} мин</strong><span>В ПАТТЕРНЕ</span></div>${s.savedConfigurations!=null?`<div class="st34-statbox"><strong>${s.savedConfigurations}</strong><span>СОХРАНЁННЫХ КОНФИГУРАЦИЙ</span></div>`:""}${s.configurationSaves!=null?`<div class="st34-statbox"><strong>${s.configurationSaves}</strong><span>СОХРАНЕНИЙ КОНФИГУРАЦИЙ</span></div>`:""}${s.avgDelta!=null?`<div class="st34-statbox"><strong>${s.avgDelta>0?"+":""}${Number(s.avgDelta).toFixed(1)}</strong><span>СОСТОЯНИЕ Δ</span></div>`:""}${s.improvedRate!=null?`<div class="st34-statbox"><strong>${Math.round(Number(s.improvedRate)*100)}%</strong><span>ВЫШЕ ПОСЛЕ</span></div>`:""}</div>${(s.topIntents||[]).length?`<div class="st-label">Чаще используют для</div>${s.topIntents.map(x=>`<div class="st-row" style="margin:8px 0"><div class="st-grow st-muted">${esc(intentLabels[x.key]||x.key)}</div><div>${Math.round((x.share||0)*100)}%</div></div>`).join("")}`:""}<div class="st-muted" style="margin-top:16px">Источник: ${s.source==="remote"?"общая агрегированная статистика сообщества":"наблюдения на этом устройстве"}. Длительность считается по фактическим эпизодам паттерна, а не по времени всей сессии.</div>`;
+    const timeMs=Math.max(0,Number(s.totalUsageMs)||0),timeText=timeMs===0?"0 мин":timeMs<60000?`${Math.round(timeMs/1000)} сек`:`${Math.round(timeMs/60000)} мин`;
+    const noData=s.noObservations||(!s.exposures&&!(s.totalUsageMs>0));
+    const statusText=noData?"Просмотры этого паттерна пока не зарегистрированы среди подключённых тестировщиков. Это не означает, что его никто не использовал.":"Показатели относятся именно к этому паттерну.";
+    body.innerHTML=`<div class="st34-statgrid"><div class="st34-statbox"><strong>${accountCount||0}</strong><span>АККАУНТОВ С ПРОСМОТРАМИ</span></div><div class="st34-statbox"><strong>${s.sessions||0}</strong><span>СЕССИЙ</span></div><div class="st34-statbox"><strong>${s.exposures||0}</strong><span>ЭПИЗОДОВ ПРОСМОТРА</span></div><div class="st34-statbox"><strong>♥ ${heart||0}</strong><span>${heartLabel}</span></div><div class="st34-statbox"><strong>${timeText}</strong><span>В ПАТТЕРНЕ</span></div>${s.savedConfigurations!=null?`<div class="st34-statbox"><strong>${s.savedConfigurations}</strong><span>СОХРАНЁННЫХ КОНФИГУРАЦИЙ</span></div>`:""}${s.configurationSaves!=null?`<div class="st34-statbox"><strong>${s.configurationSaves}</strong><span>СОХРАНЕНИЙ КОНФИГУРАЦИЙ</span></div>`:""}${s.avgDelta!=null?`<div class="st34-statbox"><strong>${s.avgDelta>0?"+":""}${Number(s.avgDelta).toFixed(1)}</strong><span>СОСТОЯНИЕ Δ</span></div>`:""}${s.improvedRate!=null?`<div class="st34-statbox"><strong>${Math.round(Number(s.improvedRate)*100)}%</strong><span>ВЫШЕ ПОСЛЕ</span></div>`:""}</div>${(s.topIntents||[]).length?`<div class="st-label">Чаще используют для</div>${s.topIntents.map(x=>`<div class="st-row" style="margin:8px 0"><div class="st-grow st-muted">${esc(intentLabels[x.key]||x.key)}</div><div>${Math.round((x.share||0)*100)}%</div></div>`).join("")}`:""}<div class="st-muted" style="margin-top:16px">${esc(statusText)} Источник: ${s.source==="remote"?"подключённые тестировщики SETKA":"локальная история этого браузера; облако недоступно"}. Длительность считается по эпизодам конкретного паттерна, не по времени всей сессии.</div>`;
   }
   window.addEventListener("pointerup",e=>{const info=e.target?.closest?.(".st34-info");if(!info)return;const tile=info.closest(".pattern-tile");if(!tile)return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation?.();showInfo(tile)},true);new MutationObserver(()=>{injectInfo();injectLocalBadges()}).observe(document.documentElement,{subtree:true,childList:true});injectInfo();
 
