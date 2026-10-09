@@ -175,7 +175,7 @@
   }
 
   function pulseForSession(sid){
-    const a=(C.getData().physio?.samples||[]).filter(x=>x.sessionId===sid&&x.metric==="heart_rate"&&Number.isFinite(Number(x.value)));
+    const a=(C.getData().physio?.samples||[]).filter(x=>x.sessionId===sid&&x.metric==="heart_rate"&&x.value!=null&&Number.isFinite(Number(x.value)));
     if(!a.length)return null;const vals=a.map(x=>Number(x.value));
     return{avg:Math.round(vals.reduce((p,q)=>p+q,0)/vals.length),min:Math.min(...vals),max:Math.max(...vals)};
   }
@@ -210,7 +210,7 @@
       if(s.requestKey)req.set(s.requestKey,(req.get(s.requestKey)||0)+1);
       if(s.preState)pre.set(Number(s.preState),(pre.get(Number(s.preState))||0)+1);
       parts.set(daypart(s.startedAt),(parts.get(daypart(s.startedAt))||0)+1);
-      if(Number.isFinite(Number(s.preState))&&Number.isFinite(Number(s.postState))){comparable++;if(Number(s.postState)>Number(s.preState))improved++}
+      if(s.preState!=null&&s.postState!=null&&Number.isFinite(Number(s.preState))&&Number.isFinite(Number(s.postState))){comparable++;if(Number(s.postState)>Number(s.preState))improved++}
       for(const u of s.usage||[]){
         if(!u?.config)continue;const key=u.configKey||Setka.configKey?.(u.config)||JSON.stringify(u.config);
         let r=usage.get(key);if(!r){r={key,config:clone(u.config),ms:0,sessions:new Set(),requests:new Map(),saved:false};usage.set(key,r)}
@@ -254,7 +254,7 @@
         if(t.includes("Остановить датчик"))stop=btn.onclick;
       }
     }
-    const d=C.getData(),samples=(d.physio?.samples||[]).filter(x=>x.metric==="heart_rate"&&Number.isFinite(Number(x.value))),vals=samples.map(x=>Number(x.value));
+    const d=C.getData(),samples=(d.physio?.samples||[]).filter(x=>x.metric==="heart_rate"&&x.value!=null&&Number.isFinite(Number(x.value))),vals=samples.map(x=>Number(x.value));
     const b=C.screen("Пульс","Если подключить совместимый пульсометр, SETKA сможет сопоставлять изменения пульса с твоими сессиями.","МОИ ДАННЫЕ",showMe);
     if(vals.length){
       const latest=vals.at(-1),avg=Math.round(vals.reduce((p,q)=>p+q,0)/vals.length);
