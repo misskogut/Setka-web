@@ -65,16 +65,26 @@
     return exposure;
   }
   function openExposure(reason="state",state=Setka.getState?.()){
-    const st=canonicalState(state);if(document.hidden||!st){closeExposure(reason);return}
+    const st=canonicalState(state),covered=document.getElementById("st34Layer")&&!document.getElementById("st34Layer").classList.contains("hidden");if(document.hidden||covered||document.getElementById("instructionsModal")?.classList.contains("open")||!st){closeExposure(reason);return}
     const s=activeSession(),sessionId=s?.id||null,context=contextOf(s),requestKey=s?.requestKey||null,sessionType=s?(context==="exploration"?"exploration":"outcome"):null;
     if(current&&current.configKey===st.configKey&&current.sessionId===sessionId&&current.context===context)return;
     closeExposure(reason);
     const now=Date.now();current={exposureId:makeId(),visitId,sessionId,sessionType,context,requestKey,...st,entryReason:reason,startedAt:new Date(now).toISOString(),startedMs:now,saved:!!state?.favoriteId};
   }
   function restartIfChanged(reason="config-change"){
-    const st=canonicalState();if(!st){closeExposure(reason);return}
+    const st=canonicalState();if(!st||document.hidden||!document.getElementById("st34Layer")?.classList.contains("hidden")){closeExposure(reason);return}
     if(!current||current.configKey!==st.configKey||current.context!==contextOf(activeSession())||current.sessionId!==(activeSession()?.id||null))openExposure(reason,Setka.getState?.())
   }
+
+  window.addEventListener("setka:overlay-visibility",e=>{
+    if(e.detail?.visible)closeExposure("overlay-open");
+    else if(Setka.getState?.()?.view==="game")openExposure("overlay-close",Setka.getState?.());
+  });
+  const instructions=document.getElementById("instructionsModal");
+  if(instructions)new MutationObserver(()=>{
+    if(instructions.classList.contains("open"))closeExposure("instructions-open");
+    else if(Setka.getState?.()?.view==="game")openExposure("instructions-close",Setka.getState?.());
+  }).observe(instructions,{attributes:true,attributeFilter:["class"]});
 
   window.addEventListener("setka:pattern-open",e=>openExposure("pattern-open",e.detail?.state||Setka.getState?.()));
   window.addEventListener("setka:gesture-end",()=>restartIfChanged("gesture-end"));
