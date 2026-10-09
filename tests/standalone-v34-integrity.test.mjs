@@ -32,7 +32,7 @@ function localStatsWith(dataObject, favorites = []) {
 
 test("pattern totals use relevant exposure intervals, never all time in a mixed-pattern session", () => {
   const data = {
-    sessions: [{id:"session-one",measuredActiveMs:900000}],
+    sessions: [{id:"session-one",requestKey:"focus",measuredActiveMs:900000}],
     patternExposures: [
       {patternId:"dandelion",configKey:"dandelion|a",sessionId:"session-one",requestKey:"sleep",durationMs:10000},
       {patternId:"tentacle-orbit",configKey:"tentacle-orbit|a",sessionId:"session-one",requestKey:"focus",durationMs:800000},
@@ -44,13 +44,17 @@ test("pattern totals use relevant exposure intervals, never all time in a mixed-
   assert.equal(base.totalUsageMs,30000);
   assert.equal(base.sessions,1);
   assert.equal(base.exposures,2);
-  assert.equal(base.saveCount,1);
+  assert.equal(base.likeCount,1);
+  assert.equal(base.savedConfigurations,1);
+  assert.equal(base.configurationSaves,1);
   assert.equal(base.topIntents[0].key,"focus");
-  assert.ok(Math.abs(base.topIntents[0].share-2/3)<0.001);
+  assert.equal(base.topIntents[0].count,1);
+  assert.equal(base.topIntents[0].share,1);
+  assert.equal(base.scenarioSessions,1);
   const exact=fn({kind:"community",patternId:"dandelion",configKey:"dandelion|a"});
   assert.equal(exact.totalUsageMs,10000);
   assert.equal(exact.exposures,1);
-  assert.equal(exact.saveCount,1);
+  assert.equal(exact.configSaveCount,1);
 });
 
 test("missing exposure history is not invented from session duration", () => {
@@ -95,4 +99,36 @@ test("Stereo DNA preview gets visible center-cropped points, not 300 compressed 
   assert.match(js,/const previewPoints=thumb\?Math\.min\(72,c\.numPoints\)/);
   assert.match(js,/drawDnaSpiral\(t,-c\.eyeSeparation\/2,-c\.stereoAngle,previewConfig,phase,previewPoints\)/);
   assert.match(js,/getPatternTitle:id=>IDS\.has\(id\)\?/);
+});
+
+test("one pattern counts a scenario once per session even if dozens of configuration changes", () => {
+  const exposures=[];
+  for(let i=0;i<238;i++)exposures.push({patternId:"dandelion",configKey:"dandelion|"+i,
+    sessionId:i<100?"a":i<180?"b":"c",requestKey:"sleep",durationMs:150});
+  exposures.push({patternId:"dandelion",configKey:"dandelion|other",sessionId:"d",requestKey:"focus",durationMs:10000});
+  const fn=localStatsWith({sessions:[{id:"a",requestKey:"sleep"},{id:"b",requestKey:"sleep"},{id:"c",requestKey:"sleep"},{id:"d",requestKey:"focus"}],patternExposures:exposures});
+  const x=fn({kind:"base",patternId:"dandelion"});
+  assert.equal(x.exposures,239);
+  assert.equal(x.scenarioSessions,4);
+  assert.equal(x.topIntents[0].key,"sleep");
+  assert.equal(x.topIntents[0].count,3);
+  assert.equal(x.topIntents[0].share,.75);
+  assert.equal(x.topIntents[1].key,"focus");
+  assert.equal(x.topIntents[1].count,1);
+  assert.equal(x.totalUsageMs,45700);
+});
+
+test("source scopes stay distinct: cloud totals do not substitute a different pattern's intents", () => {
+  const js=read("standalone-advanced-v34.js");
+  assert.match(js,/const scenarios=local\.topIntents\|\|\[\]/);
+  assert.match(js,/scenarioSessions/);
+  assert.match(js,/один сценарий считается один раз на сессию/i);
+  assert.match(js,/Облачная сводка подключённых тестировщиков не содержит распределения целей/i);
+  assert.match(js,/patternId:target\.patternId/);
+});
+
+test("zero-valued pattern parameters survive config normalization", () => {
+  const js=read("app-v7-multipattern.js");
+  assert.match(js,/backgroundAlpha:clamp\(Math\.round\(Number\(c\.backgroundAlpha\?\?d\.backgroundAlpha\)\),0,255\)/);
+  assert.match(js,/baseRadius:clamp\(Number\(c\.baseRadius\?\?d\.baseRadius\),0,100\)/);
 });
