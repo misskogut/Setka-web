@@ -68,8 +68,8 @@
     const out=await r.json().catch(()=>({}));if(!r.ok)throw new Error(out.error||`http_${r.status}`);return out;
   }
   async function syncSemantic(fav,keepalive=false){
-    const u=serviceUsage(),session=accountSession(),corpus=window.__SETKA_PRIVATE_CORPUS_V40__?.status?.();
-    return post(SEMANTIC_API,{action:"sync",channel:CHANNEL,deviceId,sessionToken:session?.token||null,favoritesAuthoritative:!!corpus?.ok,favorites:fav,sessions:u.sessions,exposures:u.exposures},keepalive);
+    const u=serviceUsage(),session=accountSession(),favoritesAuthoritative=!!window.__SETKA_PRIVATE_CORPUS_V40__?.authoritative?.();
+    return post(SEMANTIC_API,{action:"sync",channel:CHANNEL,deviceId,sessionToken:session?.token||null,favoritesAuthoritative,favorites:fav,sessions:u.sessions,exposures:u.exposures},keepalive);
   }
   async function sync(force=false,keepalive=false){
     if(busy)return false;const sig=signature();if(!force&&sig===lastSignature&&lastOkAt&&Date.now()-Date.parse(lastOkAt)<60000)return true;
