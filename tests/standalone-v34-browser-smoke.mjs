@@ -68,6 +68,7 @@ async function go(){
   // One observed scenario per session, never per gesture/configuration change.
   await page.evaluate(()=>{
     const C=window.SetkaStandaloneV34,d=C.getData();
+    d.patternExposures=d.patternExposures||[];
     d.sessions.push({id:"audit-sleep-a",requestKey:"sleep"},{id:"audit-sleep-b",requestKey:"sleep"},{id:"audit-focus",requestKey:"focus"});
     for(let i=0;i<70;i++)d.patternExposures.push({exposureId:"audit-e-"+i,patternId:"dandelion",sessionId:i<35?"audit-sleep-a":i<69?"audit-sleep-b":"audit-focus",requestKey:i<69?"sleep":"focus",durationMs:700,configKey:"dandelion|"+i});
     C.save();
