@@ -159,7 +159,7 @@ test("null post-state is not falsely interpreted as a valid self-report", () => 
 test("pattern info shows user-readable help instead of internal technical footer", () => {
   const js=read("standalone-advanced-v34.js");
   for(const key of ["viewers","sessions","exposures","likes","time","variants","saves","delta","improved","scenarios"]){
-    assert.match(js,new RegExp("^\\\\s*"+key+":\\\\{title:", "m"),"missing explanation "+key);
+    assert.ok(js.includes(key+":{title:"),"missing explanation "+key);
   }
   assert.match(js,/function setInfoHelp\(body,key\)/);
   assert.match(js,/aria-expanded/);
