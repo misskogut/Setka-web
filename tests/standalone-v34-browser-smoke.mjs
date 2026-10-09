@@ -55,6 +55,18 @@ async function go(){
       throw e;
     }
     await modal.locator("#st34InfoBody .st34-statbox strong").first().waitFor({timeout:10000});
+    if(i===0){
+      const helpBtn=modal.locator('.st34-metric-help[data-help="viewers"]');
+      await helpBtn.click();
+      const explanation=modal.locator('.st34-help-panel');
+      await explanation.waitFor({state:"visible"});
+      assert.match(await explanation.innerText(),/Сколько разных участников/);
+      assert.equal(await helpBtn.getAttribute("aria-expanded"),"true");
+      await explanation.locator(".st34-help-dismiss").click();
+      assert.equal(await explanation.isVisible(),false);
+      assert.equal(await helpBtn.getAttribute("aria-expanded"),"false");
+      console.log("TAP HELP OPEN AND CLOSE PASS");
+    }
     const title=await modal.locator("h2").innerText();
     assert.equal(title,names[i],patternIds[i]+" wrong title");
     const account=await modal.locator(".st34-statbox strong").first().innerText();
@@ -75,6 +87,9 @@ async function go(){
   });
   await tiles.nth(1).locator(".st34-info").click({force:true});
   await page.locator("#st34InfoOverlay .st34-pattern-scenarios").waitFor();
+  await page.locator("#st34InfoOverlay .st34-metric-help[data-help='scenarios']").click();
+  assert.match(await page.locator("#st34InfoOverlay .st34-help-panel").innerText(),/Одна сессия учитывается один раз/);
+  await page.locator("#st34InfoOverlay .st34-metric-help[data-help='scenarios']").click();
   const scenarioText=await page.locator("#st34InfoOverlay .st34-pattern-scenarios").innerText();
   assert.match(scenarioText,/Уснуть/);
   assert.match(scenarioText,/67%/);
