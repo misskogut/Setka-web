@@ -1,3 +1,9 @@
+test("info icon pointer is not captured by the parent pattern tile", () => {
+  const js=read("app-v7-multipattern.js");
+  assert.match(js,/pointerdown",e=>\{if\(e\.target\.closest\?\.\("\.st34-info"\)\)return;/);
+  assert.match(js,/pointerup",e=>\{cancel\(\);if\(e\.target\.closest\?\.\("\.st34-info"\)\)return;/);
+});
+
 test("old hardcoded octopus methodology never intercepts info buttons", () => {
   const html=read("standalone-v34.html");
   assert.doesNotMatch(html,/<script[^>]+src=["']standalone-methodology-v34[.]js/);
