@@ -1,3 +1,9 @@
+test("old hardcoded octopus methodology never intercepts info buttons", () => {
+  const html=read("standalone-v34.html");
+  assert.doesNotMatch(html,/<script[^>]+src=["']standalone-methodology-v34[.]js/);
+  assert.match(html,/<script[^>]+src=["']standalone-advanced-v34[.]js/);
+});
+
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
