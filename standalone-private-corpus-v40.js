@@ -8,7 +8,7 @@
   const STATUS_KEY="setka-v40:private-corpus-status";
   const FAVORITES_KEY="setka-web:favorites:v1";
   const BUILD="v40.private-cloud.2";
-  let busy=false,timer=0,lastSignature="",hydrated=false,hydrationPromise=null;
+  let busy=false,timer=0,lastSignature="",hydrated=false,authoritative=false,hydrationPromise=null;
 
   const clone=v=>v==null?v:JSON.parse(JSON.stringify(v));
   function session(){try{return JSON.parse(localStorage.getItem(SESSION_KEY)||"null")}catch(_){return null}}
@@ -68,11 +68,16 @@
   async function post(payload,keepalive=false){const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json",apikey:KEY},body:JSON.stringify(payload),keepalive});const out=await r.json().catch(()=>({}));if(!r.ok){const e=new Error(out.error||`http_${r.status}`);e.status=r.status;throw e}return out}
   async function pull(){const s=session();if(!s?.token)throw new Error("auth_required");return post({action:"pull",sessionToken:s.token})}
   async function restoreFromCloud(){
-    const s=session();if(!s?.token)return false;
+    const s=session();if(!s?.token){hydrated=false;authoritative=false;return false}
     const out=await pull(),a=out?.archive;
-    if(!a){hydrated=true;return false}
+    if(!a){
+      hydrated=true;authoritative=true;lastSignature="";
+      saveStatus({enabled:true,ok:true,restored:false,build:BUILD,updatedAt:null,counts:null,sourceDevices:0,privacy:"private-account-only",publicExposure:false});
+      window.dispatchEvent(new CustomEvent("setka:v40-private-corpus-restored",{detail:{counts:null,sourceDevices:0,emptyRemote:true}}));
+      return true;
+    }
     const counts=mergeCloud(a.payload||{},a.favorites||[]);
-    hydrated=true;lastSignature="";
+    hydrated=true;authoritative=true;lastSignature="";
     saveStatus({enabled:true,ok:true,restored:true,build:BUILD,updatedAt:a.updatedAt||null,counts,sourceDevices:Number(a.sourceDevices)||1,privacy:"private-account-only",publicExposure:false});
     window.dispatchEvent(new CustomEvent("setka:v40-private-corpus-restored",{detail:{counts,sourceDevices:Number(a.sourceDevices)||1}}));
     return true;
@@ -81,7 +86,7 @@
     if(hydrated)return true;
     if(!session()?.token)return false;
     if(hydrationPromise)return hydrationPromise;
-    hydrationPromise=restoreFromCloud().catch(e=>{saveStatus({enabled:true,ok:false,build:BUILD,error:String(e?.message||e),stage:"restore",privacy:"private-account-only",publicExposure:false});return false}).finally(()=>{hydrationPromise=null;hydrated=true});
+    hydrationPromise=restoreFromCloud().catch(e=>{hydrated=false;authoritative=false;saveStatus({enabled:true,ok:false,build:BUILD,error:String(e?.message||e),stage:"restore",privacy:"private-account-only",publicExposure:false});return false}).finally(()=>{hydrationPromise=null});
     return hydrationPromise;
   }
   async function sync(force=false,keepalive=false){
@@ -99,10 +104,10 @@
   window.addEventListener("setka:pattern-exposure",()=>schedule(800));
   window.addEventListener("setka:favorite-saved",()=>schedule(700));
   window.addEventListener("setka:favorite-removed",()=>schedule(700));
-  window.addEventListener("setka:v40-account",()=>{hydrated=false;hydrationPromise=null;setTimeout(()=>sync(true),120)});
+  window.addEventListener("setka:v40-account",()=>{hydrated=false;authoritative=false;hydrationPromise=null;setTimeout(()=>sync(true),120)});
   document.addEventListener("visibilitychange",()=>{if(document.hidden)sync(true,true);else schedule(500)});
   window.addEventListener("pagehide",()=>sync(true,true));
   setInterval(()=>sync(false),45000);
   setTimeout(()=>sync(true),2200);
-  window.__SETKA_PRIVATE_CORPUS_V40__={sync:()=>sync(true),pull,restore:restoreFromCloud,remoteStatus,status,build:BUILD};
+  window.__SETKA_PRIVATE_CORPUS_V40__={sync:()=>sync(true),pull,restore:restoreFromCloud,remoteStatus,status,authoritative:()=>!!(hydrated&&authoritative&&session()?.token),build:BUILD};
 })();
