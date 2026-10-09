@@ -89,14 +89,14 @@
     // is still loading. The async feed is the source of truth for public metrics.
     let cloud=C.cloudCommunity?.status?.()||{};
     if(!cloud.lastOkAt && C.cloudCommunity?.refresh){
-      await Promise.race([
-        new Promise(resolve=>{
-          const done=()=>{window.removeEventListener("setka:community-cloud",done);resolve()};
-          window.addEventListener("setka:community-cloud",done,{once:true});
-          setTimeout(done,2500);
-        }),
-        Promise.resolve(C.cloudCommunity.refresh()).then(()=>{}).catch(()=>{})
-      ]);
+      const loaded=new Promise(resolve=>{
+        let timer=0;
+        const done=()=>{clearTimeout(timer);window.removeEventListener("setka:community-cloud",done);resolve()};
+        window.addEventListener("setka:community-cloud",done,{once:true});
+        timer=setTimeout(done,2500);
+      });
+      Promise.resolve().then(()=>C.cloudCommunity.refresh()).catch(()=>{});
+      await loaded;
       cloud=C.cloudCommunity?.status?.()||{};
     }
     if(!cloud.lastOkAt)return null;
