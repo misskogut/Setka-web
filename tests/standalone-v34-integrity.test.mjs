@@ -132,3 +132,25 @@ test("zero-valued pattern parameters survive config normalization", () => {
   assert.match(js,/backgroundAlpha:clamp\(Math\.round\(Number\(c\.backgroundAlpha\?\?d\.backgroundAlpha\)\),0,255\)/);
   assert.match(js,/baseRadius:clamp\(Number\(c\.baseRadius\?\?d\.baseRadius\),0,100\)/);
 });
+
+test("passive on-screen watch time continues without touches and excludes overlays", () => {
+  const core=read("standalone-core-v34.js"), runtime=read("standalone-runtime-v34.js");
+  assert.doesNotMatch(core,/now-lastInteraction<=30000/);
+  assert.match(core,/!document.hidden&&game.classList.contains\("active"\)&&layer.classList.contains\("hidden"\)/);
+  assert.match(core,/activeSession.plannedSeconds\*1000-\(activeSession.measuredActiveMs\|\|0\)/);
+  assert.match(runtime,/setka:overlay-visibility/);
+  assert.match(runtime,/instructions-open/);
+});
+
+test("mixed-pattern feedback isn't counted as each pattern's own effect; recommendations consider seven bases", () => {
+  const js=read("standalone-analysis-v34.js");
+  assert.match(js,/const isolated=allMeasuredKeys.size===1/);
+  assert.match(js,/if\(isolated&&delta!=null&&Number.isFinite\(delta\)\)/);
+  assert.match(js,/for\(const pattern of Setka.getPatterns\?\.\(\)\|\|\[\]\)/);
+  assert.match(js,/patterns:chosen.filter\(x=>x.kind==="base"\).map\(x=>x.id\)/);
+});
+
+test("null post-state is not falsely interpreted as a valid self-report", () => {
+  const js=read("standalone-user-ui-v34.js");
+  assert.match(js,/s.preState!=null&&s.postState!=null&&Number.isFinite\(Number\(s.preState\)\)/);
+});
