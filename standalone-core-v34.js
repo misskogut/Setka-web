@@ -24,7 +24,7 @@
     return d;
   }
   function load(){
-    try{const v=JSON.parse(localStorage.getItem(KEY)||"null");if(v&&v.version===34)return v}catch(_){}
+    try{const v=JSON.parse(localStorage.getItem(KEY)||"null");if(v&&Number(v.version)>=34&&Array.isArray(v.sessions)&&Array.isArray(v.notes)){v.patternExposures=Array.isArray(v.patternExposures)?v.patternExposures:[];return v}}catch(_){}
     try{const old=JSON.parse(localStorage.getItem(OLD_KEY)||"null");if(old&&old.version===33){const d=migrate33(old);localStorage.setItem(KEY,JSON.stringify(d));return d}}catch(_){}
     return blank();
   }
