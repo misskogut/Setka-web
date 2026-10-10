@@ -189,7 +189,7 @@
     const open=card.querySelector(".st34-note-preview-button");
     if (open) open.onclick=e=>{e?.preventDefault?.();e?.stopPropagation?.();C.hideLayer?.();Setka.openConfig?.(clone(replay.config),{type:"memory",id:note.id,patternId:replay.pid,baseId:replay.pid,communityId:note.communityId||null,noteId:note.id,frame:replay.frame});};
     const label=card.querySelector(".st34-note-preview-label");
-    if (label) { const title=replay.pid&&Setka.getPatternTitle?.(replay.pid); label.textContent=title?`ПАТТЕРН В МОМЕНТ ЗАМЕТКИ · ${String(title).toUpperCase()}`:"ПАТТЕРН В МОМЕНТ ЗАМЕТКИ"; }
+    if (label) { const title=replay.pid&&Setka.getPatternTitle?.(replay.pid); label.textContent=title?`${note.replaySnapshot?.config?"ПАТТЕРН В МОМЕНТ ЗАМЕТКИ":"ВОССТАНОВЛЕНО ПО НАСТРОЙКАМ"} · ${String(title).toUpperCase()}`:"ПАТТЕРН БЕЗ ПОДТВЕРЖДЁННОГО СЛЕПКА"; }
     card.dataset.noteSnapshotFixed="5";
   }
 
