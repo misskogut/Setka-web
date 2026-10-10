@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {spawn} from "node:child_process";
-import {chromium} from "playwright";
+import {chromium,webkit} from "playwright";
 
 const port=48375,root="http://127.0.0.1:"+port;
 const server=spawn("python3",["-m","http.server",String(port),"--bind","127.0.0.1"],{stdio:"ignore"});
@@ -8,7 +8,7 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 let browser;
 try{
   for(let i=0;i<30;i++){try{if((await fetch(root+"/standalone-admin-pattern-knowledge-v40.js")).ok)break}catch{}await sleep(100)}
-  browser=await chromium.launch({headless:true,args:["--no-sandbox"]});
+  browser=await (process.env.SETKA_BROWSER==="webkit"?webkit:chromium).launch({headless:true,args:["--no-sandbox"]});
   const page=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
   const errors=[];page.on("pageerror",e=>errors.push(e.message));
   await page.goto(root+"/standalone-renderer-v40.html",{waitUntil:"domcontentloaded"});

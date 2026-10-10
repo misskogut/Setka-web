@@ -128,9 +128,11 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --no-save --ignore-scripts playwright esbuild
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium webkit
       - run: node tests/standalone-v34-browser-smoke.mjs
       - run: node tests/standalone-v34-admin-browser-smoke.mjs
+      - run: SETKA_BROWSER=webkit node tests/standalone-v34-browser-smoke.mjs
+      - run: SETKA_BROWSER=webkit node tests/standalone-v34-admin-browser-smoke.mjs
       - run: ./node_modules/.bin/esbuild supabase/functions/setka-pattern-knowledge-v40/index.ts --outfile=/tmp/setka-admin-backend-check.js --format=esm
       - uses: actions/upload-artifact@v4
         if: always()
