@@ -373,9 +373,9 @@
       });
     }
 
-    if(action==="admin-reset-device"||action==="admin-toggle-active") return response({ok:true});
+    if(action==="admin-reset-device"||action==="admin-toggle-active") return response({error:"Действие недоступно в этом контуре. Изменений не было.",code:"legacy_action_not_supported"},409);
     if(action==="admin-create-code") return response({error:"sandbox_read_only"},409);
-    return response({items:[],overview:{},ok:true});
+    return response({error:"unknown_admin_action",action},404);
   }
 
   window.fetch=async function(input,init={}){
