@@ -49,6 +49,9 @@ Deno.serve(async req=>{if(req.method==="OPTIONS")return new Response("ok",{heade
      if(page===29)observedTruncated=true;
    }
    const observedConfigs=[...observedMap.values()].map(x=>({patternId:x.patternId,configKey:x.configKey,exposures:x.exposures,totalDurationMs:x.totalDurationMs,viewingAccounts:x.viewers.size,sessions:x.sessions.size})).sort((a,b)=>b.exposures-a.exposures);
+   const saveQ=await db.from("prototype_v41_config_metrics_current").select("pattern_id,config_key,save_accounts").order("save_accounts",{ascending:false}).limit(5000);if(saveQ.error)throw saveQ.error;
+   const savedKeys=new Map((saveQ.data||[]).map(x=>[JSON.stringify([x.pattern_id,x.config_key]),N(x.save_accounts)]));
+   for(const x of observedConfigs)x.saveAccounts=savedKeys.get(JSON.stringify([x.patternId,x.configKey]))||0;
    const sm=curQ.data||{},today=new Date().toISOString().slice(0,10),now=new Date().toISOString();
    const snap=await db.from("prototype_v40_service_metric_snapshots").upsert({day:today,participants:N(sm.connected_accounts),connected_testers:N(sm.connected_accounts),sessions:N(sm.sessions),exposures:N(sm.exposures),patterns:N(sm.patterns),configurations:N(sm.saved_configurations),saves:N(sm.configuration_saves),published_notes:notes.total||0,active_participants_30d:N(sm.active_accounts_30d),updated_at:now},{onConflict:"day"});if(snap.error)throw snap.error;
    if((curP.data||[]).length){const pr=(curP.data||[]).map((x:any)=>({day:today,pattern_id:x.pattern_id,participants:N(x.viewing_accounts),sessions:N(x.sessions),exposures:N(x.exposures),configurations:N(x.saved_configurations),saves:N(x.likes),duration_ms:N(x.duration_ms),published_notes:notes.byPattern.get(x.pattern_id)||0,updated_at:now}));const pu=await db.from("prototype_v40_pattern_metric_snapshots").upsert(pr,{onConflict:"day,pattern_id"});if(pu.error)throw pu.error}
