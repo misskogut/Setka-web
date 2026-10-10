@@ -70,7 +70,7 @@
     try {
       const state = Setka.getState?.();
       if (!state || state.view !== "game") return null;
-      const replay = {pid:state.patternId || state.config?.patternId || patternIdFromConfig(state.config),config:clone(state.config),frame:Number.isFinite(Number(state.frame))?Number(state.frame):44};
+      const replay = {pid:state.patternId || state.config?.patternId || patternIdFromConfig(state.config),config:clone(state.config),frame:state.frame == null ? 44 : (Number.isFinite(Number(state.frame)) ? Number(state.frame) : 44)};
       const recipe = recipeFor({...state,patternVersion:state.patternVersion,configHash:state.configKey}, replay);
       const canvas = document.getElementById("patternCanvas");
       const cachePromise = VC?.putCanvas && canvas ? VC.putCanvas(canvas, recipe) : Promise.resolve(null);
