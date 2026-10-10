@@ -205,3 +205,11 @@ test("app accepts private archive version 41 as an existing local corpus, never 
   assert.match(js,/Number\(v\.version\)>=34&&Array\.isArray\(v\.sessions\)&&Array\.isArray\(v\.notes\)/);
   assert.match(js,/v\.patternExposures=Array\.isArray\(v\.patternExposures\)/);
 });
+
+test("account service sync is blocked until private corpus has been restored",()=>{
+  const js=read("standalone-sync-v34.js");
+  const gate='if(!window.__SETKA_PRIVATE_CORPUS_V40__?.authoritative?.())';
+  assert.ok(js.includes(gate));
+  assert.ok(js.indexOf(gate)<js.indexOf('busy=true;lastError=null;'));
+  assert.match(js,/waiting_for_private_archive_restore/);
+});
