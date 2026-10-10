@@ -47,7 +47,7 @@
   function replayOf(note) {
     const pid = patternIdOf(note), raw = configOf(note);
     const config = raw ? {...clone(raw), ...(pid ? {patternId:pid} : {})} : null;
-    const frames = [note?.visualRecipe?.frame,note?.replaySnapshot?.frame,note?.visualSnapshot?.frame,note?.frame,note?.state?.frame];
+    const frames = [note?.replaySnapshot?.frame,note?.frame,note?.state?.frame,note?.visualRecipe?.frame,note?.visualSnapshot?.frame];
     let frame = 44;
     for (const v of frames) { const n = Number(v); if (Number.isFinite(n)) { frame=n; break; } }
     return {pid,config,frame};
