@@ -218,5 +218,13 @@ test("account service sync is blocked until private corpus has been restored",()
 test("note snapshot frame resolution must not interpret null as frame zero", () => {
   const js=read("standalone-note-snapshot-fix-v34.js");
   assert.ok(js.includes('const frames = [note?.replaySnapshot?.frame'),"frozen frame must take precedence");
-  assert.ok(js.includes("if(v==null")||js.includes("if (v == null"),"null frame must be skipped");
+  assert.ok(js.includes("v == null ? NaN")||js.includes("if(v==null")||js.includes("if (v == null"),"null frame must be skipped");
+});
+
+test("note capture does not collapse an absent frame to zero", () => {
+  const js=read("standalone-note-snapshot-fix-v34.js");
+  assert.ok(js.includes("frame:state.frame == null ? 44"));
+  assert.ok(js.includes("note.frame = st.frame == null ?"));
+  const core=read("standalone-core-v34.js");
+  assert.ok(core.includes("frame:s.frame!=null&&Number.isFinite"));
 });
