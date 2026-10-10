@@ -134,6 +134,27 @@ async function go(){
   assert.ok(noteLabels.some(x=>x.includes("STEREO DNA")));
   assert.ok(noteLabels.some(x=>x.includes("ОДУВАНЧИК")));
   console.log("NOTE CARD IDS",await page.locator("#st34Layer .st34-note-card").evaluateAll(nodes=>nodes.map(n=>n.dataset.noteId)));
+  // Server-side private archive hydration upgrades data.version to 41.
+  // Reload must NOT silently reset the user's notes, exposure history or sessions.
+  await page.evaluate(()=>{
+    const C=window.SetkaStandaloneV34,d=C.getData();
+    d.version=41;
+    C.save();
+  });
+  await page.reload({waitUntil:"domcontentloaded"});
+  await page.waitForFunction(()=>window.SetkaStandaloneV34?.getData?.()?.version===41,{timeout:15000});
+  const restored=await page.evaluate(()=>{
+    const d=window.SetkaStandaloneV34.getData();
+    return {version:d.version,sessions:d.sessions.length,exposures:d.patternExposures?.length||0,
+      notes:d.notes.slice(-2).map(n=>({id:n.id,patternId:n.patternId,replayPatternId:n.replaySnapshot?.patternId,configId:n.replaySnapshot?.config?.patternId}))};
+  });
+  assert.equal(restored.version,41);
+  assert.ok(restored.sessions>=3);
+  assert.ok(restored.exposures>=70);
+  assert.deepEqual(restored.notes.map(n=>n.id),saved.map(n=>n.id));
+  assert.deepEqual(restored.notes.map(n=>n.replayPatternId),["dandelion","stereo-dna"]);
+  assert.deepEqual(restored.notes.map(n=>n.configId),["dandelion","stereo-dna"]);
+  console.log("V41 ARCHIVE RELOAD PRESERVED HISTORY",JSON.stringify(restored));
   await page.screenshot({path:"tests/visual-smoke/personal-notes.png",fullPage:true});
   await page.screenshot({path:"tests/visual-smoke/base-patterns.png",fullPage:true});
   console.log("ALL 7 PATTERNS PASS",JSON.stringify(result));
