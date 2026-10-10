@@ -91,7 +91,7 @@
     note.communityId = st.communityId ?? note.communityId ?? null;
     note.configHash = st.configKey ?? note.configHash ?? null;
     note.config = st.config ? {...clone(st.config), ...(pid ? {patternId:pid} : {})} : note.config;
-    note.frame = Number.isFinite(Number(st.frame)) ? Number(st.frame) : note.frame;
+    note.frame = st.frame == null ? (note.frame ?? 44) : (Number.isFinite(Number(st.frame)) ? Number(st.frame) : (note.frame ?? 44));
     note.state = clone({...st,patternId:pid,config:note.config});
     note.replaySnapshot = {version:2,patternId:pid,patternVersion:note.patternVersion,frame:note.frame ?? null,configHash:note.configHash || null,config:clone(note.config)};
     note.visualRecipe = recipeFor(note,{pid,config:note.config,frame:note.frame ?? 44});
