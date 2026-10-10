@@ -228,3 +228,9 @@ test("note capture does not collapse an absent frame to zero", () => {
   const core=read("standalone-core-v34.js");
   assert.ok(core.includes("frame:s.frame!=null&&Number.isFinite"));
 });
+
+test("older note cards identify reconstructed previews rather than claiming an exact saved frame",()=>{
+  const js=read("standalone-note-snapshot-fix-v34.js");
+  assert.match(js,/ВОССТАНОВЛЕНО ПО НАСТРОЙКАМ/);
+  assert.match(js,/ПАТТЕРН БЕЗ ПОДТВЕРЖДЁННОГО СЛЕПКА/);
+});
