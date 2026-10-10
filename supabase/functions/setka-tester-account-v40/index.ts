@@ -23,7 +23,7 @@ async function ensureDevice(deviceId:string,tid:string,userAgent:any=null,viewpo
   db.from("prototype_v34_tester_codes").select("tester_id").eq("claimed_device_id",deviceId).eq("active",true).limit(2)
  ]);
  for(const q of [existing,archives,claims])if(q.error)throw q.error;
- if((existing.data?.subject_key&&existing.data.subject_key!==tid)||
+ if((existing.data?.subject_key&&existing.data.subject_key!=="guest"&&existing.data.subject_key!==tid)||
     (archives.data?.tester_id&&archives.data.tester_id!==tid)||
     (claims.data||[]).some(x=>x.tester_id!==tid))throw new Error("device_already_has_tester_id");
  const now=new Date().toISOString(),row={device_id:deviceId,label:"Тестировщик",
@@ -34,7 +34,7 @@ async function ensureDevice(deviceId:string,tid:string,userAgent:any=null,viewpo
   // Compare-and-swap: if another login bound it between read and update,
   // never overwrite the new owner.
   let query=db.from("prototype_v34_devices").update(row).eq("device_id",deviceId);
-  query=existing.data.subject_key?query.eq("subject_key",tid):query.is("subject_key",null);
+  query=existing.data.subject_key?query.eq("subject_key",existing.data.subject_key):query.is("subject_key",null);
   const updated=await query.select("device_id").maybeSingle();
   if(updated.error)throw updated.error;
   if(!updated.data)throw new Error("device_already_has_tester_id");
