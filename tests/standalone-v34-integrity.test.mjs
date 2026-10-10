@@ -168,3 +168,40 @@ test("pattern info shows user-readable help instead of internal technical footer
   assert.doesNotMatch(js,/>Источник: \$\{s\.source/);
   assert.doesNotMatch(js,/Облачная сводка подключённых тестировщиков не содержит распределения целей/);
 });
+
+
+test("semantic service sync uses canonical exposures including unsessioned free views", () => {
+  const script=read("standalone-sync-v34.js");
+  const from=script.indexOf("  function serviceUsage(){"),to=script.indexOf("  function signature(){",from);
+  assert.ok(from>=0&&to>from);
+  const sandbox={
+    C:{getData:()=>({
+      sessions:[{id:"A",startedAt:"2026-10-10T10:00:00Z",usage:[{patternId:"dandelion",config:{patternId:"dandelion"},durationMs:1000,phase:"measured"}]},
+      {id:"old",startedAt:"2026-10-10T10:30:00Z",usage:[{patternId:"stereo-dna",config:{patternId:"stereo-dna"},durationMs:2000,phase:"measured"}]}],
+      patternExposures:[{exposureId:"x1",patternId:"dandelion",sessionId:"A",configKey:"dandelion|a",durationMs:1000,startedAt:"2026-10-10T10:00:00Z",endedAt:"2026-10-10T10:00:01Z"},
+      {exposureId:"free1",patternId:"fish-wave",sessionId:null,configKey:"fish-wave|a",durationMs:4000,startedAt:"2026-10-10T11:00:00Z",endedAt:"2026-10-10T11:00:04Z"}]
+    })},
+    window:{SetkaApp:{configKey:c=>c.patternId+"|legacy"}}
+  };
+  const fn=vm.runInNewContext("let lastUsageStats={};"+script.slice(from,to)+"\nserviceUsage;",sandbox);
+  const out=fn();
+  assert.equal(out.sessions.length,2);
+  assert.equal(out.exposures.length,3);
+  assert.equal(out.exposures.filter(x=>x.sessionId==="A").length,1);
+  assert.equal(out.exposures.find(x=>x.exposureId==="free1").sessionId,null);
+  assert.equal(out.exposures.find(x=>x.patternId==="stereo-dna").durationMs,2000);
+});
+test("private archive sync waits for successful remote restoration and fingerprints note contents",()=>{
+  const js=read("standalone-private-corpus-v40.js");
+  assert.match(js,/const loaded=await ensureHydrated\(\)/);
+  assert.match(js,/if\(!loaded\)\{/);
+  assert.match(js,/archive_restore_required_before_sync/);
+  assert.match(js,/notesDigest=digest\(n\.map/);
+  assert.match(js,/v\.replaySnapshot,v\.visualSnapshot/);
+  assert.match(js,/setka:v34-sync-request/);
+});
+test("app accepts private archive version 41 as an existing local corpus, never resets",()=>{
+  const js=read("standalone-core-v34.js");
+  assert.match(js,/Number\(v\.version\)>=34&&Array\.isArray\(v\.sessions\)&&Array\.isArray\(v\.notes\)/);
+  assert.match(js,/v\.patternExposures=Array\.isArray\(v\.patternExposures\)/);
+});
