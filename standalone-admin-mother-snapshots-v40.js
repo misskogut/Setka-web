@@ -5,7 +5,7 @@
   const API = "https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-visual-assets-v40";
   const KEY = "sb_publishable_1jL-x9_kp6rpfGghpSp_OA_OiXDnvsv";
   const ADMIN_KEY = "setka-research:admin-key:v1";
-  const RENDERER = "standalone-renderer-v40.html?v=40-mother-renderer-2";
+  const RENDERER = "standalone-renderer-v40.html?v=46-unified-front-admin-1";
   let running = false, completed = false, last = null;
 
   function adminKey(){try{return localStorage.getItem(ADMIN_KEY)||""}catch(_){return ""}}
