@@ -53,6 +53,18 @@ test("new device can attach to A, and another fresh device can also attach to A"
  assert.equal(state.devices.get("device-2").subject_key,"TESTER-A");
  await ensure("device-1","TESTER-A");
 });
+test("first-time claim may upgrade legacy guest owner, then owner is immutable",async()=>{
+ const {ensure,state}=setup({devices:{"device-guest":"guest"}});
+ await ensure("device-guest","TESTER-A");
+ assert.equal(state.devices.get("device-guest").subject_key,"TESTER-A");
+ await assert.rejects(ensure("device-guest","TESTER-B"),/device_already_has_tester_id/);
+});
+test("legacy heartbeat cannot overwrite a bound tester owner",()=>{
+ const legacy=readFileSync(new URL("../supabase/functions/setka-standalone-v34/live-v11-device-guard.ts",import.meta.url),"utf8");
+ assert.doesNotMatch(legacy,/\.upsert\(row,\{onConflict:"device_id"\}\)/);
+ assert.match(legacy,/prototype_v34_devices"\)\.update\(\{label,channel:CHANNEL,last_seen_at:now/);
+ assert.match(legacy,/prototype_v34_devices"\)\.insert\(row\)/);
+});
 test("same device cannot silently switch A to B",async()=>{
  const {ensure,state}=setup({devices:{"device-1":"TESTER-A"}});
  await assert.rejects(ensure("device-1","TESTER-B"),/device_already_has_tester_id/);
