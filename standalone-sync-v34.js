@@ -95,6 +95,12 @@
       window.dispatchEvent(new CustomEvent("setka:v34-sync",{detail:{ok:true,label:"Гость",subjectKey:null,deviceId:null,updatedAt:lastOkAt,acceptedEvents:0,acceptedSessions:0,acceptedExposures:0,favoritesLocal:lastFavoriteStats.local,favoritesUnique:lastFavoriteStats.unique,favoritesCloud:0,privacyMode:"local-only-guest"}}));
       return true;
     }
+    // Wait for private corpus hydration before publishing aggregated service
+    // facts. An old local cache must not be attributed to a newly logged-in ID.
+    if(!window.__SETKA_PRIVATE_CORPUS_V40__?.authoritative?.()){
+      lastError="waiting_for_private_archive_restore";
+      return false;
+    }
     busy=true;lastError=null;
     try{
       const heartbeat=await post(API,{action:"sync",channel:CHANNEL,deviceId,firstSeenAt:firstSeen,build:"v41-account-only"},keepalive);
