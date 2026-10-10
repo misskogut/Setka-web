@@ -52,6 +52,9 @@ on:
       - 'admin-replay-first-v34.js'
       - 'standalone-renderer-v40.html'
       - 'standalone-admin-v34.html'
+      - 'standalone-admin-private-v34.html'
+      - 'standalone-admin-public-v34.js'
+      - 'tests/standalone-v34-open-admin-browser-smoke.mjs'
       - 'standalone-admin-evolution-v35.html'
       - 'standalone-v34.html'
       - 'tests/standalone-v34-integrity.test.mjs'
@@ -100,6 +103,7 @@ jobs:
       - run: node --check standalone-research-bridge-v40.js
       - run: node --check standalone-community-cloud-v38.js
       - run: node --check standalone-admin-bridge-v34b.js
+      - run: node --check standalone-admin-public-v34.js
       - run: node --check standalone-admin-private-corpus-v40.js
       - run: node --check standalone-admin-participants-v34.js
       - run: node --check standalone-admin-activity-v34.js
@@ -131,8 +135,10 @@ jobs:
       - run: npx playwright install --with-deps chromium webkit
       - run: node tests/standalone-v34-browser-smoke.mjs
       - run: node tests/standalone-v34-admin-browser-smoke.mjs
+      - run: node tests/standalone-v34-open-admin-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/standalone-v34-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/standalone-v34-admin-browser-smoke.mjs
+      - run: SETKA_BROWSER=webkit node tests/standalone-v34-open-admin-browser-smoke.mjs
       - run: ./node_modules/.bin/esbuild supabase/functions/setka-pattern-knowledge-v40/index.ts --outfile=/tmp/setka-admin-backend-check.js --format=esm
       - uses: actions/upload-artifact@v4
         if: always()
