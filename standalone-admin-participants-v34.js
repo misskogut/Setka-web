@@ -79,7 +79,7 @@
     const out=[];
     for(const d of participantDevices(r)){
       const ref=decorateParticipantRef(r,d.device_id),p=payloadFor(r,d.device_id);
-      for(const x of arr(p.notes))out.push({id:`${d.device_id}::${x.id}`,participant_id:ref.id,session_id:x.sessionId?`pv34::${d.device_id}::${x.sessionId}`:null,note_text:x.text,phase:x.phase==="free"?"standalone":x.phase,observed_at:x.observedAt,local_offset_minutes:x.localOffsetMinutes,session_elapsed_ms:x.sessionElapsedMs,request_key:x.requestKey,pattern_id:x.patternId,pattern_version:x.patternVersion,source_type:x.sourceType,source_id:x.sourceId,community_config_id:null,config_hash:x.configHash,config:x.config||x.state?.config||{},preview_frame:x.frame??x.state?.frame??44,visual_snapshot:x.visualSnapshot||null,participants:ref});
+      for(const x of arr(p.notes))out.push({id:`${d.device_id}::${x.id}`,participant_id:ref.id,session_id:x.sessionId?`pv34::${d.device_id}::${x.sessionId}`:null,note_text:x.text,phase:x.phase==="free"?"standalone":x.phase,observed_at:x.observedAt,local_offset_minutes:x.localOffsetMinutes,session_elapsed_ms:x.sessionElapsedMs,request_key:x.requestKey,pattern_id:x.replaySnapshot?.patternId||x.patternId,pattern_version:x.patternVersion,source_type:x.sourceType,source_id:x.sourceId,community_config_id:null,config_hash:x.configHash,config:x.replaySnapshot?.config||x.config||x.state?.config||{},preview_frame:x.replaySnapshot?.frame??x.frame??x.state?.frame??44,replaySnapshot:x.replaySnapshot||null,visual_snapshot:x.visualSnapshot||null,participants:ref});
     }
     return out.sort((a,b)=>Date.parse(b.observed_at||0)-Date.parse(a.observed_at||0));
   }
