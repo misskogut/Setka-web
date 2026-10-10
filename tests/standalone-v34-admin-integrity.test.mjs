@@ -41,3 +41,12 @@ test("production front does not mount isolated QA storage shim",()=>{
   assert.doesNotMatch(html,/<script src="standalone-methodology-v34\.js/);
   assert.match(html,/standalone-advanced-v34\.js\?v=46-unified-front-admin-1/);
 });
+
+test("admin can retry after failed legacy network read, rather than keep rejected promise",()=>{
+  const js=read("standalone-admin-bridge-v34b.js");
+  const start=js.indexOf("  async function getAll(adminKey,force=false)");
+  const end=js.indexOf("  function participant(d)",start);
+  assert.ok(start>=0&&end>start);
+  const body=js.slice(start,end);
+  assert.match(body,/try\{return await loading\}finally\{loading=null\}/);
+});
