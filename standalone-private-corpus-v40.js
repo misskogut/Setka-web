@@ -60,10 +60,20 @@
     const favoriteCount=mergeFavorites(remoteFavorites);
     return {sessions:d.sessions.length,notes:d.notes.length,symptoms:d.symptoms.length,checkins:d.checkins.length,events:d.events.length,exposures:d.patternExposures.length,physio:d.physio.samples.length,favorites:favoriteCount};
   }
+  function digest(value){
+    // Stable lightweight fingerprint; no raw note text leaves the device.
+    const str=JSON.stringify(value??null);let h=2166136261;
+    for(let i=0;i<str.length;i++)h=Math.imul(h^str.charCodeAt(i),16777619);
+    return (h>>>0).toString(16);
+  }
   function signature(){
     const d=C.getData?.()||{},s=d.sessions||[],n=d.notes||[],e=d.events||[],x=d.patternExposures||[],p=d.physio?.samples||[],f=Setka.getFavorites?.()||[];
     const last=a=>a.at?.(-1)||{};
-    return [s.length,last(s).id||"",last(s).phase||"",n.length,last(n).id||"",e.length,last(e).id||"",x.length,last(x).exposureId||"",p.length,last(p).id||"",f.length,f.map(v=>v.id||v.configKey||"").join(",")].join("|");
+    const notesDigest=digest(n.map(v=>[v.id,v.text,v.patternId,v.configHash,v.config,v.frame,v.replaySnapshot,v.visualSnapshot,v.publicationStatus]));
+    const sessionsDigest=digest(s.map(v=>[v.id,v.phase,v.completed,v.endedAt,v.postState,v.helped,v.measuredActiveMs,v.afterFeedbackActiveMs]));
+    return [d.version||34,s.length,sessionsDigest,n.length,notesDigest,
+      e.length,last(e).id||"",x.length,last(x).exposureId||"",last(x).durationMs||0,
+      p.length,last(p).id||"",f.length,digest(f),digest(d.settings)].join("|");
   }
   async function post(payload,keepalive=false){const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json",apikey:KEY},body:JSON.stringify(payload),keepalive});const out=await r.json().catch(()=>({}));if(!r.ok){const e=new Error(out.error||`http_${r.status}`);e.status=r.status;throw e}return out}
   async function pull(){const s=session();if(!s?.token)throw new Error("auth_required");return post({action:"pull",sessionToken:s.token})}
@@ -91,7 +101,11 @@
   }
   async function sync(force=false,keepalive=false){
     const s=session(),deviceId=did();if(!s?.token||!deviceId){saveStatus({enabled:false,reason:"not_authenticated",build:BUILD,privacy:"private-account-only"});return false}
-    await ensureHydrated();
+    const loaded=await ensureHydrated();
+    if(!loaded){
+      saveStatus({enabled:true,ok:false,build:BUILD,stage:"restore",error:"archive_restore_required_before_sync",privacy:"private-account-only",publicExposure:false});
+      return false;
+    }
     const sig=signature();if(!force&&sig===lastSignature)return true;if(busy)return false;busy=true;
     try{
       const out=await post({action:"sync",sessionToken:s.token,deviceId,capturedAt:new Date().toISOString(),archive:archive(),favorites:favorites()},keepalive);
@@ -102,6 +116,7 @@
   function schedule(ms=1200){clearTimeout(timer);timer=setTimeout(()=>sync(false),ms)}
   window.addEventListener("setka:standalone-event",()=>schedule(1000));
   window.addEventListener("setka:pattern-exposure",()=>schedule(800));
+  window.addEventListener("setka:v34-sync-request",()=>schedule(900));
   window.addEventListener("setka:favorite-saved",()=>schedule(700));
   window.addEventListener("setka:favorite-removed",()=>schedule(700));
   window.addEventListener("setka:v40-account",()=>{hydrated=false;authoritative=false;hydrationPromise=null;setTimeout(()=>sync(true),120)});
