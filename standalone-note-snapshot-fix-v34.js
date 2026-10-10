@@ -49,7 +49,7 @@
     const config = raw ? {...clone(raw), ...(pid ? {patternId:pid} : {})} : null;
     const frames = [note?.replaySnapshot?.frame,note?.frame,note?.state?.frame,note?.visualRecipe?.frame,note?.visualSnapshot?.frame];
     let frame = 44;
-    for (const v of frames) { const n = Number(v); if (Number.isFinite(n)) { frame=n; break; } }
+    for (const v of frames) { const n = v == null ? NaN : Number(v); if (Number.isFinite(n)) { frame=n; break; } }
     return {pid,config,frame};
   }
 
