@@ -58,6 +58,8 @@ on:
       - 'standalone-admin-evolution-v35.html'
       - 'standalone-v34.html'
       - 'tests/standalone-v34-integrity.test.mjs'
+      - 'tests/standalone-v34-note-merge-integrity.test.mjs'
+      - 'supabase/functions/setka-tester-archive-v37/index.ts'
       - 'tests/standalone-v34-browser-smoke.mjs'
       - 'tests/standalone-v34-admin-browser-smoke.mjs'
       - 'tests/standalone-v34-admin-integrity.test.mjs'
@@ -121,6 +123,7 @@ jobs:
       - run: node --check standalone-admin-evolution-pattern-lab-v35.js
       - run: node --check admin-replay-first-v34.js
       - run: node --test tests/standalone-v34-integrity.test.mjs
+      - run: node --test tests/standalone-v34-note-merge-integrity.test.mjs
       - run: node --test tests/standalone-v34-admin-integrity.test.mjs
 
   browser-smoke:
@@ -140,6 +143,7 @@ jobs:
       - run: SETKA_BROWSER=webkit node tests/standalone-v34-admin-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/standalone-v34-open-admin-browser-smoke.mjs
       - run: ./node_modules/.bin/esbuild supabase/functions/setka-pattern-knowledge-v40/index.ts --outfile=/tmp/setka-admin-backend-check.js --format=esm
+      - run: ./node_modules/.bin/esbuild supabase/functions/setka-tester-archive-v37/index.ts --outfile=/tmp/setka-tester-archive-check.js --format=esm
       - uses: actions/upload-artifact@v4
         if: always()
         with:
