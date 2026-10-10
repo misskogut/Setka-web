@@ -5,6 +5,7 @@
   const root=document.getElementById("tab-pattern-knowledge");if(!root)return;
   const esc=v=>String(v??"").replace(/[&<>\"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));
   const fmtMs=ms=>{ms=Math.max(0,Number(ms)||0);const m=Math.round(ms/60000);if(m<1)return`${Math.round(ms/1000)} сек`;if(m<60)return`${m} мин`;return`${(m/60).toFixed(1)} ч`};
+  const CANONICAL_IDS=["tentacle-orbit","dandelion","fish-wave","breathing-fractal","breathing-fractal-growth","rgb-glitch-rings","stereo-dna"];
   const titleMap={"tentacle-orbit":"Tentacle Orbit","dandelion":"Одуванчик","fish-wave":"Fish Wave","breathing-fractal":"Дыхательный фрактал","breathing-fractal-growth":"Растущий фрактал","rgb-glitch-rings":"RGB Glitch Rings","stereo-dna":"Stereo DNA"};
   let data=null,busy=false,timer=0,filter=null;
   const style=document.createElement("style");style.textContent=`
@@ -24,8 +25,8 @@
     const serviceByPattern=new Map();
     for(const row of patternRows){const id=row.pattern_id||row.patternId;if(id&&!serviceByPattern.has(id))serviceByPattern.set(id,row)}
     const researchByPattern=new Map(researchPatterns.map(x=>[x.patternId,x]));
-    const ids=[...new Set([...serviceByPattern.keys(),...researchByPattern.keys()])];
-    const patterns=ids.map(patternId=>({patternId,service:serviceByPattern.get(patternId)||null,research:researchByPattern.get(patternId)||null}))
+    const ids=[...new Set([...CANONICAL_IDS,...serviceByPattern.keys(),...researchByPattern.keys()])];
+    const patterns=ids.map(patternId=>({patternId,service:serviceByPattern.get(patternId)||null,research:researchByPattern.get(patternId)||null,hasService:serviceByPattern.has(patternId)}))
       .sort((a,b)=>(Number(b.service?.participants)||0)-(Number(a.service?.participants)||0)||(Number(b.service?.exposures)||0)-(Number(a.service?.exposures)||0));
     root.innerHTML=`
     <div class="pk40-service"><h3>Общая SETKA</h3><p>Каноническая статистика только подключённых Tester ID. Гостевые браузеры и старые device-профили сюда больше не входят.</p><div class="grid kpis">${kpi(svc.connected_accounts??svc.connected_testers??0,"подключённых аккаунтов")}${kpi(svc.active_accounts_30d??svc.active_participants_30d??0,"активных аккаунтов за 30 дней")}${kpi(svc.sessions||0,"сессий")}${kpi(svc.exposures||0,"эпизодов просмотра")}${kpi(totalLikes,"лайков материнским паттернам")}${kpi(svc.saved_configurations??svc.configurations??0,"сохранённых конфигураций")}${kpi(svc.configuration_saves??svc.saves??0,"сохранений конфигураций")}</div>${hist.length?`<div class="pk40-history">${hist.map(x=>`<div class="pk40-day"><b>${esc(x.day)}</b>${Number(x.participants)||0} акк. · ${Number(x.saves)||0} сохр. конф.</div>`).join("")}</div>`:""}</div>
@@ -36,7 +37,7 @@
     const pg=root.querySelector("#pk40Patterns");
     patterns.forEach(x=>{
       const s=x.service||{},r=x.research||{},b=document.createElement("button");b.type="button";b.className=`pk40-pattern${filter===x.patternId?" active":""}`;
-      b.innerHTML=`<div class="pk40-name">${esc(patternTitle(x.patternId))}</div><div class="pk40-big">♥ ${Number(s.likes??s.saves)||0}</div><div class="pk40-unit">лайков материнскому паттерну</div><div class="pk40-meta"><b>Сервис:</b> ${Number(s.viewing_accounts??s.participants)||0} аккаунтов смотрели · ${Number(s.exposures)||0} эпизодов просмотра · ${Number(s.sessions)||0} сессий · ${Number(s.saved_configurations??s.configurations)||0} сохранённых конфигураций · ${Number(s.configuration_saves)||0} сохранений конфигураций<br><b>Исследование:</b> ${Number(r.uniqueParticipants)||0} участников · ${Number(r.configCount)||0} конфигураций · ${fmtMs(r.totalDurationMs)} просмотра${r.avgStateDelta!=null?` · сдвиг ${esc(shift(r.avgStateDelta))}`:""}${r.publicNotes?` · заметок ${Number(r.publicNotes)}`:""}</div>`;
+      b.innerHTML=`<div class="pk40-name">${esc(patternTitle(x.patternId))}</div><div class="pk40-big">♥ ${Number(s.likes??s.saves)||0}</div><div class="pk40-unit">лайков материнскому паттерну</div>${!x.hasService?`<div class="pk40-empty" style="margin-top:7px;padding:5px 7px">Пока нет записанных просмотров или сохранений в текущей выборке</div>`:""}<div class="pk40-meta"><b>Сервис:</b> ${Number(s.viewing_accounts??s.participants)||0} аккаунтов смотрели · ${Number(s.exposures)||0} эпизодов просмотра · ${Number(s.sessions)||0} сессий · ${Number(s.saved_configurations??s.configurations)||0} сохранённых конфигураций · ${Number(s.configuration_saves)||0} сохранений конфигураций<br><b>Исследование:</b> ${Number(r.uniqueParticipants)||0} участников · ${Number(r.configCount)||0} конфигураций · ${fmtMs(r.totalDurationMs)} просмотра${r.avgStateDelta!=null?` · сдвиг ${esc(shift(r.avgStateDelta))}`:""}${r.publicNotes?` · заметок ${Number(r.publicNotes)}`:""}</div>`;
       b.onclick=()=>{filter=filter===x.patternId?null:x.patternId;render()};pg.appendChild(b)
     });
     const cg=root.querySelector("#pk40Configs");
