@@ -213,3 +213,10 @@ test("account service sync is blocked until private corpus has been restored",()
   assert.ok(js.indexOf(gate)<js.indexOf('busy=true;lastError=null;'));
   assert.match(js,/waiting_for_private_archive_restore/);
 });
+
+
+test("note snapshot frame resolution must not interpret null as frame zero", () => {
+  const js=read("standalone-note-snapshot-fix-v34.js");
+  assert.ok(js.includes('const frames = [note?.replaySnapshot?.frame'),"frozen frame must take precedence");
+  assert.ok(js.includes("if(v==null")||js.includes("if (v == null"),"null frame must be skipped");
+});
