@@ -35,7 +35,7 @@
   function sessionRow(){return activeSession?data.sessions.find(x=>x.id===activeSession.id)||null:null}
   function currentPhase(){return activeSession?.phase||"free"}
   function elapsed(){return activeSession?Math.max(0,Date.now()-Date.parse(activeSession.startedAt)):0}
-  function stateSnapshot(){try{const s=Setka.getState?.();return s?{view:s.view,libraryPage:s.libraryPage,patternId:s.patternId,patternVersion:s.patternVersion||1,sourceType:s.sourceType,sourceId:s.sourceId,communityId:s.communityId||null,config:s.config?clone(s.config):null,configKey:s.configKey||null,frame:Number.isFinite(Number(s.frame))?Number(s.frame):null,favoriteId:s.favoriteId||null}:null}catch(_){return null}}
+  function stateSnapshot(){try{const s=Setka.getState?.();return s?{view:s.view,libraryPage:s.libraryPage,patternId:s.patternId,patternVersion:s.patternVersion||1,sourceType:s.sourceType,sourceId:s.sourceId,communityId:s.communityId||null,config:s.config?clone(s.config):null,configKey:s.configKey||null,frame:s.frame!=null&&Number.isFinite(Number(s.frame))?Number(s.frame):null,favoriteId:s.favoriteId||null}:null}catch(_){return null}}
   function recordEvent(type,payload={},sessionScoped=true){
     const now=Date.now(),sid=sessionScoped?activeSession?.id||null:null;
     const e={id:id("evt"),type,wallAt:new Date(now).toISOString(),sessionId:sid,phase:currentPhase(),tMs:sid?Math.max(0,now-Date.parse(activeSession.startedAt)):null,payload};
