@@ -21,7 +21,7 @@ function livePixels(canvas){
 }
 async function go(){
   for(let i=0;i<30;i++){try{const x=await fetch(root+"/standalone-v34.html");if(x.ok)break}catch{}await sleep(100)}
-  browser=await (process.env.SETKA_BROWSER==="webkit"?webkit:chromium).launch(process.env.SETKA_BROWSER==="webkit"?{headless:true}:{headless:true,args:["--no-sandbox"]});
+  browser=await (process.env.SETKA_BROWSER==="webkit"?webkit:chromium).launch({headless:true,args:process.env.SETKA_BROWSER==="webkit"?[]:["--no-sandbox"]});
   const page=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
   const errors=[];
   page.on("pageerror",x=>errors.push(String(x)));

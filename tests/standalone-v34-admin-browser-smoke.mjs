@@ -8,7 +8,7 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 let browser;
 try{
   for(let i=0;i<30;i++){try{if((await fetch(root+"/standalone-admin-pattern-knowledge-v40.js")).ok)break}catch{}await sleep(100)}
-  browser=await (process.env.SETKA_BROWSER==="webkit"?webkit:chromium).launch({headless:true,args:["--no-sandbox"]});
+  browser=await (process.env.SETKA_BROWSER==="webkit"?webkit:chromium).launch({headless:true,args:process.env.SETKA_BROWSER==="webkit"?[]:["--no-sandbox"]});
   const page=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
   const errors=[];page.on("pageerror",e=>errors.push(e.message));
   await page.goto(root+"/standalone-renderer-v40.html",{waitUntil:"domcontentloaded"});
