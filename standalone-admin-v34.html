@@ -1,55 +1,46 @@
 <!doctype html>
 <html lang="ru">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<meta name="theme-color" content="#000" />
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-<title>SETKA Research Admin</title>
-<link rel="stylesheet" href="admin-v3.css?v=38-contract" />
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#050505">
+<title>SETKA · Панель паттернов</title>
+<style>
+:root{color-scheme:dark;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;background:#050505;color:#f5f5f5}
+*{box-sizing:border-box}body{margin:0;background:#050505}button,a{font:inherit}button{cursor:pointer}a{color:inherit}
+main{max-width:960px;margin:0 auto;padding:42px max(16px,env(safe-area-inset-right)) 90px}
+header{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:30px;flex-wrap:wrap}
+.eyebrow{color:#8a8a8a;letter-spacing:.22em;font-size:10px;text-transform:uppercase}h1{font-size:clamp(26px,5vw,39px);letter-spacing:.1em;margin:8px 0 5px}h2{font-size:19px;margin:0 0 16px}.subtitle{font-size:13px;line-height:1.5;color:#949494;max-width:590px}
+.action,.tab{color:#ccc;background:#0b0b0b;border:1px solid #383838;border-radius:26px;min-height:42px;padding:11px 17px}.action:hover,.tab:hover{border-color:#888}.action:focus-visible,.tab:focus-visible,a:focus-visible{outline:2px solid white;outline-offset:3px}
+.tab[aria-selected="true"]{background:#fff;color:#111;border-color:white}.tabs{display:flex;gap:8px;margin:25px 0 22px;flex-wrap:wrap}.actions{display:flex;gap:9px;align-items:center}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.stat,.pattern,.note,.detail{border:1px solid #303030;border-radius:22px;padding:19px;background:#080808}.stat strong{display:block;font-size:clamp(25px,4vw,35px);font-weight:600;letter-spacing:-.04em}.stat span{display:block;margin-top:10px;color:#8e8e8e;font-size:12px;line-height:1.35}
+.note{margin:15px 0;color:#a2a2a2;line-height:1.55;font-size:12px}.note strong{color:#dfdfdf}
+.patterns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}.pattern h3{font-size:17px;margin:0 0 7px;line-height:1.3}.pattern small{color:#8d8d8d;font-size:11px}.pattern-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:19px}.pattern-metrics b{display:block;font-size:19px}.pattern-metrics span{color:#8d8d8d;font-size:10px;line-height:1.3;display:block;margin-top:6px}
+.empty{font-size:12px;color:#8b8b8b;line-height:1.4;margin-top:14px}.variant{padding:12px 0;border-bottom:1px solid #292929;display:flex;align-items:center;justify-content:space-between;gap:10px}.variant:last-child{border:none}.variant strong{font-size:14px}.variant span,.variant small{color:#939393;font-size:12px;line-height:1.4}
+.foot{margin-top:30px;border-top:1px solid #292929;padding-top:21px;font-size:12px;color:#9a9a9a;line-height:1.6}.foot a{text-decoration:underline;text-underline-offset:4px}.status{min-height:18px;font-size:12px;color:#b3b3b3;margin:8px 0 14px}section[hidden]{display:none!important}
+@media(max-width:650px){main{padding-top:27px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.patterns{grid-template-columns:1fr}.pattern-metrics{gap:7px}.stat,.pattern,.note,.detail{padding:16px}}
+@media(max-width:340px){.grid{grid-template-columns:1fr}.pattern-metrics{grid-template-columns:repeat(2,1fr)}}
+</style>
 </head>
 <body>
-<div id="login" class="login">
-  <div class="loginbox">
-    <div class="brand">SETKA RESEARCH</div>
-    <div class="sub" style="margin-top:8px">ЗАКРЫТАЯ ИССЛЕДОВАТЕЛЬСКАЯ АДМИНКА</div>
-    <input id="keyInput" type="password" autocomplete="current-password" placeholder="Ключ администратора" aria-label="Ключ администратора">
-    <button id="loginBtn" class="btn primary" type="button" style="width:100%;margin-top:12px">Открыть админку</button>
-    <div id="loginError" class="small muted" style="min-height:20px;margin-top:10px"></div>
-  </div>
+<main>
+<header><div><div class="eyebrow">SETKA · Веб-прототип</div><h1>SETKA RESEARCH</h1><div class="subtitle">Открытая панель статистики паттернов. Без пароля, без личных данных тестировщиков.</div></div><div class="actions"><button type="button" class="action" id="refresh" aria-label="Обновить статистику">↻ Обновить</button></div></header>
+<div id="status" class="status" role="status" aria-live="polite">Загрузка данных…</div>
+<div class="tabs" role="tablist" aria-label="Разделы статистики">
+<button type="button" class="tab" role="tab" aria-selected="true" aria-controls="overview" data-panel="overview">Обзор</button>
+<button type="button" class="tab" role="tab" aria-selected="false" aria-controls="patterns" data-panel="patterns">Паттерны</button>
+<button type="button" class="tab" role="tab" aria-selected="false" aria-controls="variants" data-panel="variants">Варианты</button>
 </div>
-<div id="dashboard" class="shell hidden">
-  <div class="top"><div><div class="brand">SETKA RESEARCH</div><div class="sub">TESTER ID · PRIVATE PERSONAL CORPUS · КАРТОЧКИ ПАТТЕРНОВ · МОДЕРАЦИЯ · СООБЩЕСТВО</div></div><div class="spacer"></div><button id="createCodeBtn" class="btn primary">+ ID тестировщика</button><button id="refreshBtn" class="btn">Обновить</button><button id="logoutBtn" class="btn">Выйти</button></div>
-  <div class="tabs">
-    <button class="tab active" data-tab="overview">Обзор</button><button class="tab" data-tab="pattern-knowledge">Карточки паттернов</button><button class="tab" data-tab="participants">Участники</button><button class="tab" data-tab="moderation">Модерация</button><button class="tab" data-tab="community">Сообщество</button><button class="tab" data-tab="journey">Путь · legacy</button><button class="tab" data-tab="timing">Таймер · legacy</button><button class="tab" data-tab="symptoms">Симптомы</button><button class="tab" data-tab="notes">Личные заметки</button><button class="tab" data-tab="invites">Инвайты</button><button class="tab" data-tab="insights">Запросы / эффект · legacy</button>
-  </div>
-  <section id="tab-overview" class="tab-page"></section><section id="tab-pattern-knowledge" class="tab-page hidden"></section><section id="tab-journey" class="tab-page hidden"></section><section id="tab-participants" class="tab-page hidden"></section><section id="tab-timing" class="tab-page hidden"></section><section id="tab-symptoms" class="tab-page hidden"></section><section id="tab-notes" class="tab-page hidden"></section><section id="tab-moderation" class="tab-page hidden"></section><section id="tab-community" class="tab-page hidden"></section><section id="tab-invites" class="tab-page hidden"></section><section id="tab-insights" class="tab-page hidden"></section><section id="detail" class="hidden" style="margin-top:16px"></section>
+<section id="overview" role="tabpanel" aria-label="Обзор">
+<div id="totals" class="grid"></div>
+<div class="note"><strong>Как читать цифры:</strong> они относятся только к подключённым Tester ID. Это не все загрузки приложения и не все устройства. «Просмотр» — отдельный эпизод работы паттерна; «сессия» может включать несколько просмотров.</div>
+</section>
+<section id="patterns" role="tabpanel" aria-label="Паттерны" hidden><h2>Семь базовых паттернов</h2><div id="patternCards" class="patterns"></div></section>
+<section id="variants" role="tabpanel" aria-label="Варианты" hidden><h2>Публично сохранённые конфигурации</h2><div class="note">Только опубликованные агрегированные показатели вариантов. Несохранённые настройки и приватные слепки здесь не показываются.</div><div id="variantList" class="detail"></div></section>
+<div class="foot">
+<strong>Нужны личные заметки, Tester ID и модерация?</strong> <a href="standalone-admin-private-v34.html">Открыть закрытую исследовательскую админку</a>. Для неё по-прежнему требуется действующий серверный ключ. Эта открытая панель не умеет изменять данные и не обходит защиту приватного контура.
 </div>
-<script src="standalone-admin-bridge-v34b.js?v=47-history-sync-integrity-1"></script>
-<script src="standalone-admin-agi-v34.js?v=1"></script>
-<script src="standalone-admin-private-corpus-v40.js?v=40-private-corpus-1"></script>
-<script src="standalone-admin-participants-v34.js?v=46-unified-front-admin-1"></script>
-<script src="standalone-admin-activity-v34.js?v=34.8.2"></script>
-<script src="standalone-admin-participant-modal-v34.js?v=34.10"></script>
-<script src="admin-replay-first-v34.js?v=34-first-replay-1"></script>
-<script src="admin-fish-wave-replay-v35.js?v=34-fish-wave-replay-distinct-1"></script>
-<script src="admin-rgb-glitch-rings-replay-v36.js?v=34-rgb-glitch-rings-replay-v36-2"></script>
-<script src="admin-breathing-fractal-replay-v34.js?v=34-breathing-fractal-replay-1"></script>
-<script src="admin-breathing-growth-replay-v34.js?v=34-breathing-growth-replay-1"></script>
-<script src="admin-stereo-dna-replay-v37.js?v=34-stereo-dna-replay-v37-1"></script>
-<script src="admin-v3.js?v=46-unified-front-admin-1"></script>
-<script src="standalone-visual-cache-v40.js?v=40-visual-cache-2"></script>
-<script src="standalone-admin-note-snapshot-fix-v34.js?v=46-unified-front-admin-1"></script>
-<script src="standalone-admin-pattern-knowledge-v40.js?v=46-unified-front-admin-1"></script>
-<script src="standalone-admin-visual-assets-v40.js?v=40-visual-policy-3"></script>
-<script src="standalone-admin-mother-snapshots-v40.js?v=40-renderer-refresh-3"></script>
-<script src="standalone-admin-privacy-v40.js?v=40-private-corpus-2"></script>
-<script src="admin-v4-extra.js?v=2"></script>
-<script src="admin-v5-extra.js?v=1"></script>
-<script src="admin-guest-v12.js?v=1"></script>
-<script src="admin-sensors-v13.js?v=2"></script>
-<script src="standalone-admin-retention-v34.js?v=34.9"></script>
-<script src="standalone-admin-verstak-v34.js?v=4"></script>
-<script src="standalone-admin-tester-ids-v37.js?v=40-recovery-2"></script>
-<script src="standalone-admin-community-v38.js?v=40-moderation-4"></script>
-</body></html>
+</main>
+<script src="standalone-admin-public-v34.js?v=48-open-overview-1" defer></script>
+</body>
+</html>
