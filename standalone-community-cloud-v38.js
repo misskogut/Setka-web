@@ -93,7 +93,7 @@
       panel.appendChild(wrap);syncModeUi();return;
     }
     for(const note of publicNotes){
-      const card=document.createElement("article");card.className="st34-note-card st37-public-card";
+      const card=document.createElement("article");card.className="st34-note-card st37-public-card";card.dataset.publicNoteId=String(note.id||"");
       const meta=[];
       if(note.createdAt&&C.dt)meta.push(C.dt(note.createdAt));
       const pid=note.patternId||note.config?.patternId||null,title=Setka.getPatternTitle?.(pid)||"Паттерн";
@@ -180,7 +180,16 @@
     await Promise.all([refresh(),loadNotes(true)]);
     setTimeout(refresh,1800);
   }
+  // The pattern engine re-creates all panels on favorites, viewport changes and sync.
+  // Restore the selected notes view after its render, never show pattern tiles under Notes.
+  const communityPanel=document.getElementById("communityPanel");
+  if(communityPanel){
+    new MutationObserver(()=>{
+      if(mode()!=="notes" || Setka.getState?.()?.libraryPage!=="community")return;
+      if(!communityPanel.querySelector(":scope > #st40CommunityNotes"))renderNotes();
+    }).observe(communityPanel,{childList:true});
+  }
   bootstrap();
   C.cloudCommunity={refresh,status:()=>({count:items.length,lastOkAt,lastError,mode:mode(),metrics,patternMetrics,publicNotes:publicNotes.length})};
-  window.__SETKA_CLOUD_COMMUNITY_V38__=8;
+  window.__SETKA_CLOUD_COMMUNITY_V38__=9;
 })();

@@ -201,16 +201,10 @@
   }
 
   function resolve(card) {
-    if (card?.classList?.contains("st37-public-card")) return null;
-    const text = card?.querySelector(".st34-note-text")?.textContent || "";
-    const meta = card?.querySelector(".st34-note-meta")?.textContent || "";
-    const notes = C.getData?.()?.notes || [];
-    const same = notes.filter(n => String(n?.text ?? "") === text);
-    if (same.length === 1) return same[0];
-    return same.find(n => {
-      try { return meta.startsWith(C.dt?.(n.observedAt) || ""); }
-      catch (_) { return false; }
-    }) || same.at(-1) || null;
+    if(!card || card.classList.contains("st37-public-card"))return null;
+    const id=card.dataset.noteId;
+    if(!id)return null;
+    return (C.getData?.()?.notes||[]).find(n=>String(n.id)===String(id))||null;
   }
 
   function statusOf(note) {
