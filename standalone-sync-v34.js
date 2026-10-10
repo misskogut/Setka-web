@@ -46,17 +46,33 @@
 
   function serviceUsage(){
     const d=C.getData?.()||{},sessions=[],exposures=[];
-    for(const s of (d.sessions||[])){
-      if(!s?.id)continue;
-      sessions.push({id:String(s.id),startedAt:s.startedAt||null,endedAt:s.endedAt||null,completed:!!(s.completed||s.endedAt)});
-      const base=Date.parse(s.startedAt||"");
-      for(const [i,u] of (s.usage||[]).entries()){
+    const ledger=Array.isArray(d.patternExposures)?d.patternExposures:[];
+    const coveredSessions=new Set();
+    // Canonical PatternExposure covers measured AND free exploration. Do not
+    // reconstruct a second copy from session.usage once canonical rows exist.
+    for(const x of ledger){
+      const patternId=x?.patternId||x?.config?.patternId||null;
+      if(!x?.exposureId||!patternId||!(Number(x.durationMs)>0))continue;
+      if(x.sessionId)coveredSessions.add(String(x.sessionId));
+      exposures.push({exposureId:String(x.exposureId),sessionId:x.sessionId||null,
+        patternId,configKey:x.configKey||window.SetkaApp?.configKey?.(x.config,patternId)||null,
+        durationMs:Math.max(0,Number(x.durationMs)||0),
+        startedAt:x.startedAt||null,endedAt:x.endedAt||null});
+    }
+    for(const item of (d.sessions||[])){
+      if(!item?.id)continue;
+      const sid=String(item.id);
+      sessions.push({id:sid,startedAt:item.startedAt||null,endedAt:item.endedAt||null,completed:!!(item.completed||item.endedAt)});
+      if(coveredSessions.has(sid))continue;
+      const base=Date.parse(item.startedAt||"");
+      for(const [i,u] of (item.usage||[]).entries()){
         if(!u?.config||!(Number(u.durationMs)>0))continue;
-        const patternId=u.patternId||u.config?.patternId||"tentacle-orbit";
+        const patternId=u.patternId||u.config?.patternId||null;
+        if(!patternId)continue;
         const configKey=u.configKey||window.SetkaApp?.configKey?.(u.config,patternId)||null;
         const startedMs=Math.max(0,Number(u.startedMs)||0),endedMs=Math.max(startedMs,Number(u.endedMs)||startedMs+Math.max(0,Number(u.durationMs)||0));
         const startedAt=Number.isFinite(base)?new Date(base+startedMs).toISOString():null,endedAt=Number.isFinite(base)?new Date(base+endedMs).toISOString():null;
-        exposures.push({exposureId:`svc-${s.id}-${i}-${u.phase||"view"}`,sessionId:String(s.id),patternId,configKey,durationMs:Math.max(0,Number(u.durationMs)||0),startedAt,endedAt});
+        exposures.push({exposureId:`svc-${sid}-${i}-${u.phase||"view"}`,sessionId:sid,patternId,configKey,durationMs:Math.max(0,Number(u.durationMs)||0),startedAt,endedAt});
       }
     }
     lastUsageStats={sessions:sessions.length,exposures:exposures.length};
