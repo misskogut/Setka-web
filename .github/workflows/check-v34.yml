@@ -56,6 +56,9 @@ on:
       - 'standalone-v34.html'
       - 'tests/standalone-v34-integrity.test.mjs'
       - 'tests/standalone-v34-browser-smoke.mjs'
+      - 'tests/standalone-v34-admin-browser-smoke.mjs'
+      - 'tests/standalone-v34-admin-integrity.test.mjs'
+      - 'supabase/functions/setka-pattern-knowledge-v40/index.ts'
       - '.github/workflows/check-v34.yml'
 jobs:
   syntax:
@@ -114,6 +117,7 @@ jobs:
       - run: node --check standalone-admin-evolution-pattern-lab-v35.js
       - run: node --check admin-replay-first-v34.js
       - run: node --test tests/standalone-v34-integrity.test.mjs
+      - run: node --test tests/standalone-v34-admin-integrity.test.mjs
 
   browser-smoke:
     runs-on: ubuntu-latest
@@ -123,9 +127,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm install --no-save --ignore-scripts playwright
+      - run: npm install --no-save --ignore-scripts playwright esbuild
       - run: npx playwright install --with-deps chromium
       - run: node tests/standalone-v34-browser-smoke.mjs
+      - run: node tests/standalone-v34-admin-browser-smoke.mjs
+      - run: ./node_modules/.bin/esbuild supabase/functions/setka-pattern-knowledge-v40/index.ts --outfile=/tmp/setka-admin-backend-check.js --format=esm
       - uses: actions/upload-artifact@v4
         if: always()
         with:
