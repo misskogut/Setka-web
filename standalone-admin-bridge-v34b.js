@@ -71,7 +71,9 @@
       loading = null;
       return cache;
     })();
-    return loading;
+    // A transient network/auth failure must not poison subsequent refreshes.
+    // Without finally(), all later admin requests reused the rejected promise.
+    try{return await loading}finally{loading=null}
   }
 
   function participant(d){
