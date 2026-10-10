@@ -37,7 +37,11 @@
       localStorage.setItem(ADMIN_STORAGE,adminKey);
       login.classList.add("hidden");dashboard.classList.remove("hidden");
       await loadAll();
-    }catch(_){loginError.textContent="Неверный ключ или нет соединения.";loginBtn.disabled=false;}
+    }catch(e){
+      const message=String(e?.message||"");
+      loginError.textContent=message==="invalid_admin_key"?"Ключ не принят сервером. Личные данные остаются закрытыми.":/fetch|network|abort|connection|timeout/i.test(message)?"Не удалось связаться с сервером. Проверь подключение и повтори.":"Не удалось открыть закрытый раздел: "+message;
+      loginBtn.disabled=false;
+    }
   }
 
   loginBtn.addEventListener("click",loginNow);
