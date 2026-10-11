@@ -9,7 +9,18 @@
 
   const $ = id => document.getElementById(id);
   const login = $("login"), dashboard = $("dashboard"), keyInput = $("keyInput"), loginBtn = $("loginBtn"), loginError = $("loginError"), detail = $("detail");
-  let adminKey = localStorage.getItem(ADMIN_STORAGE) || "";
+  // An owner-only access link carries the key in the URL fragment (#access=…).
+  // Fragments are not included in requests to GitHub Pages. Remove it from the
+  // address bar before fetching any script or remote data, then validate on server.
+  const linkAccess = (() => {
+    try {
+      const value = new URLSearchParams(location.hash.replace(/^#/,"")).get("access") || "";
+      if(!/^SKA-[A-Za-z0-9_-]{40,}$/.test(value))return "";
+      history.replaceState(history.state, "", location.pathname + location.search);
+      return value;
+    } catch (_) { return ""; }
+  })();
+  let adminKey = linkAccess || localStorage.getItem(ADMIN_STORAGE) || "";
   let overview = {}, participants = [], sessions = [], symptoms = [], invites = [], insights = [], community = [];
   let replay = null;
 
@@ -188,5 +199,5 @@
   function drawThumb(canvas,c,frame){const ctx=canvas.getContext("2d");ctx.fillStyle="#000";ctx.fillRect(0,0,canvas.width,canvas.height);ctx.save();ctx.translate(canvas.width/2,canvas.height/2);const extent=Math.max(40,(Number(c.tentacleLength)||100)*3+(Number(c.baseRadius)||10)),sc=(canvas.width/2-6)/extent;ctx.scale(sc,sc);renderPatternOrigin(ctx,c,Number(frame)||44);ctx.restore();}
   function renderPatternOrigin(ctx,c,frame){const n=Number(c.numTentacles)||24,len=Number(c.tentacleLength)||100,base=Number(c.baseRadius)||10,mov=Number(c.movementSpeed)||1,cs=Number(c.colorSpeed)||1,size=Number(c.circleSize)||1,lw=Number(c.lineWeight)||1,step=Number(c.segmentStep)||2,mode=Number(c.colorModeIndex)||0,shift=frame*cs*.5;for(let i=0;i<360;i+=360/n){const x0=Math.sin(rad(i))*base,y0=Math.cos(rad(i))*base;for(let q=0;q<len;q+=step){const a=Math.cos(rad(len-q+frame*mov))*q,x=Math.sin(rad(i-a))*q*3,y=Math.cos(rad(i-a))*q*3,d=(len-q)*size/10;ctx.strokeStyle=color(mode,i,q,x,y,shift,frame);ctx.lineWidth=lw;ctx.beginPath();ctx.arc(x0+x,y0+y,Math.max(.075,d/2),0,Math.PI*2);ctx.stroke();}}}
 
-  if(adminKey){keyInput.value=adminKey;loginNow();}
+  if(adminKey){keyInput.value=adminKey;if(linkAccess)loginError.textContent="Проверяем персональный доступ…";loginNow();}
 })();
