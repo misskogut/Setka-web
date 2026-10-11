@@ -1,5 +1,5 @@
 (() => {
-  const VERSION='B2.9';
+  const VERSION='B2.9.1';
   const MARKER='B2.9-SIMPLE-FRONT';
   const MODES=[
     {id:'CANON',name:'Канон',desc:'Зафиксированная эталонная ветка.'},
@@ -8,7 +8,16 @@
     {id:'MOTORWAY-LAB',name:'Магистрали',desc:'Экспериментальная ветка магистралей.'},
     {id:'INTEGRATION',name:'Интеграция',desc:'Интеграционная ветка, где сводятся изменения.'}
   ];
-  const state={mode:'INTEGRATION',overview:null,view:'BODY',transcriptStream:'SYSTEM',transcriptRows:[],openPanel:null};
+  const state={
+    mode:'INTEGRATION',
+    overview:null,
+    view:'BODY',
+    transcriptStream:'SYSTEM',
+    transcriptRows:[],
+    context:null,
+    selected:null,
+    linksVisible:true
+  };
 
   document.documentElement.dataset.setkaSimpleFront=MARKER;
   document.documentElement.dataset.setkaFrontVersion=VERSION;
@@ -16,7 +25,6 @@
 
   const style=document.createElement('style');
   style.textContent=`
-    /* B2.9: hide every legacy/debug control from the working surface. The graph canvas stays. */
     .topbar,.mode-strip,.source-bar,.graph-stats,.graph-controls,
     #computer-panel,#feed-panel,#entity-card,
     #setka-b28-panel,#setka-b28-status-chip,#setka-b28-view-toggle,#setka-b28-toggle,
@@ -49,11 +57,11 @@
     .ss-mode b{display:block;font-size:12px;font-weight:650}.ss-mode small{display:block;margin-top:4px;font-size:10px;color:#8fa39d;line-height:1.35}
     .ss-check{color:#a8ffbf;font-size:13px}
 
-    .ss-graph-caption{pointer-events:auto;position:absolute;left:24px;top:88px;max-width:min(520px,calc(100vw - 48px));padding:12px 14px;border-radius:12px;background:rgba(5,9,9,.62);backdrop-filter:blur(10px)}
+    .ss-graph-caption{pointer-events:auto;position:absolute;left:24px;top:88px;max-width:min(560px,calc(100vw - 48px));padding:12px 14px;border-radius:12px;background:rgba(5,9,9,.62);backdrop-filter:blur(10px)}
     .ss-graph-title{display:flex;align-items:center;gap:8px}
     .ss-graph-title strong{font-size:18px;font-weight:650}
     .ss-graph-sub{margin-top:4px;color:#a8b7b3;font-size:11px;line-height:1.4}
-    .ss-shared{margin-top:5px;color:#d7c896;font-size:10px}
+    .ss-shared{margin-top:5px;color:#d7c896;font-size:10px;line-height:1.4}
 
     .ss-graph-controls{pointer-events:auto;position:absolute;left:50%;bottom:22px;transform:translateX(-50%);display:flex;gap:7px;padding:6px;border:1px solid rgba(125,154,147,.24);border-radius:12px;background:rgba(5,9,9,.82);backdrop-filter:blur(16px)}
     .ss-graph-controls .ss-btn{font-size:11px;padding:8px 10px}
@@ -80,11 +88,19 @@
     .ss-event:hover{background:rgba(135,233,255,.035)}
     .ss-event time{display:block;color:#80948f;font-size:9px;margin-bottom:4px}.ss-event b{display:block;font-size:11px;line-height:1.4;font-weight:560}.ss-event small{display:block;margin-top:4px;color:#879a95;font-size:9px}
     .ss-empty{padding:16px 10px;color:#879a95;font-size:11px;text-align:center}
-    .ss-object-card{pointer-events:auto;position:absolute;left:24px;bottom:80px;width:min(330px,calc(100vw - 48px));display:none;padding:12px;border:1px solid rgba(135,233,255,.28);border-radius:12px;background:rgba(5,9,9,.94);box-shadow:0 16px 46px rgba(0,0,0,.4)}
-    .ss-object-card.open{display:block}.ss-object-card-head{display:flex;gap:8px;align-items:start}.ss-object-card-head div{flex:1}.ss-object-card strong{display:block;font-size:12px}.ss-object-card small{display:block;margin-top:4px;color:#8fa39d;font-size:9px;line-height:1.4}
+
+    .ss-object-card{pointer-events:auto;position:absolute;left:24px;bottom:80px;width:min(370px,calc(100vw - 48px));display:none;padding:12px;border:1px solid rgba(135,233,255,.28);border-radius:12px;background:rgba(5,9,9,.96);box-shadow:0 16px 46px rgba(0,0,0,.4)}
+    .ss-object-card.open{display:block}
+    .ss-object-card-head{display:flex;gap:8px;align-items:start}.ss-object-card-head>div{flex:1;min-width:0}
+    .ss-object-card strong{display:block;font-size:13px;line-height:1.3}.ss-object-card small{display:block;margin-top:4px;color:#8fa39d;font-size:9px;line-height:1.4;overflow-wrap:anywhere}
+    .ss-object-body{margin-top:10px}.ss-row{display:grid;grid-template-columns:105px minmax(0,1fr);gap:8px;padding:6px 0;border-top:1px solid rgba(125,154,147,.12);font-size:10px;line-height:1.4}.ss-row span:first-child{color:#81958f}.ss-row span:last-child{text-align:right;overflow-wrap:anywhere}
+    .ss-related{display:flex;gap:5px;flex-wrap:wrap;margin-top:9px}.ss-related button{font-size:9px;padding:6px 8px}
+    .ss-card-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+
     .ss-info{pointer-events:auto;position:absolute;inset:0;display:none;place-items:center;background:rgba(0,0,0,.46);padding:18px}.ss-info.open{display:grid}
     .ss-info-box{width:min(440px,100%);padding:16px;border:1px solid rgba(135,233,255,.3);border-radius:14px;background:#08100f;box-shadow:0 22px 70px rgba(0,0,0,.5)}
     .ss-info-box h2{margin:0 0 8px;font-size:16px}.ss-info-box p{margin:0;color:#a9b8b4;font-size:12px;line-height:1.55}.ss-info-box .ss-btn{margin-top:14px}
+
     @media(max-width:820px){
       .ss-header{left:8px;right:8px;top:8px;height:auto;min-height:48px;flex-wrap:wrap}
       .ss-brand{min-width:auto}.ss-brand strong{display:none}.ss-branch{order:3;flex-basis:100%}
@@ -97,34 +113,44 @@
   document.head.appendChild(style);
 
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
-  const api=async path=>{const r=await fetch(path,{cache:'no-store'});const d=await r.json().catch(()=>({ok:false,state:'INVALID_JSON'}));if(!r.ok||d?.ok===false)throw Object.assign(new Error(d?.state||`HTTP_${r.status}`),{data:d});return d};
-  const modeMeta=()=>MODES.find(x=>x.id===state.mode)||MODES[4];
-  const displayVersion=ref=>{
-    const s=String(ref||'');
-    if(/B1$/.test(s))return 'B1';
-    if(/B0$/.test(s))return 'B0';
-    return s||'—';
+  const api=async path=>{
+    const r=await fetch(path,{cache:'no-store'});
+    const d=await r.json().catch(()=>({ok:false,state:'INVALID_JSON'}));
+    if(!r.ok||d?.ok===false)throw Object.assign(new Error(d?.state||`HTTP_${r.status}`),{data:d});
+    return d;
   };
+  const modeMeta=()=>MODES.find(x=>x.id===state.mode)||MODES[4];
+  const displayVersion=ref=>{const s=String(ref||'');if(/B1$/.test(s))return'B1';if(/B0$/.test(s))return'B0';return s||'—'};
   const humanState=s=>{
     const map={
       FROZEN_VERIFIED_BASELINE:'зафиксирована и не изменяется',
       FROZEN_BASELINE_READY_NOT_EXECUTING:'зафиксирована, сейчас не выполняется',
       FROZEN_BASELINE_READY:'зафиксирована и готова к просмотру',
-      AUTHORIZED_LOCAL_EXPERIMENTATION_READY:'готова к локальным экспериментам, сейчас не запущена'
+      AUTHORIZED_LOCAL_EXPERIMENTATION_READY:'готова к локальным экспериментам, сейчас не запущена',
+      ACTIVE:'активна',
+      INDEXED:'сохранена и проиндексирована',
+      PASS:'проверена'
     };
     return map[String(s||'')]||'состояние зафиксировано';
   };
   const humanKind=k=>({
-    ENTITY:'Сущность',SHIP:'Корабль',EXPERIMENT:'Эксперимент',RUN:'Запуск',SNAPSHOT:'Слепок',
-    VISUALIZATION:'Визуализация',EVENT:'Событие',METRIC:'Метрика',BRANCH:'Ветка',VERSION:'Версия',MODE:'Режим'
+    ENTITY:'Сущность',SHIP:'Корабль',EXPERIMENT:'Эксперимент',EXPERIMENT_CAPSULE:'Капсула эксперимента',
+    RUN:'Запуск',SNAPSHOT:'Слепок',VISUALIZATION:'Визуализация',EVENT:'Событие',METRIC:'Метрика',
+    BRANCH:'Ветка',VERSION:'Версия',MODE:'Режим',WORLD_NODE:'Узел локального мира',WORLD_EVENT:'Внешнее событие',
+    SYSTEM:'Система',IDENTITY:'Идентичность',CAPABILITY:'Возможность',DUTY:'Обязанность',MISSION:'Миссия'
   }[String(k||'').toUpperCase()]||'Объект');
+  const humanSubtype=s=>({
+    OBSERVATION_SCOPE:'область наблюдения',
+    SYSTEM_STRUCTURE:'структура системы',
+    ACTOR:'участник системы'
+  }[String(s||'').toUpperCase()]||String(s||'').replaceAll('_',' ').toLowerCase()||'—');
 
   function infoText(kind){
     const data={
-      graph:{title:'Граф',text:'Это главное рабочее поле. В режиме «Тело» он показывает сохранённое тело выбранной версии SETKA. В режиме «Структура» — более широкую карту объектов и связей системы. Можно вращать, приближать и нажимать на узлы.'},
-      onboard:{title:'Бортовой компьютер',text:'Это понятный пульт выбранной ветки: какая версия открыта, в каком она состоянии и что сейчас выбрано. На первом этапе здесь также есть простой поиск по системе. Команды и более умные действия будем добавлять постепенно.'},
-      transcript:{title:'Стенограмма',text:'Это история системы во времени. «Вся система» показывает общую хронологию, «Эта ветка» — только события выбранной ветки. По событию можно перейти к связанному контексту.'},
-      branch:{title:'Ветка',text:'Ветка — это отдельная линия состояния SETKA. Сейчас мы показываем пять основных веток параллельно. Они могут иметь разную историю и состояние. На B1 у всех пяти пока одно и то же сохранённое тело, поэтому форма графа между ними не обязана меняться.'}
+      graph:{title:'Граф',text:'Главное рабочее поле. «Тело» показывает сохранённое тело выбранной версии SETKA. «Связи» показывает только контекст выбранного объекта: сам объект и реальные связанные с ним объекты. Общая база целиком сюда больше не высыпается.'},
+      onboard:{title:'Бортовой компьютер',text:'Показывает простыми словами, что сейчас открыто, и помогает найти конкретный объект в SETKA. Выбрав результат поиска, ты увидишь его карточку и карту его реальных связей.'},
+      transcript:{title:'Стенограмма',text:'История системы во времени. Нажатие на событие открывает карточку события. Если у события есть связанный объект или сохранённая версия, граф автоматически переходит к этому контексту.'},
+      branch:{title:'Ветка',text:'Отдельная линия состояния SETKA. Пять основных веток ведутся параллельно. На B1 у них одно сохранённое тело, поэтому при переключении веток форма тела сейчас одинаковая, а история и состояние ветки различаются.'}
     };
     return data[kind]||{title:'Что это?',text:'Элемент Верстака.'};
   }
@@ -136,7 +162,7 @@
         <div class="ss-brand"><div class="ss-logo">S</div><strong>SETKA</strong></div>
         <div class="ss-branch">
           <button class="ss-btn" data-branch-toggle>Ветка: <b data-branch-name>Интеграция</b> ▾</button>
-          <button class="ss-icon" data-info="branch" aria-label="Что такое ветка">i</button>
+          <button class="ss-icon" data-info="branch">i</button>
           <div class="ss-menu" data-branch-menu></div>
         </div>
         <div class="ss-actions">
@@ -173,6 +199,7 @@
 
       <section class="ss-object-card" data-object-card>
         <div class="ss-object-card-head"><div><strong data-object-title></strong><small data-object-sub></small></div><button class="ss-icon" data-object-close>×</button></div>
+        <div class="ss-object-body" data-object-body></div>
       </section>
 
       <div class="ss-info" data-info-modal>
@@ -180,7 +207,6 @@
       </div>
     `;
     document.body.appendChild(shell);
-
     shell.querySelector('[data-branch-toggle]').addEventListener('click',()=>shell.querySelector('[data-branch-menu]').classList.toggle('open'));
     shell.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',()=>openPanel(b.dataset.open)));
     shell.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>closePanel(b.dataset.close)));
@@ -201,7 +227,7 @@
   }
 
   async function refreshOverview(){
-    try{state.overview=await api('/api/b28/overview');renderOnboard();updateCaption();}
+    try{state.overview=await api('/api/b28/overview');renderOnboard();updateCaption()}
     catch(e){const host=document.querySelector('[data-onboard-body]');if(host)host.innerHTML='<div class="ss-empty">Не удалось прочитать локальное состояние SETKA.</div>'}
   }
 
@@ -222,11 +248,16 @@
       const peers=(state.overview?.modes||[]).filter(x=>x.bodySnapshotRef&&x.bodySnapshotRef===m.bodySnapshotRef).length;
       shared.textContent=peers>1?`Форма тела сейчас общая для ${peers} основных веток.`:'';
       viewLabel.textContent='Тело';
+    }else if(state.context){
+      title.textContent=`Связи · ${state.context.root?.label||state.context.root?.ref||'объект'}`;
+      sub.textContent=`${state.context.nodeCount||0} объектов · ${state.context.edgeCount||0} реальных связей · до ${state.context.depth||0} шагов от выбранного объекта`;
+      shared.textContent=state.context.truncated?'Показана ближайшая часть контекста, без перегрузки всего бэка.':'Показан только контекст выбранного объекта, а не вся база.';
+      viewLabel.textContent='Связи';
     }else{
-      title.textContent='Структура системы';
-      sub.textContent='Карта объектов и связей SETKA';
-      shared.textContent='Это не анатомическое тело, а карта бэка.';
-      viewLabel.textContent='Структура';
+      title.textContent='Связи объекта';
+      sub.textContent='Сначала выбери объект в Бортовом или на графе.';
+      shared.textContent='Весь бэк целиком здесь больше не показывается.';
+      viewLabel.textContent='Связи';
     }
   }
 
@@ -238,7 +269,7 @@
       <div class="ss-card"><label>Сейчас открыто</label><b>SETKA · версия ${esc(v)}</b><p>${esc(modeMeta().name)} ветка.</p></div>
       <div class="ss-card"><label>Состояние</label><b>${esc(humanState(m.runtimeState))}</b><p>Переключение ветки меняет контекст просмотра, а не запускает выполнение.</p></div>
       ${peers>1?`<div class="ss-note">У ${peers} основных веток сейчас одно сохранённое тело B1. Поэтому форма графа при переключении этих веток остаётся одинаковой; меняются история и состояние ветки.</div>`:''}
-      <div class="ss-card"><label>Найти в системе</label><b>Что тебе показать?</b><p>На первом этапе Бортовой использует это поле как простой поиск по реальной SETKA.</p>
+      <div class="ss-card"><label>Найти в системе</label><b>Что тебе показать?</b><p>Выбери результат — я открою карточку объекта и его реальные связи.</p>
         <div class="ss-search"><input data-simple-search placeholder="Например: солнце, эксперимент, корабль…"><button class="ss-btn" data-simple-search-go>Найти</button></div>
         <div class="ss-results" data-simple-results></div>
       </div>
@@ -252,19 +283,103 @@
     const q=String(input?.value||'').trim();if(!q||!host)return;
     host.innerHTML='<div class="ss-empty">Ищу…</div>';
     try{
-      const d=await api(`/api/b28/search?q=${encodeURIComponent(q)}&limit=8`);
+      const d=await api(`/api/b28/search?q=${encodeURIComponent(q)}&limit=10`);
       const rows=d.results||[];
       if(!rows.length){host.innerHTML='<div class="ss-empty">Ничего не найдено.</div>';return}
-      host.innerHTML=rows.map((x,i)=>`<button class="ss-result" data-r="${i}"><b>${esc(x.label||x.ref)}</b><small>${esc(humanKind(x.kind))}${x.state?' · '+esc(x.state):''}</small></button>`).join('');
-      host.querySelectorAll('[data-r]').forEach(b=>b.addEventListener('click',()=>showSearchResult(rows[Number(b.dataset.r)])));
+      host.innerHTML=rows.map((x,i)=>`<button class="ss-result" data-r="${i}"><b>${esc(x.label||x.ref)}</b><small>${esc(humanKind(x.kind))}${x.state?' · '+esc(humanState(x.state)):''}</small></button>`).join('');
+      host.querySelectorAll('[data-r]').forEach(b=>b.addEventListener('click',()=>selectBackendObject(rows[Number(b.dataset.r)])));
     }catch(e){host.innerHTML='<div class="ss-empty">Поиск сейчас недоступен.</div>'}
   }
 
-  function showSearchResult(x){
-    const spot=window.SETKA_GRAPH_BRIDGE?.spotlight?.(x.ref);
-    const title=x.label||x.ref;
-    const extra=spot?.directMatches>0?'Показан на текущем графе.':'Есть в системе, но не входит в текущее тело/вид.';
-    showObject(title,`${humanKind(x.kind)} · ${extra}`);
+  async function selectBackendObject(x){
+    if(!x?.kind||!x?.ref)return;
+    state.selected={kind:x.kind,ref:x.ref,label:x.label||x.ref};
+    await Promise.allSettled([showBackendCard(x.kind,x.ref),showContext(x.kind,x.ref)]);
+  }
+
+  async function showBackendCard(kind,ref){
+    try{
+      const d=await api(`/api/b28/inspect?kind=${encodeURIComponent(kind)}&ref=${encodeURIComponent(ref)}`);
+      const rec=d.record||{};
+      const label=rec.display_name_ru||rec.version_label||d.ref||ref;
+      const related=[...(d.outgoing||[]),...(d.incoming||[])].filter(x=>x.indexedEndpoint).slice(0,8);
+      showCard({
+        title:label,
+        sub:humanKind(d.kind||kind),
+        rows:[
+          ['Что это',humanSubtype(rec.subtype||rec.branch_kind||rec.canon_version||d.kind||kind)],
+          ['Состояние',humanState(rec.state||rec.runtime_state||rec.version_state)],
+          ['Связей',(Number(d.outgoingCount||0)+Number(d.incomingCount||0)).toLocaleString('ru-RU')],
+          ...(d.metrics?.length?[['Метрик',String(d.metrics.length)]]:[])
+        ],
+        related,
+        actions:[{label:'Показать связи',fn:()=>showContext(d.kind||kind,d.ref||ref)},{label:'Вернуться к телу',fn:showBody}]
+      });
+    }catch(e){
+      showCard({title:state.selected?.label||ref,sub:humanKind(kind),rows:[['Состояние','Объект найден, подробная карточка недоступна']]});
+    }
+  }
+
+  function ctxId(kind,ref){return `CTX::${kind}::${encodeURIComponent(ref)}`}
+  function parseCtxId(id){
+    const m=String(id||'').match(/^CTX::([^:]+)::(.+)$/);if(!m)return null;
+    try{return{kind:m[1],ref:decodeURIComponent(m[2])}}catch{return null}
+  }
+
+  function contextToSnapshot(g){
+    const nodes=g.nodes||[],edges=g.edges||[];
+    const degree=new Map();
+    edges.forEach(e=>{
+      const a=ctxId(e.sourceKind,e.sourceRef),b=ctxId(e.targetKind,e.targetRef);
+      degree.set(a,(degree.get(a)||0)+1);degree.set(b,(degree.get(b)||0)+1);
+    });
+    const byDepth=new Map();
+    nodes.forEach(n=>{const d=Number(n.depth||0);if(!byDepth.has(d))byDepth.set(d,[]);byDepth.get(d).push(n)});
+    const positions=new Map();
+    for(const [depth,arr0] of [...byDepth.entries()].sort((a,b)=>a[0]-b[0])){
+      const arr=[...arr0].sort((a,b)=>String(a.kind).localeCompare(String(b.kind))||String(a.label).localeCompare(String(b.label)));
+      if(depth===0){arr.forEach(n=>positions.set(ctxId(n.kind,n.ref),[0,0,0]));continue}
+      const radius=4.3*depth;
+      arr.forEach((n,i)=>{
+        const angle=2*Math.PI*i/Math.max(1,arr.length);
+        const kindBand=['ENTITY','SHIP','EXPERIMENT','EXPERIMENT_CAPSULE','RUN','VISUALIZATION','SNAPSHOT','WORLD_NODE','WORLD_EVENT','EVENT'].indexOf(n.kind);
+        const y=(kindBand<0?0:(kindBand-4.5)*.34)+(i%3-1)*.12;
+        positions.set(ctxId(n.kind,n.ref),[Math.cos(angle)*radius,y,Math.sin(angle)*radius]);
+      });
+    }
+    const graphNodes=nodes.map(n=>{
+      const id=ctxId(n.kind,n.ref),p=positions.get(id)||[0,0,0];
+      return [id,n.isRoot?null:null,n.kind,Number(n.depth||0),0,degree.get(id)||0,n.label||n.ref,n.subtype||n.kind,Boolean(n.isRoot),p[0],p[1],p[2]];
+    });
+    const graphEdges=edges.map(e=>[ctxId(e.sourceKind,e.sourceRef),ctxId(e.targetKind,e.targetRef),e.relationState||e.relationKind||'RELATION',e.relationKind||'RELATION']);
+    return {ok:true,state:g.state,snapshotRef:`CONTEXT::${g.root?.kind||''}::${g.root?.ref||''}`,nodes:graphNodes,edges:graphEdges,grownNodes:graphNodes.length,internalEdges:graphEdges.length};
+  }
+
+  async function showContext(kind,ref){
+    try{
+      const g=await api(`/api/b29/context?kind=${encodeURIComponent(kind)}&ref=${encodeURIComponent(ref)}&depth=3&max=90`);
+      state.context=g;state.view='CONTEXT';
+      const graphApi=window.SETKA_B1_GRAPH_API;
+      if(!graphApi?.loadSnapshot)throw new Error('GRAPH_API_NOT_READY');
+      graphApi.loadSnapshot(contextToSnapshot(g),{
+        snapshotRef:`CONTEXT::${g.root?.ref||ref}`,
+        binding:g.root?.ref||ref,
+        classification:'СВЯЗИ ВЫБРАННОГО ОБЪЕКТА',
+        graphChip:'СВЯЗИ'
+      });
+      updateCaption();
+      return g;
+    }catch(e){
+      showCard({title:state.selected?.label||ref,sub:'Связи',rows:[['Результат','Не удалось построить контекст объекта']]});
+      return null;
+    }
+  }
+
+  async function showBody({version=null}={}){
+    state.view='BODY';
+    if(version)await window.SETKA_BACKEND_TRUTH?.showBody?.({version});
+    else await window.SETKA_BACKEND_TRUTH?.showBody?.({mode:state.mode});
+    updateCaption();
   }
 
   async function selectMode(mode){
@@ -272,37 +387,47 @@
     state.mode=mode;renderBranches();
     document.querySelector('[data-branch-menu]')?.classList.remove('open');
     try{await window.SETKA_B1_GRAPH_API?.switchModeView?.(mode)}catch{}
-    if(state.view==='BODY'){
-      try{await window.SETKA_BACKEND_TRUTH?.showBody?.({mode})}catch{}
-    }
-    updateCaption();renderOnboard();
+    await showBody();
+    renderOnboard();
     if(state.transcriptStream==='BRANCH')loadTranscript();
   }
 
   function openPanel(name){
     const el=document.querySelector(`[data-panel="${name}"]`);if(!el)return;
-    el.classList.add('open');state.openPanel=name;
+    el.classList.add('open');
     if(name==='onboard')refreshOverview();
     if(name==='transcript')loadTranscript();
   }
-  function closePanel(name){document.querySelector(`[data-panel="${name}"]`)?.classList.remove('open');if(state.openPanel===name)state.openPanel=null}
+  function closePanel(name){document.querySelector(`[data-panel="${name}"]`)?.classList.remove('open')}
 
   function showInfo(kind){const d=infoText(kind),modal=document.querySelector('[data-info-modal]');document.querySelector('[data-info-title]').textContent=d.title;document.querySelector('[data-info-text]').textContent=d.text;modal.classList.add('open')}
   function hideInfo(){document.querySelector('[data-info-modal]')?.classList.remove('open')}
 
   async function graphAction(action,button){
-    if(action==='edges'){document.querySelector('#edges-toggle')?.click();button.classList.toggle('active');return}
+    if(action==='edges'){
+      document.querySelector('#edges-toggle')?.click();
+      state.linksVisible=!state.linksVisible;
+      button.classList.toggle('active',state.linksVisible);
+      return;
+    }
     if(action==='center'){document.querySelector('#reset-view')?.click();return}
     if(action==='root'){document.querySelector('#focus-root')?.click();return}
     if(action==='view'){
       if(state.view==='BODY'){
-        state.view='BACKEND';
-        await window.SETKA_BACKEND_TRUTH?.showBackend?.();
-      }else{
-        state.view='BODY';
-        await window.SETKA_BACKEND_TRUTH?.showBody?.({mode:state.mode});
-      }
-      updateCaption();return;
+        if(state.context){
+          state.view='CONTEXT';
+          window.SETKA_B1_GRAPH_API?.loadSnapshot?.(contextToSnapshot(state.context),{
+            snapshotRef:`CONTEXT::${state.context.root?.ref||''}`,
+            binding:state.context.root?.ref||'OBJECT',
+            classification:'СВЯЗИ ВЫБРАННОГО ОБЪЕКТА',
+            graphChip:'СВЯЗИ'
+          });
+          updateCaption();
+        }else{
+          openPanel('onboard');
+          showCard({title:'Связи объекта',sub:'Сначала выбери объект',rows:[['Что сделать','Найди объект в Бортовом и нажми на него. Тогда здесь появится только его реальный контекст, а не вся база.']]});
+        }
+      }else await showBody();
     }
   }
 
@@ -319,20 +444,20 @@
       MAC_MIRROR_FIRST_DELTA_PASS_AND_SELF_NOISE_FIX_BOUND:'Обновлён механизм синхронизации Mac',
       MAC_MIRROR_CONTINUATION_AUDIT_READY:'Проверена готовность локальной копии SETKA',
       MINIMAL_FRONT_B28_LOCAL_BACKEND_TRUTH_BOUND:'Фронт связан с реальной структурой SETKA',
-      FRONT_B28_BODY_BACKEND_SEPARATION_AND_LAYOUT_PERSISTENCE_BOUND:'Упрощено разделение тела и структуры системы',
+      FRONT_B28_BODY_BACKEND_SEPARATION_AND_LAYOUT_PERSISTENCE_BOUND:'Разделены тело и структура системы',
+      FRONT_B29_SIMPLE_SURFACE_RESET_BOUND:'Фронт упрощён до основных рабочих элементов',
       B1_BASELINE_BOUND:'Зафиксирована базовая точка B1',
       LINEAR_PRE_B1_BODY_HISTORY_VIEWER_READY:'Подготовлена история тела до B1'
     };
     if(map[kind])return map[kind];
     const summary=String(row.summary||'').trim();
     if(/[А-Яа-яЁё]/.test(summary))return summary;
-    const simple=kind.toLowerCase().replaceAll('_',' ').replace(/^./,c=>c.toUpperCase());
-    return simple||'Системное событие';
+    return kind?kind.toLowerCase().replaceAll('_',' ').replace(/^./,c=>c.toUpperCase()):'Системное событие';
   }
 
   function eventTime(v){
     const d=new Date(v);if(Number.isNaN(d.getTime()))return '';
-    return d.toLocaleString('ru-RU',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+    return d.toLocaleString('ru-RU',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
   }
 
   async function loadTranscript(){
@@ -340,37 +465,116 @@
     host.innerHTML='<div class="ss-empty">Загрузка…</div>';
     try{
       const q=new URLSearchParams({stream:state.transcriptStream,mode:state.mode,limit:'60'});
-      const d=await api('/api/b2/transcript?'+q.toString());
+      const d=await api('/api/b29/transcript?'+q.toString());
       state.transcriptRows=d.rows||[];
       if(!state.transcriptRows.length){host.innerHTML='<div class="ss-empty">Здесь пока нет событий.</div>';return}
-      host.innerHTML=state.transcriptRows.map((r,i)=>`<article class="ss-event" data-e="${i}"><time>${esc(eventTime(r.occurredAt))}</time><b>${esc(humanEvent(r))}</b><small>${state.transcriptStream==='BRANCH'?esc(modeMeta().name+' ветка'):'SETKA'}</small></article>`).join('');
+      host.innerHTML=state.transcriptRows.map((r,i)=>`<article class="ss-event" data-e="${i}"><time>${esc(eventTime(r.occurredAt))}</time><b>${esc(humanEvent(r))}</b><small>${state.transcriptStream==='BRANCH'?esc(modeMeta().name+' ветка'):'SETKA'}${r.contextCandidates?.length?' · есть связанный объект':''}${r.versionKnown?' · есть снимок версии':''}</small></article>`).join('');
       host.querySelectorAll('[data-e]').forEach(el=>el.addEventListener('click',()=>openTranscriptEvent(state.transcriptRows[Number(el.dataset.e)])));
     }catch(e){host.innerHTML='<div class="ss-empty">Не удалось загрузить стенограмму.</div>'}
   }
 
   async function openTranscriptEvent(row){
-    if(row.version){
-      const version=(state.overview?.versions||[]).find(v=>v.versionRef===row.version);
-      if(version){
-        state.view='BODY';
-        await window.SETKA_BACKEND_TRUTH?.showBody?.({version:row.version});
-        updateCaption();
-      }
+    const candidates=row.contextCandidates||[];
+    const rows=[
+      ['Когда',eventTime(row.occurredAt)],
+      ['Что произошло',humanEvent(row)],
+      ...(row.version?[['Версия',displayVersion(row.version)]]:[]),
+      ...(row.branchRef?[['Ветка',modeMeta().name]]:[])
+    ];
+    const actions=[];
+    if(candidates[0]){
+      const x=candidates[0];
+      actions.push({label:'Показать связанные объекты',fn:()=>selectBackendObject(x)});
     }
-    if(row.entityRef)window.SETKA_GRAPH_BRIDGE?.spotlight?.(row.entityRef);
-    showObject(humanEvent(row),`${eventTime(row.occurredAt)}${row.version?' · версия '+displayVersion(row.version):''}`);
+    if(row.versionKnown&&row.version){
+      actions.push({label:'Показать тело версии',fn:()=>showBody({version:row.version})});
+    }
+    if(candidates[0]){
+      await showContext(candidates[0].kind,candidates[0].ref);
+    }else if(row.versionKnown&&row.version){
+      await showBody({version:row.version});
+    }
+    showCard({
+      title:humanEvent(row),
+      sub:`Событие №${row.eventNo??'—'}`,
+      rows,
+      related:candidates.slice(0,6).map(x=>({otherKind:x.kind,otherRef:x.ref,otherLabel:x.label,indexedEndpoint:true})),
+      actions,
+      note:(!candidates.length&&!row.versionKnown)?'У этого события нет отдельной сохранённой граф-проекции. Карточка события показана, а текущий граф оставлен без выдуманного контекста.':''
+    });
   }
 
-  function showObject(title,sub){
-    const card=document.querySelector('[data-object-card]');document.querySelector('[data-object-title]').textContent=title||'Объект';document.querySelector('[data-object-sub]').textContent=sub||'';card.classList.add('open')
+  function showCard({title,sub,rows=[],related=[],actions=[],note=''}) {
+    const card=document.querySelector('[data-object-card]');
+    document.querySelector('[data-object-title]').textContent=title||'Объект';
+    document.querySelector('[data-object-sub]').textContent=sub||'';
+    const body=document.querySelector('[data-object-body]');
+    body.innerHTML=`
+      ${note?`<div class="ss-note">${esc(note)}</div>`:''}
+      ${rows.map(([k,v])=>`<div class="ss-row"><span>${esc(k)}</span><span>${esc(v??'—')}</span></div>`).join('')}
+      ${related.length?`<div class="ss-related">${related.map((r,i)=>`<button class="ss-btn" data-rel="${i}">${esc(r.otherLabel||r.otherRef)}</button>`).join('')}</div>`:''}
+      ${actions.length?`<div class="ss-card-actions">${actions.map((a,i)=>`<button class="ss-btn" data-act="${i}">${esc(a.label)}</button>`).join('')}</div>`:''}
+    `;
+    body.querySelectorAll('[data-rel]').forEach(b=>b.addEventListener('click',()=>{
+      const r=related[Number(b.dataset.rel)];
+      if(r?.otherKind&&r?.otherRef)selectBackendObject({kind:r.otherKind,ref:r.otherRef,label:r.otherLabel||r.otherRef});
+    }));
+    body.querySelectorAll('[data-act]').forEach(b=>b.addEventListener('click',()=>actions[Number(b.dataset.act)]?.fn?.()));
+    card.classList.add('open');
+  }
+
+  async function resolveBodyNode(d){
+    const label=String(d.name||'').trim();
+    if(label&&label.length>2){
+      try{
+        const s=await api(`/api/b28/search?q=${encodeURIComponent(label)}&limit=5`);
+        const rows=s.results||[];
+        const exact=rows.find(x=>String(x.label||'').toLowerCase()===label.toLowerCase())||rows[0];
+        if(exact&&Number(exact.score||0)>=100){
+          showCard({
+            title:label,
+            sub:'Узел сохранённого тела',
+            rows:[
+              ['Тип',humanKind(d.type||d.family)],
+              ['Поколение',String(d.generation??'—')],
+              ['Связей',String(d.degree??'—')],
+              ['В системе',exact.label||exact.ref]
+            ],
+            actions:[{label:'Открыть объект и связи',fn:()=>selectBackendObject(exact)}]
+          });
+          return;
+        }
+      }catch{}
+    }
+    showCard({
+      title:label||'Узел тела',
+      sub:'Узел сохранённого тела SETKA',
+      rows:[
+        ['Тип',humanKind(d.type||d.family)],
+        ['Семейство',humanKind(d.family)||String(d.family||'—')],
+        ['Поколение',String(d.generation??'—')],
+        ['Связей',String(d.degree??'—')]
+      ],
+      note:'Это узел сохранённого body snapshot. Для него не найдено однозначной отдельной карточки в системном индексе, поэтому фронт не придумывает дополнительные данные.'
+    });
   }
 
   document.addEventListener('setka:graph:node-selected',e=>{
     const d=e.detail||{};
-    showObject(d.name||d.id||'Узел',[`тип: ${d.type||'—'}`,d.family?`семейство: ${d.family}`:'',Number.isFinite(Number(d.degree))?`связей: ${d.degree}`:''].filter(Boolean).join(' · '));
+    const ctx=parseCtxId(d.id);
+    if(ctx){
+      selectBackendObject({kind:ctx.kind,ref:ctx.ref,label:d.name||ctx.ref});
+    }else{
+      resolveBodyNode(d);
+    }
   });
   document.addEventListener('setka:graph:edge-selected',e=>{
-    const d=e.detail||{};showObject(d.relation||'Связь',`${d.sourceId||'—'} → ${d.targetId||'—'}`);
+    const d=e.detail||{};
+    showCard({
+      title:d.relation||'Связь',
+      sub:'Реальная связь на текущем графе',
+      rows:[['Откуда',d.sourceId||'—'],['Куда',d.targetId||'—'],['Тип связи',d.relation||d.edgeClass||'—']]
+    });
   });
 
   async function waitReady(){
@@ -395,8 +599,8 @@
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
 
   window.SETKA_SIMPLE_FRONT=Object.freeze({
-    version:VERSION,marker:MARKER,mode:()=>state.mode,view:()=>state.view,
+    version:VERSION,marker:MARKER,mode:()=>state.mode,view:()=>state.view,context:()=>state.context,
     openOnboard:()=>openPanel('onboard'),openTranscript:()=>openPanel('transcript'),
-    refresh:refreshOverview,canonMutation:false,runtimeMutation:false
+    showBody,showContext,refresh:refreshOverview,canonMutation:false,runtimeMutation:false
   });
 })();
