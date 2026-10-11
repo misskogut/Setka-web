@@ -5,6 +5,20 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <meta name="theme-color" content="#000" />
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta name="referrer" content="no-referrer" />
+<script>
+/* Capture an expiring recovery ticket before any external resource loads.
+   Unlike # fragments, URL query parameters survive ChatGPT's mobile browser. */
+(() => {
+ try {
+  const url=new URL(location.href),ticket=url.searchParams.get("owner_ticket")||"";
+  if(!ticket)return;
+  url.searchParams.delete("owner_ticket");
+  history.replaceState(history.state,"",url.pathname+url.search+url.hash);
+  if(/^SETKA1-[a-zA-Z0-9_-]{64}$/.test(ticket))window.__SETKA_OWNER_TICKET=ticket;
+ }catch(_){}
+})();
+</script>
 <title>SETKA Research Admin · Полная админка</title>
 <link rel="stylesheet" href="admin-v3.css?v=38-contract" />
 </head>
@@ -37,7 +51,7 @@
 <script src="admin-breathing-fractal-replay-v34.js?v=34-breathing-fractal-replay-1"></script>
 <script src="admin-breathing-growth-replay-v34.js?v=34-breathing-growth-replay-1"></script>
 <script src="admin-stereo-dna-replay-v37.js?v=34-stereo-dna-replay-v37-1"></script>
-<script src="admin-v3.js?v=53-owner-one-click-1"></script>
+<script src="admin-v3.js?v=54-owner-recovery-1"></script>
 <script src="standalone-visual-cache-v40.js?v=40-visual-cache-2"></script>
 <script src="standalone-admin-note-snapshot-fix-v34.js?v=46-unified-front-admin-1"></script>
 <script src="standalone-admin-pattern-knowledge-v40.js?v=46-unified-front-admin-1"></script>
