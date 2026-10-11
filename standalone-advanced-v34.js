@@ -137,18 +137,19 @@
 
   const INFO_HELP={
     viewers:{title:"Кто смотрел",text:"Сколько разных участников просмотрели этот паттерн хотя бы раз. Показаны только просмотры, которые SETKA смогла учесть."},
-    localViewers:{title:"Просмотры на устройстве",text:"Был ли этот паттерн просмотрен на этом устройстве. Это не количество людей."},
+    localViewers:{title:"Общая статистика",text:"В карточке паттерна отображаются только зарегистрированные общие показатели. Твоя личная история находится в разделе «Я»."},
     sessions:{title:"Сессии",text:"Сколько отдельных сессий включали этот паттерн. В одной сессии можно несколько раз менять паттерны — она всё равно считается один раз."},
     exposures:{title:"Просмотры",text:"Сколько отдельных отрезков просмотра было у паттерна. Если переключиться на другой вариант и вернуться, появится новый отрезок."},
     likes:{title:"Сохранили в избранное",text:"Сколько участников сохранили себе хотя бы один вариант этого паттерна. Один участник учитывается один раз."},
-    localLikes:{title:"В избранном",text:"Показывает, есть ли у тебя сохранённый вариант этого паттерна на этом устройстве."},
-    configLikes:{title:"Сохранили вариант",text:"Сколько участников сохранили именно этот вариант паттерна."},
+    localLikes:{title:"Сохранения в сообществе",text:"Учитываются сохранения подключённых участников, а не твоё личное избранное."},
+    configLikes:{title:"Сохранили вариант",text:"Сколько подключённых участников сохранили именно этот вариант паттерна. Твоё избранное смотри в разделе «Я»."},
     time:{title:"Время просмотра",text:"Общее записанное время, проведённое с этим паттерном. Внутри сессии считается только время самого паттерна, а не других вариантов."},
     variants:{title:"Разных вариантов",text:"Сколько уникальных настроек этого паттерна люди сохранили в избранном. Одинаковые настройки считаются одним вариантом."},
     saves:{title:"Всего сохранений",text:"Сколько сохранений настроек было сделано. Например, один и тот же вариант могут сохранить несколько человек — это несколько сохранений, но один уникальный вариант."},
     delta:{title:"Изменение состояния",text:"Средняя разница между оценками состояния до и после завершённых сессий. Положительное число означает более высокую итоговую оценку. Это наблюдение, не доказательство эффекта паттерна."},
     improved:{title:"Стало лучше после",text:"Доля завершённых сессий, в которых человек оценил своё состояние выше, чем до начала. Это не измерение эффективности паттерна."},
-    scenarios:{title:"Сценарии использования",text:"Для каких целей ты выбирала этот паттерн в своих сессиях. Одна сессия учитывается один раз, даже если ты несколько раз меняла настройки."}
+    scenarios:{title:"Для чего выбирают паттерн",text:"Обезличенное распределение целей подключённых участников SETKA. Показывается только при достаточном количестве разных аккаунтов и сессий. Личные цели смотри в разделе «Я»."},
+    history:{title:"Предыдущие тесты",text:"Отдельная архивная выборка ранних тестов SETKA. Считаются устройства, а не подтверждённые уникальные люди. Эти показатели не складываются с данными подключённых аккаунтов."}
   };
   function helpMark(key){
     const h=INFO_HELP[key];if(!h)return"";
@@ -174,33 +175,44 @@
   async function showInfo(tile){
     document.getElementById("st34InfoOverlay")?.remove();
     const t=tileTarget(tile),o=document.createElement("div"),title=Setka.getPatternTitle?.(t.patternId)||t.patternId;
-    o.id="st34InfoOverlay";o.innerHTML=`<div class="st34-sheet"><div class="st34-sheet-head"><canvas class="st34-preview" width="168" height="168"></canvas><div><div class="st-kicker">${t.kind==="base"?"ДАННЫЕ ПАТТЕРНА":"ДАННЫЕ КОНФИГУРАЦИИ"}</div><h2>${esc(t.kind==="base"?title:"Эта конфигурация")}</h2></div><button class="st34-close" type="button" aria-label="Закрыть">×</button></div><div id="st34InfoBody" class="st-muted" style="padding:18px 0">Загружаем данные…</div></div>`;
+    o.id="st34InfoOverlay";o.innerHTML=`<div class="st34-sheet"><div class="st34-sheet-head"><canvas class="st34-preview" width="168" height="168"></canvas><div><div class="st-kicker">${t.kind==="base"?"ПАТТЕРН · СООБЩЕСТВО":"ВАРИАНТ · СООБЩЕСТВО"}</div><h2>${esc(t.kind==="base"?title:"Эта конфигурация")}</h2></div><button class="st34-close" type="button" aria-label="Закрыть">×</button></div><div id="st34InfoBody" class="st-muted" style="padding:18px 0">Загружаем данные…</div></div>`;
     document.body.appendChild(o);try{Setka.renderPreview?.(o.querySelector("canvas"),t.config,44,t.patternId)}catch(_){}
     o.querySelector(".st34-close").onclick=()=>o.remove();o.onclick=e=>{if(e.target===o)o.remove()};
     C.recordEvent("pattern_info",{kind:t.kind,patternId:t.patternId,communityId:t.communityId,configKey:t.configKey},false);
-    const local=localStats(t),remote=await remoteStats(t),s=remote||local,body=o.querySelector("#st34InfoBody");if(!body)return;
-    const labels=Object.fromEntries(C.INTENTS),cloud=s.source==="remote";
-    const saved=t.kind==="base"?s.likeCount??0:s.configSaveCount??0;
-    const timeMs=Math.max(0,Number(s.totalUsageMs)||0),timeText=timeMs===0?"0 мин":timeMs<60000?Math.max(1,Math.round(timeMs/1000))+" сек":Math.round(timeMs/60000)+" мин";
+    const remote=await remoteStats(t),body=o.querySelector("#st34InfoBody");if(!body)return;
+    // ⓘ always describes the recorded community, never this browser's local
+    // notes, favorites, sessions, states or personal intent history.
+    const cloud=C.cloudCommunity?.status?.()||{},s=remote||{},
+      isBase=t.kind==="base",connected=Number(cloud.metrics?.connectedAccounts)||0;
+    const labels=Object.fromEntries(C.INTENTS);
+    const saved=isBase?s.likeCount:s.configSaveCount;
+    const timeMs=Math.max(0,Number(s.totalUsageMs)||0);
+    const timeText=!remote?"—":timeMs===0?"0 мин":timeMs<60000?Math.max(1,Math.round(timeMs/1000))+" сек":Math.round(timeMs/60000)+" мин";
+    const display=value=>remote?String(value??0):"—";
     const metrics=[
-      infoMetric(s.accounts??s.activityProfiles??0,cloud?"СМОТРЕЛИ":"ЕСТЬ ПРОСМОТРЫ",cloud?"viewers":"localViewers"),
-      infoMetric(s.sessions??0,"СЕССИЙ","sessions"),
-      infoMetric(s.exposures??0,"ПРОСМОТРОВ","exposures"),
-      infoMetric("♥ "+saved,t.kind==="base"?"СОХРАНИЛИ":cloud?"СОХРАНИЛИ ВАРИАНТ":"У МЕНЯ В ИЗБРАННОМ",t.kind==="base"?(cloud?"likes":"localLikes"):"configLikes"),
+      infoMetric(display(s.accounts??0),"СМОТРЕЛИ","viewers"),
+      infoMetric(display(s.sessions??0),"СЕССИЙ","sessions"),
+      infoMetric(display(s.exposures??0),"ПРОСМОТРОВ","exposures"),
+      infoMetric("♥ "+display(saved),isBase?"СОХРАНИЛИ":"СОХРАНИЛИ ВАРИАНТ",isBase?"likes":"configLikes"),
       infoMetric(timeText,"ВРЕМЯ ПРОСМОТРА","time")
     ];
-    if(s.savedConfigurations!=null)metrics.push(infoMetric(s.savedConfigurations,"РАЗНЫХ ВАРИАНТОВ","variants"));
-    if(s.configurationSaves!=null)metrics.push(infoMetric(s.configurationSaves,"ВСЕГО СОХРАНЕНИЙ","saves"));
-    if(s.avgDelta!=null)metrics.push(infoMetric((s.avgDelta>0?"+":"")+Number(s.avgDelta).toFixed(1),"СОСТОЯНИЕ ДО/ПОСЛЕ","delta"));
-    if(s.improvedRate!=null)metrics.push(infoMetric(Math.round(Number(s.improvedRate)*100)+"%","СТАЛО ЛУЧШЕ","improved"));
-    const scenarios=local.topIntents||[];
-    const scenarioHeader=`<div class="st34-scenario-heading"><div class="st-label">Для чего ты выбираешь паттерн</div>${helpMark("scenarios")}</div>`;
+    if(isBase&&remote){
+      metrics.push(infoMetric(display(s.savedConfigurations??0),"РАЗНЫХ ВАРИАНТОВ","variants"));
+      metrics.push(infoMetric(display(s.configurationSaves??0),"ВСЕГО СОХРАНЕНИЙ","saves"));
+    }
+    const aggregate=isBase?(cloud.patternScenarios||[]).find(x=>x.patternId===t.patternId):null;
+    const scenarios=Array.isArray(aggregate?.scenarios)?aggregate.scenarios:[];
+    const scenarioHeader=`<div class="st34-scenario-heading"><div class="st-label">Для чего выбирают этот паттерн</div>${helpMark("scenarios")}</div>`;
     const scenarioHtml=scenarios.length?
-      `<section class="st34-pattern-scenarios">${scenarioHeader}${scenarios.map(x=>`<div class="st34-scenario-row" style="margin:10px 0"><div class="st-row"><div class="st-grow">${esc(labels[x.key]||x.key)}</div><strong>${Math.round((x.share||0)*100)}%</strong><span class="st-muted">· ${x.count} сесс.</span></div><div style="height:4px;margin-top:6px;border-radius:3px;background:rgba(255,255,255,.12)"><div style="height:4px;width:${Math.max(0,Math.min(100,100*x.share))}%;background:#fff;border-radius:3px"></div></div></div>`).join("")}</section>`:
-      `<section class="st34-pattern-scenarios">${scenarioHeader}<p class="st34-scenarios-empty">Здесь появятся твои любимые сценарии, когда накопится история сессий с выбранной целью.</p></section>`;
-    const empty=(s.exposures??0)===0;
-    const scope=empty&&cloud?"Для этого паттерна ещё нет записанных просмотров.":"";
-    body.innerHTML=`<div class="st34-statgrid">${metrics.join("")}</div><div class="st34-help-panel" role="status" aria-live="polite" hidden></div>${scenarioHtml}${scope?`<p class="st34-info-scope">${esc(scope)}</p>`:""}`;
+      `<section class="st34-pattern-scenarios">${scenarioHeader}${scenarios.map(x=>`<div class="st34-scenario-row" style="margin:10px 0"><div class="st-row"><div class="st-grow">${esc(labels[x.key]||x.key)}</div><strong>${Math.round((x.share||0)*100)}%</strong><span class="st-muted">· ${x.count} сесс.</span></div><div style="height:4px;margin-top:6px;border-radius:3px;background:rgba(255,255,255,.12)"><div style="height:4px;width:${Math.max(0,Math.min(100,100*x.share))}%;background:#fff;border-radius:3px"></div></div></div>`).join("")}<p class="st34-info-scope">По сессиям подключённых участников с указанной целью. Малые группы не показываются.</p></section>`:
+      `<section class="st34-pattern-scenarios">${scenarioHeader}<p class="st34-scenarios-empty">${isBase?"Пока недостаточно общих обезличенных данных, чтобы показать, для чего участники выбирают этот паттерн.":"Цели использования отдельных вариантов пока не подсчитываются."}</p></section>`;
+    const historical=isBase?(cloud.historicalPatterns||[]).find(x=>x.patternId===t.patternId):null;
+    const historicalHtml=historical?
+      `<section class="st34-pattern-scenarios"><div class="st34-scenario-heading"><div class="st-label">Предыдущие тесты SETKA</div>${helpMark("history")}</div>
+      <p class="st34-scenarios-empty">${Number(historical.devices)||0} устройств · ${Number(historical.sessions)||0} сессий · ${Number(historical.exposures)||0} просмотров</p></section>`:"";
+    const scope=!remote?"Общие показатели сейчас недоступны. Личная статистика здесь не подставляется.":
+      "Текущая выборка: "+connected+" подключённ"+(connected===1?"ый аккаунт":connected>=2&&connected<=4?"ых аккаунта":"ых аккаунтов")+". Гостевые просмотры и ранние тесты не прибавляются к цифрам выше.";
+    body.innerHTML=`<div class="st34-statgrid">${metrics.join("")}</div><div class="st34-help-panel" role="status" aria-live="polite" hidden></div><p class="st34-info-scope">${esc(scope)}</p>${scenarioHtml}${historicalHtml}`;
     body.addEventListener("click",event=>{
       const btn=event.target.closest(".st34-metric-help");
       if(btn){event.preventDefault();setInfoHelp(body,btn.dataset.help);return}
