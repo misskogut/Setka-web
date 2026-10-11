@@ -304,6 +304,101 @@ def _search(query, limit=40):
     }
 
 
+def _local_projection_specs(intent, limit=8):
+    data = _search(intent, max(1, min(int(limit or 8), 12)))
+    specs = []
+    for x in (data.get("results") or [])[:max(1, min(int(limit or 8), 12))]:
+        kind = str(x.get("kind") or "OBJECT")
+        ref = str(x.get("ref") or "")
+        if not ref:
+            continue
+        source_relation = str(x.get("sourceRelation") or "setka_system_object_index_v1")
+        source_table = "foundation." + source_relation
+        specs.append({
+            "projectionRef": "runtime:system-index:" + kind.lower() + ":" + ref.replace(" ", "_"),
+            "kind": "card",
+            "label": x.get("label") or ref,
+            "content": " · ".join([
+                "REAL BACKEND OBJECT", kind, ref,
+                "state " + str(x.get("state") or "—"),
+                "OUT " + str(x.get("outbound") or 0),
+                "IN " + str(x.get("inbound") or 0),
+            ]),
+            "systemGenerated": True,
+            "renameable": True,
+            "persistence": "ephemeral",
+            "binding": {
+                "bindingKind": "SYSTEM_INDEX_OBJECT",
+                "sourceTable": source_table,
+                "sourceRef": ref,
+                "entityType": kind,
+                "entityRef": ref,
+                "invokePolicy": "INSPECT_LOCAL_BACKEND_B28",
+            },
+            "context": {"intent": intent, "source": x.get("source")},
+            "evidence": {
+                "exists": True,
+                "sourceTable": source_table,
+                "sourceRef": ref,
+                "objectKind": kind,
+                "dataSource": "MAC_VERIFIED_SQLITE_MIRROR",
+            },
+        })
+    return specs
+
+
+def _inspect_projection(kind, ref):
+    d = _inspect(kind, ref)
+    if not d.get("ok"):
+        return d
+    rec = d.get("record") or {}
+    label = rec.get("display_name_ru") or rec.get("version_label") or rec.get("displayNameRu") or ref
+    if d.get("kind") == "BRANCH":
+        content = f"REAL BRANCH · {ref} · {rec.get('runtime_state') or '—'} · events {d.get('eventCount') or 0}"
+        source_table = "foundation.setka_branches_v1"
+    elif d.get("kind") == "VERSION":
+        content = f"REAL VERSION · {ref} · {rec.get('version_state') or '—'} · branches {len(d.get('branches') or [])}"
+        source_table = "foundation.setka_version_nodes_v1"
+    else:
+        content = f"REAL BACKEND · {d.get('kind')} · {ref} · OUT {d.get('outgoingCount') or 0} · IN {d.get('incomingCount') or 0} · metrics {len(d.get('metrics') or [])}"
+        source_table = "foundation." + str(rec.get("source_relation") or "setka_system_object_index_v1")
+    return {
+        "ok": True,
+        "state": "PROVEN_LOCAL_BACKEND_BINDING_READY",
+        "frontVersion": "B2.8",
+        "bindingKind": "SYSTEM_INDEX_OBJECT",
+        "bindingRef": ref,
+        "record": d,
+        "projection": {
+            "projectionRef": "runtime:detail:system-index:" + str(d.get("kind") or kind).lower() + ":" + ref.replace(" ", "_"),
+            "kind": "card",
+            "label": label,
+            "content": content,
+            "systemGenerated": True,
+            "renameable": True,
+            "persistence": "ephemeral",
+            "binding": {
+                "bindingKind": "SYSTEM_INDEX_OBJECT",
+                "sourceTable": source_table,
+                "sourceRef": ref,
+                "entityType": d.get("kind") or kind,
+                "entityRef": ref,
+                "invokePolicy": "INSPECT_LOCAL_BACKEND_B28",
+            },
+            "evidence": {
+                "exists": True,
+                "sourceTable": source_table,
+                "sourceRef": ref,
+                "dataSource": "MAC_VERIFIED_SQLITE_MIRROR",
+            },
+        },
+        "executionPerformed": False,
+        "truthBoundary": "B2.8 INSPECTS THE VERIFIED LOCAL MAC BACKEND MIRROR; NO MUTATING COMMAND IS EXECUTED.",
+        "canonMutation": False,
+        "runtimeMutation": False,
+    }
+
+
 def _inspect(kind, ref):
     kind = str(kind or "").upper().strip()
     ref = str(ref or "").strip()
@@ -584,19 +679,52 @@ class Handler(b25.Handler):
                     limit = max(1, min(int(q.get("limit", ["8"])[0]), 12))
                 except Exception:
                     limit = 8
-                device_ref, token = b25.b24.base.load_device()
-                result = b25.b24.base.rpc("setka_minimal_front_b27_projection_context_v1", {
-                    "p_device_ref": device_ref,
-                    "p_token": token,
-                    "p_intent": intent,
-                    "p_entity_type": entity_type,
-                    "p_entity_ref": entity_ref,
-                    "p_mode": mode,
-                    "p_limit": limit,
+                local_specs = _local_projection_specs(intent or entity_ref or "", limit)
+                remote_specs = []
+                remote_state = None
+                try:
+                    device_ref, token = b25.b24.base.load_device()
+                    remote = b25.b24.base.rpc("setka_minimal_front_b27_projection_context_v1", {
+                        "p_device_ref": device_ref,
+                        "p_token": token,
+                        "p_intent": intent,
+                        "p_entity_type": entity_type,
+                        "p_entity_ref": entity_ref,
+                        "p_mode": mode,
+                        "p_limit": limit,
+                    })
+                    remote_state = remote.get("state")
+                    if remote.get("ok") is not False:
+                        remote_specs = list(remote.get("projections") or [])
+                except Exception:
+                    remote_state = "REMOTE_RUNTIME_PROJECTION_UNAVAILABLE"
+                seen = set()
+                merged = []
+                for spec in local_specs + remote_specs:
+                    ref = str(spec.get("projectionRef") or "")
+                    if not ref or ref in seen:
+                        continue
+                    seen.add(ref)
+                    merged.append(spec)
+                    if len(merged) >= limit:
+                        break
+                return self._json(200, {
+                    "ok": True,
+                    "state": "B28_LOCAL_AND_RUNTIME_PROJECTIONS_READY" if merged else "NO_PROVEN_PROJECTION_FOR_CONTEXT",
+                    "frontVersion": "B2.8",
+                    "mode": mode,
+                    "intent": intent,
+                    "projections": merged,
+                    "counts": {
+                        "localBackend": len(local_specs),
+                        "runtimeLegacy": len(remote_specs),
+                        "total": len(merged),
+                    },
+                    "remoteState": remote_state,
+                    "truthBoundary": "LOCAL BACKEND RESULTS COME FROM THE VERIFIED MAC MIRROR; REMOTE COMMAND/RECIPE RESULTS RETAIN THEIR EXISTING PROVENANCE.",
+                    "canonMutation": False,
+                    "runtimeMutation": False,
                 })
-                if result.get("ok") is False:
-                    return self._json(422, result)
-                return self._json(200, result)
             except Exception as e:
                 return self._json(500, {"ok": False, "state": "B28_RUNTIME_PROJECTION_BRIDGE_ERROR", "message": str(e), "frontVersion": "B2.8"})
 
@@ -609,6 +737,9 @@ class Handler(b25.Handler):
                 binding_ref = q.get("ref", [""])[0]
                 entity_type = q.get("entity_type", [None])[0]
                 entity_ref = q.get("entity_ref", [None])[0]
+                if binding_kind.upper() == "SYSTEM_INDEX_OBJECT":
+                    result = _inspect_projection(entity_type or "", entity_ref or binding_ref)
+                    return self._json(200 if result.get("ok") else 404, result)
                 device_ref, token = b25.b24.base.load_device()
                 result = b25.b24.base.rpc("setka_minimal_front_b27_projection_binding_v1", {
                     "p_device_ref": device_ref,
