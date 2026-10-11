@@ -152,6 +152,10 @@
     },true);
   }
   function applyVersion(){
+    if(document.documentElement.dataset.setkaFrontBackendTruth==='B2.8-BACKEND-TRUTH'){
+      const badge=qs('.b23-local-badge');if(badge&&badge.textContent!=='B2.8 · FRONT')badge.textContent='B2.8 · FRONT';
+      return;
+    }
     document.title='SETKA · FRONT B2.5 · DATA B1';
     const badge=qs('.b23-local-badge');if(badge&&badge.textContent!=='B2.5 · FRONT')badge.textContent='B2.5 · FRONT';
     if(currentData)updateChip(currentData);
