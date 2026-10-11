@@ -65,8 +65,8 @@
   function ensureChrome(){
     const actions=qs('.top-actions');
     if(actions&&!qs('#setka-b28-toggle')){
-      const chip=document.createElement('span');chip.className='chip';chip.id='setka-b28-status-chip';chip.textContent='LOCAL BACKEND · …';
-      const btn=document.createElement('button');btn.className='action';btn.id='setka-b28-toggle';btn.type='button';btn.innerHTML='◎ <span>Структура</span>';
+      const chip=document.createElement('span');chip.className='chip';chip.id='setka-b28-status-chip';chip.textContent='LOCAL BACKEND · …';chip.dataset.setkaProjectionRef='builtin:id:setka-b28-status-chip';chip.dataset.setkaProjectionRenameable='0';
+      const btn=document.createElement('button');btn.className='action';btn.id='setka-b28-toggle';btn.type='button';btn.innerHTML='◎ <span>Структура</span>';btn.dataset.setkaProjectionRef='builtin:id:setka-b28-toggle';btn.dataset.setkaProjectionRenameable='1';
       btn.addEventListener('click',()=>togglePanel());
       actions.insertBefore(btn,actions.firstChild);
       actions.insertBefore(chip,actions.firstChild);
