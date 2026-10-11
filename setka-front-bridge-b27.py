@@ -648,6 +648,274 @@ def _local_transcript(stream="SYSTEM", mode="INTEGRATION", limit=60):
         })
     return {"ok": True, "state": "SETKA_LOCAL_SYSTEM_TRANSCRIPT_READY", "stream": "SYSTEM", "rows": out, "total": len(rows)}
 
+
+def _json_contains_exact(value, needle, budget=None):
+    if budget is None:
+        budget = [500]
+    if budget[0] <= 0:
+        return False
+    budget[0] -= 1
+    if isinstance(value, dict):
+        return any(_json_contains_exact(v, needle, budget) for v in value.values())
+    if isinstance(value, list):
+        return any(_json_contains_exact(v, needle, budget) for v in value)
+    if isinstance(value, str):
+        return value.strip() == needle
+    return False
+
+
+def _visualizations_for_refs(refs, limit=20):
+    refs = {str(x or "").strip() for x in refs if str(x or "").strip()}
+    if not refs:
+        return []
+    packets = mirror.relation_rows("foundation", "system_visualization_packets_v1")
+    out = []
+    for p in packets:
+        source_ref = str(p.get("source_ref") or "")
+        payload = p.get("payload") or {}
+        score = 0
+        matches = []
+        if source_ref in refs:
+            score += 500
+            matches.append(source_ref)
+        for ref in refs:
+            if ref == source_ref:
+                continue
+            if _json_contains_exact(payload, ref, [350]):
+                score += 120
+                matches.append(ref)
+        if not score:
+            continue
+        scene = str(p.get("scene_kind") or "")
+        if "MORPHOLOGY" in scene:
+            score += 90
+        if "SOLAR_FOCUS" in scene or "LOCAL_WORLD" in scene:
+            score += 70
+        if "PROCESS" in scene or "TRACE" in scene:
+            score += 60
+        out.append({
+            "packetRef": p.get("packet_ref"),
+            "sourceKind": p.get("source_kind"),
+            "sourceRef": p.get("source_ref"),
+            "sceneKind": p.get("scene_kind"),
+            "snapshotRef": p.get("snapshot_ref"),
+            "state": p.get("state"),
+            "payloadBytes": p.get("payload_bytes"),
+            "createdAt": p.get("created_at"),
+            "score": score,
+            "matchedRefs": sorted(set(matches)),
+            "supportsReplay": isinstance(payload.get("stages"), list) and len(payload.get("stages") or []) > 0,
+            "hasRecordedGraph": isinstance(payload.get("graph"), dict) or isinstance(payload.get("localGraph"), dict),
+            "viewer": payload.get("viewer") or {},
+            "truth": payload.get("truth") or {},
+        })
+    out.sort(key=lambda x: (-int(x.get("score") or 0), str(x.get("createdAt") or "")), reverse=False)
+    return out[:max(1, min(int(limit or 20), 50))]
+
+
+def _universal_card(kind=None, ref=None, event_no=None):
+    objects = mirror.relation_rows("foundation", "setka_system_object_index_v1")
+    by_ref = defaultdict(list)
+    obj_map = {}
+    for o in objects:
+        k = str(o.get("object_kind") or "")
+        r = str(o.get("object_ref") or "")
+        obj_map[(k, r)] = o
+        by_ref[r].append(o)
+
+    transcripts = mirror.relation_rows("foundation", "system_transcript_events")
+    versions = mirror.relation_rows("foundation", "setka_version_nodes_v1")
+    branches = mirror.relation_rows("foundation", "setka_branches_v1")
+    provenance_rows = mirror.relation_rows("foundation", "system_transcript_effective_provenance_v018")
+    event_prov_links = mirror.relation_rows("foundation", "event_provenance_links")
+    replays = mirror.relation_rows("foundation", "body_update_assimilation_replays_v1")
+
+    if event_no is not None:
+        try:
+            event_no = int(event_no)
+        except Exception:
+            return {"ok": False, "state": "INVALID_EVENT_NO"}
+        ev = next((x for x in transcripts if int(x.get("event_no") or -1) == event_no), None)
+        if not ev:
+            return {"ok": False, "state": "EVENT_NOT_FOUND", "eventNo": event_no}
+
+        refs = set()
+        for v in [ev.get("source_key"), ev.get("entity_ref"), ev.get("version")]:
+            if str(v or "").strip():
+                refs.add(str(v).strip())
+        known_refs = set(by_ref)
+        _collect_exact_refs(ev.get("details") or {}, known_refs, refs, [600])
+
+        candidates = []
+        for rr in sorted(refs):
+            for o in by_ref.get(rr, [])[:4]:
+                candidates.append(_compact_object(o))
+
+        prov = next((x for x in provenance_rows if int(x.get("event_no") or -1) == event_no), None)
+        prov_links = [x for x in event_prov_links if int(x.get("event_no") or -1) == event_no]
+
+        neighbors = sorted(transcripts, key=lambda x: int(x.get("event_no") or 0))
+        pos = next((i for i,x in enumerate(neighbors) if int(x.get("event_no") or -1)==event_no), None)
+        before = neighbors[max(0,(pos or 0)-3):(pos or 0)] if pos is not None else []
+        after = neighbors[(pos+1):(pos+4)] if pos is not None else []
+
+        visualizations = _visualizations_for_refs(refs, 30)
+
+        replay_options = []
+        for rp in replays:
+            lo = int(rp.get("event_from") or 0)
+            hi = int(rp.get("event_to") or 0)
+            if lo <= event_no <= hi:
+                replay_options.append({
+                    "kind": "BODY_UPDATE_ASSIMILATION_REPLAY",
+                    "replayRef": rp.get("replay_ref"),
+                    "snapshotRef": rp.get("snapshot_ref"),
+                    "label": rp.get("label"),
+                    "eventFrom": lo,
+                    "eventTo": hi,
+                    "eventCount": rp.get("event_count"),
+                    "mappedCount": rp.get("mapped_count"),
+                    "createdAt": rp.get("created_at"),
+                })
+
+        version_ref = str(ev.get("version") or "")
+        version = next((x for x in versions if str(x.get("version_ref") or "") == version_ref), None)
+        branch_hits = [x for x in branches if version_ref and (str(x.get("base_version_ref") or "") == version_ref or str(x.get("head_version_ref") or "") == version_ref)]
+
+        return {
+            "ok": True,
+            "state": "UNIVERSAL_EVENT_CARD_READY",
+            "cardKind": "EVENT",
+            "title": ev.get("summary") or ev.get("event_type") or f"Событие {event_no}",
+            "ref": f"EVENT:{event_no}",
+            "event": ev,
+            "provenance": prov,
+            "provenanceLinks": prov_links,
+            "relatedObjects": candidates,
+            "version": version,
+            "branches": branch_hits,
+            "before": [{
+                "eventNo": x.get("event_no"), "occurredAt": x.get("occurred_at"),
+                "eventKind": x.get("event_type"), "summary": x.get("summary")
+            } for x in before],
+            "after": [{
+                "eventNo": x.get("event_no"), "occurredAt": x.get("occurred_at"),
+                "eventKind": x.get("event_type"), "summary": x.get("summary")
+            } for x in after],
+            "visualizations": visualizations,
+            "replays": replay_options,
+            "truthBoundary": "Card is assembled from recorded transcript, provenance, version/branch registries, indexed refs and recorded visualization/replay packets. Missing causal edges are not invented.",
+        }
+
+    kind = str(kind or "").upper().strip()
+    ref = str(ref or "").strip()
+    if not ref:
+        return {"ok": False, "state": "CARD_REF_REQUIRED"}
+
+    obj = obj_map.get((kind, ref))
+    if obj is None:
+        matches = by_ref.get(ref, [])
+        if len(matches) == 1:
+            obj = matches[0]
+            kind = str(obj.get("object_kind") or kind)
+        elif len(matches) > 1:
+            return {"ok": True, "state": "AMBIGUOUS_REF", "cardKind": "CHOICES", "choices": [_compact_object(x) for x in matches[:20]]}
+        elif kind == "VERSION":
+            v = next((x for x in versions if str(x.get("version_ref") or "") == ref), None)
+            if v:
+                viz = _visualizations_for_refs({ref, str(v.get("body_snapshot_ref") or "")}, 30)
+                return {
+                    "ok": True, "state": "UNIVERSAL_OBJECT_CARD_READY", "cardKind": "VERSION",
+                    "title": v.get("version_label") or ref, "ref": ref, "record": v,
+                    "visualizations": viz,
+                    "relatedTranscript": [],
+                    "truthBoundary": "Version card is backed by setka_version_nodes_v1."
+                }
+        return {"ok": False, "state": "CARD_OBJECT_NOT_FOUND", "kind": kind, "ref": ref}
+
+    inspect = _inspect(kind, ref)
+    related_transcript = []
+    for ev in transcripts:
+        direct = str(ev.get("entity_ref") or "") == ref
+        detail_hit = _json_contains_exact(ev.get("details") or {}, ref, [180])
+        if direct or detail_hit:
+            related_transcript.append({
+                "eventNo": ev.get("event_no"),
+                "occurredAt": ev.get("occurred_at"),
+                "eventKind": ev.get("event_type"),
+                "summary": ev.get("summary"),
+                "version": ev.get("version"),
+            })
+    related_transcript.sort(key=lambda x: int(x.get("eventNo") or 0), reverse=True)
+
+    refs = {ref}
+    if obj.get("parent_ref"):
+        refs.add(str(obj.get("parent_ref")))
+    if obj.get("scope_ref"):
+        refs.add(str(obj.get("scope_ref")))
+    visualizations = _visualizations_for_refs(refs, 30)
+
+    return {
+        "ok": True,
+        "state": "UNIVERSAL_OBJECT_CARD_READY",
+        "cardKind": kind,
+        "title": obj.get("display_name_ru") or ref,
+        "ref": ref,
+        "record": obj,
+        "outgoing": inspect.get("outgoing") or [],
+        "incoming": inspect.get("incoming") or [],
+        "outgoingCount": inspect.get("outgoingCount") or 0,
+        "incomingCount": inspect.get("incomingCount") or 0,
+        "metrics": inspect.get("metrics") or [],
+        "relatedTranscript": related_transcript[:40],
+        "visualizations": visualizations,
+        "truthBoundary": "Object card is backed by the indexed backend record, indexed relations, matching recorded transcript events and recorded visualization packets.",
+    }
+
+
+def _visualization_packet(packet_ref):
+    packet_ref = str(packet_ref or "").strip()
+    packets = mirror.relation_rows("foundation", "system_visualization_packets_v1")
+    p = next((x for x in packets if str(x.get("packet_ref") or "") == packet_ref), None)
+    if not p:
+        return {"ok": False, "state": "VISUALIZATION_PACKET_NOT_FOUND", "packetRef": packet_ref}
+    return {
+        "ok": True,
+        "state": "VISUALIZATION_PACKET_READY",
+        "packetRef": p.get("packet_ref"),
+        "sourceKind": p.get("source_kind"),
+        "sourceRef": p.get("source_ref"),
+        "sceneKind": p.get("scene_kind"),
+        "snapshotRef": p.get("snapshot_ref"),
+        "packetState": p.get("state"),
+        "payloadBytes": p.get("payload_bytes"),
+        "createdAt": p.get("created_at"),
+        "payload": p.get("payload") or {},
+        "dataSource": "MAC_VERIFIED_SQLITE_MIRROR",
+    }
+
+
+def _replay_packet(replay_ref):
+    replay_ref = str(replay_ref or "").strip()
+    rows = mirror.relation_rows("foundation", "body_update_assimilation_replays_v1")
+    r = next((x for x in rows if str(x.get("replay_ref") or "") == replay_ref), None)
+    if not r:
+        return {"ok": False, "state": "REPLAY_NOT_FOUND", "replayRef": replay_ref}
+    return {
+        "ok": True,
+        "state": "BODY_REPLAY_READY",
+        "replayRef": r.get("replay_ref"),
+        "snapshotRef": r.get("snapshot_ref"),
+        "eventFrom": r.get("event_from"),
+        "eventTo": r.get("event_to"),
+        "label": r.get("label"),
+        "eventCount": r.get("event_count"),
+        "mappedCount": r.get("mapped_count"),
+        "payload": r.get("payload") or {},
+        "dataSource": "MAC_VERIFIED_SQLITE_MIRROR",
+    }
+
+
 def _body_snapshot(mode=None, version_ref=None, snapshot_ref=None):
     baselines = mirror.relation_rows("foundation", "setka_branch_baselines_v1")
     versions = mirror.relation_rows("foundation", "setka_version_nodes_v1")
@@ -931,6 +1199,9 @@ class Handler(b25.Handler):
                 "versionBranchMatrix": True,
                 "deepLocalSearch": True,
                 "contextGraph": True,
+                "universalCards": True,
+                "recordedVisualizationPackets": True,
+                "recordedProcessReplay": True,
                 "localTranscriptDetails": True,
                 "commandExecution": False,
                 "commandTokenExposed": False,
@@ -951,7 +1222,7 @@ class Handler(b25.Handler):
             self.wfile.write(data)
             return
 
-        if path.startswith("/api/b28/") or path.startswith("/api/b29/"):
+        if path.startswith("/api/b28/") or path.startswith("/api/b29/") or path.startswith("/api/b210/"):
             if not self._local_origin_ok():
                 return self._json(403, {"ok": False, "state": "ORIGIN_DENIED"})
             try:
@@ -994,6 +1265,20 @@ class Handler(b25.Handler):
                     try: limit = int(q.get("limit", ["60"])[0])
                     except Exception: limit = 60
                     result = _local_transcript(stream=stream, mode=mode, limit=limit)
+                    return self._json(200 if result.get("ok") else 404, result)
+                if path == "/api/b210/card":
+                    event_no = q.get("event", [None])[0]
+                    kind = q.get("kind", [None])[0]
+                    ref = q.get("ref", [None])[0]
+                    result = _universal_card(kind=kind, ref=ref, event_no=event_no)
+                    return self._json(200 if result.get("ok") else 404, result)
+                if path == "/api/b210/visualization":
+                    packet_ref = q.get("packet", [""])[0]
+                    result = _visualization_packet(packet_ref)
+                    return self._json(200 if result.get("ok") else 404, result)
+                if path == "/api/b210/replay":
+                    replay_ref = q.get("replay", [""])[0]
+                    result = _replay_packet(replay_ref)
                     return self._json(200 if result.get("ok") else 404, result)
                 return self._json(404, {"ok":False,"state":"B28_ENDPOINT_NOT_FOUND"})
             except Exception as e:
