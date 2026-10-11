@@ -209,7 +209,7 @@ def _overview():
     return {
         "ok": True,
         "state": "SETKA_LOCAL_BACKEND_OVERVIEW_READY",
-        "frontVersion": "B2.9",
+        "frontVersion": "B2.10",
         "dataSource": "MAC_VERIFIED_SQLITE_MIRROR",
         "mirror": receipt,
         "systemIndex": {
@@ -1195,7 +1195,7 @@ def _graph(include_events=False):
 
 
 class Handler(b25.Handler):
-    server_version = "SETKAFrontB2.9/1.0"
+    server_version = "SETKAFrontB2.10/1.0"
 
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
@@ -1208,7 +1208,7 @@ class Handler(b25.Handler):
             mirror_state = None
             try:
                 raw = OVERLAY_PATH.read_bytes() if OVERLAY_PATH.exists() else b""
-                overlay_ok = b"B2.8-BACKEND-TRUTH" in raw and b"B2.7.4-SINGLE-WRITER-LAYOUT" in raw and b"B2.9-SIMPLE-FRONT" in raw
+                overlay_ok = b"B2.8-BACKEND-TRUTH" in raw and b"B2.7.4-SINGLE-WRITER-LAYOUT" in raw and b"B2.10-CAUSAL-WORKBENCH" in raw
                 legacy_writer_present = b"setka.front.b26.workspace.v1" in raw
                 receipt = mirror.receipt()
                 mirror_state = receipt.get("state")
@@ -1218,7 +1218,7 @@ class Handler(b25.Handler):
             ok = overlay_ok and not legacy_writer_present and mirror_ok
             return self._json(200 if ok else 503, {
                 "ok": ok,
-                "state": "SETKA_LOCAL_FRONT_B29_READY" if ok else "B29_SIMPLE_FRONT_NOT_READY",
+                "state": "SETKA_LOCAL_FRONT_B210_READY" if ok else "B210_CAUSAL_FRONT_NOT_READY",
                 "frontVersion": "B2.9",
                 "dataSource": "MAC_VERIFIED_SQLITE_MIRROR",
                 "mirrorState": mirror_state,
@@ -1415,12 +1415,12 @@ def main():
     parser.add_argument("--port", type=int, default=8765)
     args = parser.parse_args()
     server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
-    print(f"SETKA LOCAL FRONT B2.9 · http://127.0.0.1:{args.port}/")
-    print("SETKA B2.9 · simple surface over verified local Mac SQLite mirror")
-    print("SETKA B2.9 · visible surface: graph + onboard + transcript + branches")
-    print("SETKA B2.9 · BODY is default; object context shows only real nearby relations")
+    print(f"SETKA LOCAL FRONT B2.10 · http://127.0.0.1:{args.port}/")
+    print("SETKA B2.10 · causal workbench over verified local Mac SQLite mirror")
+    print("SETKA B2.10 · visible surface: graph + onboard + transcript + universal cards")
+    print("SETKA B2.10 · BODY is default; recorded forms and process replay are explicit views")
     print("SETKA B2.7.4 · layout authority remains single-writer")
-    print("SETKA B2.9 · CANON/runtime mutation unavailable")
+    print("SETKA B2.10 · CANON/runtime mutation unavailable")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
