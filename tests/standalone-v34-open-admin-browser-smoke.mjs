@@ -57,5 +57,28 @@ try{
   assert.equal(await privatePage.locator('#dashboard .tab[data-tab="notes"]').count(),1);
   assert.equal(await privatePage.locator('#dashboard .tab[data-tab="pattern-knowledge"]').count(),1);
   console.log("FULL MAIN ADMIN ALL 11 SECTIONS PRESENT PASS");
+
+  // A private owner link must override any stale invalid stored password.
+  // The fragment is removed immediately, never hardcoded into public JS.
+  const ownerPage=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+  const fakeOwner="SKA-"+"a".repeat(48),ownerRequests=[];
+  await ownerPage.addInitScript(()=>{
+    localStorage.setItem("setka-research:admin-key:v1","stale-invalid-key");
+  });
+  await ownerPage.route("**/functions/v1/**",async route=>{
+    const req=route.request(),body=req.postDataJSON();
+    ownerRequests.push({action:body.action,adminKey:body.adminKey});
+    await route.fulfill({status:200,contentType:"application/json",
+      headers:{"access-control-allow-origin":"*"},
+      body:JSON.stringify(body.action==="admin-overview"?{devices:[]}:{ok:true,devices:[],items:[],participants:[],sessions:[],symptoms:[],invites:[],insights:[]})});
+  });
+  await ownerPage.goto(base+"/standalone-admin-v34.html#access="+fakeOwner,{waitUntil:"domcontentloaded"});
+  await ownerPage.waitForFunction(()=>!document.getElementById("dashboard")?.classList.contains("hidden"),{timeout:12000});
+  assert.equal(await ownerPage.evaluate(()=>location.hash),"","secret fragment must be removed from address bar");
+  assert.equal(await ownerPage.evaluate(()=>localStorage.getItem("setka-research:admin-key:v1")),fakeOwner);
+  assert.ok(ownerRequests.some(x=>x.action==="admin-overview"&&x.adminKey===fakeOwner));
+  assert.ok(ownerRequests.every(x=>x.adminKey===fakeOwner),"all protected calls must use new owner credential");
+  assert.ok((await ownerPage.locator("#dashboard .tab[data-tab]").count())>=11);
+  console.log("ONE-CLICK OWNER LOGIN WITH STALE PREVIOUS KEY PASS");
   console.log("PRIVATE ADMIN REMAINS AUTHENTICATED PASS");
 }finally{await browser?.close();server.kill("SIGTERM")}
