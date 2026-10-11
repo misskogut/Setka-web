@@ -50,5 +50,12 @@ try{
   await privatePage.goto(base+"/standalone-admin-private-v34.html",{waitUntil:"domcontentloaded"});
   assert.equal(await privatePage.locator("#keyInput").count(),1);
   assert.equal(await privatePage.locator("#loginBtn").count(),1);
+  await privatePage.goto(base+"/standalone-admin-v34.html",{waitUntil:"domcontentloaded"});
+  assert.equal(await privatePage.locator("#dashboard .tab[data-tab]").count(),11);
+  assert.equal(await privatePage.locator('#dashboard .tab[data-tab="participants"]').count(),1);
+  assert.equal(await privatePage.locator('#dashboard .tab[data-tab="moderation"]').count(),1);
+  assert.equal(await privatePage.locator('#dashboard .tab[data-tab="notes"]').count(),1);
+  assert.equal(await privatePage.locator('#dashboard .tab[data-tab="pattern-knowledge"]').count(),1);
+  console.log("FULL MAIN ADMIN ALL 11 SECTIONS PRESENT PASS");
   console.log("PRIVATE ADMIN REMAINS AUTHENTICATED PASS");
 }finally{await browser?.close();server.kill("SIGTERM")}
