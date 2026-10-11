@@ -1,6 +1,6 @@
 (() => {
   const VERSION='B2.10';
-  const MARKER='B2.9-SIMPLE-FRONT';
+  const MARKER='B2.10-CAUSAL-WORKBENCH';
   const MODES=[
     {id:'CANON',name:'Канон',desc:'Зафиксированная эталонная ветка.'},
     {id:'LINEAR',name:'Линейная',desc:'Линейная ветка наблюдения.'},
