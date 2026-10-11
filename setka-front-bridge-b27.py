@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 import argparse
 import importlib.util
+import json
+import sqlite3
+import threading
 import urllib.parse
+import zlib
+from collections import Counter, defaultdict
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 
@@ -9,6 +14,8 @@ ROOT = Path.home() / ".setka"
 FRONT_DIR = ROOT / "front"
 B25_PATH = FRONT_DIR / "setka-front-bridge-b25.py"
 OVERLAY_PATH = FRONT_DIR / "setka-b2.js"
+MIRROR_DB = ROOT / "mirror" / "current" / "setka-full-mirror.sqlite3"
+MIRROR_LATEST = ROOT / "mirror" / "LATEST.json"
 
 if not B25_PATH.exists():
     raise RuntimeError("SETKA_B25_BASE_BRIDGE_MISSING")
@@ -18,8 +25,474 @@ b25 = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(b25)
 
 
+class LocalMirror:
+    def __init__(self):
+        self._lock = threading.RLock()
+        self._key = None
+        self._cache = {}
+
+    def _stat_key(self):
+        if not MIRROR_DB.exists():
+            return None
+        s = MIRROR_DB.stat()
+        return (s.st_mtime_ns, s.st_size)
+
+    def _refresh(self):
+        key = self._stat_key()
+        if key != self._key:
+            self._key = key
+            self._cache = {}
+        if key is None:
+            raise RuntimeError("SETKA_LOCAL_MIRROR_MISSING")
+
+    def receipt(self):
+        self._refresh()
+        if not MIRROR_LATEST.exists():
+            return {}
+        try:
+            return json.loads(MIRROR_LATEST.read_text(encoding="utf-8"))
+        except Exception:
+            return {}
+
+    def relation_rows(self, schema, table):
+        cache_key = f"{schema}.{table}"
+        with self._lock:
+            self._refresh()
+            if cache_key in self._cache:
+                return self._cache[cache_key]
+            conn = sqlite3.connect(f"file:{MIRROR_DB}?mode=ro", uri=True)
+            try:
+                meta = conn.execute(
+                    "SELECT sqlite_name,state,fetched_total FROM relations WHERE schema_name=? AND table_name=?",
+                    (schema, table),
+                ).fetchone()
+                if not meta or meta[1] != "PASS":
+                    rows = []
+                else:
+                    sqlite_name = meta[0]
+                    rows = []
+                    for (packed,) in conn.execute(f'SELECT row_zlib FROM "{sqlite_name}"'):
+                        try:
+                            rows.append(json.loads(zlib.decompress(packed).decode("utf-8")))
+                        except Exception:
+                            continue
+            finally:
+                conn.close()
+            self._cache[cache_key] = rows
+            return rows
+
+    def relation_inventory(self):
+        with self._lock:
+            self._refresh()
+            conn = sqlite3.connect(f"file:{MIRROR_DB}?mode=ro", uri=True)
+            try:
+                rows = conn.execute(
+                    "SELECT schema_name,table_name,fetched_total,state FROM relations ORDER BY schema_name,table_name"
+                ).fetchall()
+                return [
+                    {"schema": r[0], "table": r[1], "rows": int(r[2] or 0), "state": r[3]}
+                    for r in rows
+                ]
+            finally:
+                conn.close()
+
+
+mirror = LocalMirror()
+
+
+def _norm(value):
+    return " ".join(str(value or "").lower().replace("_", " ").replace(":", " ").replace("/", " ").split())
+
+
+def _compact_object(row):
+    return {
+        "kind": row.get("object_kind"),
+        "ref": row.get("object_ref"),
+        "label": row.get("display_name_ru") or row.get("object_ref"),
+        "subtype": row.get("subtype"),
+        "state": row.get("state"),
+        "parentRef": row.get("parent_ref"),
+        "scopeRef": row.get("scope_ref"),
+        "sourceRelation": row.get("source_relation"),
+        "occurredAt": row.get("occurred_at"),
+    }
+
+
+def _object_map(objects):
+    return {(str(o.get("object_kind") or ""), str(o.get("object_ref") or "")): o for o in objects}
+
+
+def _overview():
+    objects = mirror.relation_rows("foundation", "setka_system_object_index_v1")
+    relations = mirror.relation_rows("foundation", "setka_system_relation_index_v1")
+    branches = mirror.relation_rows("foundation", "setka_branches_v1")
+    baselines = mirror.relation_rows("foundation", "setka_branch_baselines_v1")
+    versions = mirror.relation_rows("foundation", "setka_version_nodes_v1")
+    index_state = mirror.relation_rows("foundation", "setka_system_index_state_v1")
+    exclusions = mirror.relation_rows("foundation", "mac_mirror_exclusion_policy_v1")
+    deploy = mirror.relation_rows("foundation", "edge_function_deployment_inventory_v1")
+    git_sources = mirror.relation_rows("foundation", "edge_function_git_source_receipts_v1")
+    front_catalog = mirror.relation_rows("foundation", "front_backend_catalog_v1")
+    lineages = mirror.relation_rows("foundation", "setka_version_lineage_registry")
+    receipt = mirror.receipt()
+
+    by_kind = Counter(str(x.get("object_kind") or "UNKNOWN") for x in objects)
+    rel_by_kind = Counter(str(x.get("relation_kind") or "UNKNOWN") for x in relations)
+    git_by_slug = {str(x.get("slug")): x for x in git_sources}
+    source_current = 0
+    for d in deploy:
+        g = git_by_slug.get(str(d.get("slug")))
+        if g and int(g.get("deployed_version") or -1) == int(d.get("deployed_version") or -2) and str(g.get("deployed_ezbr_sha256") or "") == str(d.get("ezbr_sha256") or ""):
+            source_current += 1
+
+    baseline_by_mode = {str(x.get("mode_ref")): x for x in baselines}
+    branch_by_ref = {str(x.get("branch_ref")): x for x in branches}
+    version_by_ref = {str(x.get("version_ref")): x for x in versions}
+    modes = []
+    for mode in ["CANON", "LINEAR", "SELF_ORGANIZED", "MOTORWAY_LAB", "INTEGRATION"]:
+        b = baseline_by_mode.get(mode) or {}
+        br = branch_by_ref.get(str(b.get("branch_ref"))) or {}
+        v = version_by_ref.get(str(b.get("version_ref"))) or {}
+        modes.append({
+            "modeRef": mode,
+            "modeDisplay": mode.replace("_", "-"),
+            "branchRef": b.get("branch_ref"),
+            "branchName": br.get("display_name_ru"),
+            "branchKind": br.get("branch_kind"),
+            "runtimeState": br.get("runtime_state"),
+            "isolationState": br.get("isolation_state"),
+            "executionEnvironment": br.get("execution_environment"),
+            "versionRef": b.get("version_ref"),
+            "headVersionRef": br.get("head_version_ref"),
+            "stateSnapshotRef": b.get("state_snapshot_ref"),
+            "digestRef": b.get("digest_ref"),
+            "bodySnapshotRef": b.get("body_snapshot_ref"),
+            "versionState": v.get("version_state"),
+            "baselineState": b.get("baseline_state"),
+            "backendComplete": bool(b and br and v),
+        })
+
+    branch_rows = [{
+        "branchRef": x.get("branch_ref"),
+        "name": x.get("display_name_ru"),
+        "kind": x.get("branch_kind"),
+        "runtimeState": x.get("runtime_state"),
+        "isolationState": x.get("isolation_state"),
+        "environment": x.get("execution_environment"),
+        "baseVersionRef": x.get("base_version_ref"),
+        "headVersionRef": x.get("head_version_ref"),
+        "forkEventNo": x.get("fork_event_no"),
+        "metadata": x.get("metadata") or {},
+    } for x in branches]
+
+    version_rows = [{
+        "versionRef": x.get("version_ref"),
+        "label": x.get("version_label"),
+        "parentVersionRef": x.get("parent_version_ref"),
+        "state": x.get("version_state"),
+        "canonVersion": x.get("canon_version"),
+        "bodySnapshotRef": x.get("body_snapshot_ref"),
+        "stateSnapshotRef": x.get("system_state_snapshot_ref"),
+        "digestRef": x.get("system_digest_ref"),
+        "integrityHash": x.get("integrity_hash"),
+        "createdAt": x.get("created_at"),
+        "truth": x.get("truth") or {},
+    } for x in versions]
+
+    return {
+        "ok": True,
+        "state": "SETKA_LOCAL_BACKEND_OVERVIEW_READY",
+        "frontVersion": "B2.8",
+        "dataSource": "MAC_VERIFIED_SQLITE_MIRROR",
+        "mirror": receipt,
+        "systemIndex": {
+            "objects": len(objects),
+            "relations": len(relations),
+            "objectKinds": dict(sorted(by_kind.items())),
+            "relationKindsTop": [{"kind": k, "count": n} for k, n in rel_by_kind.most_common(30)],
+            "state": index_state[0] if index_state else {},
+        },
+        "versions": version_rows,
+        "modes": modes,
+        "branches": branch_rows,
+        "versionLineageMembers": len(lineages),
+        "frontBackendCatalogCount": len(front_catalog),
+        "edgeSources": {
+            "deployed": len(deploy),
+            "gitCurrent": source_current,
+            "coveragePct": round((100.0 * source_current / len(deploy)), 2) if deploy else 100.0,
+        },
+        "coldExcluded": [{
+            "schema": x.get("schema_name"),
+            "table": x.get("table_name"),
+            "storageClass": x.get("storage_class"),
+            "reason": x.get("reason"),
+            "sourceRetention": x.get("source_retention"),
+            "rehydrationPolicy": x.get("rehydration_policy"),
+        } for x in exclusions if x.get("include_in_mac") is False],
+        "truthBoundary": "B2.8 READS THE VERIFIED LOCAL MAC MIRROR. UI LAYOUT NEVER DEFINES BACKEND TRUTH.",
+        "canonMutation": False,
+        "runtimeMutation": False,
+    }
+
+
+def _search(query, limit=40):
+    q = _norm(query)
+    if not q:
+        return {"ok": True, "state": "EMPTY_QUERY", "results": []}
+    tokens = [x for x in q.split() if len(x) >= 2]
+    objects = mirror.relation_rows("foundation", "setka_system_object_index_v1")
+    relations = mirror.relation_rows("foundation", "setka_system_relation_index_v1")
+    branches = mirror.relation_rows("foundation", "setka_branches_v1")
+    versions = mirror.relation_rows("foundation", "setka_version_nodes_v1")
+    degrees_out = Counter((str(r.get("source_kind")), str(r.get("source_ref"))) for r in relations)
+    degrees_in = Counter((str(r.get("target_kind")), str(r.get("target_ref"))) for r in relations)
+    results = []
+
+    for o in objects:
+        ref = str(o.get("object_ref") or "")
+        label = str(o.get("display_name_ru") or "")
+        hay = _norm(" ".join([
+            ref, label, str(o.get("object_kind") or ""), str(o.get("subtype") or ""),
+            str(o.get("state") or ""), str(o.get("search_text") or "")
+        ]))
+        if q not in hay and not all(t in hay for t in tokens):
+            continue
+        score = 0
+        if _norm(ref) == q: score += 500
+        if _norm(label) == q: score += 420
+        if _norm(ref).startswith(q): score += 220
+        if _norm(label).startswith(q): score += 180
+        if q in _norm(ref): score += 120
+        if q in _norm(label): score += 100
+        score += sum(12 for t in tokens if t in hay)
+        key = (str(o.get("object_kind")), ref)
+        item = _compact_object(o)
+        item.update({"score": score, "outbound": degrees_out[key], "inbound": degrees_in[key], "source": "SYSTEM_INDEX"})
+        results.append(item)
+
+    for b in branches:
+        ref = str(b.get("branch_ref") or "")
+        label = str(b.get("display_name_ru") or "")
+        hay = _norm(" ".join([ref,label,str(b.get("branch_kind") or ""),str(b.get("runtime_state") or ""),json.dumps(b.get("metadata") or {}, ensure_ascii=False)]))
+        if q in hay or all(t in hay for t in tokens):
+            score = (500 if _norm(ref)==q else 0) + (400 if _norm(label)==q else 0) + (140 if q in _norm(ref) else 0) + (110 if q in _norm(label) else 0)
+            results.append({
+                "kind":"BRANCH","ref":ref,"label":label or ref,"subtype":b.get("branch_kind"),"state":b.get("runtime_state"),
+                "parentRef":None,"scopeRef":b.get("lineage_ref"),"sourceRelation":"setka_branches_v1","score":score,"outbound":0,"inbound":0,"source":"BRANCH_REGISTRY"
+            })
+
+    for v in versions:
+        ref = str(v.get("version_ref") or "")
+        label = str(v.get("version_label") or "")
+        hay = _norm(" ".join([ref,label,str(v.get("version_state") or ""),str(v.get("canon_version") or "")]))
+        if q in hay or all(t in hay for t in tokens):
+            score = (500 if _norm(ref)==q else 0) + (400 if _norm(label)==q else 0) + (140 if q in _norm(ref) else 0)
+            results.append({
+                "kind":"VERSION","ref":ref,"label":label or ref,"subtype":v.get("canon_version"),"state":v.get("version_state"),
+                "parentRef":v.get("parent_version_ref"),"scopeRef":v.get("lineage_ref"),"sourceRelation":"setka_version_nodes_v1","score":score,"outbound":0,"inbound":0,"source":"VERSION_REGISTRY"
+            })
+
+    results.sort(key=lambda x: (-int(x.get("score") or 0), str(x.get("kind")), str(x.get("ref"))))
+    return {
+        "ok": True,
+        "state": "SETKA_LOCAL_BACKEND_SEARCH_READY" if results else "NO_BACKEND_MATCH",
+        "query": query,
+        "results": results[:max(1,min(int(limit),80))],
+        "totalMatched": len(results),
+        "dataSource": "MAC_VERIFIED_SQLITE_MIRROR",
+    }
+
+
+def _inspect(kind, ref):
+    kind = str(kind or "").upper().strip()
+    ref = str(ref or "").strip()
+    objects = mirror.relation_rows("foundation", "setka_system_object_index_v1")
+    relations = mirror.relation_rows("foundation", "setka_system_relation_index_v1")
+    obj_map = _object_map(objects)
+    branches = mirror.relation_rows("foundation", "setka_branches_v1")
+    baselines = mirror.relation_rows("foundation", "setka_branch_baselines_v1")
+    versions = mirror.relation_rows("foundation", "setka_version_nodes_v1")
+    branch_events = mirror.relation_rows("foundation", "setka_branch_events_v1")
+
+    if kind == "BRANCH":
+        b = next((x for x in branches if str(x.get("branch_ref")) == ref), None)
+        if not b:
+            return {"ok": False, "state": "BRANCH_NOT_FOUND", "kind": kind, "ref": ref}
+        events = [x for x in branch_events if str(x.get("branch_ref")) == ref]
+        events.sort(key=lambda x: int(x.get("branch_event_no") or 0), reverse=True)
+        base = next((x for x in baselines if str(x.get("branch_ref")) == ref), None)
+        return {
+            "ok":True,"state":"SETKA_LOCAL_BACKEND_INSPECT_READY","kind":"BRANCH","ref":ref,
+            "record":b,"baseline":base,"latestEvents":events[:30],"eventCount":len(events),
+            "dataSource":"MAC_VERIFIED_SQLITE_MIRROR"
+        }
+
+    if kind == "VERSION":
+        v = next((x for x in versions if str(x.get("version_ref")) == ref), None)
+        if not v:
+            return {"ok": False, "state": "VERSION_NOT_FOUND", "kind": kind, "ref": ref}
+        linked = [x for x in branches if str(x.get("base_version_ref")) == ref or str(x.get("head_version_ref")) == ref]
+        return {
+            "ok":True,"state":"SETKA_LOCAL_BACKEND_INSPECT_READY","kind":"VERSION","ref":ref,
+            "record":v,"branches":linked,"dataSource":"MAC_VERIFIED_SQLITE_MIRROR"
+        }
+
+    o = obj_map.get((kind, ref))
+    if o is None:
+        same_ref = [x for (k,r),x in obj_map.items() if r == ref]
+        if len(same_ref) == 1:
+            o = same_ref[0]
+            kind = str(o.get("object_kind"))
+        elif same_ref:
+            return {
+                "ok":True,"state":"AMBIGUOUS_REF","kind":kind,"ref":ref,
+                "choices":[_compact_object(x) for x in same_ref],
+                "dataSource":"MAC_VERIFIED_SQLITE_MIRROR"
+            }
+        else:
+            return {"ok": False, "state": "INDEX_OBJECT_NOT_FOUND", "kind": kind, "ref": ref}
+
+    outgoing = [r for r in relations if str(r.get("source_kind")) == kind and str(r.get("source_ref")) == ref]
+    incoming = [r for r in relations if str(r.get("target_kind")) == kind and str(r.get("target_ref")) == ref]
+    outgoing.sort(key=lambda x:(str(x.get("relation_kind")),str(x.get("target_kind")),str(x.get("target_ref"))))
+    incoming.sort(key=lambda x:(str(x.get("relation_kind")),str(x.get("source_kind")),str(x.get("source_ref"))))
+
+    def relation_item(r, direction):
+        other_kind = str(r.get("target_kind") if direction=="OUT" else r.get("source_kind"))
+        other_ref = str(r.get("target_ref") if direction=="OUT" else r.get("source_ref"))
+        other = obj_map.get((other_kind,other_ref))
+        return {
+            "direction": direction,
+            "relationKind": r.get("relation_kind"),
+            "relationState": r.get("relation_state"),
+            "historicalOnly": bool(r.get("historical_only")),
+            "evidenceRef": r.get("evidence_ref"),
+            "sourceRelation": r.get("source_relation"),
+            "otherKind": other_kind,
+            "otherRef": other_ref,
+            "otherLabel": (other or {}).get("display_name_ru") or other_ref,
+            "indexedEndpoint": other is not None,
+            "evidence": r.get("evidence") or {},
+        }
+
+    query_tokens = [t for t in _norm(" ".join([ref,str(o.get("display_name_ru") or "")])).split() if len(t)>=3]
+    context = []
+    for x in objects:
+        if x is o: continue
+        hay = _norm(str(x.get("search_text") or ""))
+        if query_tokens and all(t in hay for t in query_tokens[:2]):
+            context.append(_compact_object(x))
+        if len(context)>=40: break
+
+    metrics = [
+        _compact_object(x) | {"payload": x.get("payload") or {}}
+        for x in objects
+        if x.get("object_kind")=="METRIC" and (
+            str(x.get("scope_ref") or "")==ref or ref in str(x.get("search_text") or "")
+        )
+    ][:30]
+
+    return {
+        "ok":True,
+        "state":"SETKA_LOCAL_BACKEND_INSPECT_READY",
+        "kind":kind,
+        "ref":ref,
+        "record":o,
+        "outgoing":[relation_item(r,"OUT") for r in outgoing[:150]],
+        "incoming":[relation_item(r,"IN") for r in incoming[:150]],
+        "outgoingCount":len(outgoing),
+        "incomingCount":len(incoming),
+        "metrics":metrics,
+        "contextMatches":context,
+        "dataSource":"MAC_VERIFIED_SQLITE_MIRROR",
+        "truthBoundary":"Relations are emitted from the mirrored backend index. Missing indexed endpoints remain explicit references and are not invented by the front."
+    }
+
+
+def _graph(include_events=False):
+    objects = mirror.relation_rows("foundation", "setka_system_object_index_v1")
+    relations = mirror.relation_rows("foundation", "setka_system_relation_index_v1")
+    branches = mirror.relation_rows("foundation", "setka_branches_v1")
+    baselines = mirror.relation_rows("foundation", "setka_branch_baselines_v1")
+    versions = mirror.relation_rows("foundation", "setka_version_nodes_v1")
+
+    graph_objects = [o for o in objects if include_events or str(o.get("object_kind")) != "EVENT"]
+    node_keys = {(str(o.get("object_kind")),str(o.get("object_ref"))) for o in graph_objects}
+    nodes = [[
+        str(o.get("object_kind") or "OBJECT"),
+        str(o.get("object_ref") or ""),
+        str(o.get("display_name_ru") or o.get("object_ref") or ""),
+        str(o.get("subtype") or ""),
+        str(o.get("state") or ""),
+        str(o.get("parent_ref") or ""),
+        str(o.get("scope_ref") or ""),
+        str(o.get("source_relation") or ""),
+    ] for o in graph_objects]
+
+    for v in versions:
+        nodes.append(["VERSION",str(v.get("version_ref") or ""),str(v.get("version_label") or v.get("version_ref") or ""),"SYSTEM_VERSION",str(v.get("version_state") or ""),str(v.get("parent_version_ref") or ""),str(v.get("lineage_ref") or ""),"setka_version_nodes_v1"])
+        node_keys.add(("VERSION",str(v.get("version_ref") or "")))
+    for b in branches:
+        nodes.append(["BRANCH",str(b.get("branch_ref") or ""),str(b.get("display_name_ru") or b.get("branch_ref") or ""),str(b.get("branch_kind") or ""),str(b.get("runtime_state") or ""),"",str(b.get("lineage_ref") or ""),"setka_branches_v1"])
+        node_keys.add(("BRANCH",str(b.get("branch_ref") or "")))
+    for b in baselines:
+        mode = str(b.get("mode_ref") or "")
+        ref = f"MODE:{mode}"
+        nodes.append(["MODE",ref,mode.replace("_","-"),"OBSERVATION_MODE",str(b.get("baseline_state") or ""),"",str(b.get("branch_ref") or ""),"setka_branch_baselines_v1"])
+        node_keys.add(("MODE",ref))
+
+    edges = []
+    unresolved = 0
+    historical = 0
+    for r in relations:
+        if r.get("historical_only"):
+            historical += 1
+            continue
+        sk,sr = str(r.get("source_kind") or ""),str(r.get("source_ref") or "")
+        tk,tr = str(r.get("target_kind") or ""),str(r.get("target_ref") or "")
+        if (sk,sr) in node_keys and (tk,tr) in node_keys:
+            edges.append([sk,sr,tk,tr,str(r.get("relation_kind") or "RELATION"),str(r.get("relation_state") or "")])
+        else:
+            unresolved += 1
+
+    version_refs={str(v.get("version_ref")) for v in versions}
+    branch_refs={str(b.get("branch_ref")) for b in branches}
+    for b in branches:
+        br=str(b.get("branch_ref") or "")
+        for relation,vr in [("BASE_VERSION",str(b.get("base_version_ref") or "")),("HEAD_VERSION",str(b.get("head_version_ref") or ""))]:
+            if br in branch_refs and vr in version_refs:
+                edges.append(["BRANCH",br,"VERSION",vr,relation,str(b.get("runtime_state") or "")])
+    for v in versions:
+        child=str(v.get("version_ref") or ""); parent=str(v.get("parent_version_ref") or "")
+        if parent and parent in version_refs:
+            edges.append(["VERSION",child,"VERSION",parent,"PARENT_VERSION",str(v.get("version_state") or "")])
+    for b in baselines:
+        mode=str(b.get("mode_ref") or ""); br=str(b.get("branch_ref") or "")
+        if br in branch_refs:
+            edges.append(["MODE",f"MODE:{mode}","BRANCH",br,"OBSERVES_BRANCH",str(b.get("baseline_state") or "")])
+
+    receipt = mirror.receipt()
+    return {
+        "ok":True,
+        "state":"SETKA_LOCAL_BACKEND_GRAPH_READY",
+        "frontVersion":"B2.8",
+        "snapshotRef":f"LOCAL-MAC-BACKEND::{receipt.get('serverReceiptRef') or receipt.get('completedAt') or 'CURRENT'}",
+        "nodes":nodes,
+        "edges":edges,
+        "indexedObjectCount":len(graph_objects),
+        "edgeCount":len(edges),
+        "unresolvedExternalRelationCount":unresolved,
+        "historicalRelationCount":historical,
+        "includeEvents":bool(include_events),
+        "dataSource":"MAC_VERIFIED_SQLITE_MIRROR",
+        "geometryTruth":"DETERMINISTIC_PRESENTATION_LAYOUT_ONLY",
+        "topologyTruth":"NODES_AND_EDGES_DERIVE_FROM_MIRRORED_BACKEND_REGISTRIES_AND_INDEXES",
+    }
+
+
 class Handler(b25.Handler):
-    server_version = "SETKAFrontB2.7.4/1.0"
+    server_version = "SETKAFrontB2.8/1.0"
 
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
@@ -28,45 +501,31 @@ class Handler(b25.Handler):
         if path == "/api/b2/health":
             overlay_ok = False
             legacy_writer_present = False
+            mirror_ok = False
+            mirror_state = None
             try:
                 raw = OVERLAY_PATH.read_bytes() if OVERLAY_PATH.exists() else b""
-                overlay_ok = b"B2.7.4-SINGLE-WRITER-LAYOUT" in raw and b"B2.7.4" in raw
+                overlay_ok = b"B2.8-BACKEND-TRUTH" in raw and b"B2.7.4-SINGLE-WRITER-LAYOUT" in raw
                 legacy_writer_present = b"setka.front.b26.workspace.v1" in raw
+                receipt = mirror.receipt()
+                mirror_state = receipt.get("state")
+                mirror_ok = mirror_state in ("PASS_FULL_SETKA_MIRROR","PASS_DELTA_SETKA_MIRROR") and MIRROR_DB.exists()
             except Exception:
                 overlay_ok = False
-            ok = overlay_ok and not legacy_writer_present
+            ok = overlay_ok and not legacy_writer_present and mirror_ok
             return self._json(200 if ok else 503, {
                 "ok": ok,
-                "state": "SETKA_LOCAL_FRONT_B274_READY" if ok else "B274_LAYOUT_ISOLATION_FAILED",
-                "frontVersion": "B2.7.4",
-                "dataBaseline": "B1",
-                "eventContext": "B2.5",
+                "state": "SETKA_LOCAL_FRONT_B28_READY" if ok else "B28_BACKEND_TRUTH_NOT_READY",
+                "frontVersion": "B2.8",
+                "dataSource": "MAC_VERIFIED_SQLITE_MIRROR",
+                "mirrorState": mirror_state,
                 "workspace": "B2.7.4",
                 "positionAuthority": "B2.7.4_ONLY",
                 "legacyLayoutWriterPresent": legacy_writer_present,
-                "projectionCore": "B2.7.4",
-                "runtimeProjectionBridge": True,
-                "systemGeneratedProjectionTruthGate": True,
-                "visualWorkbench": {
-                    "flowerRole": "ELEMENT_VAULT_ONLY",
-                    "layoutDirectSelection": True,
-                    "layoutDirectDrag": True,
-                    "renameSelectedProjection": True,
-                    "hideSelectedProjection": True,
-                    "candidateStagingBeforeAdd": True,
-                    "positionsPersistOnDrop": True,
-                    "positionsPersistOnDone": True,
-                    "positionsRestoreOnBoot": True,
-                    "layoutActivationMutatesDom": False,
-                    "legacyLayoutWriterExcluded": True,
-                },
-                "projectionSources": [
-                    "foundation.capability_command_catalog",
-                    "foundation.capability_recipe_registry_v1",
-                    "foundation.entity_card_registry_v1",
-                    "foundation.entity_relation_registry_v2",
-                ],
-                "projectionInvocation": "READ_ONLY_BINDING_INSPECTION",
+                "backendTruthExplorer": True,
+                "systemIndexGraph": True,
+                "versionBranchMatrix": True,
+                "deepLocalSearch": True,
                 "commandExecution": False,
                 "commandTokenExposed": False,
                 "canonMutation": False,
@@ -80,11 +539,37 @@ class Handler(b25.Handler):
             self.send_response(200)
             self.send_header("Content-Type", "text/javascript; charset=utf-8")
             self.send_header("Cache-Control", "no-store")
-            self.send_header("X-SETKA-FRONT", "B2.7.4")
+            self.send_header("X-SETKA-FRONT", "B2.8")
             self.send_header("Content-Length", str(len(data)))
             self.end_headers()
             self.wfile.write(data)
             return
+
+        if path.startswith("/api/b28/"):
+            if not self._local_origin_ok():
+                return self._json(403, {"ok": False, "state": "ORIGIN_DENIED"})
+            try:
+                q = urllib.parse.parse_qs(parsed.query)
+                if path == "/api/b28/overview":
+                    return self._json(200, _overview())
+                if path == "/api/b28/search":
+                    query = q.get("q", [""])[0]
+                    try: limit = int(q.get("limit", ["40"])[0])
+                    except Exception: limit = 40
+                    return self._json(200, _search(query, limit))
+                if path == "/api/b28/inspect":
+                    kind = q.get("kind", [""])[0]
+                    ref = q.get("ref", [""])[0]
+                    result = _inspect(kind, ref)
+                    return self._json(200 if result.get("ok") else 404, result)
+                if path == "/api/b28/graph":
+                    include_events = q.get("events", ["0"])[0] in ("1","true","yes")
+                    return self._json(200, _graph(include_events))
+                if path == "/api/b28/inventory":
+                    return self._json(200, {"ok":True,"state":"LOCAL_MIRROR_INVENTORY_READY","relations":mirror.relation_inventory()})
+                return self._json(404, {"ok":False,"state":"B28_ENDPOINT_NOT_FOUND"})
+            except Exception as e:
+                return self._json(500, {"ok":False,"state":"B28_LOCAL_BACKEND_ERROR","message":str(e),"frontVersion":"B2.8"})
 
         if path == "/api/b27/project":
             if not self._local_origin_ok():
@@ -113,7 +598,7 @@ class Handler(b25.Handler):
                     return self._json(422, result)
                 return self._json(200, result)
             except Exception as e:
-                return self._json(500, {"ok": False, "state": "B274_RUNTIME_PROJECTION_BRIDGE_ERROR", "message": str(e), "frontVersion": "B2.7.4"})
+                return self._json(500, {"ok": False, "state": "B28_RUNTIME_PROJECTION_BRIDGE_ERROR", "message": str(e), "frontVersion": "B2.8"})
 
         if path == "/api/b27/binding":
             if not self._local_origin_ok():
@@ -137,7 +622,7 @@ class Handler(b25.Handler):
                     return self._json(422, result)
                 return self._json(200, result)
             except Exception as e:
-                return self._json(500, {"ok": False, "state": "B274_BINDING_BRIDGE_ERROR", "message": str(e), "frontVersion": "B2.7.4"})
+                return self._json(500, {"ok": False, "state": "B28_BINDING_BRIDGE_ERROR", "message": str(e), "frontVersion": "B2.8"})
 
         return super().do_GET()
 
@@ -147,12 +632,12 @@ def main():
     parser.add_argument("--port", type=int, default=8765)
     args = parser.parse_args()
     server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
-    print(f"SETKA LOCAL FRONT B2.7.4 · http://127.0.0.1:{args.port}/")
-    print("SETKA B2.7.4 · position authority is single-writer: B2.7.4 only")
-    print("SETKA B2.7.4 · legacy B2.6/B2.7 layout writers are excluded from overlay")
-    print("SETKA B2.7.4 · positions persist on drop and DONE and restore on boot")
-    print("SETKA B2.7.4 · system binding is independent from screen coordinates")
-    print("SETKA B2.7.4 · device token stays in macOS Keychain; CANON mutation unavailable")
+    print(f"SETKA LOCAL FRONT B2.8 · http://127.0.0.1:{args.port}/")
+    print("SETKA B2.8 · backend truth source: verified local Mac SQLite mirror")
+    print("SETKA B2.8 · system index + branch/version registries are browsable/searchable")
+    print("SETKA B2.8 · central graph topology comes from mirrored backend indexes")
+    print("SETKA B2.7.4 · layout authority remains single-writer")
+    print("SETKA B2.8 · CANON/runtime mutation unavailable")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
