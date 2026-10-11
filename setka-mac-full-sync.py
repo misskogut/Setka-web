@@ -181,7 +181,17 @@ def meta_value(conn, key):
         return None
 
 
-def find_resumable_staging(staging_root: Path, source_tip: int):
+def sqlite_quick_ok(path: Path) -> bool:
+    try:
+        conn = sqlite3.connect(path)
+        row = conn.execute("PRAGMA quick_check").fetchone()
+        conn.close()
+        return bool(row and str(row[0]).lower() == "ok")
+    except Exception:
+        return False
+
+
+def find_resumable_staging(staging_root: Path, source_tip: int, manifest_sha: str):
     if not staging_root.exists():
         return None
     candidates = sorted(
@@ -191,13 +201,14 @@ def find_resumable_staging(staging_root: Path, source_tip: int):
     )
     for candidate in candidates:
         db_path = candidate / "setka-full-mirror.sqlite3"
-        if not db_path.exists():
+        if not db_path.exists() or not sqlite_quick_ok(db_path):
             continue
         try:
             conn = sqlite3.connect(db_path)
             tip = meta_value(conn, "sourceTranscriptTip")
+            staged_manifest_sha = meta_value(conn, "manifestSha256")
             conn.close()
-            if tip == str(source_tip):
+            if tip == str(source_tip) and staged_manifest_sha == manifest_sha:
                 return candidate
         except Exception:
             continue
@@ -397,6 +408,7 @@ def main():
     manifest_bytes = canonical_json(manifest).encode("utf-8")
     manifest_sha = sha256_bytes(manifest_bytes)
     source_tip = int(manifest.get("sourceTranscriptTip") or 0)
+    delta_high_water = int(manifest.get("deltaHighWaterEventId") or 0)
     source_generated_at = manifest.get("generatedAt")
     tables = manifest.get("tables") or []
     if not isinstance(tables, list) or not tables:
@@ -405,7 +417,7 @@ def main():
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     staging_root = MIRROR_ROOT / "staging"
     staging_root.mkdir(parents=True, exist_ok=True)
-    staging = find_resumable_staging(staging_root, source_tip)
+    staging = find_resumable_staging(staging_root, source_tip, manifest_sha)
     if staging is not None:
         db_path = staging / "setka-full-mirror.sqlite3"
         conn = configure_db(sqlite3.connect(db_path))
@@ -428,6 +440,7 @@ def main():
         "manifestSha256": manifest_sha,
         "sourceTranscriptTip": str(source_tip),
         "sourceGeneratedAt": str(source_generated_at),
+        "deltaHighWaterEventId": str(delta_high_water),
     }
     for key, value in meta.items():
         conn.execute("INSERT OR REPLACE INTO meta(key,value) VALUES(?,?)", (key, value))
@@ -466,6 +479,7 @@ def main():
         "codeCommit": code_commit,
         "sourceTranscriptTip": source_tip,
         "sourceGeneratedAt": source_generated_at,
+        "deltaToEventId": delta_high_water,
         "tableCount": len(tables),
         "rowCount": total_rows,
         "schemaObjectCounts": schema_counts,
@@ -483,6 +497,7 @@ def main():
             "localPromotionAtomic": True,
             "resumableTransport": True,
             "providerManagedSecretsCopied": False,
+            "deltaHighWaterCaptured": True,
             "authUsersAtDesignAudit": 0,
             "storageObjectsAtDesignAudit": 0,
         },
@@ -510,6 +525,7 @@ def main():
             "allManifestedBaseTablesCopied": True,
             "resumableTransport": True,
             "providerManagedSecretsCopied": False,
+            "deltaHighWaterEventId": delta_high_water,
         },
     })
     local_receipt["serverReceiptRef"] = server_receipt.get("receiptRef")
@@ -519,6 +535,7 @@ def main():
         "current": str(current),
         "codeCommit": code_commit,
         "sourceTranscriptTip": source_tip,
+        "deltaToEventId": delta_high_water,
         "tableCount": len(tables),
         "rowCount": total_rows,
         "localDbSha256": db_sha,
@@ -533,6 +550,7 @@ def main():
     print(f"Rows: {total_rows:,}", flush=True)
     print(f"SQLite: {local_bytes / (1024*1024):.1f} MiB", flush=True)
     print(f"Transcript tip at manifest: {source_tip}", flush=True)
+    print(f"Delta high-water at manifest: {delta_high_water}", flush=True)
     print(f"Server receipt: {local_receipt.get('serverReceiptRef')}", flush=True)
     print("============================================", flush=True)
     return 0
