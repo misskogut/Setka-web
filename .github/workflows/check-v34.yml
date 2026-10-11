@@ -55,6 +55,8 @@ on:
       - 'standalone-renderer-v40.html'
       - 'standalone-admin-v34.html'
       - 'standalone-admin-private-v34.html'
+      - 'standalone-admin-public-v34.html'
+      - 'tests/standalone-v34-admin-restoration.test.mjs'
       - 'standalone-admin-public-v34.js'
       - 'tests/standalone-v34-open-admin-browser-smoke.mjs'
       - 'standalone-admin-evolution-v35.html'
@@ -132,6 +134,7 @@ jobs:
       - run: node --test tests/standalone-v34-note-merge-integrity.test.mjs
       - run: node --test tests/setka-tester-account-ownership.test.mjs
       - run: node --test tests/standalone-v34-admin-integrity.test.mjs
+      - run: node --test tests/standalone-v34-admin-restoration.test.mjs
 
   browser-smoke:
     runs-on: ubuntu-latest
