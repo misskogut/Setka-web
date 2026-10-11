@@ -209,7 +209,7 @@ def _overview():
     return {
         "ok": True,
         "state": "SETKA_LOCAL_BACKEND_OVERVIEW_READY",
-        "frontVersion": "B2.8",
+        "frontVersion": "B2.9",
         "dataSource": "MAC_VERIFIED_SQLITE_MIRROR",
         "mirror": receipt,
         "systemIndex": {
@@ -664,7 +664,7 @@ class Handler(b25.Handler):
             mirror_state = None
             try:
                 raw = OVERLAY_PATH.read_bytes() if OVERLAY_PATH.exists() else b""
-                overlay_ok = b"B2.8-BACKEND-TRUTH" in raw and b"B2.7.4-SINGLE-WRITER-LAYOUT" in raw
+                overlay_ok = b"B2.8-BACKEND-TRUTH" in raw and b"B2.7.4-SINGLE-WRITER-LAYOUT" in raw and b"B2.9-SIMPLE-FRONT" in raw
                 legacy_writer_present = b"setka.front.b26.workspace.v1" in raw
                 receipt = mirror.receipt()
                 mirror_state = receipt.get("state")
@@ -674,13 +674,14 @@ class Handler(b25.Handler):
             ok = overlay_ok and not legacy_writer_present and mirror_ok
             return self._json(200 if ok else 503, {
                 "ok": ok,
-                "state": "SETKA_LOCAL_FRONT_B28_READY" if ok else "B28_BACKEND_TRUTH_NOT_READY",
+                "state": "SETKA_LOCAL_FRONT_B29_READY" if ok else "B29_SIMPLE_FRONT_NOT_READY",
                 "frontVersion": "B2.8",
                 "dataSource": "MAC_VERIFIED_SQLITE_MIRROR",
                 "mirrorState": mirror_state,
                 "workspace": "B2.7.4",
                 "positionAuthority": "B2.7.4_ONLY",
                 "legacyLayoutWriterPresent": legacy_writer_present,
+                "simpleSurface": ["GRAPH","ONBOARD","TRANSCRIPT","BRANCHES"],
                 "backendTruthExplorer": True,
                 "systemIndexGraph": True,
                 "versionBodyGraph": True,
@@ -700,7 +701,7 @@ class Handler(b25.Handler):
             self.send_response(200)
             self.send_header("Content-Type", "text/javascript; charset=utf-8")
             self.send_header("Cache-Control", "no-store")
-            self.send_header("X-SETKA-FRONT", "B2.8")
+            self.send_header("X-SETKA-FRONT", "B2.9")
             self.send_header("Content-Length", str(len(data)))
             self.end_headers()
             self.wfile.write(data)
