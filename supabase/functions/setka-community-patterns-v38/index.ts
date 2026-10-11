@@ -11,6 +11,7 @@ function versionFor(id:string){if(id==="fish-wave")return 35;if(id==="rgb-glitch
 function day(){return new Date().toISOString().slice(0,10)}
 
 const INTENTS=new Set(["sleep","relax","tension","focus","energy","switch","explore"]);
+const KNOWN_PATTERNS=new Set(["tentacle-orbit","dandelion","fish-wave","breathing-fractal","breathing-fractal-growth","rgb-glitch-rings","stereo-dna"]);
 const MIN_GROUP_ACCOUNTS=3,MIN_GROUP_SESSIONS=5;
 // Only coarse aggregate groups leave this function. No notes, state ratings,
 // tester identifiers or individual goal histories are included in the feed.
@@ -22,7 +23,7 @@ function communityIntentSummary(accounts:any[],archives:any[]){
     const p=a?.payload||{},sessions=new Map((Array.isArray(p.sessions)?p.sessions:[]).filter(s=>s?.id).map(s=>[String(s.id),String(s.requestKey||"")]));
     for(const x of (Array.isArray(p.patternExposures)?p.patternExposures:[])){
       const pid=String(x?.patternId||""),sid=String(x?.sessionId||"");
-      if(!pid||!sid)continue;
+      if(!KNOWN_PATTERNS.has(pid)||!sid)continue;
       const intent=sessions.get(sid)||String(x.requestKey||"");
       if(!INTENTS.has(intent))continue;
       const key=JSON.stringify([tid,pid,sid]);if(seen.has(key))continue;seen.add(key);
@@ -46,7 +47,7 @@ function historicalPatternSummary(rows:any[]){
   const seen=new Set<string>(),m=new Map<string,any>();
   for(const x of rows){
     const pid=String(x?.pattern_id||""),device=String(x?.device_id||""),eid=String(x?.exposure_id||"");
-    if(!pid||!device||!eid||seen.has(eid))continue;seen.add(eid);
+    if(!KNOWN_PATTERNS.has(pid)||!device||!eid||seen.has(eid))continue;seen.add(eid);
     let v=m.get(pid);if(!v){v={patternId:pid,devices:new Set(),sessions:new Set(),exposures:0,durationMs:0};m.set(pid,v)}
     v.devices.add(device);if(x.session_id)v.sessions.add(JSON.stringify([device,x.session_id]));
     v.exposures++;v.durationMs+=Math.max(0,N(x.duration_ms));
