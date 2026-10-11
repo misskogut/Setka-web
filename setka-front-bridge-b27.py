@@ -651,7 +651,7 @@ def _graph(include_events=False):
 
 
 class Handler(b25.Handler):
-    server_version = "SETKAFrontB2.8/1.0"
+    server_version = "SETKAFrontB2.9/1.0"
 
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
@@ -675,7 +675,7 @@ class Handler(b25.Handler):
             return self._json(200 if ok else 503, {
                 "ok": ok,
                 "state": "SETKA_LOCAL_FRONT_B29_READY" if ok else "B29_SIMPLE_FRONT_NOT_READY",
-                "frontVersion": "B2.8",
+                "frontVersion": "B2.9",
                 "dataSource": "MAC_VERIFIED_SQLITE_MIRROR",
                 "mirrorState": mirror_state,
                 "workspace": "B2.7.4",
@@ -836,12 +836,12 @@ def main():
     parser.add_argument("--port", type=int, default=8765)
     args = parser.parse_args()
     server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
-    print(f"SETKA LOCAL FRONT B2.8 · http://127.0.0.1:{args.port}/")
-    print("SETKA B2.8 · backend truth source: verified local Mac SQLite mirror")
-    print("SETKA B2.8 · system index + branch/version registries are browsable/searchable")
-    print("SETKA B2.8 · central graph topology comes from mirrored backend indexes")
+    print(f"SETKA LOCAL FRONT B2.9 · http://127.0.0.1:{args.port}/")
+    print("SETKA B2.9 · simple surface over verified local Mac SQLite mirror")
+    print("SETKA B2.9 · visible surface: graph + onboard + transcript + branches")
+    print("SETKA B2.9 · BODY is default; backend structure is an explicit graph view")
     print("SETKA B2.7.4 · layout authority remains single-writer")
-    print("SETKA B2.8 · CANON/runtime mutation unavailable")
+    print("SETKA B2.9 · CANON/runtime mutation unavailable")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
