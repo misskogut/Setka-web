@@ -61,6 +61,7 @@ on:
       - 'tests/standalone-v34-note-merge-integrity.test.mjs'
       - 'tests/setka-tester-account-ownership.test.mjs'
       - 'supabase/functions/setka-tester-account-v40/index.ts'
+      - 'supabase/functions/setka-standalone-v34/index.ts'
       - 'supabase/functions/setka-tester-archive-v37/index.ts'
       - 'tests/standalone-v34-browser-smoke.mjs'
       - 'tests/standalone-v34-admin-browser-smoke.mjs'
@@ -148,6 +149,7 @@ jobs:
       - run: ./node_modules/.bin/esbuild supabase/functions/setka-pattern-knowledge-v40/index.ts --outfile=/tmp/setka-admin-backend-check.js --format=esm
       - run: ./node_modules/.bin/esbuild supabase/functions/setka-tester-archive-v37/index.ts --outfile=/tmp/setka-tester-archive-check.js --format=esm
       - run: ./node_modules/.bin/esbuild supabase/functions/setka-tester-account-v40/index.ts --outfile=/tmp/setka-tester-account-check.js --format=esm
+      - run: ./node_modules/.bin/esbuild supabase/functions/setka-standalone-v34/index.ts --outfile=/tmp/setka-standalone-runtime-check.js --format=esm
       - uses: actions/upload-artifact@v4
         if: always()
         with:
