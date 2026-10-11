@@ -3,7 +3,7 @@
   const MARKER='B2.8-BACKEND-TRUTH';
   const qs=(s,r=document)=>r.querySelector(s);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
-  const state={overview:null,graph:null,search:[],inspect:null,history:[],open:false,busy:false,mode:'INTEGRATION',eventsInGraph:false};
+  const state={overview:null,graph:null,search:[],inspect:null,history:[],open:false,busy:false,mode:'INTEGRATION',eventsInGraph:false,graphView:'BODY',body:null};
   document.documentElement.dataset.setkaFrontBackendTruth=MARKER;
   document.documentElement.dataset.setkaFrontVersion=VERSION;
   document.title='SETKA · FRONT B2.8 · LOCAL BACKEND';
@@ -66,9 +66,12 @@
     const actions=qs('.top-actions');
     if(actions&&!qs('#setka-b28-toggle')){
       const chip=document.createElement('span');chip.className='chip';chip.id='setka-b28-status-chip';chip.textContent='LOCAL BACKEND · …';chip.dataset.setkaProjectionRef='builtin:id:setka-b28-status-chip';chip.dataset.setkaProjectionRenameable='0';
+      const view=document.createElement('button');view.className='action';view.id='setka-b28-view-toggle';view.type='button';view.innerHTML='◉ <span>Тело</span>';view.dataset.setkaProjectionRef='builtin:id:setka-b28-view-toggle';view.dataset.setkaProjectionRenameable='1';
+      view.addEventListener('click',()=>toggleGraphView());
       const btn=document.createElement('button');btn.className='action';btn.id='setka-b28-toggle';btn.type='button';btn.innerHTML='◎ <span>Структура</span>';btn.dataset.setkaProjectionRef='builtin:id:setka-b28-toggle';btn.dataset.setkaProjectionRenameable='1';
       btn.addEventListener('click',()=>togglePanel());
       actions.insertBefore(btn,actions.firstChild);
+      actions.insertBefore(view,actions.firstChild);
       actions.insertBefore(chip,actions.firstChild);
     }
   }
@@ -148,18 +151,20 @@
         <div class="b28-kpi"><b>${fmt(m.rowCount||m.row_count)}</b><span>MIRRORED ROWS</span></div>
       </div><div class="b28-status pass" style="margin-top:7px">${esc(m.state)} · receipt ${esc(m.serverReceiptRef||m.receiptRef||'—')} · Git ${esc(short(m.codeCommit,14))}</div></section>
       <section class="b28-section"><h3>5 режимов · реальные branch/version baseline</h3>${(o.modes||[]).map(modeCard).join('')}</section>
-      <section class="b28-section"><h3>Системные версии</h3>${versions.map(v=>`<div class="b28-row"><div><b>${esc(v.label||v.versionRef)}</b><small>${esc(v.versionRef)} · ${esc(v.state)}<br>parent ${esc(v.parentVersionRef||'—')}</small></div><div class="b28-actions"><button data-b28-open-kind="VERSION" data-b28-open-ref="${esc(v.versionRef)}">ОТКРЫТЬ</button></div></div>`).join('')||'<div class="b28-empty">Версий нет.</div>'}</section>
+      <section class="b28-section"><h3>Системные версии · реальные тела</h3>${versions.map(v=>`<div class="b28-row"><div><b>${esc(v.label||v.versionRef)}</b><small>${esc(v.versionRef)} · ${esc(v.state)}<br>${fmt(v.bodyNodes)} узлов · ${fmt(v.bodyEdges)} связей · ${v.bodyCachedOnMac?'BODY ON MAC':'BODY NOT CACHED'}</small></div><div class="b28-actions"><button data-b28-body-version="${esc(v.versionRef)}">ТЕЛО</button><button data-b28-open-kind="VERSION" data-b28-open-ref="${esc(v.versionRef)}">КАРТОЧКА</button></div></div>`).join('')||'<div class="b28-empty">Версий нет.</div>'}</section>
       <section class="b28-section"><h3>Параллельные ветки · ${branches.length}</h3>${branches.map(b=>`<div class="b28-row"><div><b>${esc(b.name||b.branchRef)}</b><small>${esc(b.kind)} · ${esc(b.runtimeState)}<br>${esc(b.branchRef)} · head ${esc(b.headVersionRef||'—')}</small></div><div class="b28-actions"><button data-b28-open-kind="BRANCH" data-b28-open-ref="${esc(b.branchRef)}">ОТКРЫТЬ</button></div></div>`).join('')}</section>
       <section class="b28-section"><h3>Объекты индекса</h3><div>${kinds.map(([k,n])=>`<span class="b28-pill">${esc(k)} · ${fmt(n)}</span>`).join('')}</div></section>
       <section class="b28-section"><h3>Front ↔ Back / portability</h3><div class="b28-detail"><span>Edge sources</span><span>${fmt(o.edgeSources?.gitCurrent)} / ${fmt(o.edgeSources?.deployed)} · ${o.edgeSources?.coveragePct}%</span></div><div class="b28-detail"><span>Front catalog</span><span>${fmt(o.frontBackendCatalogCount)}</span></div><div class="b28-detail"><span>Version lineage</span><span>${fmt(o.versionLineageMembers)} members</span></div><div class="b28-detail"><span>Index dirty</span><span>${esc(o.systemIndex?.state?.dirty)}</span></div></section>
       <section class="b28-section"><h3>COLD experiment RAW · не дублируется на Mac</h3>${cold.map(x=>`<div class="b28-row"><div><b>${esc(x.schema)}.${esc(x.table)}</b><small>${esc(x.storageClass)} · ${esc(x.sourceRetention)}<br>${esc(x.rehydrationPolicy||x.reason)}</small></div></div>`).join('')||'<div class="b28-empty">Нет исключений.</div>'}</section>
-      <section class="b28-section"><h3>Центральный граф</h3><div class="b28-graph-actions"><button data-b28-reload-graph>ПЕРЕСТРОИТЬ ИЗ БЭКА</button><button data-b28-events-graph class="${state.eventsInGraph?'active':''}">СОБЫТИЯ: ${state.eventsInGraph?'ВКЛ':'ВЫКЛ'}</button></div></section>
+      <section class="b28-section"><h3>Центральный граф · что именно показываем</h3><div class="b28-graph-actions"><button data-b28-show-body class="${state.graphView==='BODY'?'active':''}">ТЕЛО ВЕРСИИ</button><button data-b28-reload-graph class="${state.graphView==='BACKEND'?'active':''}">СТРУКТУРА БЭКА</button><button data-b28-events-graph class="${state.eventsInGraph?'active':''}">СОБЫТИЯ В БЭК-ГРАФЕ: ${state.eventsInGraph?'ВКЛ':'ВЫКЛ'}</button></div><div class="b28-status" style="margin-top:7px">${state.graphView==='BODY'?'ТЕЛО = точный body snapshot выбранной версии/ветки.':'СТРУКТУРА БЭКА = глобальный индекс объектов/связей; это не анатомическое тело.'}</div></section>
       <div class="b28-truth">TRUTH · топология, объекты, связи, ветки и версии читаются из verified Mac mirror. Координаты 3D — только детерминированная визуальная раскладка и не являются фактом бэка. Неразрешённые target/source refs не дорисовываются как сущности.</div>
     `;
     host.querySelectorAll('[data-b28-open-kind]').forEach(b=>b.addEventListener('click',()=>inspect(b.dataset.b28OpenKind,b.dataset.b28OpenRef)));
+    host.querySelectorAll('[data-b28-body-version]').forEach(b=>b.addEventListener('click',()=>loadBody({version:b.dataset.b28BodyVersion})));
     host.querySelectorAll('[data-b28-mode]').forEach(b=>b.addEventListener('click',()=>selectMode(b.dataset.b28Mode)));
+    host.querySelector('[data-b28-show-body]')?.addEventListener('click',()=>loadBody({mode:state.mode}));
     host.querySelector('[data-b28-reload-graph]')?.addEventListener('click',loadBackendGraph);
-    host.querySelector('[data-b28-events-graph]')?.addEventListener('click',()=>{state.eventsInGraph=!state.eventsInGraph;renderOverview();loadBackendGraph()});
+    host.querySelector('[data-b28-events-graph]')?.addEventListener('click',()=>{state.eventsInGraph=!state.eventsInGraph;renderOverview();if(state.graphView==='BACKEND')loadBackendGraph()});
   }
 
   function renderSearch(){
@@ -229,22 +234,67 @@
   }
 
   async function waitGraphApi(ms=6000){const t=Date.now();while(Date.now()-t<ms){if(window.SETKA_B1_GRAPH_API?.loadSnapshot)return window.SETKA_B1_GRAPH_API;await new Promise(r=>setTimeout(r,60))}return null}
+  function updateGraphViewChrome(){
+    const view=qs('#setka-b28-view-toggle');
+    if(view){
+      view.classList.toggle('active',state.graphView==='BODY');
+      const span=view.querySelector('span');
+      if(span)span.textContent=state.graphView==='BODY'?'Тело':'Бэк';
+    }
+  }
+
+  async function loadBody({mode=null,version=null}={}){
+    state.graphView='BODY';updateGraphViewChrome();
+    const chip=qs('#graph-chip');if(chip)chip.textContent='ТЕЛО · ЗАГРУЗКА';
+    const q=new URLSearchParams();
+    if(version)q.set('version',version);else q.set('mode',mode||state.mode);
+    try{
+      const body=await api(`/api/b28/body?${q.toString()}`);
+      state.body=body;
+      const apiGraph=await waitGraphApi();
+      if(!apiGraph)throw new Error('B1_GRAPH_API_NOT_READY');
+      apiGraph.loadSnapshot(body,{
+        snapshotRef:body.snapshotRef,
+        binding:body.branchRef||body.versionRef||'VERSION_BODY',
+        classification:'ТЕЛО ВЕРСИИ · ТОЧНЫЙ SNAPSHOT',
+        graphChip:`ТЕЛО · ${body.versionLabel||body.versionRef||'VERSION'}`
+      });
+      const title=qs('#graph-title'),desc=qs('#graph-description'),source=qs('#source-bar');
+      if(title)title.textContent=`SETKA BODY · ${body.versionLabel||body.versionRef||'VERSION'}`;
+      if(desc)desc.textContent=`${fmt(body.bodyNodes||body.grownNodes)} узлов · ${fmt(body.bodyEdges||body.internalEdges)} внутренних связей · ${body.mode||'VERSION'}`;
+      if(source)source.textContent=`LOCAL VERIFIED MAC · exact body snapshot ${body.snapshotRef} · ${body.dataSource}`;
+      renderOverview();
+      return body;
+    }catch(e){
+      console.error(e);
+      if(chip)chip.textContent='ТЕЛО · НЕТ LOCAL SNAPSHOT';
+      const desc=qs('#graph-description');if(desc)desc.textContent=`BODY ERROR · ${e.data?.state||e.message}`;
+      return null;
+    }
+  }
+
+  function toggleGraphView(){
+    if(state.graphView==='BODY')loadBackendGraph();else loadBody({mode:state.mode});
+  }
+
   async function loadBackendGraph(){
+    state.graphView='BACKEND';updateGraphViewChrome();
     const chip=qs('#graph-chip');if(chip)chip.textContent='BACKEND · LOADING';
-    try{const g=await api(`/api/b28/graph?events=${state.eventsInGraph?'1':'0'}`);state.graph=g;const apiGraph=await waitGraphApi();if(!apiGraph)throw new Error('B1_GRAPH_API_NOT_READY');const snap=convertGraph(g);apiGraph.loadSnapshot(snap,{snapshotRef:g.snapshotRef,binding:'MAC_MIRROR_SYSTEM_INDEX',classification:'LOCAL BACKEND · INDEXED STRUCTURE',graphChip:'BACKEND · STRUCTURE'});const title=qs('#graph-title'),desc=qs('#graph-description'),source=qs('#source-bar');if(title)title.textContent=`SETKA BACKEND · ${fmt(g.indexedObjectCount)} OBJECTS`;if(desc)desc.textContent=`${fmt(g.edgeCount)} resolved relations · ${fmt(g.unresolvedExternalRelationCount)} external refs kept explicit`;if(source)source.textContent='LOCAL VERIFIED MAC MIRROR · system index + branch/version registries · no synthetic backend objects';}
+    try{const g=await api(`/api/b28/graph?events=${state.eventsInGraph?'1':'0'}`);state.graph=g;const apiGraph=await waitGraphApi();if(!apiGraph)throw new Error('B1_GRAPH_API_NOT_READY');const snap=convertGraph(g);apiGraph.loadSnapshot(snap,{snapshotRef:g.snapshotRef,binding:'MAC_MIRROR_SYSTEM_INDEX',classification:'LOCAL BACKEND · INDEXED STRUCTURE',graphChip:'BACKEND · STRUCTURE'});const title=qs('#graph-title'),desc=qs('#graph-description'),source=qs('#source-bar');if(title)title.textContent=`SETKA BACKEND INDEX · ${fmt(g.indexedObjectCount)} OBJECTS`;if(desc)desc.textContent=`${fmt(g.edgeCount)} resolved relations · ${fmt(g.unresolvedExternalRelationCount)} external refs · GLOBAL INDEX, НЕ BODY`;if(source)source.textContent='LOCAL VERIFIED MAC MIRROR · GLOBAL BACKEND INDEX · presentation geometry only · no synthetic backend objects';renderOverview();}
     catch(e){console.error(e);if(chip)chip.textContent='BACKEND · ERROR'}
   }
 
   function spotlightRef(ref){const b=window.SETKA_GRAPH_BRIDGE;const r=b?.spotlight?.(ref);if(r?.ok&&r.directMatches){togglePanel(false);return r}return null}
-  function selectMode(mode){
+  async function selectMode(mode){
     state.mode=mode;
     document.querySelectorAll('.mode-button').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));
     const m=(state.overview?.modes||[]).find(x=>x.modeDisplay===mode);
-    const chip=qs('#mode-chip');if(chip)chip.textContent=`${mode} · BACKEND VIEW`;
+    const chip=qs('#mode-chip');if(chip)chip.textContent=`${mode} · ${state.graphView==='BODY'?'BODY':'BACKEND'} VIEW`;
     const head=qs('#header-source');if(head)head.textContent=`LOCAL MAC · ${m?.branchRef||'—'}`;
     window.SETKA_B1_GRAPH_API?.switchModeView?.(mode);
+    if(state.graphView==='BODY')await loadBody({mode});else spotlightRef(m?.branchRef);
     renderOverview();
-    if(m?.branchRef){spotlightRef(m.branchRef);inspect('BRANCH',m.branchRef);togglePanel(true)}
+    if(m?.branchRef){inspect('BRANCH',m.branchRef);togglePanel(true)}
   }
 
   document.addEventListener('click',e=>{const btn=e.target.closest?.('.mode-button[data-mode]');if(!btn)return;e.preventDefault();e.stopImmediatePropagation();selectMode(btn.dataset.mode)},true);
@@ -253,16 +303,16 @@
 
   async function refreshAll(reloadGraph=false){
     if(state.busy)return;state.busy=true;ensureChrome();ensurePanel();
-    try{state.overview=await api('/api/b28/overview');renderStatus();renderOverview();renderSearch();renderInspect();if(reloadGraph||!state.graph)await loadBackendGraph();}
+    try{state.overview=await api('/api/b28/overview');renderStatus();renderOverview();renderSearch();renderInspect();if(reloadGraph||(!state.graph&&!state.body)){if(state.graphView==='BODY')await loadBody({mode:state.mode});else await loadBackendGraph();}requestAnimationFrame(()=>window.SETKA_SAFE_WORKBENCH?.restoreAllPositions?.());}
     catch(e){console.error(e);const el=ensurePanel().querySelector('[data-b28-status]');el.className='b28-status warn';el.textContent=`B2.8 ERROR · ${e.data?.state||e.message}`;}
     finally{state.busy=false}
   }
 
-  function boot(){ensureChrome();ensurePanel();requestAnimationFrame(()=>requestAnimationFrame(()=>refreshAll(true)))}
+  function boot(){ensureChrome();ensurePanel();updateGraphViewChrome();requestAnimationFrame(()=>requestAnimationFrame(()=>{window.SETKA_SAFE_WORKBENCH?.restoreAllPositions?.();refreshAll(true)}))}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
 
   window.SETKA_BACKEND_TRUTH=Object.freeze({
-    version:VERSION,marker:MARKER,open:()=>togglePanel(true),close:()=>togglePanel(false),search:q=>{ensurePanel().querySelector('[data-b28-search]').value=q;togglePanel(true);runSearch()},inspect,overview:()=>state.overview,reload:()=>refreshAll(true),graph:()=>state.graph,mode:()=>state.mode,
+    version:VERSION,marker:MARKER,open:()=>togglePanel(true),close:()=>togglePanel(false),search:q=>{ensurePanel().querySelector('[data-b28-search]').value=q;togglePanel(true);runSearch()},inspect,overview:()=>state.overview,reload:()=>refreshAll(true),graph:()=>state.graph,body:()=>state.body,showBody:(opts={})=>loadBody(opts),showBackend:()=>loadBackendGraph(),mode:()=>state.mode,graphView:()=>state.graphView,
     dataSource:'MAC_VERIFIED_SQLITE_MIRROR',geometryClaim:false,canonMutation:false,runtimeMutation:false
   });
 })();
