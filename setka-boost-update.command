@@ -16,6 +16,7 @@ OVERLAY_CORE_URL="$BASE_URL/setka-front-b274-projection-core.js"
 OVERLAY_B271_URL="$BASE_URL/setka-front-b271-runtime.js"
 OVERLAY_B274_URL="$BASE_URL/setka-front-b274-workbench.js"
 OVERLAY_B28_URL="$BASE_URL/setka-front-b28-backend.js"
+OVERLAY_B29_URL="$BASE_URL/setka-front-b29-simple.js"
 BRIDGE_B23_URL="$BASE_URL/setka-front-bridge-b23.py"
 BRIDGE_B24_URL="$BASE_URL/setka-front-bridge-b24.py"
 BRIDGE_B25_URL="$BASE_URL/setka-front-bridge-b25.py"
@@ -38,6 +39,7 @@ OVERLAY_CORE="$FRONT_DIR/setka-b274-projection-core.js"
 OVERLAY_B271="$FRONT_DIR/setka-b271-runtime.js"
 OVERLAY_B274="$FRONT_DIR/setka-b274-workbench.js"
 OVERLAY_B28="$FRONT_DIR/setka-b28-backend.js"
+OVERLAY_B29="$FRONT_DIR/setka-b29-simple.js"
 OVERLAY="$FRONT_DIR/setka-b2.js"
 BRIDGE_B23="$FRONT_DIR/setka-front-bridge-b23.py"
 BRIDGE_B24="$FRONT_DIR/setka-front-bridge-b24.py"
@@ -73,7 +75,7 @@ retry_cmd(){
 }
 
 echo "================================================================"
-echo "SETKA · ONE BUTTON UPDATE · BASELINE + DELTA V1 · FRONT B2.8"
+echo "SETKA · ONE BUTTON UPDATE · BASELINE + DELTA V1 · FRONT B2.9"
 echo "$(date)"
 echo "================================================================"
 echo "GitHub + Supabase = development truth; Mac = receipt-verified mirror."
@@ -107,12 +109,13 @@ retry_download "$OVERLAY_CORE_URL" "$OVERLAY_CORE" 600 || stop "B2.7.4 projectio
 retry_download "$OVERLAY_B271_URL" "$OVERLAY_B271" 600 || stop "B2.7.1 runtime projection UI refresh failed"
 retry_download "$OVERLAY_B274_URL" "$OVERLAY_B274" 600 || stop "B2.7.4 workbench refresh failed"
 retry_download "$OVERLAY_B28_URL" "$OVERLAY_B28" 600 || stop "B2.8 backend truth UI refresh failed"
-cat "$OVERLAY_B23" "$OVERLAY_B24" "$OVERLAY_B25" "$OVERLAY_CORE" "$OVERLAY_B271" "$OVERLAY_B274" "$OVERLAY_B28" > "$OVERLAY.tmp" || stop "combined overlay build failed"
+retry_download "$OVERLAY_B29_URL" "$OVERLAY_B29" 600 || stop "B2.9 simple UI refresh failed"
+cat "$OVERLAY_B23" "$OVERLAY_B24" "$OVERLAY_B25" "$OVERLAY_CORE" "$OVERLAY_B271" "$OVERLAY_B274" "$OVERLAY_B28" "$OVERLAY_B29" > "$OVERLAY.tmp" || stop "combined overlay build failed"
 mv "$OVERLAY.tmp" "$OVERLAY"; chmod 600 "$OVERLAY" 2>/dev/null || true
 retry_download "$BRIDGE_B23_URL" "$BRIDGE_B23" 700 || stop "bridge B2.3 refresh failed"
 retry_download "$BRIDGE_B24_URL" "$BRIDGE_B24" 700 || stop "bridge B2.4 refresh failed"
 retry_download "$BRIDGE_B25_URL" "$BRIDGE_B25" 700 || stop "bridge B2.5 refresh failed"
-retry_download "$BRIDGE_B27_URL" "$BRIDGE" 700 || stop "bridge B2.8 refresh failed"
+retry_download "$BRIDGE_B27_URL" "$BRIDGE" 700 || stop "bridge B2.9 refresh failed"
 
 # 1. Durable Mac transfer boundary. Full only when no verified baseline exists.
 echo; echo "[1/7] VERIFIED MAC MIRROR"
@@ -241,7 +244,7 @@ rc=$?
 echo; echo "[6/7] OPEN VERIFIED FRONT"
 if [ -x "$FRONT_LAUNCHER_TARGET" ]; then
   nohup "$FRONT_LAUNCHER_TARGET" >"$LOG_DIR/front-launch-$STAMP.log" 2>&1 &
-  echo "PASS · B2.8 local-backend front launcher invoked"
+  echo "PASS · B2.9 simple front launcher invoked"
 fi
 
 cat <<'TXT'
@@ -255,10 +258,10 @@ SETKA ONE BUTTON UPDATE · COMPLETE
 - local SQLite mirror is promoted atomically; previous verified mirror survives failure
 - malformed interrupted delta staging is discarded automatically; verified CURRENT is integrity-checked first
 - every PASS has a local receipt and a server-side receipt
-- frontend reads verified local Mac backend truth; layout never defines backend truth
+- frontend is simplified to graph + onboard + transcript + branches; backend truth stays local and verified
 - provider-managed secret values are not copied into plaintext mirror
 - CANON is not promoted by this updater
 ================================================================
 TXT
-notify "SETKA verified Mac delta + B2.8 backend-truth front complete"
+notify "SETKA verified Mac delta + B2.9 simple front complete"
 finish_wait
