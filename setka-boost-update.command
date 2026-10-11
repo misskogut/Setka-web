@@ -241,7 +241,7 @@ rc=$?
 echo; echo "[6/7] OPEN VERIFIED FRONT"
 if [ -x "$FRONT_LAUNCHER_TARGET" ]; then
   nohup "$FRONT_LAUNCHER_TARGET" >"$LOG_DIR/front-launch-$STAMP.log" 2>&1 &
-  echo "PASS · B2.7.4 front launcher invoked"
+  echo "PASS · B2.8 local-backend front launcher invoked"
 fi
 
 cat <<'TXT'
@@ -255,10 +255,10 @@ SETKA ONE BUTTON UPDATE · COMPLETE
 - local SQLite mirror is promoted atomically; previous verified mirror survives failure
 - malformed interrupted delta staging is discarded automatically; verified CURRENT is integrity-checked first
 - every PASS has a local receipt and a server-side receipt
-- frontend remains a projection layer; backend truth is not inferred from layout
+- frontend reads verified local Mac backend truth; layout never defines backend truth
 - provider-managed secret values are not copied into plaintext mirror
 - CANON is not promoted by this updater
 ================================================================
 TXT
-notify "SETKA verified Mac delta + front update complete"
+notify "SETKA verified Mac delta + B2.8 backend-truth front complete"
 finish_wait
