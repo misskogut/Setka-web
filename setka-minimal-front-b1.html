@@ -1207,6 +1207,7 @@
       },
       graphRef: () => state.graphRef,
       mode: () => state.mode,
+      switchModeView: (mode) => switchMode(mode),
       nodeCount: () => nodeMap.size,
       edgeCount: () => edgeMeta.length
     });
