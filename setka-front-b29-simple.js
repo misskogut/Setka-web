@@ -129,9 +129,14 @@
       AUTHORIZED_LOCAL_EXPERIMENTATION_READY:'готова к локальным экспериментам, сейчас не запущена',
       ACTIVE:'активна',
       INDEXED:'сохранена и проиндексирована',
-      PASS:'проверена'
+      PASS:'проверена',
+      ANALYTICS:'аналитический объект',
+      READY:'готова',
+      COMPLETE:'завершена',
+      FROZEN:'зафиксирована'
     };
-    return map[String(s||'')]||'состояние зафиксировано';
+    const raw=String(s||'').trim();
+    return map[raw]||raw.replaceAll('_',' ').toLowerCase()||'—';
   };
   const humanKind=k=>({
     ENTITY:'Сущность',SHIP:'Корабль',EXPERIMENT:'Эксперимент',EXPERIMENT_CAPSULE:'Капсула эксперимента',
@@ -144,6 +149,21 @@
     SYSTEM_STRUCTURE:'структура системы',
     ACTOR:'участник системы'
   }[String(s||'').toUpperCase()]||String(s||'').replaceAll('_',' ').toLowerCase()||'—');
+
+  const humanRelation=r=>({
+    OBSERVED_IN:'наблюдалось в',
+    EXACT_REF_REGISTRY_MATCH:'связано по точному совпадению',
+    CONTAINS_LOCAL_WORLD_NODE:'содержит локальный узел',
+    RUN_ON_SHIP:'запуск на корабле',
+    RUN_OF_EXPERIMENT:'запуск эксперимента',
+    HAS_RECORDED_RUN:'имеет сохранённый запуск',
+    HAS_RECORDED_VISUALIZATION:'имеет сохранённую визуализацию',
+    CAPSULE_OF_EXPERIMENT:'капсула эксперимента',
+    PARENT_VERSION:'родительская версия',
+    BASE_VERSION:'базовая версия',
+    HEAD_VERSION:'текущая версия ветки',
+    OBSERVES_BRANCH:'показывает ветку'
+  }[String(r||'').toUpperCase()]||String(r||'').replaceAll('_',' ').toLowerCase()||'связь');
 
   function infoText(kind){
     const data={
@@ -452,7 +472,13 @@
     if(map[kind])return map[kind];
     const summary=String(row.summary||'').trim();
     if(/[А-Яа-яЁё]/.test(summary))return summary;
-    return kind?kind.toLowerCase().replaceAll('_',' ').replace(/^./,c=>c.toUpperCase()):'Системное событие';
+    if(kind.startsWith('FRONT_')||kind.startsWith('MINIMAL_FRONT_'))return 'Изменён интерфейс SETKA';
+    if(kind.startsWith('MAC_'))return 'Изменена синхронизация SETKA с Mac';
+    if(kind.startsWith('EDGE_FUNCTION_'))return 'Обновлена серверная функция SETKA';
+    if(kind.startsWith('EXPERIMENT_'))return 'Зафиксировано событие эксперимента';
+    if(kind.startsWith('BRANCH_'))return 'Изменено состояние ветки';
+    if(kind.includes('CHECKPOINT'))return 'Зафиксирована контрольная точка';
+    return 'Системное изменение SETKA';
   }
 
   function eventTime(v){
@@ -573,7 +599,7 @@
     showCard({
       title:d.relation||'Связь',
       sub:'Реальная связь на текущем графе',
-      rows:[['Откуда',d.sourceId||'—'],['Куда',d.targetId||'—'],['Тип связи',d.relation||d.edgeClass||'—']]
+      rows:[['Откуда',d.sourceId||'—'],['Куда',d.targetId||'—'],['Что означает',humanRelation(d.relation||d.edgeClass)]]
     });
   });
 
