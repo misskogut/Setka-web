@@ -93,3 +93,34 @@ B2.9 is a presentation reset.
 - backend data deletion: false
 - mirror policy change: false
 - COLD experiment RAW remains remote
+
+
+## B2.9.1 interaction correction
+
+The earlier optional global STRUCTURE view was too broad for the human workbench. It is no longer exposed as the normal alternate view.
+
+The visible graph now has two human concepts:
+
+- BODY — exact saved body snapshot for the selected version/branch.
+- LINKS — a bounded context graph around one selected real backend object.
+
+LINKS is built with a breadth-first walk over non-historical indexed relations, capped to the nearest context. It never dumps the whole backend index onto the main graph.
+
+Search behavior:
+- search finds real indexed backend objects;
+- selecting a result opens a human-readable object card;
+- the graph switches to that object's bounded real relation context;
+- the selected object is the root of the context view.
+
+Transcript behavior:
+- transcript reads the local verified mirror, including event details needed for navigation;
+- clicking an event always opens an event card;
+- when the event has a proven indexed object, the graph switches to that object's bounded context;
+- when the event has a known saved version but no object context, the graph switches to that exact version body;
+- when neither exists, the front keeps the current graph and explicitly says that no separate graph projection is proven.
+
+Node cards:
+- context nodes resolve to full backend object cards;
+- body nodes show useful human-readable body information;
+- if a body label resolves strongly to a backend object, the card offers a direct jump to that object and its relations;
+- the front does not invent backend records for hashed body nodes.
