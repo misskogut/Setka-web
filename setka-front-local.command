@@ -14,6 +14,7 @@ OVERLAY_B25_URL="$BASE_URL/setka-front-b25.js"
 OVERLAY_CORE_URL="$BASE_URL/setka-front-b274-projection-core.js"
 OVERLAY_B271_URL="$BASE_URL/setka-front-b271-runtime.js"
 OVERLAY_B274_URL="$BASE_URL/setka-front-b274-workbench.js"
+OVERLAY_B28_URL="$BASE_URL/setka-front-b28-backend.js"
 BRIDGE_B23_URL="$BASE_URL/setka-front-bridge-b23.py"
 BRIDGE_B24_URL="$BASE_URL/setka-front-bridge-b24.py"
 BRIDGE_B25_URL="$BASE_URL/setka-front-bridge-b25.py"
@@ -31,6 +32,7 @@ OVERLAY_B25="$FRONT_DIR/setka-b25-context.js"
 OVERLAY_CORE="$FRONT_DIR/setka-b274-projection-core.js"
 OVERLAY_B271="$FRONT_DIR/setka-b271-runtime.js"
 OVERLAY_B274="$FRONT_DIR/setka-b274-workbench.js"
+OVERLAY_B28="$FRONT_DIR/setka-b28-backend.js"
 OVERLAY="$FRONT_DIR/setka-b2.js"
 BRIDGE_B23="$FRONT_DIR/setka-front-bridge-b23.py"
 BRIDGE_B24="$FRONT_DIR/setka-front-bridge-b24.py"
@@ -38,12 +40,12 @@ BRIDGE_B25="$FRONT_DIR/setka-front-bridge-b25.py"
 BRIDGE="$FRONT_DIR/setka-front-bridge.py"
 
 URL="http://127.0.0.1:$PORT/"
-OPEN_URL="${URL}?front=B2.7.4"
+OPEN_URL="${URL}?front=B2.8"
 HEALTH="${URL}api/b2/health"
-EXPECTED_HEALTH="SETKA_LOCAL_FRONT_B274_READY"
+EXPECTED_HEALTH="SETKA_LOCAL_FRONT_B28_READY"
 
 mkdir -p "$FRONT_DIR" "$BIN_DIR" "$DESKTOP"
-echo "SETKA LOCAL FRONT · preparing B2.7.4 single-writer workbench / DATA B1"
+echo "SETKA LOCAL FRONT · preparing B2.8 local-backend truth workbench / verified Mac mirror"
 
 notify(){ local msg="$1"; command -v osascript >/dev/null 2>&1 && osascript -e "display notification \"$msg\" with title \"SETKA\"" >/dev/null 2>&1 || true; }
 
@@ -78,7 +80,7 @@ if [ -f "$MIRROR_LATEST" ]; then
 import json,sys
 try:
     d=json.load(open(sys.argv[1]))
-    print('true' if d.get('state')=='PASS_FULL_SETKA_MIRROR' else 'false')
+    print('true' if d.get('state') in ('PASS_FULL_SETKA_MIRROR','PASS_DELTA_SETKA_MIRROR') else 'false')
 except Exception:
     print('false')
 PY
@@ -110,25 +112,26 @@ refresh_file "$OVERLAY_B25_URL" "$OVERLAY_B25" && echo "PASS · B2.5" || echo "H
 refresh_file "$OVERLAY_CORE_URL" "$OVERLAY_CORE" && echo "PASS · B2.7.4 projection core" || echo "HOLD · B2.7.4 core cache"
 refresh_file "$OVERLAY_B271_URL" "$OVERLAY_B271" && echo "PASS · B2.7.1 runtime projection bridge UI" || echo "HOLD · B2.7.1 runtime cache"
 refresh_file "$OVERLAY_B274_URL" "$OVERLAY_B274" && echo "PASS · B2.7.4 workbench" || echo "HOLD · B2.7.4 workbench cache"
+refresh_file "$OVERLAY_B28_URL" "$OVERLAY_B28" && echo "PASS · B2.8 backend truth UI" || echo "HOLD · B2.8 backend truth cache"
 refresh_file "$BRIDGE_B23_URL" "$BRIDGE_B23" && echo "PASS · bridge B2.3" || echo "HOLD · bridge B2.3 cache"
 refresh_file "$BRIDGE_B24_URL" "$BRIDGE_B24" && echo "PASS · bridge B2.4" || echo "HOLD · bridge B2.4 cache"
 refresh_file "$BRIDGE_B25_URL" "$BRIDGE_B25" && echo "PASS · bridge B2.5" || echo "HOLD · bridge B2.5 cache"
-refresh_file "$BRIDGE_B27_URL" "$BRIDGE" && echo "PASS · bridge B2.7.4" || echo "HOLD · bridge B2.7.4 cache"
+refresh_file "$BRIDGE_B27_URL" "$BRIDGE" && echo "PASS · bridge B2.8" || echo "HOLD · bridge B2.8 cache"
 chmod 700 "$BRIDGE_B23" "$BRIDGE_B24" "$BRIDGE_B25" "$BRIDGE" 2>/dev/null || true
 
-if [ -f "$OVERLAY_B23" ] && [ -f "$OVERLAY_B24" ] && [ -f "$OVERLAY_B25" ] && [ -f "$OVERLAY_CORE" ] && [ -f "$OVERLAY_B271" ] && [ -f "$OVERLAY_B274" ]; then
-  cat "$OVERLAY_B23" "$OVERLAY_B24" "$OVERLAY_B25" "$OVERLAY_CORE" "$OVERLAY_B271" "$OVERLAY_B274" > "$OVERLAY.tmp" && mv "$OVERLAY.tmp" "$OVERLAY"
+if [ -f "$OVERLAY_B23" ] && [ -f "$OVERLAY_B24" ] && [ -f "$OVERLAY_B25" ] && [ -f "$OVERLAY_CORE" ] && [ -f "$OVERLAY_B271" ] && [ -f "$OVERLAY_B274" ] && [ -f "$OVERLAY_B28" ]; then
+  cat "$OVERLAY_B23" "$OVERLAY_B24" "$OVERLAY_B25" "$OVERLAY_CORE" "$OVERLAY_B271" "$OVERLAY_B274" "$OVERLAY_B28" > "$OVERLAY.tmp" && mv "$OVERLAY.tmp" "$OVERLAY"
   chmod 600 "$OVERLAY" 2>/dev/null || true
-  echo "PASS · B2.7.4 combined overlay ready · legacy layout writers excluded"
+  echo "PASS · B2.8 combined overlay ready · local backend truth + B2.7.4 single-writer layout"
 fi
 
 if [ ! -f "$TARGET" ] || [ ! -f "$OVERLAY" ] || [ ! -x "$BRIDGE" ]; then
-  echo "STOP · SETKA LOCAL FRONT · B2.7.4 files incomplete"
+  echo "STOP · SETKA LOCAL FRONT · B2.8 files incomplete"
   exit 2
 fi
 
 if command -v curl >/dev/null 2>&1 && curl -fsS --max-time 2 "$HEALTH" 2>/dev/null | grep -q "$EXPECTED_HEALTH"; then
-  echo "SETKA LOCAL FRONT · ALREADY RUNNING · B2.7.4 · $URL"
+  echo "SETKA LOCAL FRONT · ALREADY RUNNING · B2.8 · $URL"
   (open "$OPEN_URL" >/dev/null 2>&1 &) || true
   exit 0
 fi
@@ -150,6 +153,6 @@ if command -v lsof >/dev/null 2>&1 && lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/
   fi
 fi
 
-echo "SETKA LOCAL FRONT · STARTING B2.7.4 UI / B1 DATA · $URL"
+echo "SETKA LOCAL FRONT · STARTING B2.8 UI / VERIFIED LOCAL BACKEND · $URL"
 (sleep 0.35; open "$OPEN_URL" >/dev/null 2>&1) &
 exec python3 "$BRIDGE" --port "$PORT"
