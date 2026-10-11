@@ -879,6 +879,22 @@ def _visualization_packet(packet_ref):
     p = next((x for x in packets if str(x.get("packet_ref") or "") == packet_ref), None)
     if not p:
         return {"ok": False, "state": "VISUALIZATION_PACKET_NOT_FOUND", "packetRef": packet_ref}
+
+    snapshot_ref = str(p.get("snapshot_ref") or "").strip()
+    cached_snapshot = None
+    if snapshot_ref:
+        rows = mirror.relation_rows("foundation", "front_visualization_snapshot_cache_v1")
+        cached = next((x for x in rows if str(x.get("snapshot_ref") or "") == snapshot_ref), None)
+        if cached:
+            cached_snapshot = {
+                "snapshotRef": cached.get("snapshot_ref"),
+                "payload": cached.get("payload") or {},
+                "payloadBytes": cached.get("payload_bytes"),
+                "grownNodes": cached.get("grown_nodes"),
+                "internalEdges": cached.get("internal_edges"),
+                "lawStatus": cached.get("law_status"),
+            }
+
     return {
         "ok": True,
         "state": "VISUALIZATION_PACKET_READY",
@@ -891,7 +907,9 @@ def _visualization_packet(packet_ref):
         "payloadBytes": p.get("payload_bytes"),
         "createdAt": p.get("created_at"),
         "payload": p.get("payload") or {},
+        "cachedSnapshot": cached_snapshot,
         "dataSource": "MAC_VERIFIED_SQLITE_MIRROR",
+        "truthBoundary": "Recorded visualization packet plus exact cached frozen body snapshot when the packet references one. Snapshot cache is selective front evidence, not the full experimental RAW family.",
     }
 
 
