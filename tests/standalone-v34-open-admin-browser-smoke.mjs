@@ -13,7 +13,7 @@ const fixture={ok:true,metrics:{connectedAccounts:2,sessions:3,exposures:37,patt
  historicalPatterns:[{patternId:"tentacle-orbit",devices:6,sessions:12,exposures:395,totalDurationMs:2000000}],
  items:[{patternId:"dandelion",saveCount:1,useCount:12},{patternId:"tentacle-orbit",saveCount:1,useCount:25}]};
 try{
-  for(let i=0;i<25;i++){try{if((await fetch(base+"/standalone-admin-v34.html")).ok)break}catch{}await sleep(100)}
+  for(let i=0;i<25;i++){try{if((await fetch(base+"/standalone-admin-public-v34.html")).ok)break}catch{}await sleep(100)}
   browser=await (process.env.SETKA_BROWSER==="webkit"?webkit:chromium).launch({headless:true,args:process.env.SETKA_BROWSER==="webkit"?[]:["--no-sandbox"]});
   const page=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
   const errs=[],calls=[];
@@ -24,7 +24,7 @@ try{
     if(!url.includes("setka-community-patterns-v38"))throw Error("Private API was called in public admin: "+url);
     await route.fulfill({status:200,contentType:"application/json",headers:{"access-control-allow-origin":"*"},body:JSON.stringify(fixture)});
   });
-  await page.goto(base+"/standalone-admin-v34.html",{waitUntil:"domcontentloaded"});
+  await page.goto(base+"/standalone-admin-public-v34.html",{waitUntil:"domcontentloaded"});
   await page.waitForFunction(()=>document.getElementById("totals")?.querySelectorAll(".stat").length===7,{timeout:15000});
   assert.equal(await page.locator("#keyInput").count(),0);
   assert.equal(await page.locator("#loginBtn").count(),0);
