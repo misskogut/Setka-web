@@ -84,9 +84,15 @@ command -v git >/dev/null 2>&1 || stop "git unavailable"
 
 # 0. Tooling and immediate self-heal.
 echo "[0/7] TOOLING + SELF-HEAL"
+RUNNING_SHA="$(shasum -a 256 "$0" 2>/dev/null | awk '{print $1}' || true)"
 retry_download "$SELF_URL" "$SELF_NEXT" 700 || stop "updater self-refresh failed"
 mv "$SELF_NEXT" "$SELF_TARGET"; chmod 700 "$SELF_TARGET"; ln -sfn "$SELF_TARGET" "$DESKTOP/UPDATE_SETKA.command"
+LATEST_SHA="$(shasum -a 256 "$SELF_TARGET" 2>/dev/null | awk '{print $1}' || true)"
 echo "PASS · updater self-healed before long operations"
+if [ "${SETKA_SELF_REEXEC:-0}" != "1" ] && [ -n "$RUNNING_SHA" ] && [ -n "$LATEST_SHA" ] && [ "$RUNNING_SHA" != "$LATEST_SHA" ]; then
+  echo "SELF-HEAL · updater changed on disk · re-exec latest in the same click"
+  exec env SETKA_SELF_REEXEC=1 "$SELF_TARGET"
+fi
 retry_download "$FRONT_LAUNCHER_URL" "$FRONT_LAUNCHER_TARGET" 700 || stop "front launcher refresh failed"
 ln -sfn "$FRONT_LAUNCHER_TARGET" "$DESKTOP/SETKA_FRONT.command"
 retry_download "$FULL_SYNC_URL" "$FULL_SYNC_TARGET" 700 || stop "full Mac mirror helper refresh failed"
