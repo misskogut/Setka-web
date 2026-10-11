@@ -21,6 +21,9 @@
   function render(data){
     if(!data||data.ok!==true||!data.metrics||!Array.isArray(data.patternMetrics)||!Array.isArray(data.items))throw Error("invalid_public_feed");
     const m=data.metrics,by=new Map(data.patternMetrics.map(x=>[x.patternId,x]));
+    const intents=new Map((data.patternScenarios||[]).map(x=>[x.patternId,x]));
+    const early=new Map((data.historicalPatterns||[]).map(x=>[x.patternId,x]));
+    const intentLabels={sleep:"Уснуть",relax:"Расслабиться",tension:"Снизить напряжение",focus:"Сконцентрироваться",energy:"Взбодриться",switch:"Переключиться",explore:"Просто исследую"};
     $("totals").innerHTML=[
       metric(fmt(m.connectedAccounts),"Подключённых аккаунтов"),
       metric(fmt(m.sessions),"Сессий"),
@@ -31,7 +34,7 @@
       metric(fmt(m.activeAccounts30d),"Активных аккаунтов за 30 дней")
     ].join("");
     $("patternCards").innerHTML=PATTERNS.map(([id,name])=>{
-      const p=by.get(id);
+      const p=by.get(id),goal=intents.get(id),historic=early.get(id);
       const empty=!p;
       return `<article class="pattern" data-pattern-id="${esc(id)}"><h3>${esc(name)}</h3><small>${esc(id)}</small>
         <div class="pattern-metrics"><div><b>${fmt(p?.viewingAccounts)}</b><span>Смотрели</span></div>
@@ -41,6 +44,8 @@
         <div><b>${fmt(p?.savedConfigurations)}</b><span>Разных вариантов</span></div>
         <div><b>${time(p?.totalDurationMs)}</b><span>Время просмотра</span></div></div>
         ${empty?'<div class="empty">По этому паттерну пока нет зарегистрированных данных. Это не означает, что его никто не использовал.</div>':""}
+        <div class="empty" style="border-top:1px solid #292929;padding-top:12px;margin-top:14px"><strong>Цели сообщества:</strong> ${goal?.scenarios?.length?goal.scenarios.map(x=>`${esc(intentLabels[x.key]||x.key)} · ${Math.round(100*x.share)}% (${fmt(x.count)} сесс.)`).join(", "):"пока недостаточно обезличенных данных"}</div>
+        ${historic?`<div class="empty">Предыдущие тесты (отдельная выборка): ${fmt(historic.devices)} устройств · ${fmt(historic.sessions)} сессий · ${fmt(historic.exposures)} просмотров</div>`:""}
       </article>`;
     }).join("");
     const variants=(data.items||[]).filter(v=>PATTERNS.some(p=>p[0]===v.patternId||p[0]===v.pattern_id));
