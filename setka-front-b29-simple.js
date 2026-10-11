@@ -1,5 +1,5 @@
 (() => {
-  const VERSION='B2.9.1';
+  const VERSION='B2.10';
   const MARKER='B2.9-SIMPLE-FRONT';
   const MODES=[
     {id:'CANON',name:'Канон',desc:'Зафиксированная эталонная ветка.'},
@@ -314,29 +314,23 @@
   async function selectBackendObject(x){
     if(!x?.kind||!x?.ref)return;
     state.selected={kind:x.kind,ref:x.ref,label:x.label||x.ref};
-    await Promise.allSettled([showBackendCard(x.kind,x.ref),showContext(x.kind,x.ref)]);
+    const card=await showBackendCard(x.kind,x.ref);
+    const best=card?.visualizations?.[0];
+    if(best?.packetRef){
+      await playVisualization(best.packetRef,{auto:false});
+    }else{
+      await showContext(x.kind,x.ref);
+    }
   }
 
   async function showBackendCard(kind,ref){
     try{
-      const d=await api(`/api/b28/inspect?kind=${encodeURIComponent(kind)}&ref=${encodeURIComponent(ref)}`);
-      const rec=d.record||{};
-      const label=rec.display_name_ru||rec.version_label||d.ref||ref;
-      const related=[...(d.outgoing||[]),...(d.incoming||[])].filter(x=>x.indexedEndpoint).slice(0,8);
-      showCard({
-        title:label,
-        sub:humanKind(d.kind||kind),
-        rows:[
-          ['Что это',humanSubtype(rec.subtype||rec.branch_kind||rec.canon_version||d.kind||kind)],
-          ['Состояние',humanState(rec.state||rec.runtime_state||rec.version_state)],
-          ['Связей',(Number(d.outgoingCount||0)+Number(d.incomingCount||0)).toLocaleString('ru-RU')],
-          ...(d.metrics?.length?[['Метрик',String(d.metrics.length)]]:[])
-        ],
-        related,
-        actions:[{label:'Показать связи',fn:()=>showContext(d.kind||kind,d.ref||ref)},{label:'Вернуться к телу',fn:showBody}]
-      });
+      const d=await api(`/api/b210/card?kind=${encodeURIComponent(kind)}&ref=${encodeURIComponent(ref)}`);
+      renderUniversalCard(d);
+      return d;
     }catch(e){
       showCard({title:state.selected?.label||ref,sub:humanKind(kind),rows:[['Состояние','Объект найден, подробная карточка недоступна']]});
+      return null;
     }
   }
 
@@ -396,6 +390,7 @@
   }
 
   async function showBody({version=null}={}){
+    stopPlayer();
     state.view='BODY';
     if(version)await window.SETKA_BACKEND_TRUTH?.showBody?.({version});
     else await window.SETKA_BACKEND_TRUTH?.showBody?.({mode:state.mode});
@@ -435,7 +430,7 @@
     if(action==='view'){
       if(state.view==='BODY'){
         if(state.context){
-          state.view='CONTEXT';
+          stopPlayer();state.view='CONTEXT';
           window.SETKA_B1_GRAPH_API?.loadSnapshot?.(contextToSnapshot(state.context),{
             snapshotRef:`CONTEXT::${state.context.root?.ref||''}`,
             binding:state.context.root?.ref||'OBJECT',
@@ -445,7 +440,7 @@
           updateCaption();
         }else{
           openPanel('onboard');
-          showCard({title:'Связи объекта',sub:'Сначала выбери объект',rows:[['Что сделать','Найди объект в Бортовом и нажми на него. Тогда здесь появится только его реальный контекст, а не вся база.']]});
+          showCard({title:'Связи объекта',sub:'Сначала выбери объект',rows:[['Что сделать','Найди объект в Бортовом и нажми на него. Тогда здесь появится его карточка, записанная форма (если она есть) и реальные связи.']]});
         }
       }else await showBody();
     }
@@ -500,34 +495,283 @@
   }
 
   async function openTranscriptEvent(row){
-    const candidates=row.contextCandidates||[];
-    const rows=[
-      ['Когда',eventTime(row.occurredAt)],
-      ['Что произошло',humanEvent(row)],
-      ...(row.version?[['Версия',displayVersion(row.version)]]:[]),
-      ...(row.branchRef?[['Ветка',modeMeta().name]]:[])
+    try{
+      const d=await api(`/api/b210/card?event=${encodeURIComponent(row.eventNo)}`);
+      renderUniversalCard(d);
+      return d;
+    }catch(e){
+      showCard({title:humanEvent(row),sub:`Событие №${row.eventNo??'—'}`,rows:[['Когда',eventTime(row.occurredAt)],['Что произошло',humanEvent(row)]],note:'Карточка события не загрузилась.'});
+      return null;
+    }
+  }
+
+
+  function provenanceText(p){
+    if(!p)return 'не указан';
+    const init=p.initiator_setka_id||p.initiatorSetkaId;
+    const exec=p.effective_executor_setka_id||p.effectiveExecutorSetkaId;
+    const gen=p.generated_from_setka_id||p.generatedFromSetkaId;
+    const parts=[];
+    if(init)parts.push('инициатор: '+init);
+    if(exec)parts.push('исполнитель: '+exec);
+    if(gen)parts.push('производное от: '+gen);
+    return parts.join(' · ')||'зафиксировано без отдельной атрибуции';
+  }
+
+  function sceneLabel(scene){
+    return ({
+      BODY_3D:'Тело',
+      BODY_PROCESS_3D:'Пошаговый процесс',
+      BODY_3D_WITH_NATIVE_LOCAL_FRAME:'Тело + локальная система координат',
+      BODY_3D_WITH_MOTHER_DAUGHTER_SPATIAL_FIELD:'Материнское и дочернее тело',
+      BODY_3D_HOST_DAUGHTER_BIRTH_TRACE:'Рождение дочерней структуры',
+      SHIP_LOCAL_WORLD_INTERACTIVE:'Локальный мир корабля',
+      SHIP_LOCAL_WORLD_3D_INTERACTIVE:'Локальный мир корабля',
+      SHIP_LOCAL_OBJECT_MORPHOLOGY_INTERACTIVE:'Форма объекта',
+      SHIP_LOCAL_FACT_CONSTRAINED_3D:'Форма по фактам',
+      BODY_3D_SOLAR_FOCUS:'Солнечная структура',
+      HOST_BODY_WITH_LOCAL_SHIP_MORPHOLOGY:'Материнское тело + форма корабля'
+    }[String(scene||'')]||String(scene||'').replaceAll('_',' ').toLowerCase()||'Визуализация');
+  }
+
+  function renderUniversalCard(d){
+    if(!d?.ok)return;
+    if(d.cardKind==='EVENT'){
+      const ev=d.event||{};
+      const related=(d.relatedObjects||[]).map(x=>({otherKind:x.kind,otherRef:x.ref,otherLabel:x.label,indexedEndpoint:true}));
+      const actions=[];
+      (d.visualizations||[]).slice(0,6).forEach(v=>actions.push({label:'▶ '+sceneLabel(v.sceneKind),fn:()=>playVisualization(v.packetRef,{auto:true})}));
+      (d.replays||[]).slice(0,3).forEach(r=>actions.push({label:'▶ Пошагово '+(r.eventFrom||'')+'–'+(r.eventTo||''),fn:()=>playReplay(r.replayRef)}));
+      if(d.version?.version_ref)actions.push({label:'Тело '+displayVersion(d.version.version_ref),fn:()=>showBody({version:d.version.version_ref})});
+      showCard({
+        title:d.title||humanEvent({eventKind:ev.event_type,summary:ev.summary}),
+        sub:\`Событие №\${ev.event_no??'—'}\`,
+        rows:[
+          ['Когда',eventTime(ev.occurred_at)],
+          ['Что произошло',ev.summary||humanEvent({eventKind:ev.event_type})],
+          ['Откуда',ev.surface||'SETKA'],
+          ['Происхождение',provenanceText(d.provenance)],
+          ...(ev.version?[['Версия',displayVersion(ev.version)]]:[]),
+          ['Связанных объектов',String((d.relatedObjects||[]).length)],
+          ['Визуализаций',String((d.visualizations||[]).length)],
+          ['Replay',String((d.replays||[]).length)]
+        ],
+        related,
+        actions,
+        note:(!(d.visualizations||[]).length&&!(d.replays||[]).length)
+          ?'У этого события есть карточка, происхождение и связи, но отдельная пошаговая визуализация для него не была записана. Фронт не придумывает её задним числом.'
+          :'Ниже доступны только реально записанные визуализации и replay.'
+      });
+      return;
+    }
+
+    const rec=d.record||{};
+    const related=[...(d.outgoing||[]),...(d.incoming||[])].filter(x=>x.indexedEndpoint).slice(0,12);
+    const actions=[
+      {label:'Связи',fn:()=>showContext(d.cardKind,d.ref)},
+      ...((d.visualizations||[]).slice(0,6).map(v=>({label:'▶ '+sceneLabel(v.sceneKind),fn:()=>playVisualization(v.packetRef,{auto:false})}))),
+      {label:'Тело SETKA',fn:()=>showBody()}
     ];
-    const actions=[];
-    if(candidates[0]){
-      const x=candidates[0];
-      actions.push({label:'Показать связанные объекты',fn:()=>selectBackendObject(x)});
-    }
-    if(row.versionKnown&&row.version){
-      actions.push({label:'Показать тело версии',fn:()=>showBody({version:row.version})});
-    }
-    if(candidates[0]){
-      await showContext(candidates[0].kind,candidates[0].ref);
-    }else if(row.versionKnown&&row.version){
-      await showBody({version:row.version});
-    }
     showCard({
-      title:humanEvent(row),
-      sub:`Событие №${row.eventNo??'—'}`,
-      rows,
-      related:candidates.slice(0,6).map(x=>({otherKind:x.kind,otherRef:x.ref,otherLabel:x.label,indexedEndpoint:true})),
+      title:d.title||rec.display_name_ru||d.ref,
+      sub:humanKind(d.cardKind),
+      rows:[
+        ['Что это',humanSubtype(rec.subtype||rec.branch_kind||rec.canon_version||d.cardKind)],
+        ['Состояние',humanState(rec.state||rec.runtime_state||rec.version_state)],
+        ['Откуда',rec.source_relation||rec.sourceRelation||'реестр SETKA'],
+        ['Родитель',rec.parent_ref||rec.parent_version_ref||'—'],
+        ['Область',rec.scope_ref||rec.lineage_ref||'—'],
+        ['Связей',(Number(d.outgoingCount||0)+Number(d.incomingCount||0)).toLocaleString('ru-RU')],
+        ['Событий в истории',String((d.relatedTranscript||[]).length)],
+        ['Визуализаций',String((d.visualizations||[]).length)]
+      ],
+      related,
       actions,
-      note:(!candidates.length&&!row.versionKnown)?'У этого события нет отдельной сохранённой граф-проекции. Карточка события показана, а текущий граф оставлен без выдуманного контекста.':''
+      note:(d.visualizations||[]).length
+        ?'Для этого объекта есть записанная визуальная форма/процесс. Кнопки ▶ открывают именно записанные проекции, а не случайную раскладку связей.'
+        :'Отдельная записанная форма для этого объекта не найдена; доступны его реальные связи и история.'
     });
+  }
+
+  function recordedGraphToSnapshot(packet){
+    const payload=packet.payload||{};
+    const graph=(payload.graph&&Array.isArray(payload.graph.nodes))?payload.graph:
+                (payload.localGraph&&Array.isArray(payload.localGraph.nodes))?payload.localGraph:null;
+    if(!graph)return null;
+    const nodesRaw=graph.nodes||[], edgesRaw=graph.edges||[];
+    const pos=new Map();
+    const nodes=nodesRaw.map((n,i)=>{
+      const id=String(n.id||n.ref||n.nodeId||('N'+i));
+      const morph=n.morphology||{};
+      let x=Number(morph.x),y=Number(morph.y),z=Number(morph.z);
+      if(!Number.isFinite(x)||!Number.isFinite(y)||!Number.isFinite(z)){
+        const a=2*Math.PI*i/Math.max(1,nodesRaw.length),r=3+4*Math.sqrt((i+1)/Math.max(1,nodesRaw.length));
+        x=Math.cos(a)*r;y=((i%7)-3)*.25;z=Math.sin(a)*r;
+      }
+      pos.set(id,[x,y,z]);
+      const label=n.label||n.name||n.ref||id;
+      const type=n.kind||n.class||n.semanticRole||'OBJECT';
+      return [id,null,type,0,0,0,String(label),String(type),Boolean(i===0||n.semanticRole==='CENTRAL_OBJECT'||n.kind==='LOCAL_WORLD_CENTER'),x,y,z];
+    });
+    const known=new Set(nodes.map(n=>n[0]));
+    const edges=[];
+    edgesRaw.forEach((e,i)=>{
+      const s=String(e.source||e.sourceId||e.from||''),t=String(e.target||e.targetId||e.to||'');
+      if(known.has(s)&&known.has(t))edges.push([s,t,String(e.edgeClass||e.relation||'RELATION'),String(e.relation||'RELATION')]);
+    });
+    return {ok:true,state:'RECORDED_VISUALIZATION_GRAPH',snapshotRef:packet.packetRef,nodes,edges,grownNodes:nodes.length,internalEdges:edges.length};
+  }
+
+  function stageProcessBase(packet){
+    const body=packet.cachedSnapshot?.payload||null;
+    const stages=Array.isArray(packet.payload?.stages)?packet.payload.stages:[];
+    const baseNodes=body&&Array.isArray(body.nodes)?body.nodes:[];
+    const baseEdges=body&&Array.isArray(body.edges)?body.edges:[];
+    return {baseNodes,baseEdges,stages};
+  }
+
+  function processFrameSnapshot(packet,upto){
+    const {baseNodes,baseEdges,stages}=stageProcessBase(packet);
+    const nodes=baseNodes.map(n=>Array.isArray(n)?[...n]:n);
+    const edges=baseEdges.map(e=>Array.isArray(e)?[...e]:e);
+    stages.slice(0,upto+1).forEach((s,i)=>{
+      const x=Number(s.x),y=Number(s.y),z=Number(s.z);
+      if(!Number.isFinite(x)||!Number.isFinite(y)||!Number.isFinite(z))return;
+      nodes.push([\`PROC::\${i}::\${s.nodeId||s.stageCode||i}\`,null,'PROCESS_STAGE',i,0,0,String(s.label||s.stageCode||('Шаг '+(i+1))),'PROCESS_STAGE',i===upto,x,y,z]);
+    });
+    return {ok:true,state:'RECORDED_PROCESS_FRAME',snapshotRef:\`\${packet.packetRef}::STEP::\${upto+1}\`,nodes,edges,grownNodes:nodes.length,internalEdges:edges.length};
+  }
+
+  function replayFrameSnapshot(replay,upto){
+    const body=replay.cachedSnapshot?.payload||null;
+    const baseNodes=body&&Array.isArray(body.nodes)?body.nodes:[];
+    const baseEdges=body&&Array.isArray(body.edges)?body.edges:[];
+    const byId=new Map(baseNodes.map(n=>[String(n[0]),n]));
+    const events=Array.isArray(replay.payload?.events)?replay.payload.events:[];
+    const nodes=baseNodes.map(n=>Array.isArray(n)?[...n]:n);
+    const edges=baseEdges.map(e=>Array.isArray(e)?[...e]:e);
+    events.slice(0,upto+1).forEach((e,i)=>{
+      if(!Array.isArray(e))return;
+      const bodyId=String(e[2]||''),source=byId.get(bodyId);
+      if(!source)return;
+      nodes.push([\`REPLAY::\${i}::\${bodyId}\`,null,'PROCESS_STAGE',i,0,0,String(e[4]||e[3]||('Событие '+e[0])),'PROCESS_STAGE',i===upto,Number(source[9]),Number(source[10]),Number(source[11])]);
+    });
+    return {ok:true,state:'RECORDED_REPLAY_FRAME',snapshotRef:\`\${replay.replayRef}::STEP::\${upto+1}\`,nodes,edges,grownNodes:nodes.length,internalEdges:edges.length};
+  }
+
+  function ensurePlayer(){
+    let p=document.querySelector('#ss-process-player');if(p)return p;
+    p=document.createElement('div');p.id='ss-process-player';p.style.cssText='pointer-events:auto;position:absolute;left:50%;bottom:74px;transform:translateX(-50%);display:none;align-items:center;gap:6px;max-width:calc(100vw - 24px);padding:7px 8px;border:1px solid rgba(135,233,255,.28);border-radius:12px;background:rgba(5,9,9,.94);backdrop-filter:blur(16px)';
+    p.innerHTML='<button class="ss-btn" data-prev>‹</button><button class="ss-btn" data-play>▶</button><button class="ss-btn" data-next>›</button><input data-range type="range" min="0" max="0" value="0" style="width:min(320px,34vw);accent-color:#a8ffbf"><span data-step style="font-size:10px;color:#a8b7b3;white-space:nowrap"></span><button class="ss-icon" data-player-close>×</button>';
+    document.querySelector('#setka-simple-shell')?.appendChild(p);
+    return p;
+  }
+
+  let playerState={kind:null,data:null,index:0,timer:null};
+
+  function stopPlayer(){
+    if(playerState.timer){clearInterval(playerState.timer);playerState.timer=null}
+    const p=ensurePlayer();p.style.display='none';
+  }
+
+  function renderPlayerFrame(){
+    const p=ensurePlayer(),range=p.querySelector('[data-range]'),label=p.querySelector('[data-step]'),play=p.querySelector('[data-play]');
+    let count=0,snap=null,text='';
+    if(playerState.kind==='visual'){
+      const stages=playerState.data?.payload?.stages||[];
+      count=stages.length;
+      snap=processFrameSnapshot(playerState.data,playerState.index);
+      const s=stages[playerState.index]||{};
+      text=\`\${playerState.index+1}/\${count} · \${s.label||s.stageCode||'шаг'}\`;
+    }else if(playerState.kind==='replay'){
+      const events=playerState.data?.payload?.events||[];
+      count=events.length;
+      snap=replayFrameSnapshot(playerState.data,playerState.index);
+      const e=events[playerState.index]||[];
+      text=\`\${playerState.index+1}/\${count} · #\${e[0]||'—'} · \${e[4]||e[3]||'событие'}\`;
+    }
+    if(!count||!snap)return;
+    range.max=String(count-1);range.value=String(playerState.index);label.textContent=text;play.textContent=playerState.timer?'Ⅱ':'▶';
+    window.SETKA_B1_GRAPH_API?.loadSnapshot?.(snap,{snapshotRef:snap.snapshotRef,binding:'RECORDED_PROCESS',classification:'ЗАПИСАННЫЙ ПРОЦЕСС · ПОШАГОВО',graphChip:'ПРОЦЕСС'});
+    const title=document.querySelector('[data-graph-title]'),sub=document.querySelector('[data-graph-sub]'),shared=document.querySelector('[data-shared-note]');
+    if(title)title.textContent='Процесс · пошаговое воспроизведение';
+    if(sub)sub.textContent=text;
+    if(shared)shared.textContent='Показываются только записанные шаги и сохранённая геометрия. Временные шаги не выдаются за новые graph edges.';
+  }
+
+  function startPlayer(kind,data){
+    stopPlayer();
+    playerState={kind,data,index:0,timer:null};
+    const p=ensurePlayer();p.style.display='flex';
+    const count=kind==='visual'?(data.payload?.stages||[]).length:(data.payload?.events||[]).length;
+    if(!count){p.style.display='none';return false}
+    const clampIndex=v=>Math.max(0,Math.min(count-1,v));
+    p.querySelector('[data-prev]').onclick=()=>{playerState.index=clampIndex(playerState.index-1);renderPlayerFrame()};
+    p.querySelector('[data-next]').onclick=()=>{playerState.index=clampIndex(playerState.index+1);renderPlayerFrame()};
+    p.querySelector('[data-range]').oninput=e=>{playerState.index=clampIndex(Number(e.target.value));renderPlayerFrame()};
+    p.querySelector('[data-play]').onclick=()=>{
+      if(playerState.timer){clearInterval(playerState.timer);playerState.timer=null;renderPlayerFrame();return}
+      playerState.timer=setInterval(()=>{
+        if(playerState.index>=count-1){clearInterval(playerState.timer);playerState.timer=null;renderPlayerFrame();return}
+        playerState.index++;renderPlayerFrame();
+      },800);
+      renderPlayerFrame();
+    };
+    p.querySelector('[data-player-close]').onclick=()=>{stopPlayer();showBody()};
+    renderPlayerFrame();
+    return true;
+  }
+
+  async function playVisualization(packetRef,{auto=false}={}){
+    try{
+      const packet=await api(\`/api/b210/visualization?packet=\${encodeURIComponent(packetRef)}\`);
+      const stages=Array.isArray(packet.payload?.stages)?packet.payload.stages:[];
+      if(stages.length){
+        startPlayer('visual',packet);
+        return packet;
+      }
+      const snap=recordedGraphToSnapshot(packet);
+      if(snap){
+        stopPlayer();state.view='RECORDED';state.context=null;
+        window.SETKA_B1_GRAPH_API?.loadSnapshot?.(snap,{snapshotRef:packet.packetRef,binding:packet.sourceRef||packet.packetRef,classification:'ЗАПИСАННАЯ ВИЗУАЛИЗАЦИЯ',graphChip:'ФОРМА'});
+        const title=document.querySelector('[data-graph-title]'),sub=document.querySelector('[data-graph-sub]'),shared=document.querySelector('[data-shared-note]');
+        if(title)title.textContent=sceneLabel(packet.sceneKind);
+        if(sub)sub.textContent=\`\${snap.grownNodes} объектов · \${snap.internalEdges} связей · записанная форма\`;
+        if(shared)shared.textContent='Координаты морфологии используются из записанного packet, если они там есть. Для packet без координат применяется только презентационная раскладка без изменения топологии.';
+        document.querySelector('[data-view-label]').textContent='Форма';
+        return packet;
+      }
+      if(packet.cachedSnapshot?.payload){
+        stopPlayer();state.view='RECORDED';
+        window.SETKA_B1_GRAPH_API?.loadSnapshot?.(packet.cachedSnapshot.payload,{snapshotRef:packet.snapshotRef,binding:packet.sourceRef||packet.packetRef,classification:'ЗАПИСАННАЯ ВИЗУАЛИЗАЦИЯ',graphChip:'СЛЕПОК'});
+        const title=document.querySelector('[data-graph-title]'),sub=document.querySelector('[data-graph-sub]'),shared=document.querySelector('[data-shared-note]');
+        if(title)title.textContent=sceneLabel(packet.sceneKind);
+        if(sub)sub.textContent=\`\${packet.cachedSnapshot.grownNodes||0} узлов · \${packet.cachedSnapshot.internalEdges||0} связей\`;
+        if(shared)shared.textContent='Это точный frozen body snapshot, к которому была привязана записанная визуализация.';
+        document.querySelector('[data-view-label]').textContent='Форма';
+        return packet;
+      }
+      showCard({title:sceneLabel(packet.sceneKind),sub:'Записанная визуализация',rows:[['Источник',packet.sourceRef],['Состояние','Запись есть, но универсальный локальный renderer для этого формата ещё не подключён.']]});
+      return packet;
+    }catch(e){
+      showCard({title:'Визуализация',sub:'Ошибка',rows:[['Результат','Не удалось открыть записанную визуализацию.']]});
+      return null;
+    }
+  }
+
+  async function playReplay(replayRef){
+    try{
+      const replay=await api(\`/api/b210/replay?replay=\${encodeURIComponent(replayRef)}\`);
+      if(!Array.isArray(replay.payload?.events)||!replay.payload.events.length){
+        showCard({title:'Пошаговый процесс',sub:'Replay',rows:[['Результат','В replay нет записанных шагов.']]});
+        return replay;
+      }
+      startPlayer('replay',replay);
+      return replay;
+    }catch(e){
+      showCard({title:'Пошаговый процесс',sub:'Replay',rows:[['Результат','Не удалось открыть replay.']]});
+      return null;
+    }
   }
 
   function showCard({title,sub,rows=[],related=[],actions=[],note=''}) {
@@ -614,6 +858,7 @@
 
   async function boot(){
     build();
+    ensurePlayer();
     await refreshOverview();
     const ok=await waitReady();
     if(ok){
