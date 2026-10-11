@@ -64,8 +64,9 @@
     return true;
   }
 
-  function restoreAllPositions(){ api()?.refreshBuiltins?.(); projections().forEach(el=>{const ref=el.dataset.setkaProjectionRef;if(ref)applyPosition(ref,el)}); }
-  function persistAllFree(){ projections().forEach(el=>{const ref=el.dataset.setkaProjectionRef;if(ref&&el.classList.contains('setka-b274-free'))positionRecord(ref,el)}); }
+  function restorePosition(ref){const el=lookup(ref);if(!ref||!el)return false;return applyPosition(ref,el)}
+  function restoreAllPositions(){ if(state.drag)return false; api()?.refreshBuiltins?.(); projections().forEach(el=>{const ref=el.dataset.setkaProjectionRef;if(ref)applyPosition(ref,el)}); return true; }
+  function persistAllFree(){ projections().forEach(el=>{const ref=el.dataset.setkaProjectionRef;if(ref&&el.classList.contains('setka-b274-free'))positionRecord(ref,el)}); return true; }
 
   function ensureLayoutBar(){let bar=qs('#setka-b274-layoutbar');if(bar)return bar;bar=document.createElement('div');bar.id='setka-b274-layoutbar';bar.dataset.layoutUi='1';bar.innerHTML='<span>РАСКЛАДКА · ВЫБЕРИ И ТАЩИ ЭЛЕМЕНТ</span><button type="button" data-act="done">ГОТОВО</button>';document.body.appendChild(bar);bar.querySelector('[data-act="done"]').addEventListener('click',()=>setEditing(false));return bar}
   function installToggle(){let old=qs('#layout-toggle');if(!old){old=document.createElement('button');old.id='layout-toggle';old.className='action';old.type='button';old.innerHTML='✣ <span>Раскладка</span>';(qs('.top-actions')||document.body).appendChild(old)}const btn=old.cloneNode(true);btn.dataset.layoutUi='1';old.replaceWith(btn);btn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();setEditing(!state.editing)});return btn}
@@ -98,7 +99,12 @@
   function toggleVault(force){const box=ensureVault();state.vaultOpen=typeof force==='boolean'?force:!state.vaultOpen;box.classList.toggle('open',state.vaultOpen);ensureVaultButton().classList.toggle('open',state.vaultOpen);if(state.vaultOpen)renderVault()}
 
   installToggle();ensureLayoutBar();ensureSelection();ensureVaultButton();ensureVault();api()?.refreshBuiltins?.();restoreAllPositions();renderVault();
-  window.addEventListener('resize',()=>{projections().forEach(el=>{const ref=el.dataset.setkaProjectionRef;if(!ref||!store.positions[ref])return;const r=el.getBoundingClientRect();const left=clamp(r.left,8,Math.max(8,innerWidth-r.width-8));const top=clamp(r.top,8,Math.max(8,innerHeight-r.height-8));el.style.left=`${left}px`;el.style.top=`${top}px`;positionRecord(ref,el)});positionSelection()});
+  window.addEventListener('resize',()=>{if(state.drag)return;projections().forEach(el=>{const ref=el.dataset.setkaProjectionRef;if(!ref||!store.positions[ref])return;const r=el.getBoundingClientRect();const left=clamp(r.left,8,Math.max(8,innerWidth-r.width-8));const top=clamp(r.top,8,Math.max(8,innerHeight-r.height-8));el.style.left=`${left}px`;el.style.top=`${top}px`;positionRecord(ref,el)});positionSelection()});
+  window.addEventListener('pagehide',persistAllFree);
+  window.addEventListener('beforeunload',persistAllFree);
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')persistAllFree()});
+  document.addEventListener('setka:b274:restore-position',e=>{const ref=e.detail?.projectionRef||e.detail?.ref;if(ref)restorePosition(ref)});
+  document.addEventListener('setka:b274:restore-all',()=>restoreAllPositions());
 
-  window.SETKA_SAFE_WORKBENCH=Object.freeze({version:VERSION,editing:()=>state.editing,enter:()=>setEditing(true),done:()=>setEditing(false),restoreAllPositions,persistAllFree,openVault:()=>toggleVault(true),closeVault:()=>toggleVault(false),selected:()=>state.selectedRef,positionAuthority:'B2.7.4_ONLY',flowerRole:'ELEMENT_VAULT_ONLY',layoutActivationMutatesDom:false,mutationObserver:false,pollingLoop:false,canonMutation:false,runtimeMutation:false});
+  window.SETKA_SAFE_WORKBENCH=Object.freeze({version:VERSION,editing:()=>state.editing,dragging:()=>Boolean(state.drag),enter:()=>setEditing(true),done:()=>setEditing(false),restorePosition,restoreAllPositions,persistAllFree,openVault:()=>toggleVault(true),closeVault:()=>toggleVault(false),selected:()=>state.selectedRef,positionAuthority:'B2.7.4_ONLY',flowerRole:'ELEMENT_VAULT_ONLY',layoutActivationMutatesDom:false,mutationObserver:false,pollingLoop:false,canonMutation:false,runtimeMutation:false});
 })();
