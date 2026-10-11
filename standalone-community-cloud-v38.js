@@ -5,7 +5,7 @@
   const API="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-community-patterns-v38";
   const API_KEY="sb_publishable_1jL-x9_kp6rpfGghpSp_OA_OiXDnvsv";
   const MODES=new Set(["for_me","popular","new","notes"]);
-  let items=[],metrics=null,patternMetrics=[],publicNotes=[],busy=false,notesBusy=false,timer=0,lastOkAt=null,lastError=null,lastPage=Setka.getState?.()?.libraryPage||null,viewEpoch=0;
+  let items=[],metrics=null,patternMetrics=[],patternScenarios=[],historicalPatterns=[],publicNotes=[],busy=false,notesBusy=false,timer=0,lastOkAt=null,lastError=null,lastPage=Setka.getState?.()?.libraryPage||null,viewEpoch=0;
 
   const style=document.createElement("style");
   style.textContent=`
@@ -138,13 +138,13 @@
       const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json","apikey":API_KEY},body:JSON.stringify({action:"feed",limit:300})});
       const out=await r.json().catch(()=>({}));if(!r.ok)throw new Error(out.error||`community_${r.status}`);
       items=Array.isArray(out.items)?out.items.map(x=>({...x,createdAt:x.created_at||x.createdAt||null,localOnly:false})):[];
-      metrics=out.metrics&&typeof out.metrics==="object"?out.metrics:null;patternMetrics=Array.isArray(out.patternMetrics)?out.patternMetrics:[];
+      metrics=out.metrics&&typeof out.metrics==="object"?out.metrics:null;patternMetrics=Array.isArray(out.patternMetrics)?out.patternMetrics:[];patternScenarios=Array.isArray(out.patternScenarios)?out.patternScenarios:[];historicalPatterns=Array.isArray(out.historicalPatterns)?out.historicalPatterns:[];
       lastOkAt=new Date().toISOString();
       if(epoch===viewEpoch){
         if(mode()==="notes"){await loadNotes(false);if(epoch===viewEpoch&&mode()==="notes")renderNotes()}
         else renderPatterns();
       }
-      window.dispatchEvent(new CustomEvent("setka:community-cloud",{detail:{ok:true,count:items.length,mode:mode(),updatedAt:lastOkAt,metrics,patternMetrics}}));
+      window.dispatchEvent(new CustomEvent("setka:community-cloud",{detail:{ok:true,count:items.length,mode:mode(),updatedAt:lastOkAt,metrics,patternMetrics,patternScenarios,historicalPatterns}}));
     }catch(e){
       lastError=String(e?.message||e);clearLegacyLocal();
       if(mode()!=="notes"&&!items.length){C.publicCommunity=[];Setka.setCommunity?.([])}
@@ -190,6 +190,6 @@
     }).observe(communityPanel,{childList:true});
   }
   bootstrap();
-  C.cloudCommunity={refresh,status:()=>({count:items.length,lastOkAt,lastError,mode:mode(),metrics,patternMetrics,publicNotes:publicNotes.length})};
+  C.cloudCommunity={refresh,status:()=>({count:items.length,lastOkAt,lastError,mode:mode(),metrics,patternMetrics,patternScenarios,historicalPatterns,publicNotes:publicNotes.length})};
   window.__SETKA_CLOUD_COMMUNITY_V38__=9;
 })();
