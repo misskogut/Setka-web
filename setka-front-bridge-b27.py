@@ -951,7 +951,7 @@ class Handler(b25.Handler):
             self.wfile.write(data)
             return
 
-        if path.startswith("/api/b28/"):
+        if path.startswith("/api/b28/") or path.startswith("/api/b29/"):
             if not self._local_origin_ok():
                 return self._json(403, {"ok": False, "state": "ORIGIN_DENIED"})
             try:
@@ -1099,7 +1099,7 @@ def main():
     print(f"SETKA LOCAL FRONT B2.9 · http://127.0.0.1:{args.port}/")
     print("SETKA B2.9 · simple surface over verified local Mac SQLite mirror")
     print("SETKA B2.9 · visible surface: graph + onboard + transcript + branches")
-    print("SETKA B2.9 · BODY is default; backend structure is an explicit graph view")
+    print("SETKA B2.9 · BODY is default; object context shows only real nearby relations")
     print("SETKA B2.7.4 · layout authority remains single-writer")
     print("SETKA B2.9 · CANON/runtime mutation unavailable")
     try:
