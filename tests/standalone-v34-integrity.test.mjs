@@ -118,14 +118,19 @@ test("one pattern counts a scenario once per session even if dozens of configura
   assert.equal(x.totalUsageMs,45700);
 });
 
-test("source scopes stay distinct: cloud totals do not substitute a different pattern's intents", () => {
+test("pattern info is strictly community-scoped, with no local fallback for metrics or goals", () => {
   const js=read("standalone-advanced-v34.js");
-  assert.match(js,/const scenarios=local\.topIntents\|\|\[\]/);
-  assert.match(js,/scenarioSessions/);
-  assert.match(js,/Одна сессия учитывается один раз/);
-  assert.match(js,/const scenarioHeader=/);
-  assert.match(js,/scenarios=local\.topIntents/);
-  assert.match(js,/patternId:target\.patternId/);
+  const start=js.indexOf("  async function showInfo(tile){"),end=js.indexOf('  window.addEventListener("pointerup"',start);
+  assert.ok(start>=0&&end>start);
+  const rendered=js.slice(start,end);
+  assert.doesNotMatch(rendered,/localStats\(t\)|local\.topIntents|local\.sessions/);
+  assert.match(rendered,/const remote=await remoteStats\(t\)/);
+  assert.match(rendered,/cloud\.patternScenarios/);
+  assert.match(rendered,/cloud\.historicalPatterns/);
+  assert.match(rendered,/Общие показатели сейчас недоступны/);
+  assert.match(rendered,/Текущая выборка:/);
+  assert.match(rendered,/Для чего выбирают этот паттерн/);
+  assert.match(rendered,/Личная статистика здесь не подставляется/);
 });
 
 test("zero-valued pattern parameters survive config normalization", () => {
