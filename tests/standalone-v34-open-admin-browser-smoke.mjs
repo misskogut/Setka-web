@@ -9,6 +9,8 @@ const seven=["tentacle-orbit","dandelion","fish-wave","breathing-fractal","breat
 const fixture={ok:true,metrics:{connectedAccounts:2,sessions:3,exposures:37,patterns:2,savedConfigurations:3,configurationSaves:5,activeAccounts30d:1},
  patternMetrics:[{patternId:"tentacle-orbit",viewingAccounts:1,sessions:2,exposures:25,likes:1,savedConfigurations:2,totalDurationMs:83000},
  {patternId:"dandelion",viewingAccounts:1,sessions:2,exposures:12,likes:1,savedConfigurations:1,totalDurationMs:44000}],
+ patternScenarios:[{patternId:"tentacle-orbit",cohortSessions:8,scenarios:[{key:"sleep",count:6,share:.75}]}],
+ historicalPatterns:[{patternId:"tentacle-orbit",devices:6,sessions:12,exposures:395,totalDurationMs:2000000}],
  items:[{patternId:"dandelion",saveCount:1,useCount:12},{patternId:"tentacle-orbit",saveCount:1,useCount:25}]};
 try{
   for(let i=0;i<25;i++){try{if((await fetch(base+"/standalone-admin-v34.html")).ok)break}catch{}await sleep(100)}
@@ -33,6 +35,9 @@ try{
   const names=await page.locator("#patterns article[data-pattern-id]").evaluateAll(a=>a.map(n=>n.dataset.patternId));
   assert.deepEqual(names,seven);
   assert.match(await page.locator("#patterns").innerText(),/пока нет зарегистрированных данных/);
+  assert.match(await page.locator("article[data-pattern-id=\"tentacle-orbit\"]").innerText(),/Уснуть · 75%/);
+  assert.match(await page.locator("article[data-pattern-id=\"tentacle-orbit\"]").innerText(),/395 просмотров/);
+  assert.match(await page.locator("article[data-pattern-id=\"dandelion\"]").innerText(),/недостаточно обезличенных данных/);
   await page.locator('[data-panel="variants"]').click();
   assert.equal(await page.locator("#variantList .variant").count(),2);
   await page.locator("#refresh").click();
