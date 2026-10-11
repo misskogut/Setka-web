@@ -919,6 +919,21 @@ def _replay_packet(replay_ref):
     r = next((x for x in rows if str(x.get("replay_ref") or "") == replay_ref), None)
     if not r:
         return {"ok": False, "state": "REPLAY_NOT_FOUND", "replayRef": replay_ref}
+
+    snapshot_ref = str(r.get("snapshot_ref") or "")
+    cached_snapshot = None
+    if snapshot_ref:
+        cache = mirror.relation_rows("foundation", "front_visualization_snapshot_cache_v1")
+        s = next((x for x in cache if str(x.get("snapshot_ref") or "") == snapshot_ref), None)
+        if s:
+            cached_snapshot = {
+                "snapshotRef": s.get("snapshot_ref"),
+                "payload": s.get("payload") or {},
+                "payloadBytes": s.get("payload_bytes"),
+                "grownNodes": s.get("grown_nodes"),
+                "internalEdges": s.get("internal_edges"),
+            }
+
     return {
         "ok": True,
         "state": "BODY_REPLAY_READY",
@@ -930,6 +945,7 @@ def _replay_packet(replay_ref):
         "eventCount": r.get("event_count"),
         "mappedCount": r.get("mapped_count"),
         "payload": r.get("payload") or {},
+        "cachedSnapshot": cached_snapshot,
         "dataSource": "MAC_VERIFIED_SQLITE_MIRROR",
     }
 
