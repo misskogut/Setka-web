@@ -101,3 +101,30 @@ B2.8 is read/inspect only for backend structure.
 - runtime mutation: false
 - command token exposed to browser: false
 - local Mac device token stays in Keychain
+
+
+## Graph semantics correction
+
+B2.8 has two explicit central-graph views and must never conflate them:
+
+### BODY
+Default view. Shows the exact cached body snapshot of the selected system version / mode baseline.
+
+Current verified version bodies cached on Mac:
+- SETKA-SYS-20260908-B0 → BODY-GROWN-SNAPSHOT-2009DD509A0C4DC1
+- SETKA-SYS-20260910-B1 → BODY-GROWN-SNAPSHOT-767E5532A5F04217
+
+The five B1 mode baselines currently point to the same B1 body snapshot. Therefore CANON / LINEAR / SELF-ORGANIZED / MOTORWAY-LAB / INTEGRATION are not allowed to fabricate different body topology when the backend says the snapshot is shared.
+
+### BACKEND STRUCTURE
+Optional global index view. Shows non-event objects from the whole system index, plus explicit VERSION / BRANCH / MODE nodes and resolved indexed relations.
+
+This graph is an inventory/semantic topology of the backend. It is not the anatomical BODY and must be labelled as such.
+
+## Local body cache
+
+`foundation.front_body_snapshot_cache_v1` contains only body snapshots referenced by `foundation.setka_version_nodes_v1`. It is intentionally small and front-required. It does not re-introduce the full COLD experimental body-snapshot family into the Mac mirror.
+
+## Layout persistence
+
+B2.7.4 remains the sole position writer. User positions are persisted on drag end, DONE, pagehide, beforeunload and hidden-tab transition. B2.8 late-created controls request restoration from that same writer after registration; B2.8 does not maintain its own coordinate store.
