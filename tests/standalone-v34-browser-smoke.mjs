@@ -28,7 +28,7 @@ async function go(){
   page.on("console",x=>{if(x.type()==="error")errors.push(String(x.text()))});
   await page.route("**/functions/v1/**",async route=>{
     const url=route.request().url(),b=route.request().postDataJSON?.()||{};
-    const payload=url.includes("setka-community-patterns-v38")?{ok:true,items:[],patternMetrics,metrics:{connectedAccounts:7}}:
+    const payload=url.includes("setka-community-patterns-v38")?{ok:true,items:[],patternMetrics,metrics:{connectedAccounts:7},patternScenarios:[{patternId:"dandelion",cohortSessions:9,scenarios:[{key:"sleep",count:6,share:2/3},{key:"focus",count:3,share:1/3}]}],historicalPatterns:[{patternId:"tentacle-orbit",devices:6,sessions:12,exposures:395,totalDurationMs:2000000}]}:
       url.includes("setka-public-notes-v37")?{ok:true,items:[]}:
       {ok:true,items:[],notes:[],sessions:[],status:"private",profile:{},metrics:{}};
     await route.fulfill({status:200,contentType:"application/json",headers:{"access-control-allow-origin":"*"},body:JSON.stringify(payload)});
@@ -79,6 +79,14 @@ async function go(){
     assert.equal(title,names[i],patternIds[i]+" wrong title");
     const account=await modal.locator(".st34-statbox strong").first().innerText();
     assert.equal(account,String(i+1),patternIds[i]+" misbound cloud stats");
+    if(i===0){
+      const fullText=await modal.innerText();
+      assert.match(fullText,/Предыдущие тесты SETKA/);
+      assert.match(fullText,/395 просмотров/);
+      assert.match(fullText,/Текущая выборка: 7 подключённых аккаунтов/);
+      const currentViews=await modal.locator(".st34-statbox strong").nth(2).innerText();
+      assert.equal(currentViews,"100","historic 395 episodes must not mix into current 100");
+    }
     const bright=await modal.locator("canvas").evaluate(livePixels);
     console.log("INFO",patternIds[i],"account",account,"brightPixels",bright);
     assert.ok(bright>20,patternIds[i]+" info preview blank");
@@ -96,16 +104,17 @@ async function go(){
   await tiles.nth(1).locator(".st34-info").click({force:true});
   await page.locator("#st34InfoOverlay .st34-pattern-scenarios").waitFor();
   await page.locator("#st34InfoOverlay .st34-metric-help[data-help='scenarios']").click();
-  assert.match(await page.locator("#st34InfoOverlay .st34-help-panel").innerText(),/Одна сессия учитывается один раз/);
+  assert.match(await page.locator("#st34InfoOverlay .st34-help-panel").innerText(),/Обезличенное распределение целей/);
   await page.locator("#st34InfoOverlay .st34-metric-help[data-help='scenarios']").click();
   const scenarioText=await page.locator("#st34InfoOverlay .st34-pattern-scenarios").innerText();
   assert.match(scenarioText,/Уснуть/);
   assert.match(scenarioText,/67%/);
-  assert.match(scenarioText,/2 сесс/);
+  assert.match(scenarioText,/6 сесс/);
   assert.match(scenarioText,/33%/);
-  assert.match(scenarioText,/1 сесс/);
+  assert.match(scenarioText,/3 сесс/);
   assert.doesNotMatch(scenarioText,/70 сесс/);
-  console.log("SCENARIO UNIQUE SESSION PASS",scenarioText.replace(/\\s+/g," ").slice(0,340));
+  assert.doesNotMatch(scenarioText,/Для чего ты выбираешь|твои любимые/);
+  console.log("CLOUD-ONLY COMMUNITY SCENARIO PASS",scenarioText.replace(/\\s+/g," ").slice(0,340));
   await page.locator("#st34InfoOverlay .st34-close").click();
 
   // Two identical note texts on two distinct mother patterns must keep
