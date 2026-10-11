@@ -128,6 +128,7 @@ def _overview():
     branches = mirror.relation_rows("foundation", "setka_branches_v1")
     baselines = mirror.relation_rows("foundation", "setka_branch_baselines_v1")
     versions = mirror.relation_rows("foundation", "setka_version_nodes_v1")
+    body_cache = mirror.relation_rows("foundation", "front_body_snapshot_cache_v1")
     index_state = mirror.relation_rows("foundation", "setka_system_index_state_v1")
     exclusions = mirror.relation_rows("foundation", "mac_mirror_exclusion_policy_v1")
     deploy = mirror.relation_rows("foundation", "edge_function_deployment_inventory_v1")
@@ -185,6 +186,7 @@ def _overview():
         "metadata": x.get("metadata") or {},
     } for x in branches]
 
+    body_by_snapshot = {str(x.get("snapshot_ref")): x for x in body_cache}
     version_rows = [{
         "versionRef": x.get("version_ref"),
         "label": x.get("version_label"),
@@ -192,6 +194,11 @@ def _overview():
         "state": x.get("version_state"),
         "canonVersion": x.get("canon_version"),
         "bodySnapshotRef": x.get("body_snapshot_ref"),
+        "bodyCachedOnMac": str(x.get("body_snapshot_ref")) in body_by_snapshot,
+        "bodyNodes": (body_by_snapshot.get(str(x.get("body_snapshot_ref"))) or {}).get("grown_nodes"),
+        "bodyEdges": (body_by_snapshot.get(str(x.get("body_snapshot_ref"))) or {}).get("internal_edges"),
+        "bodyPayloadBytes": (body_by_snapshot.get(str(x.get("body_snapshot_ref"))) or {}).get("payload_bytes"),
+        "bodyLawStatus": (body_by_snapshot.get(str(x.get("body_snapshot_ref"))) or {}).get("law_status"),
         "stateSnapshotRef": x.get("system_state_snapshot_ref"),
         "digestRef": x.get("system_digest_ref"),
         "integrityHash": x.get("integrity_hash"),
@@ -397,6 +404,63 @@ def _inspect_projection(kind, ref):
         "canonMutation": False,
         "runtimeMutation": False,
     }
+
+
+def _body_snapshot(mode=None, version_ref=None, snapshot_ref=None):
+    baselines = mirror.relation_rows("foundation", "setka_branch_baselines_v1")
+    versions = mirror.relation_rows("foundation", "setka_version_nodes_v1")
+    cache = mirror.relation_rows("foundation", "front_body_snapshot_cache_v1")
+    cache_by_snapshot = {str(x.get("snapshot_ref")): x for x in cache}
+
+    selected_version = None
+    selected_mode = None
+    target_snapshot = str(snapshot_ref or "").strip() or None
+
+    if version_ref:
+        selected_version = next((x for x in versions if str(x.get("version_ref")) == str(version_ref)), None)
+        if selected_version:
+            target_snapshot = str(selected_version.get("body_snapshot_ref") or "")
+    elif mode:
+        normalized = str(mode).replace("-", "_").upper()
+        selected_mode = next((x for x in baselines if str(x.get("mode_ref")) == normalized), None)
+        if selected_mode:
+            target_snapshot = str(selected_mode.get("body_snapshot_ref") or "")
+            vr = str(selected_mode.get("version_ref") or "")
+            selected_version = next((x for x in versions if str(x.get("version_ref")) == vr), None)
+
+    if not target_snapshot:
+        return {"ok": False, "state": "BODY_SNAPSHOT_NOT_RESOLVED", "mode": mode, "versionRef": version_ref}
+
+    cached = cache_by_snapshot.get(target_snapshot)
+    if not cached:
+        return {
+            "ok": False,
+            "state": "BODY_SNAPSHOT_NOT_CACHED_ON_MAC",
+            "snapshotRef": target_snapshot,
+            "mode": mode,
+            "versionRef": (selected_version or {}).get("version_ref") or version_ref,
+            "truthBoundary": "The requested snapshot exists in backend metadata but is not present in the local front-required snapshot cache."
+        }
+
+    payload = cached.get("payload") or {}
+    if not isinstance(payload, dict):
+        return {"ok": False, "state": "BODY_SNAPSHOT_CACHE_PAYLOAD_INVALID", "snapshotRef": target_snapshot}
+
+    result = dict(payload)
+    result["ok"] = True
+    result["state"] = "SETKA_LOCAL_VERSION_BODY_SNAPSHOT_READY"
+    result["snapshotRef"] = target_snapshot
+    result["mode"] = str((selected_mode or {}).get("mode_ref") or mode or "").replace("_","-")
+    result["versionRef"] = (selected_version or {}).get("version_ref") or cached.get("version_ref")
+    result["versionLabel"] = (selected_version or {}).get("version_label") or cached.get("version_label")
+    result["branchRef"] = (selected_mode or {}).get("branch_ref")
+    result["dataSource"] = "MAC_VERIFIED_SQLITE_MIRROR::front_body_snapshot_cache_v1"
+    result["payloadBytes"] = cached.get("payload_bytes")
+    result["bodyNodes"] = cached.get("grown_nodes")
+    result["bodyEdges"] = cached.get("internal_edges")
+    result["bodyLawStatus"] = cached.get("law_status")
+    result["truthBoundary"] = "Exact selected version body payload cached on Mac. The five B1 mode baselines currently resolve to the same B1 body snapshot; the front does not fabricate differences."
+    return result
 
 
 def _inspect(kind, ref):
@@ -619,6 +683,8 @@ class Handler(b25.Handler):
                 "legacyLayoutWriterPresent": legacy_writer_present,
                 "backendTruthExplorer": True,
                 "systemIndexGraph": True,
+                "versionBodyGraph": True,
+                "versionBodySource": "front_body_snapshot_cache_v1",
                 "versionBranchMatrix": True,
                 "deepLocalSearch": True,
                 "commandExecution": False,
@@ -660,6 +726,12 @@ class Handler(b25.Handler):
                 if path == "/api/b28/graph":
                     include_events = q.get("events", ["0"])[0] in ("1","true","yes")
                     return self._json(200, _graph(include_events))
+                if path == "/api/b28/body":
+                    mode = q.get("mode", [None])[0]
+                    version_ref = q.get("version", [None])[0]
+                    snapshot_ref = q.get("snapshot", [None])[0]
+                    result = _body_snapshot(mode=mode, version_ref=version_ref, snapshot_ref=snapshot_ref)
+                    return self._json(200 if result.get("ok") else 404, result)
                 if path == "/api/b28/inventory":
                     return self._json(200, {"ok":True,"state":"LOCAL_MIRROR_INVENTORY_READY","relations":mirror.relation_inventory()})
                 return self._json(404, {"ok":False,"state":"B28_ENDPOINT_NOT_FOUND"})
