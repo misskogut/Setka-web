@@ -869,7 +869,9 @@
         ? "LIVE ACTIVITY · EXACT NODE MATCH"
         : "LIVE ACTIVITY · TOPOLOGY UNCHANGED";
       setTimeout(() => {
-        dom["graph-classification"].textContent = "SNAPSHOT · FROZEN BODY";
+        dom["graph-classification"].textContent = window.SETKA_B28_BACKEND_GRAPH_ACTIVE
+          ? "LOCAL BACKEND · INDEXED STRUCTURE"
+          : "SNAPSHOT · FROZEN BODY";
       }, 2600);
     }
 
@@ -1003,21 +1005,24 @@
       const branch = data.branch || {};
       const graph = data.graph || {};
       const digest = data.currentSystemDigest || data.modeDigest || {};
-      dom["mode-chip"].textContent = `${data.mode.display} · VIEW`;
-      dom["header-source"].textContent = `${data.dataSource.schema} · ${branch.branchRef}`;
-      dom["source-bar"].textContent = `REAL DATA ONLY · ${data.dataSource.projectRef} / ${data.dataSource.bootstrapRpc} / ${data.dataSource.graphRpc}`;
-      dom["graph-title"].textContent = `${data.mode.display} / ${branch.headVersionRef || data.b1?.versionRef}`;
-      dom["graph-description"].textContent = `${branch.runtimeState || "—"} · ${graph.snapshotRef || "no graph"}`;
       dom["event-tip"].textContent = formatter.format(digest.sourceEventNo ?? digest.transcriptTip ?? B1_EVENT_NO);
-      dom["graph-bound"].textContent = graph.binding || "—";
       renderComputer(data);
 
-      document.querySelectorAll(".mode-button").forEach((button) => {
-        button.classList.toggle("active", button.dataset.mode === data.mode.display);
-      });
+      if (!window.SETKA_B28_BACKEND_GRAPH_ACTIVE) {
+        dom["mode-chip"].textContent = `${data.mode.display} · VIEW`;
+        dom["header-source"].textContent = `${data.dataSource.schema} · ${branch.branchRef}`;
+        dom["source-bar"].textContent = `REAL DATA ONLY · ${data.dataSource.projectRef} / ${data.dataSource.bootstrapRpc} / ${data.dataSource.graphRpc}`;
+        dom["graph-title"].textContent = `${data.mode.display} / ${branch.headVersionRef || data.b1?.versionRef}`;
+        dom["graph-description"].textContent = `${branch.runtimeState || "—"} · ${graph.snapshotRef || "no graph"}`;
+        dom["graph-bound"].textContent = graph.binding || "—";
 
-      if (graph.snapshotRef && graph.snapshotRef !== state.graphRef) {
-        await loadGraph(graph.snapshotRef, graph.binding);
+        document.querySelectorAll(".mode-button").forEach((button) => {
+          button.classList.toggle("active", button.dataset.mode === data.mode.display);
+        });
+
+        if (graph.snapshotRef && graph.snapshotRef !== state.graphRef) {
+          await loadGraph(graph.snapshotRef, graph.binding);
+        }
       }
     }
 
