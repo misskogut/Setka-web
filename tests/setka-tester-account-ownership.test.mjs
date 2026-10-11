@@ -95,3 +95,37 @@ test("invalid switch is rejected before token issue, login persistence or passwo
  assert.match(source,/device_already_has_tester_id"\},409/);
  assert.match(source,/if\(!deviceId\)return J\(\{error:"device_id_required"\},400\)/);
 });
+
+test("private archive pull requires the same physical device as the login session",async()=>{
+ const archive=readFileSync(new URL("../supabase/functions/setka-tester-archive-v37/index.ts",import.meta.url),"utf8");
+ const start=archive.indexOf("async function session(token:string,deviceId:string)");
+ const end=archive.indexOf("function arr(",start);
+ assert.ok(start>=0&&end>start);
+ const sourceFn=archive.slice(start,end).replace("token:string,deviceId:string","token,deviceId");
+ const hash=async x=>"hash-"+x;
+ const tokens=[{id:"session-a",tester_id:"TESTER-A",device_hash:"hash-device-a"}];
+ const calls={lastSeen:0};
+ const db={from:table=>({
+   select(){return this},eq(){return this},is(){return this},gt(){return this},
+   async maybeSingle(){return{data:tokens[0],error:null}},
+   update(){return{eq:async()=>{calls.lastSeen++;return{error:null}}}}
+ })};
+ const session=vm.runInNewContext(sourceFn+"\nsession",{db,sha:hash,Date});
+ assert.equal((await session("token-a","device-a")).tester_id,"TESTER-A");
+ assert.equal(await session("token-a","device-b"),null);
+ assert.equal(await session("token-a",""),null);
+ assert.equal(calls.lastSeen,1);
+ assert.match(archive,/if\(!\(await assertDevice\(deviceId,s\.tester_id\)\)\)return J\(\{error:"device_not_bound_to_account"\},403\)/);
+ assert.match(archive,/const deviceId=T\(b\.deviceId,180\),s=await session/);
+});
+test("client sends browser device identity for both private archive pull and status",()=>{
+ const client=readFileSync(new URL("../standalone-private-corpus-v40.js",import.meta.url),"utf8");
+ assert.match(client,/action:"pull",sessionToken:s\.token,deviceId:did\(\)/);
+ assert.match(client,/action:"status",sessionToken:s\.token,deviceId:did\(\)/);
+});
+test("no login side effects occur before device-ownership guard",()=>{
+ const source=readFileSync(new URL("../supabase/functions/setka-tester-account-v40/index.ts",import.meta.url),"utf8");
+ const login=source.slice(source.indexOf('if(action==="login")'),source.indexOf('if(action==="accept-consent")'));
+ assert.ok(login.indexOf('await ensureDevice(deviceId,tid')<login.indexOf('await attempt(rr.scopeHash,"login",true)'));
+ assert.ok(login.indexOf('await ensureDevice(deviceId,tid')<login.indexOf('last_login_at:now'));
+});
