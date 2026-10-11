@@ -545,7 +545,7 @@
       if(d.version?.version_ref)actions.push({label:'Тело '+displayVersion(d.version.version_ref),fn:()=>showBody({version:d.version.version_ref})});
       showCard({
         title:d.title||humanEvent({eventKind:ev.event_type,summary:ev.summary}),
-        sub:\`Событие №\${ev.event_no??'—'}\`,
+        sub:`Событие №${ev.event_no??'—'}`,
         rows:[
           ['Когда',eventTime(ev.occurred_at)],
           ['Что произошло',ev.summary||humanEvent({eventKind:ev.event_type})],
@@ -637,9 +637,9 @@
     stages.slice(0,upto+1).forEach((s,i)=>{
       const x=Number(s.x),y=Number(s.y),z=Number(s.z);
       if(!Number.isFinite(x)||!Number.isFinite(y)||!Number.isFinite(z))return;
-      nodes.push([\`PROC::\${i}::\${s.nodeId||s.stageCode||i}\`,null,'PROCESS_STAGE',i,0,0,String(s.label||s.stageCode||('Шаг '+(i+1))),'PROCESS_STAGE',i===upto,x,y,z]);
+      nodes.push([`PROC::${i}::${s.nodeId||s.stageCode||i}`,null,'PROCESS_STAGE',i,0,0,String(s.label||s.stageCode||('Шаг '+(i+1))),'PROCESS_STAGE',i===upto,x,y,z]);
     });
-    return {ok:true,state:'RECORDED_PROCESS_FRAME',snapshotRef:\`\${packet.packetRef}::STEP::\${upto+1}\`,nodes,edges,grownNodes:nodes.length,internalEdges:edges.length};
+    return {ok:true,state:'RECORDED_PROCESS_FRAME',snapshotRef:`${packet.packetRef}::STEP::${upto+1}`,nodes,edges,grownNodes:nodes.length,internalEdges:edges.length};
   }
 
   function replayFrameSnapshot(replay,upto){
@@ -654,9 +654,9 @@
       if(!Array.isArray(e))return;
       const bodyId=String(e[2]||''),source=byId.get(bodyId);
       if(!source)return;
-      nodes.push([\`REPLAY::\${i}::\${bodyId}\`,null,'PROCESS_STAGE',i,0,0,String(e[4]||e[3]||('Событие '+e[0])),'PROCESS_STAGE',i===upto,Number(source[9]),Number(source[10]),Number(source[11])]);
+      nodes.push([`REPLAY::${i}::${bodyId}`,null,'PROCESS_STAGE',i,0,0,String(e[4]||e[3]||('Событие '+e[0])),'PROCESS_STAGE',i===upto,Number(source[9]),Number(source[10]),Number(source[11])]);
     });
-    return {ok:true,state:'RECORDED_REPLAY_FRAME',snapshotRef:\`\${replay.replayRef}::STEP::\${upto+1}\`,nodes,edges,grownNodes:nodes.length,internalEdges:edges.length};
+    return {ok:true,state:'RECORDED_REPLAY_FRAME',snapshotRef:`${replay.replayRef}::STEP::${upto+1}`,nodes,edges,grownNodes:nodes.length,internalEdges:edges.length};
   }
 
   function ensurePlayer(){
@@ -682,13 +682,13 @@
       count=stages.length;
       snap=processFrameSnapshot(playerState.data,playerState.index);
       const s=stages[playerState.index]||{};
-      text=\`\${playerState.index+1}/\${count} · \${s.label||s.stageCode||'шаг'}\`;
+      text=`${playerState.index+1}/${count} · ${s.label||s.stageCode||'шаг'}`;
     }else if(playerState.kind==='replay'){
       const events=playerState.data?.payload?.events||[];
       count=events.length;
       snap=replayFrameSnapshot(playerState.data,playerState.index);
       const e=events[playerState.index]||[];
-      text=\`\${playerState.index+1}/\${count} · #\${e[0]||'—'} · \${e[4]||e[3]||'событие'}\`;
+      text=`${playerState.index+1}/${count} · #${e[0]||'—'} · ${e[4]||e[3]||'событие'}`;
     }
     if(!count||!snap)return;
     range.max=String(count-1);range.value=String(playerState.index);label.textContent=text;play.textContent=playerState.timer?'Ⅱ':'▶';
@@ -724,7 +724,7 @@
 
   async function playVisualization(packetRef,{auto=false}={}){
     try{
-      const packet=await api(\`/api/b210/visualization?packet=\${encodeURIComponent(packetRef)}\`);
+      const packet=await api(`/api/b210/visualization?packet=${encodeURIComponent(packetRef)}`);
       const stages=Array.isArray(packet.payload?.stages)?packet.payload.stages:[];
       if(stages.length){
         startPlayer('visual',packet);
@@ -736,7 +736,7 @@
         window.SETKA_B1_GRAPH_API?.loadSnapshot?.(snap,{snapshotRef:packet.packetRef,binding:packet.sourceRef||packet.packetRef,classification:'ЗАПИСАННАЯ ВИЗУАЛИЗАЦИЯ',graphChip:'ФОРМА'});
         const title=document.querySelector('[data-graph-title]'),sub=document.querySelector('[data-graph-sub]'),shared=document.querySelector('[data-shared-note]');
         if(title)title.textContent=sceneLabel(packet.sceneKind);
-        if(sub)sub.textContent=\`\${snap.grownNodes} объектов · \${snap.internalEdges} связей · записанная форма\`;
+        if(sub)sub.textContent=`${snap.grownNodes} объектов · ${snap.internalEdges} связей · записанная форма`;
         if(shared)shared.textContent='Координаты морфологии используются из записанного packet, если они там есть. Для packet без координат применяется только презентационная раскладка без изменения топологии.';
         document.querySelector('[data-view-label]').textContent='Форма';
         return packet;
@@ -746,7 +746,7 @@
         window.SETKA_B1_GRAPH_API?.loadSnapshot?.(packet.cachedSnapshot.payload,{snapshotRef:packet.snapshotRef,binding:packet.sourceRef||packet.packetRef,classification:'ЗАПИСАННАЯ ВИЗУАЛИЗАЦИЯ',graphChip:'СЛЕПОК'});
         const title=document.querySelector('[data-graph-title]'),sub=document.querySelector('[data-graph-sub]'),shared=document.querySelector('[data-shared-note]');
         if(title)title.textContent=sceneLabel(packet.sceneKind);
-        if(sub)sub.textContent=\`\${packet.cachedSnapshot.grownNodes||0} узлов · \${packet.cachedSnapshot.internalEdges||0} связей\`;
+        if(sub)sub.textContent=`${packet.cachedSnapshot.grownNodes||0} узлов · ${packet.cachedSnapshot.internalEdges||0} связей`;
         if(shared)shared.textContent='Это точный frozen body snapshot, к которому была привязана записанная визуализация.';
         document.querySelector('[data-view-label]').textContent='Форма';
         return packet;
@@ -761,7 +761,7 @@
 
   async function playReplay(replayRef){
     try{
-      const replay=await api(\`/api/b210/replay?replay=\${encodeURIComponent(replayRef)}\`);
+      const replay=await api(`/api/b210/replay?replay=${encodeURIComponent(replayRef)}`);
       if(!Array.isArray(replay.payload?.events)||!replay.payload.events.length){
         showCard({title:'Пошаговый процесс',sub:'Replay',rows:[['Результат','В replay нет записанных шагов.']]});
         return replay;
