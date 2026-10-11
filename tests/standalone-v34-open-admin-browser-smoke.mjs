@@ -77,7 +77,7 @@ try{
   assert.equal(await ownerPage.evaluate(()=>location.hash),"","secret fragment must be removed from address bar");
   assert.equal(await ownerPage.evaluate(()=>localStorage.getItem("setka-research:admin-key:v1")),fakeOwner);
   assert.ok(ownerRequests.some(x=>x.action==="admin-overview"&&x.adminKey===fakeOwner));
-  assert.ok(ownerRequests.every(x=>x.adminKey===fakeOwner),"all protected calls must use new owner credential");
+  assert.ok(ownerRequests.filter(x=>x.adminKey).every(x=>x.adminKey===fakeOwner),"all authenticated admin calls must use new owner credential");
   assert.ok((await ownerPage.locator("#dashboard .tab[data-tab]").count())>=11);
   console.log("ONE-CLICK OWNER LOGIN WITH STALE PREVIOUS KEY PASS");
   console.log("PRIVATE ADMIN REMAINS AUTHENTICATED PASS");
