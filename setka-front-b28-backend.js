@@ -237,7 +237,14 @@
 
   function spotlightRef(ref){const b=window.SETKA_GRAPH_BRIDGE;const r=b?.spotlight?.(ref);if(r?.ok&&r.directMatches){togglePanel(false);return r}return null}
   function selectMode(mode){
-    state.mode=mode;document.querySelectorAll('.mode-button').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));const m=(state.overview?.modes||[]).find(x=>x.modeDisplay===mode);const chip=qs('#mode-chip');if(chip)chip.textContent=`${mode} · BACKEND VIEW`;const head=qs('#header-source');if(head)head.textContent=`LOCAL MAC · ${m?.branchRef||'—'}`;renderOverview();if(m?.branchRef){spotlightRef(m.branchRef);inspect('BRANCH',m.branchRef);togglePanel(true)}
+    state.mode=mode;
+    document.querySelectorAll('.mode-button').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));
+    const m=(state.overview?.modes||[]).find(x=>x.modeDisplay===mode);
+    const chip=qs('#mode-chip');if(chip)chip.textContent=`${mode} · BACKEND VIEW`;
+    const head=qs('#header-source');if(head)head.textContent=`LOCAL MAC · ${m?.branchRef||'—'}`;
+    window.SETKA_B1_GRAPH_API?.switchModeView?.(mode);
+    renderOverview();
+    if(m?.branchRef){spotlightRef(m.branchRef);inspect('BRANCH',m.branchRef);togglePanel(true)}
   }
 
   document.addEventListener('click',e=>{const btn=e.target.closest?.('.mode-button[data-mode]');if(!btn)return;e.preventDefault();e.stopImmediatePropagation();selectMode(btn.dataset.mode)},true);
