@@ -771,12 +771,16 @@
         dataRow("position", `${node.position.x}, ${node.position.y}, ${node.position.z}`),
         dataRow("snapshot", state.graphRef)
       ]);
+      document.dispatchEvent(new CustomEvent("setka:graph:node-selected", { detail: {
+        id: node.id, name: node.name, type: node.type, family: node.family,
+        degree: node.degree, snapshotRef: state.graphRef, source
+      }}));
     }
 
     function selectEdge(edge) {
       if (!edge) return;
       setEdgeMarker(edge);
-      openCard(edge.relation || edge.edgeClass || "EDGE", "EDGE / FROZEN SNAPSHOT", [
+      openCard(edge.relation || edge.edgeClass || "EDGE", "EDGE / GRAPH", [
         dataRow("edge class", edge.edgeClass),
         dataRow("relation", edge.relation),
         dataRow("source", edge.source.name || edge.source.id),
@@ -785,6 +789,11 @@
         dataRow("target id", edge.target.id),
         dataRow("snapshot", state.graphRef)
       ]);
+      document.dispatchEvent(new CustomEvent("setka:graph:edge-selected", { detail: {
+        relation: edge.relation, edgeClass: edge.edgeClass,
+        sourceId: edge.source.id, targetId: edge.target.id,
+        snapshotRef: state.graphRef
+      }}));
     }
 
     function selectEvent(event) {
@@ -1179,6 +1188,23 @@
         dom["source-bar"].textContent = `BOOTSTRAP ERROR · ${error.message}`;
       }
     }
+
+    window.SETKA_B1_GRAPH_API = Object.freeze({
+      version: "B2.8-BACKEND-GRAPH-BRIDGE",
+      loadSnapshot(snapshot, options = {}) {
+        buildGraph(snapshot);
+        state.graphRef = snapshot?.snapshotRef || options.snapshotRef || "LOCAL-BACKEND-INDEX";
+        dom["graph-chip"].textContent = options.graphChip || "BACKEND · STRUCTURE";
+        dom["graph-chip"].dataset.state = "backend";
+        dom["graph-bound"].textContent = options.binding || "MAC_MIRROR_SYSTEM_INDEX";
+        dom["graph-classification"].textContent = options.classification || "LOCAL BACKEND · INDEXED STRUCTURE";
+        return { ok: true, nodeCount: snapshot?.nodes?.length || 0, edgeCount: snapshot?.edges?.length || 0, snapshotRef: state.graphRef };
+      },
+      graphRef: () => state.graphRef,
+      mode: () => state.mode,
+      nodeCount: () => nodeMap.size,
+      edgeCount: () => edgeMeta.length
+    });
 
     initialize();
   </script>
