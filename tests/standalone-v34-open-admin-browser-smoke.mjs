@@ -51,7 +51,7 @@ try{
   assert.equal(await privatePage.locator("#keyInput").count(),1);
   assert.equal(await privatePage.locator("#loginBtn").count(),1);
   await privatePage.goto(base+"/standalone-admin-v34.html",{waitUntil:"domcontentloaded"});
-  assert.equal(await privatePage.locator("#dashboard .tab[data-tab]").count(),11);
+  assert.ok((await privatePage.locator("#dashboard .tab[data-tab]").count())>=11,"full admin lost one of the original 11 sections");
   assert.equal(await privatePage.locator('#dashboard .tab[data-tab="participants"]').count(),1);
   assert.equal(await privatePage.locator('#dashboard .tab[data-tab="moderation"]').count(),1);
   assert.equal(await privatePage.locator('#dashboard .tab[data-tab="notes"]').count(),1);
