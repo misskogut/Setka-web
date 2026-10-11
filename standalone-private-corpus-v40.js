@@ -77,7 +77,7 @@
       p.length,last(p).id||"",f.length,digest(f),digest(d.settings)].join("|");
   }
   async function post(payload,keepalive=false){const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json",apikey:KEY},body:JSON.stringify(payload),keepalive});const out=await r.json().catch(()=>({}));if(!r.ok){const e=new Error(out.error||`http_${r.status}`);e.status=r.status;throw e}return out}
-  async function pull(){const s=session();if(!s?.token)throw new Error("auth_required");return post({action:"pull",sessionToken:s.token})}
+  async function pull(){const s=session();if(!s?.token)throw new Error("auth_required");return post({action:"pull",sessionToken:s.token,deviceId:did()})}
   async function restoreFromCloud(){
     const s=session();if(!s?.token){hydrated=false;authoritative=false;return false}
     const out=await pull(),a=out?.archive;
@@ -113,7 +113,7 @@
       lastSignature=sig;const st={enabled:true,ok:true,build:BUILD,updatedAt:out.updatedAt,counts:out.counts||{},privacy:"private-account-only",publicExposure:false};saveStatus(st);return true;
     }catch(e){const st={enabled:true,ok:false,build:BUILD,error:String(e?.message||e),stage:"sync",privacy:"private-account-only",publicExposure:false};saveStatus(st);return false}finally{busy=false}
   }
-  async function remoteStatus(){const s=session();if(!s?.token)return null;return post({action:"status",sessionToken:s.token})}
+  async function remoteStatus(){const s=session();if(!s?.token)return null;return post({action:"status",sessionToken:s.token,deviceId:did()})}
   function schedule(ms=1200){clearTimeout(timer);timer=setTimeout(()=>sync(false),ms)}
   window.addEventListener("setka:standalone-event",()=>schedule(1000));
   window.addEventListener("setka:pattern-exposure",()=>schedule(800));
