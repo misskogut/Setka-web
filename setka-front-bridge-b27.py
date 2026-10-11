@@ -406,6 +406,248 @@ def _inspect_projection(kind, ref):
     }
 
 
+
+_KIND_PRIORITY = {
+    "ENTITY": 0,
+    "SHIP": 1,
+    "EXPERIMENT": 2,
+    "EXPERIMENT_CAPSULE": 3,
+    "RUN": 4,
+    "VISUALIZATION": 5,
+    "SNAPSHOT": 6,
+    "WORLD_NODE": 7,
+    "METRIC": 8,
+    "EVENT": 9,
+}
+
+def _context_graph(kind, ref, max_depth=3, max_nodes=90):
+    kind = str(kind or "").upper().strip()
+    ref = str(ref or "").strip()
+    if not ref:
+        return {"ok": False, "state": "CONTEXT_REF_REQUIRED"}
+
+    objects = mirror.relation_rows("foundation", "setka_system_object_index_v1")
+    relations = mirror.relation_rows("foundation", "setka_system_relation_index_v1")
+    obj_map = {(str(o.get("object_kind") or ""), str(o.get("object_ref") or "")): o for o in objects}
+    by_ref = defaultdict(list)
+    for key, obj in obj_map.items():
+        by_ref[key[1]].append((key[0], obj))
+
+    root_key = (kind, ref)
+    root = obj_map.get(root_key)
+    if root is None:
+        matches = by_ref.get(ref, [])
+        if len(matches) == 1:
+            kind, root = matches[0]
+            root_key = (kind, ref)
+        else:
+            return {
+                "ok": False,
+                "state": "CONTEXT_OBJECT_NOT_FOUND" if not matches else "CONTEXT_REF_AMBIGUOUS",
+                "kind": kind,
+                "ref": ref,
+                "choices": [{"kind": k, "ref": ref, "label": o.get("display_name_ru") or ref} for k, o in matches[:20]],
+            }
+
+    rels = [r for r in relations if not bool(r.get("historical_only"))]
+    adjacency = defaultdict(list)
+    for idx, r in enumerate(rels):
+        sk = (str(r.get("source_kind") or ""), str(r.get("source_ref") or ""))
+        tk = (str(r.get("target_kind") or ""), str(r.get("target_ref") or ""))
+        adjacency[sk].append((idx, tk))
+        adjacency[tk].append((idx, sk))
+
+    depth_by_key = {root_key: 0}
+    queue = [root_key]
+    cursor = 0
+    while cursor < len(queue) and len(depth_by_key) < max_nodes:
+        current = queue[cursor]
+        cursor += 1
+        depth = depth_by_key[current]
+        if depth >= max_depth:
+            continue
+        neighbors = []
+        for idx, other in adjacency.get(current, []):
+            if other not in obj_map or other in depth_by_key:
+                continue
+            other_obj = obj_map[other]
+            neighbors.append((idx, other, other_obj))
+        neighbors.sort(key=lambda x: (
+            _KIND_PRIORITY.get(x[1][0], 50),
+            str(x[2].get("display_name_ru") or x[1][1]).lower(),
+            x[1][1],
+        ))
+        for _, other, _ in neighbors:
+            if len(depth_by_key) >= max_nodes:
+                break
+            depth_by_key[other] = depth + 1
+            queue.append(other)
+
+    included = set(depth_by_key)
+    node_rows = []
+    for key, depth in sorted(depth_by_key.items(), key=lambda kv: (kv[1], _KIND_PRIORITY.get(kv[0][0], 50), kv[0][1])):
+        o = obj_map[key]
+        node_rows.append({
+            "kind": key[0],
+            "ref": key[1],
+            "label": o.get("display_name_ru") or key[1],
+            "subtype": o.get("subtype"),
+            "state": o.get("state"),
+            "parentRef": o.get("parent_ref"),
+            "scopeRef": o.get("scope_ref"),
+            "sourceRelation": o.get("source_relation"),
+            "depth": depth,
+            "isRoot": key == root_key,
+        })
+
+    edge_rows = []
+    seen_edges = set()
+    for r in rels:
+        sk = (str(r.get("source_kind") or ""), str(r.get("source_ref") or ""))
+        tk = (str(r.get("target_kind") or ""), str(r.get("target_ref") or ""))
+        if sk not in included or tk not in included:
+            continue
+        ek = (sk, tk, str(r.get("relation_kind") or "RELATION"), str(r.get("evidence_ref") or ""))
+        if ek in seen_edges:
+            continue
+        seen_edges.add(ek)
+        edge_rows.append({
+            "sourceKind": sk[0],
+            "sourceRef": sk[1],
+            "targetKind": tk[0],
+            "targetRef": tk[1],
+            "relationKind": r.get("relation_kind") or "RELATION",
+            "relationState": r.get("relation_state"),
+            "sourceRelation": r.get("source_relation"),
+            "evidenceRef": r.get("evidence_ref"),
+        })
+
+    counts = Counter(x["kind"] for x in node_rows)
+    return {
+        "ok": True,
+        "state": "SETKA_LOCAL_CONTEXT_GRAPH_READY",
+        "frontVersion": "B2.9",
+        "root": {
+            "kind": root_key[0],
+            "ref": root_key[1],
+            "label": root.get("display_name_ru") or root_key[1],
+            "subtype": root.get("subtype"),
+            "state": root.get("state"),
+            "sourceRelation": root.get("source_relation"),
+        },
+        "nodes": node_rows,
+        "edges": edge_rows,
+        "nodeCount": len(node_rows),
+        "edgeCount": len(edge_rows),
+        "depth": max(depth_by_key.values()) if depth_by_key else 0,
+        "kindCounts": dict(sorted(counts.items())),
+        "truncated": len(depth_by_key) >= max_nodes,
+        "dataSource": "MAC_VERIFIED_SQLITE_MIRROR",
+        "truthBoundary": "Only indexed backend objects and indexed non-historical relations are shown. Coordinates are presentation only.",
+    }
+
+
+def _collect_exact_refs(value, known_refs, out, budget):
+    if budget[0] <= 0:
+        return
+    budget[0] -= 1
+    if isinstance(value, dict):
+        for v in value.values():
+            _collect_exact_refs(v, known_refs, out, budget)
+            if budget[0] <= 0:
+                break
+    elif isinstance(value, list):
+        for v in value:
+            _collect_exact_refs(v, known_refs, out, budget)
+            if budget[0] <= 0:
+                break
+    elif isinstance(value, str):
+        s = value.strip()
+        if s in known_refs:
+            out.add(s)
+
+
+def _local_transcript(stream="SYSTEM", mode="INTEGRATION", limit=60):
+    stream = str(stream or "SYSTEM").upper()
+    mode_norm = str(mode or "INTEGRATION").upper().replace("-", "_")
+    limit = max(1, min(int(limit or 60), 120))
+
+    objects = mirror.relation_rows("foundation", "setka_system_object_index_v1")
+    by_ref = defaultdict(list)
+    for o in objects:
+        by_ref[str(o.get("object_ref") or "")].append(o)
+    known_refs = set(by_ref)
+
+    versions = mirror.relation_rows("foundation", "setka_version_nodes_v1")
+    version_refs = {str(v.get("version_ref") or "") for v in versions}
+    branches = mirror.relation_rows("foundation", "setka_branches_v1")
+    branch_refs = {str(b.get("branch_ref") or "") for b in branches}
+
+    if stream == "BRANCH":
+        baselines = mirror.relation_rows("foundation", "setka_branch_baselines_v1")
+        baseline = next((b for b in baselines if str(b.get("mode_ref") or "") == mode_norm), None)
+        if not baseline:
+            return {"ok": False, "state": "UNKNOWN_MODE", "mode": mode_norm}
+        branch_ref = str(baseline.get("branch_ref") or "")
+        rows = [x for x in mirror.relation_rows("foundation", "setka_branch_events_v1") if str(x.get("branch_ref") or "") == branch_ref]
+        rows.sort(key=lambda x: int(x.get("branch_event_no") or 0), reverse=True)
+        out = []
+        for r in rows[:limit]:
+            payload = r.get("payload") or {}
+            refs = set()
+            _collect_exact_refs(payload, known_refs, refs, [300])
+            candidates = []
+            for ref in sorted(refs):
+                for o in by_ref.get(ref, [])[:3]:
+                    candidates.append({"kind": o.get("object_kind"), "ref": ref, "label": o.get("display_name_ru") or ref})
+            vr = str(r.get("version_ref") or "")
+            out.append({
+                "stream": "BRANCH",
+                "eventNo": r.get("branch_event_no"),
+                "eventId": r.get("branch_event_ref"),
+                "occurredAt": r.get("occurred_at"),
+                "eventKind": r.get("event_kind"),
+                "summary": payload.get("summary") or r.get("event_kind"),
+                "version": vr or None,
+                "branchRef": branch_ref,
+                "details": payload,
+                "contextCandidates": candidates[:12],
+                "versionKnown": vr in version_refs if vr else False,
+            })
+        return {"ok": True, "state": "SETKA_LOCAL_BRANCH_TRANSCRIPT_READY", "stream": "BRANCH", "mode": mode_norm, "branchRef": branch_ref, "rows": out, "total": len(rows)}
+
+    rows = mirror.relation_rows("foundation", "system_transcript_events")
+    rows.sort(key=lambda x: int(x.get("event_no") or 0), reverse=True)
+    out = []
+    for r in rows[:limit]:
+        refs = set()
+        entity_ref = str(r.get("entity_ref") or "").strip()
+        if entity_ref in known_refs:
+            refs.add(entity_ref)
+        details = r.get("details") or {}
+        _collect_exact_refs(details, known_refs, refs, [400])
+        candidates = []
+        for ref in sorted(refs):
+            for o in by_ref.get(ref, [])[:3]:
+                candidates.append({"kind": o.get("object_kind"), "ref": ref, "label": o.get("display_name_ru") or ref})
+        vr = str(r.get("version") or "")
+        out.append({
+            "stream": "SYSTEM",
+            "eventNo": r.get("event_no"),
+            "eventId": r.get("source_key"),
+            "occurredAt": r.get("occurred_at"),
+            "surface": r.get("surface"),
+            "eventKind": r.get("event_type"),
+            "entityType": r.get("entity_type"),
+            "entityRef": entity_ref or None,
+            "version": vr or None,
+            "summary": r.get("summary"),
+            "details": details,
+            "contextCandidates": candidates[:12],
+            "versionKnown": vr in version_refs if vr else False,
+        })
+    return {"ok": True, "state": "SETKA_LOCAL_SYSTEM_TRANSCRIPT_READY", "stream": "SYSTEM", "rows": out, "total": len(rows)}
+
 def _body_snapshot(mode=None, version_ref=None, snapshot_ref=None):
     baselines = mirror.relation_rows("foundation", "setka_branch_baselines_v1")
     versions = mirror.relation_rows("foundation", "setka_version_nodes_v1")
@@ -688,6 +930,8 @@ class Handler(b25.Handler):
                 "versionBodySource": "front_body_snapshot_cache_v1",
                 "versionBranchMatrix": True,
                 "deepLocalSearch": True,
+                "contextGraph": True,
+                "localTranscriptDetails": True,
                 "commandExecution": False,
                 "commandTokenExposed": False,
                 "canonMutation": False,
@@ -735,6 +979,22 @@ class Handler(b25.Handler):
                     return self._json(200 if result.get("ok") else 404, result)
                 if path == "/api/b28/inventory":
                     return self._json(200, {"ok":True,"state":"LOCAL_MIRROR_INVENTORY_READY","relations":mirror.relation_inventory()})
+                if path == "/api/b29/context":
+                    kind = q.get("kind", [""])[0]
+                    ref = q.get("ref", [""])[0]
+                    try: max_depth = max(1, min(int(q.get("depth", ["3"])[0]), 4))
+                    except Exception: max_depth = 3
+                    try: max_nodes = max(10, min(int(q.get("max", ["90"])[0]), 140))
+                    except Exception: max_nodes = 90
+                    result = _context_graph(kind, ref, max_depth=max_depth, max_nodes=max_nodes)
+                    return self._json(200 if result.get("ok") else 404, result)
+                if path == "/api/b29/transcript":
+                    stream = q.get("stream", ["SYSTEM"])[0]
+                    mode = q.get("mode", ["INTEGRATION"])[0]
+                    try: limit = int(q.get("limit", ["60"])[0])
+                    except Exception: limit = 60
+                    result = _local_transcript(stream=stream, mode=mode, limit=limit)
+                    return self._json(200 if result.get("ok") else 404, result)
                 return self._json(404, {"ok":False,"state":"B28_ENDPOINT_NOT_FOUND"})
             except Exception as e:
                 return self._json(500, {"ok":False,"state":"B28_LOCAL_BACKEND_ERROR","message":str(e),"frontVersion":"B2.8"})
