@@ -39,7 +39,7 @@ test("production front does not mount isolated QA storage shim",()=>{
   const html=read("standalone-v34.html");
   assert.doesNotMatch(html,/setka-qa-v34-20261009:/);
   assert.doesNotMatch(html,/<script src="standalone-methodology-v34\.js/);
-  assert.match(html,/standalone-advanced-v34\.js\?v=46-unified-front-admin-1/);
+  assert.match(html,/standalone-advanced-v34\.js\?v=51-community-stats-1/);
 });
 
 test("admin can retry after failed legacy network read, rather than keep rejected promise",()=>{
