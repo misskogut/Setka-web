@@ -136,7 +136,8 @@
   }
 
   function modeCard(m){
-    return `<div class="b28-mode ${state.mode===m.modeDisplay?'active':''}" data-b28-mode="${esc(m.modeDisplay)}"><b>${esc(m.modeDisplay)}</b><small>${esc(m.branchName||m.branchRef)}<br>${esc(m.versionRef)} · ${esc(m.runtimeState)}<br>${m.backendComplete?'BACKEND COMPLETE':'BACKEND GAP'}</small></div>`;
+    const peers=(state.overview?.modes||[]).filter(x=>x.bodySnapshotRef&&x.bodySnapshotRef===m.bodySnapshotRef).length;
+    return `<div class="b28-mode ${state.mode===m.modeDisplay?'active':''}" data-b28-mode="${esc(m.modeDisplay)}"><b>${esc(m.modeDisplay)}</b><small>${esc(m.branchName||m.branchRef)}<br>${esc(m.versionRef)} · ${esc(m.runtimeState)}<br>body ${esc(short(m.bodySnapshotRef||'—',34))} · ${peers>1?'ОБЩИЙ ДЛЯ '+peers+' РЕЖИМОВ':'УНИКАЛЬНЫЙ BODY'}<br>${m.backendComplete?'BACKEND COMPLETE':'BACKEND GAP'}</small></div>`;
   }
 
   function renderOverview(){
