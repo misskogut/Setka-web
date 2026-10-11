@@ -112,8 +112,19 @@ if [ -f "$LATEST" ]; then
   MIRROR_MODE="$(python3 - "$LATEST" <<'PY'
 import json,sys
 try:
- d=json.load(open(sys.argv[1])); print('DELTA' if d.get('state') in ('PASS_FULL_SETKA_MIRROR','PASS_DELTA_SETKA_MIRROR') else 'FULL')
-except Exception: print('FULL')
+ d=json.load(open(sys.argv[1]))
+ state=d.get('state')
+ delta_tip=int(d.get('deltaToEventId') or 0)
+ if state == 'PASS_DELTA_SETKA_MIRROR':
+  print('DELTA')
+ elif state == 'PASS_FULL_SETKA_MIRROR' and delta_tip > 0:
+  print('DELTA')
+ elif state == 'PASS_FULL_SETKA_MIRROR':
+  print('FULL')
+ else:
+  print('FULL')
+except Exception:
+ print('FULL')
 PY
 )"
 fi
@@ -154,7 +165,11 @@ PY
   rc=$?
   [ "$rc" -eq 0 ] || stop "MAC DELTA MIRROR FAILED · previous verified mirror preserved · rc=$rc" "$rc"
 else
-  echo "MODE · FULL · no verified baseline"
+  if [ -f "$LATEST" ]; then
+    echo "MODE · FULL REBASE · legacy verified baseline has no delta high-water; rebuilding once from current truth"
+  else
+    echo "MODE · FULL · no verified baseline"
+  fi
   retry_cmd "full Mac mirror" python3 "$FULL_SYNC_TARGET"
   rc=$?
   [ "$rc" -eq 0 ] || stop "FULL MAC MIRROR FAILED · previous verified mirror preserved · rc=$rc" "$rc"
