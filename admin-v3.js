@@ -20,7 +20,10 @@
       return value;
     } catch (_) { return ""; }
   })();
-  let adminKey = linkAccess || localStorage.getItem(ADMIN_STORAGE) || "";
+  const ownerTicket=String(window.__SETKA_OWNER_TICKET||"");
+  delete window.__SETKA_OWNER_TICKET;
+  // A recovery ticket takes precedence over any old/stale saved password.
+  let adminKey = ownerTicket ? "" : (linkAccess || localStorage.getItem(ADMIN_STORAGE) || "");
   let overview = {}, participants = [], sessions = [], symptoms = [], invites = [], insights = [], community = [];
   let replay = null;
 
@@ -53,6 +56,22 @@
       loginError.textContent=message==="invalid_admin_key"?"Ключ не принят сервером. Личные данные остаются закрытыми.":/fetch|network|abort|connection|timeout/i.test(message)?"Не удалось связаться с сервером. Проверь подключение и повтори.":"Не удалось открыть закрытый раздел: "+message;
       loginBtn.disabled=false;
     }
+  }
+
+  async function redeemOwnerTicket(ticket){
+    const endpoint="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-admin-owner-recovery-v1";
+    const resp=await fetch(endpoint,{
+      method:"POST",
+      headers:{"Content-Type":"application/json","apikey":API_KEY},
+      body:JSON.stringify({action:"redeem",ticket})
+    });
+    const body=await resp.json().catch(()=>({}));
+    if(!resp.ok||body.ok!==true||!body.adminKey){
+      throw new Error(body.error||"owner_recovery_unavailable");
+    }
+    adminKey=String(body.adminKey);
+    keyInput.value=adminKey;
+    await loginNow();
   }
 
   loginBtn.addEventListener("click",loginNow);
@@ -199,5 +218,21 @@
   function drawThumb(canvas,c,frame){const ctx=canvas.getContext("2d");ctx.fillStyle="#000";ctx.fillRect(0,0,canvas.width,canvas.height);ctx.save();ctx.translate(canvas.width/2,canvas.height/2);const extent=Math.max(40,(Number(c.tentacleLength)||100)*3+(Number(c.baseRadius)||10)),sc=(canvas.width/2-6)/extent;ctx.scale(sc,sc);renderPatternOrigin(ctx,c,Number(frame)||44);ctx.restore();}
   function renderPatternOrigin(ctx,c,frame){const n=Number(c.numTentacles)||24,len=Number(c.tentacleLength)||100,base=Number(c.baseRadius)||10,mov=Number(c.movementSpeed)||1,cs=Number(c.colorSpeed)||1,size=Number(c.circleSize)||1,lw=Number(c.lineWeight)||1,step=Number(c.segmentStep)||2,mode=Number(c.colorModeIndex)||0,shift=frame*cs*.5;for(let i=0;i<360;i+=360/n){const x0=Math.sin(rad(i))*base,y0=Math.cos(rad(i))*base;for(let q=0;q<len;q+=step){const a=Math.cos(rad(len-q+frame*mov))*q,x=Math.sin(rad(i-a))*q*3,y=Math.cos(rad(i-a))*q*3,d=(len-q)*size/10;ctx.strokeStyle=color(mode,i,q,x,y,shift,frame);ctx.lineWidth=lw;ctx.beginPath();ctx.arc(x0+x,y0+y,Math.max(.075,d/2),0,Math.PI*2);ctx.stroke();}}}
 
-  if(adminKey){keyInput.value=adminKey;if(linkAccess)loginError.textContent="Проверяем персональный доступ…";loginNow();}
+  if(ownerTicket){
+    loginBtn.disabled=true;
+    loginError.textContent="Подключаем персональный доступ…";
+    redeemOwnerTicket(ownerTicket).catch(e=>{
+      console.error("SETKA owner recovery",e?.message||"failed");
+      adminKey="";
+      keyInput.value="";
+      loginBtn.disabled=false;
+      loginError.textContent=e?.message==="owner_link_expired_or_revoked"
+        ?"Срок персональной ссылки истёк. Нужна новая ссылка владельца."
+        :"Не удалось подключить персональный доступ. Не нужно вводить старый пароль.";
+    });
+  }else if(adminKey){
+    keyInput.value=adminKey;
+    if(linkAccess)loginError.textContent="Проверяем персональный доступ…";
+    loginNow();
+  }
 })();
