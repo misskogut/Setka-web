@@ -33,6 +33,8 @@ on:
       - 'standalone-private-corpus-v40.js'
       - 'standalone-research-bridge-v40.js'
       - 'standalone-community-cloud-v38.js'
+      - 'supabase/functions/setka-community-patterns-v38/index.ts'
+      - 'tests/standalone-v34-community-aggregate.test.mjs'
       - 'standalone-admin-bridge-v34b.js'
       - 'standalone-admin-private-corpus-v40.js'
       - 'standalone-admin-participants-v34.js'
@@ -126,6 +128,7 @@ jobs:
       - run: node --check standalone-admin-evolution-pattern-lab-v35.js
       - run: node --check admin-replay-first-v34.js
       - run: node --test tests/standalone-v34-integrity.test.mjs
+      - run: node --test tests/standalone-v34-community-aggregate.test.mjs
       - run: node --test tests/standalone-v34-note-merge-integrity.test.mjs
       - run: node --test tests/setka-tester-account-ownership.test.mjs
       - run: node --test tests/standalone-v34-admin-integrity.test.mjs
@@ -147,6 +150,7 @@ jobs:
       - run: SETKA_BROWSER=webkit node tests/standalone-v34-admin-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/standalone-v34-open-admin-browser-smoke.mjs
       - run: ./node_modules/.bin/esbuild supabase/functions/setka-pattern-knowledge-v40/index.ts --outfile=/tmp/setka-admin-backend-check.js --format=esm
+      - run: ./node_modules/.bin/esbuild supabase/functions/setka-community-patterns-v38/index.ts --outfile=/tmp/setka-community-feed-check.js --format=esm
       - run: ./node_modules/.bin/esbuild supabase/functions/setka-tester-archive-v37/index.ts --outfile=/tmp/setka-tester-archive-check.js --format=esm
       - run: ./node_modules/.bin/esbuild supabase/functions/setka-tester-account-v40/index.ts --outfile=/tmp/setka-tester-account-check.js --format=esm
       - run: ./node_modules/.bin/esbuild supabase/functions/setka-standalone-v34/index.ts --outfile=/tmp/setka-standalone-runtime-check.js --format=esm
