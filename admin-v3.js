@@ -46,14 +46,26 @@
   async function loginNow(){
     loginBtn.disabled=true;loginError.textContent="";
     try{
-      adminKey=keyInput.value.trim()||adminKey;
+      // An empty field is never a request to retry a rejected browser key.
+      adminKey = keyInput.value.trim() || (ownerTicket ? adminKey : "");
+      if(!adminKey)throw new Error("missing_admin_key");
       await main("admin-check");
       localStorage.setItem(ADMIN_STORAGE,adminKey);
       login.classList.add("hidden");dashboard.classList.remove("hidden");
       await loadAll();
     }catch(e){
       const message=String(e?.message||"");
-      loginError.textContent=message==="invalid_admin_key"?"Ключ не принят сервером. Личные данные остаются закрытыми.":/fetch|network|abort|connection|timeout/i.test(message)?"Не удалось связаться с сервером. Проверь подключение и повтори.":"Не удалось открыть закрытый раздел: "+message;
+      if(message==="invalid_admin_key"){
+        // Do not poison every subsequent visit by replaying a revoked key.
+        localStorage.removeItem(ADMIN_STORAGE);
+        adminKey="";
+        keyInput.value="";
+        loginError.textContent="Сохранённый ключ больше не действует. Нужен действующий доступ владельца; старый ключ больше не подставляется.";
+      }else if(message==="missing_admin_key"){
+        loginError.textContent="Введите действующий ключ администратора или откройте персональную ссылку владельца.";
+      }else{
+        loginError.textContent=/fetch|network|abort|connection|timeout/i.test(message)?"Не удалось связаться с сервером. Проверь подключение и повтори.":"Не удалось открыть закрытый раздел: "+message;
+      }
       loginBtn.disabled=false;
     }
   }
