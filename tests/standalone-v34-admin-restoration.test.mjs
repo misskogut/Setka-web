@@ -64,3 +64,35 @@ test("a recovery link never calls the server before a real click", async()=>{
  assert.equal(calls.filter(x=>x.action==="admin-check").length,1);
  assert.equal(saved.get("setka-research:admin-key:v1"),"test-only-not-a-live-key");
 });
+
+test("invalid cached admin key is erased and not re-used",async()=>{
+  const {runInNewContext}=await import("node:vm");
+  const source=read("admin-v3.js");
+  const saved=new Map([["setka-research:admin-key:v1","old-rejected-key"]]);
+  const elements=new Map();
+  const el=id=>{
+    if(!elements.has(id))elements.set(id,{
+      id,value:"",disabled:false,textContent:"",classList:{add(){},remove(){}},
+      addEventListener(){},querySelectorAll(){return []}
+    });
+    return elements.get(id);
+  };
+  const localStorage={
+    getItem:key=>saved.get(key)||null,
+    setItem:(key,value)=>saved.set(key,value),
+    removeItem:key=>saved.delete(key)
+  };
+  let calls=0;
+  const fetch=async()=>{calls++;return{ok:false,status:403,json:async()=>({error:"invalid_admin_key"})}};
+  const window={},location={hash:"",pathname:"/standalone-admin-v34.html",search:""};
+  runInNewContext(source,{
+    document:{getElementById:el,querySelectorAll(){return []}},
+    window,location,history:{replaceState(){}},localStorage,fetch,console,
+    Number,String,Math,Date,Intl,Array,Set,Map,JSON,Promise
+  });
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(calls,1,"a stale key should fail exactly once");
+  assert.equal(saved.has("setka-research:admin-key:v1"),false);
+  assert.equal(el("keyInput").value,"");
+  assert.match(el("loginError").textContent,/ключ больше не действует/);
+});
