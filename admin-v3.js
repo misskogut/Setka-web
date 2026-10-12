@@ -74,8 +74,24 @@
     await loginNow();
   }
 
-  loginBtn.addEventListener("click",loginNow);
-  keyInput.addEventListener("keydown",e=>{if(e.key==="Enter")loginNow();});
+  let ownerRequestRunning=false;
+  async function confirmLogin() {
+    if(!ownerTicket) return loginNow();
+    if(ownerRequestRunning) return;
+    ownerRequestRunning=true;
+    loginBtn.disabled=true;
+    loginError.textContent="Проверяем персональный доступ…";
+    try {
+      await redeemOwnerTicket(ownerTicket);
+    } catch(e) {
+      loginError.textContent=e?.message==="owner_link_expired_or_revoked"
+        ?"Ссылка недействительна или уже использована."
+        :"Не удалось подтвердить доступ. Попробуйте позже.";
+      loginBtn.disabled=false;
+    } finally {ownerRequestRunning=false;}
+  }
+  loginBtn.addEventListener("click",confirmLogin);
+  keyInput.addEventListener("keydown",e=>{if(e.key==="Enter")confirmLogin();});
   $("logoutBtn").addEventListener("click",()=>{localStorage.removeItem(ADMIN_STORAGE);location.reload();});
   $("refreshBtn").addEventListener("click",loadAll);
   $("createCodeBtn").addEventListener("click",async()=>{
@@ -219,17 +235,9 @@
   function renderPatternOrigin(ctx,c,frame){const n=Number(c.numTentacles)||24,len=Number(c.tentacleLength)||100,base=Number(c.baseRadius)||10,mov=Number(c.movementSpeed)||1,cs=Number(c.colorSpeed)||1,size=Number(c.circleSize)||1,lw=Number(c.lineWeight)||1,step=Number(c.segmentStep)||2,mode=Number(c.colorModeIndex)||0,shift=frame*cs*.5;for(let i=0;i<360;i+=360/n){const x0=Math.sin(rad(i))*base,y0=Math.cos(rad(i))*base;for(let q=0;q<len;q+=step){const a=Math.cos(rad(len-q+frame*mov))*q,x=Math.sin(rad(i-a))*q*3,y=Math.cos(rad(i-a))*q*3,d=(len-q)*size/10;ctx.strokeStyle=color(mode,i,q,x,y,shift,frame);ctx.lineWidth=lw;ctx.beginPath();ctx.arc(x0+x,y0+y,Math.max(.075,d/2),0,Math.PI*2);ctx.stroke();}}}
 
   if(ownerTicket){
-    loginBtn.disabled=true;
-    loginError.textContent="Подключаем персональный доступ…";
-    redeemOwnerTicket(ownerTicket).catch(e=>{
-      console.error("SETKA owner recovery",e?.message||"failed");
-      adminKey="";
-      keyInput.value="";
-      loginBtn.disabled=false;
-      loginError.textContent=e?.message==="owner_link_expired_or_revoked"
-        ?"Срок персональной ссылки истёк. Нужна новая ссылка владельца."
-        :"Не удалось подключить персональный доступ. Не нужно вводить старый пароль.";
-    });
+    // Loading or previewing this page must never consume a one-use link.
+    keyInput.hidden=true;
+    loginError.textContent="Для подтверждения доступа нажмите «Открыть админку».";
   }else if(adminKey){
     keyInput.value=adminKey;
     if(linkAccess)loginError.textContent="Проверяем персональный доступ…";
