@@ -94,5 +94,42 @@ test("invalid cached admin key is erased and not re-used",async()=>{
   assert.equal(calls,1,"a stale key should fail exactly once");
   assert.equal(saved.has("setka-research:admin-key:v1"),false);
   assert.equal(el("keyInput").value,"");
-  assert.match(el("loginError").textContent,/ключ больше не действует/);
+  assert.match(el("loginError").textContent,/Сервер отклонил введённое значение/);
+});
+
+test("rejected 68-character owner key shows only a local SHA256 fingerprint",async()=>{
+ const {runInNewContext}=await import("node:vm");
+ const {webcrypto,createHash}=await import("node:crypto");
+ const {TextEncoder}=await import("node:util");
+ const key="SKA-"+"a".repeat(64);
+ const store=new Map([["setka-research:admin-key:v1",key]]);
+ const handlers=new Map(),elements=new Map();
+ function el(id){
+  if(!elements.has(id))elements.set(id,{
+   id,value:"",disabled:false,hidden:false,textContent:"",
+   classList:{add(){},remove(){}},
+   addEventListener(type,fn){handlers.set(id+":"+type,fn)},
+   querySelectorAll(){return []}
+  });
+  return elements.get(id);
+ }
+ const localStorage={
+  getItem:k=>store.get(k)||null,
+  setItem:(k,v)=>store.set(k,v),
+  removeItem:k=>store.delete(k)
+ };
+ let calls=0;
+ const fetch=async()=>{calls++;return{ok:false,status:403,json:async()=>({error:"invalid_admin_key"})}};
+ runInNewContext(read("admin-v3.js"),{
+  document:{getElementById:el,querySelectorAll(){return []}},
+  window:{},location:{hash:"",pathname:"/",search:""},
+  history:{replaceState(){}},localStorage,fetch,console,
+  crypto:webcrypto,TextEncoder,Number,String,Math,Date,Intl,Array,Set,Map,JSON,Promise
+ });
+ await new Promise(resolve=>setImmediate(resolve));
+ const fingerprint=createHash("sha256").update(key).digest("hex").slice(0,10);
+ assert.equal(calls,1);
+ assert.equal(store.has("setka-research:admin-key:v1"),false);
+ assert.match(el("loginError").textContent,new RegExp(fingerprint));
+ assert.doesNotMatch(el("loginError").textContent,/SKA-a{64}/);
 });
