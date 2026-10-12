@@ -56,11 +56,23 @@
     }catch(e){
       const message=String(e?.message||"");
       if(message==="invalid_admin_key"){
-        // Do not poison every subsequent visit by replaying a revoked key.
+        // Provide a non-secret local fingerprint so the owner can verify
+        // which 256-bit key the browser submitted, without disclosing it.
+        const attempted=adminKey;
+        const newKey=/^SKA-[a-f0-9]{64}$/.test(attempted);
+        let fingerprint="";
+        if(newKey && crypto?.subtle){
+          try{
+            const bytes=new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(attempted)));
+            fingerprint=Array.from(bytes).map(b=>b.toString(16).padStart(2,"0")).join("").slice(0,10);
+          }catch(_){}
+        }
         localStorage.removeItem(ADMIN_STORAGE);
         adminKey="";
         keyInput.value="";
-        loginError.textContent="Сохранённый ключ больше не действует. Нужен действующий доступ владельца; старый ключ больше не подставляется.";
+        loginError.textContent=newKey
+          ? "Сервер отклонил ключ. Отпечаток введённого ключа: "+(fingerprint||"недоступен")+". Это НЕ сам пароль. Сверьте отпечаток с записью Supabase."
+          : "Сервер отклонил введённое значение. Длина: "+attempted.length+" символов. Новый ключ должен иметь вид SKA- и 64 строчные латинские цифры/буквы a-f (всего 68).";
       }else if(message==="missing_admin_key"){
         loginError.textContent="Введите действующий ключ администратора или откройте персональную ссылку владельца.";
       }else{
@@ -103,6 +115,17 @@
     } finally {ownerRequestRunning=false;}
   }
   loginBtn.addEventListener("click",confirmLogin);
+  keyInput.addEventListener("input",()=>{
+    const v=keyInput.value.trim();
+    if(!v){loginError.textContent="";return;}
+    if(v.startsWith("SKA-")){
+      loginError.textContent=/^SKA-[a-f0-9]{64}$/.test(v)
+        ? "Формат нового ключа корректный: 68 символов. Можно проверить доступ."
+        : "Вставлено "+v.length+" символов. Для нового ключа ожидается SKA- и 64 строчных шестнадцатеричных знака (всего 68).";
+    }else{
+      loginError.textContent="Вставлен ключ длиной "+v.length+" символов. Проверьте, что скопировано значение из ячейки admin_key, а не её заголовок.";
+    }
+  });
   keyInput.addEventListener("keydown",e=>{if(e.key==="Enter")confirmLogin();});
   $("logoutBtn").addEventListener("click",()=>{localStorage.removeItem(ADMIN_STORAGE);location.reload();});
   $("refreshBtn").addEventListener("click",loadAll);
