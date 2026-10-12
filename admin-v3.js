@@ -59,6 +59,9 @@
         // Provide a non-secret local fingerprint so the owner can verify
         // which 256-bit key the browser submitted, without disclosing it.
         const attempted=adminKey;
+        localStorage.removeItem(ADMIN_STORAGE);
+        adminKey="";
+        keyInput.value="";
         const newKey=/^SKA-[a-f0-9]{64}$/.test(attempted);
         let fingerprint="";
         if(newKey && crypto?.subtle){
@@ -67,9 +70,6 @@
             fingerprint=Array.from(bytes).map(b=>b.toString(16).padStart(2,"0")).join("").slice(0,10);
           }catch(_){}
         }
-        localStorage.removeItem(ADMIN_STORAGE);
-        adminKey="";
-        keyInput.value="";
         loginError.textContent=newKey
           ? "Сервер отклонил ключ. Отпечаток введённого ключа: "+(fingerprint||"недоступен")+". Это НЕ сам пароль. Сверьте отпечаток с записью Supabase."
           : "Сервер отклонил введённое значение. Длина: "+attempted.length+" символов. Новый ключ должен иметь вид SKA- и 64 строчные латинские цифры/буквы a-f (всего 68).";
