@@ -51,7 +51,7 @@
     }
   ],
   "browser": {
-    "protectedFullJourney": "REQUIRES_OWNER_SECURE_LOGIN",
+    "protectedFullJourney": "NOT_CONFIRMED_BROWSER_AUTH_TOOL_TIMEOUT",
     "isolatedReplayControls": {
       "status": "PASS",
       "playAndAnimation": true,
@@ -70,7 +70,9 @@
       "fixtureOnly": true
     },
     "realIPhoneSafariAndNewFrontActionSync": "NOT_VERIFIED",
-    "publishedLoginPage": "PASS"
+    "publishedLoginPage": "PASS",
+    "authRequestResult": "UNKNOWN",
+    "authRetryPerformed": false
   },
   "unverifiedWrites": [
     "moderation-positive-action-on-author-submitted-note",
@@ -94,3 +96,4 @@
     "status": "SUCCEEDED"
   }
 }
+
