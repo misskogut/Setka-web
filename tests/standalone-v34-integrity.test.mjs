@@ -239,3 +239,23 @@ test("older note cards identify reconstructed previews rather than claiming an e
   assert.match(js,/ВОССТАНОВЛЕНО ПО НАСТРОЙКАМ/);
   assert.match(js,/ПАТТЕРН БЕЗ ПОДТВЕРЖДЁННОГО СЛЕПКА/);
 });
+
+test("private archive recognizes state selection and checkins even without new events", () => {
+  const source=read("standalone-private-corpus-v40.js");
+  const from=source.indexOf("  function digest("),to=source.indexOf("  async function post(",from);
+  assert.ok(from>=0&&to>from,"signature helpers must be present");
+  const local={version:41,sessions:[],notes:[],symptoms:[],checkins:[],events:[],patternExposures:[],physio:{samples:[]},settings:{}};
+  const sign=vm.runInNewContext(source.slice(from,to)+"\nsignature;",{
+    C:{getData:()=>local},Setka:{getFavorites:()=>[]}
+  });
+  const base=sign();
+  local.symptoms.push({id:"sym1",name:"Усталость",active:true,lastIntensity:0,createdAt:"2026-10-13T00:00:00Z"});
+  const withState=sign();
+  assert.notEqual(withState,base,"adding a selected state triggers private sync");
+  local.symptoms[0].lastIntensity=4;
+  assert.notEqual(sign(),withState,"changing a stored intensity triggers private sync");
+  const last=sign();
+  local.checkins.push({id:"check1",symptomId:"sym1",intensity:4,observedAt:"2026-10-13T00:01:00Z"});
+  assert.notEqual(sign(),last,"a new state checkin triggers private sync");
+});
+

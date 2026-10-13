@@ -72,7 +72,13 @@
     const last=a=>a.at?.(-1)||{};
     const notesDigest=digest(n.map(v=>[v.id,v.text,v.patternId,v.configHash,v.config,v.frame,v.replaySnapshot,v.visualSnapshot,v.publicationStatus]));
     const sessionsDigest=digest(s.map(v=>[v.id,v.phase,v.completed,v.endedAt,v.postState,v.helped,v.measuredActiveMs,v.afterFeedbackActiveMs]));
+    // State selection, activation and intensity history are durable personal data.
+    // Event-count heuristics alone cannot detect these changes reliably (not all
+    // in-place mutations append events or survive capped event history).
+    const symptomsDigest=digest((d.symptoms||[]).map(v=>[v.id,v.name,v.active,v.lastIntensity,v.updatedAt,v.createdAt]));
+    const checkinsDigest=digest((d.checkins||[]).map(v=>[v.id,v.symptomId,v.intensity,v.phase,v.observedAt,v.sessionId]));
     return [d.version||34,s.length,sessionsDigest,n.length,notesDigest,
+      (d.symptoms||[]).length,symptomsDigest,(d.checkins||[]).length,checkinsDigest,
       e.length,last(e).id||"",x.length,last(x).exposureId||"",last(x).durationMs||0,
       p.length,last(p).id||"",f.length,digest(f),digest(d.settings)].join("|");
   }
