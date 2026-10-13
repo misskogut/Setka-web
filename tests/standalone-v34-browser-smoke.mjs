@@ -208,6 +208,30 @@ async function go(){
   assert.equal(await page.locator('#st34Layer #st40TesterCabinet').count(),0);
   console.log('SIGNED-IN ACCOUNT ACTIONS AND TECHNICAL STATUS IN ACCOUNT ONLY PASS');
 
+  // State selection and its first measurement must survive a full browser
+  // reload, regardless of private-cloud availability.
+  await page.locator('#st34Nav button[data-p="symptoms"]').click();
+  await page.locator('#st34Layer .st34-add-state').click();
+  await page.locator('#st34Layer .st34-state-preset').filter({hasText:'Усталость'}).click();
+  await page.locator('#st34Layer .st34-state-card').first().waitFor();
+  await page.locator('#st34Layer .st34-mark-btn').first().click();
+  await page.locator('#st34Layer .st34-mark-editor.open input[type="range"]').first().fill('6');
+  await page.locator('#st34Layer .st34-mark-editor.open .st34-mark-save').first().click();
+  const originalStates=await page.evaluate(()=>{
+    const d=window.SetkaStandaloneV34.getData();
+    return {states:d.symptoms.map(x=>x.name),checkins:d.checkins.length,
+      saved:JSON.parse(localStorage.getItem("setka-standalone:v34")||"null")};
+  });
+  assert.ok(originalStates.states.includes('Усталость'));
+  assert.equal(originalStates.checkins>0,true);
+  assert.equal(originalStates.saved.symptoms.length,originalStates.states.length);
+  await page.reload({waitUntil:"domcontentloaded"});
+  await page.locator('#st34Nav button[data-p="symptoms"]').click();
+  await page.locator('#st34Layer .st34-state-card').first().waitFor({timeout:10000});
+  assert.match(await page.locator('#st34Layer .st34-state-name').first().innerText(),/Усталость/);
+  assert.match(await page.locator('#st34Layer .st34-state-last').first().innerText(),/Последняя отметка/);
+  console.log('STATE SELECTION AND CHECKIN SURVIVE RELOAD PASS');
+
   await page.screenshot({path:"tests/visual-smoke/personal-notes.png",fullPage:true});
   await page.screenshot({path:"tests/visual-smoke/base-patterns.png",fullPage:true});
   console.log("ALL 7 PATTERNS PASS",JSON.stringify(result));
