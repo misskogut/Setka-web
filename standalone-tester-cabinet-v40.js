@@ -101,9 +101,12 @@
   }
   function renderMe(){
     if(!isMeScreen())return;
-    const old=document.getElementById("st37MeTools"),body=old?.parentElement;
-    if(!old||!body)return;
-    old.style.display="none";
+    // The current participant UI renders #stBody directly. The retired
+    // st37MeTools placeholder no longer exists and must not gate account entry.
+    const body=document.querySelector("#st34Layer #stBody");
+    if(!body)return;
+    const old=document.getElementById("st37MeTools");
+    if(old)old.style.display="none";
     let wrap=document.getElementById("st40TesterCabinet");
     if(wrap)wrap.remove();
     wrap=document.createElement("div");wrap.id="st40TesterCabinet";wrap.className="st40-section";wrap.innerHTML='<div class="st40-label">АККАУНТ SETKA</div>';const st=cached();
@@ -113,7 +116,8 @@
     else if(!st.authenticated){card.innerHTML=`<div class="st40-id">${esc(st.testerId)}</div><div class="st40-copy">Войди, чтобы история, заметки, состояния и сохранённые паттерны синхронизировались с твоим приватным профилем.</div>`;button(card,"Войти",null,showLogin,true)}
     else{const cp=corpus()||{};card.innerHTML=`<div class="st40-id">${esc(st.testerId)}</div><div class="st40-copy">Вход выполнен. Весь обычный интерфейс SETKA уже является твоим личным пространством.</div><div class="st40-ok"><span class="st40-dot ${cp.ok?"":"off"}"></span>${cp.ok?"Приватная синхронизация включена":"Синхронизация ожидается"}</div>`;button(card,"Сменить пароль",null,showChangePassword);button(card,"Выйти","SETKA продолжит работать локально",logout)}
     wrap.appendChild(card);
-    body.appendChild(wrap);
+    // Keep sign-in / account status visible before the history and note cards.
+    body.prepend(wrap);
   }
   const layer=document.getElementById("st34Layer");
   const mo=new MutationObserver(records=>{
@@ -121,7 +125,7 @@
     for(const record of records){
       for(const node of record.addedNodes){
         if(node.nodeType!==1)continue;
-        if(node.id==="st37MeTools"||node.querySelector?.("#st37MeTools")){sawMeTools=true;break}
+        if(node.id==="stBody"||node.querySelector?.("#stBody")||node.id==="st37MeTools"||node.querySelector?.("#st37MeTools")){sawMeTools=true;break}
       }
       if(sawMeTools)break;
     }
