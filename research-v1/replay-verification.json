@@ -1,0 +1,224 @@
+{
+  "version": "SETKA-RESEARCH-1.1.1",
+  "checkedAt": "2026-10-13T19:03:34.044Z",
+  "projectId": "gfchgaphzhxufwdhrcis",
+  "localRegressionChecks": 56,
+  "realApi": {
+    "checkedAt": "2026-10-13T19:03:34.044Z",
+    "allPassed": true,
+    "checks": [
+      {
+        "name": "unauthorized-private-read-denied",
+        "pass": true
+      },
+      {
+        "name": "unauthorized-experiment-write-denied",
+        "pass": true
+      },
+      {
+        "name": "invalid-key-denied",
+        "pass": true
+      },
+      {
+        "name": "foreign-origin-denied",
+        "pass": true
+      },
+      {
+        "name": "get-requests-denied",
+        "pass": true
+      },
+      {
+        "name": "existing-admin-auth-and-project",
+        "pass": true
+      },
+      {
+        "name": "real-selected-replay-loaded",
+        "pass": true,
+        "status": 200,
+        "states": 562,
+        "coverage": "partial"
+      },
+      {
+        "name": "real-selected-replay-recipes-restored",
+        "pass": true,
+        "restored": 562,
+        "missing": []
+      },
+      {
+        "name": "real-selected-replay-loaded",
+        "pass": true,
+        "status": 200,
+        "states": 109,
+        "coverage": "partial"
+      },
+      {
+        "name": "real-selected-replay-recipes-restored",
+        "pass": true,
+        "restored": 109,
+        "missing": []
+      },
+      {
+        "name": "real-selected-replay-loaded",
+        "pass": true,
+        "status": 200,
+        "states": 1272,
+        "coverage": "partial"
+      },
+      {
+        "name": "real-selected-replay-recipes-restored",
+        "pass": true,
+        "restored": 1272,
+        "missing": []
+      },
+      {
+        "name": "real-selected-replay-loaded",
+        "pass": true,
+        "status": 200,
+        "states": 29,
+        "coverage": "partial"
+      },
+      {
+        "name": "real-selected-replay-recipes-restored",
+        "pass": true,
+        "restored": 29,
+        "missing": []
+      },
+      {
+        "name": "live-overview",
+        "pass": true,
+        "status": 200,
+        "error": null
+      },
+      {
+        "name": "session-aggregate-matches-current-view",
+        "pass": true,
+        "records": 3,
+        "canonical": 3
+      },
+      {
+        "name": "exposure-aggregate-matches-current-view",
+        "pass": true,
+        "records": 37,
+        "canonical": 37
+      },
+      {
+        "name": "favorite-aggregate-matches-current-view",
+        "pass": true,
+        "records": 11,
+        "canonical": 11
+      },
+      {
+        "name": "no-session-double-count",
+        "pass": true
+      },
+      {
+        "name": "no-exposure-double-count",
+        "pass": true
+      },
+      {
+        "name": "credential-fields-absent",
+        "pass": true
+      },
+      {
+        "name": "historical-raw-replay",
+        "pass": true,
+        "status": 200,
+        "events": 28,
+        "states": 0,
+        "coverage": "partial",
+        "error": null
+      },
+      {
+        "name": "full-replay-requires-explicit-coverage",
+        "pass": true
+      },
+      {
+        "name": "current-account-replay-contract",
+        "pass": true,
+        "status": 200,
+        "events": 44,
+        "states": 11,
+        "coverage": "partial"
+      },
+      {
+        "name": "legacy-session-replay-contract",
+        "pass": true,
+        "status": 200,
+        "events": 0,
+        "states": 0
+      },
+      {
+        "name": "note-keeps-recorded-pattern-and-config",
+        "pass": true,
+        "pattern": "dandelion",
+        "frame": 114.71977056045888
+      },
+      {
+        "name": "old-admin-api-preserved",
+        "pass": true,
+        "devices": 98
+      },
+      {
+        "name": "existing-community-and-moderation-feed",
+        "pass": true,
+        "patterns": 11,
+        "pending": 0
+      },
+      {
+        "name": "simulated-physiology-excluded",
+        "pass": true,
+        "excluded": 145
+      },
+      {
+        "name": "no-synthetic-experiments-created",
+        "pass": true
+      },
+      {
+        "name": "all-sources-complete",
+        "pass": true,
+        "problems": []
+      },
+      {
+        "name": "period-filter",
+        "pass": true,
+        "from": "2026-10-01T00:00:00+04:00",
+        "records": 0
+      },
+      {
+        "name": "period-filter",
+        "pass": true,
+        "from": "2026-08-01T00:00:00+04:00",
+        "records": 3
+      }
+    ]
+  },
+  "realRecipeAudit": {
+    "distinctStates": 500,
+    "recordedSamples": 1881,
+    "recognized": 1881,
+    "missing": 0
+  },
+  "browser": {
+    "publicCommunityStatistics": "PASS_REAL_API",
+    "isolatedProductionFrontJourney": "PASS",
+    "patternOpenColorFavoriteNoteInstructionsFeedbackEnd": "PASS_ISOLATED_NO_REMOTE_WRITES",
+    "playPause": "PASS_ISOLATED",
+    "seekEventMarker": "PASS_ISOLATED",
+    "speeds": [
+      0.5,
+      1,
+      2,
+      3,
+      4,
+      8
+    ],
+    "recordedInterfaceAndPatternVisible": "PASS_ISOLATED",
+    "protectedAdminBrowserLogin": "NOT_CONFIRMED",
+    "newAuthenticatedFrontCloudRoundTrip": "NOT_CONFIRMED",
+    "physicalIPhoneSafari": "OWNER_DEVICE_REQUIRED",
+    "bluetoothSensor": "DEVICE_REQUIRED",
+    "realModerationMutation": "NOT_PERFORMED_NO_PENDING_RECORDS"
+  },
+  "temporaryApiVerificationCredentialRevoked": true,
+  "prodSyntheticRecordsCreated": 0
+}

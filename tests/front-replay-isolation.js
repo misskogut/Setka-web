@@ -2,7 +2,7 @@
 // every remote mutation is blocked, including private sync and publication.
 (() => {
  'use strict';
- const prefix='setka-isolated-replay-v1:';
+ const prefix='setka-isolated-replay-v1.1.1:';
  for(const method of ['getItem','setItem','removeItem']){const native=Storage.prototype[method];Storage.prototype[method]=function(key,...args){return native.call(this,prefix+key,...args)}}
  const open=indexedDB.open.bind(indexedDB);indexedDB.open=(name,version)=>version===undefined?open(prefix+name):open(prefix+name,version);
  const native=window.fetch.bind(window),blocked=[];

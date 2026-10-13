@@ -1,9 +1,10 @@
 // Read-only live verification. Key arrives on stdin; never logged or stored.
 import {sliceData} from '../research-v1/model.mjs';
+import {resolveRecipe} from '../research-v1/recipe.mjs';
 if(process.stdin.isTTY)process.stdin.setRawMode(true);
 console.log('Ready for verification JSON on stdin (input is hidden).');
 const input=await new Promise(resolve=>{let value='';process.stdin.on('data',chunk=>{value+=chunk.toString();if(value.includes('\n')){process.stdin.pause();if(process.stdin.isTTY)process.stdin.setRawMode(false);resolve(value.slice(0,value.indexOf('\n')));}});});
-const {adminKey}=JSON.parse(input),base='https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/',pub='sb_publishable_1jL-x9_kp6rpfGghpSp_OA_OiXDnvsv';
+const {adminKey,replaySelections=[]}=JSON.parse(input),base='https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/',pub='sb_publishable_1jL-x9_kp6rpfGghpSp_OA_OiXDnvsv';
 const checks=[];
 function assert(condition,name,details={}){checks.push({name,pass:!!condition,...details});}
 async function request(name,body,origin='https://misskogut.github.io',method='POST'){
@@ -17,6 +18,12 @@ const invalid=await request(endpoint,{action:'overview',adminKey:'invalid-verifi
 const origin=await request(endpoint,{action:'check',adminKey},'https://example.org');assert(origin.status===403,'foreign-origin-denied');
 const get=await request(endpoint,{},'https://misskogut.github.io','GET');assert(get.status===405,'get-requests-denied');
 const check=await request(endpoint,{action:'check',adminKey});assert(check.status===200&&check.body.ok&&check.body.projectId==='gfchgaphzhxufwdhrcis','existing-admin-auth-and-project');
+for(const pick of replaySelections){
+ const out=await request(endpoint,{action:'replay',adminKey,deviceId:pick.device_id,replayKey:pick.replay_key});
+ const states=(out.body.states||[]).filter(s=>s.state?.view==='game'),recipes=states.map(s=>resolveRecipe(s.state));
+ assert(out.status===200&&states.length>0,'real-selected-replay-loaded',{status:out.status,states:states.length,coverage:out.body.coverage});
+ assert(recipes.every(r=>r.ok),'real-selected-replay-recipes-restored',{restored:recipes.filter(r=>r.ok).length,missing:recipes.filter(r=>!r.ok).map(r=>r.reason)});
+}
 const overview=await request(endpoint,{action:'overview',adminKey});assert(overview.status===200&&overview.body.ok,'live-overview',{status:overview.status,error:overview.body.error||null});
 if(overview.body.data){
  const data=overview.body.data,view=sliceData(data,{scope:'current'}),summary=data.communityMetrics;
