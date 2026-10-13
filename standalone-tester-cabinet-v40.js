@@ -13,6 +13,12 @@
     #st37MeTools{display:none!important}.st40-section{margin:18px 0 4px}.st40-label{font-size:10px;letter-spacing:.14em;color:rgba(255,255,255,.38);margin:0 0 8px}
     .st40-card{border:1px solid rgba(255,255,255,.14);border-radius:23px;background:#090909;padding:16px;margin:10px 0}.st40-id{font-size:19px;font-weight:700;letter-spacing:.04em}.st40-copy{font-size:11px;line-height:1.55;color:rgba(255,255,255,.5);margin-top:7px}.st40-ok{font-size:10px;letter-spacing:.08em;color:rgba(255,255,255,.65);margin-top:10px}.st40-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#fff;margin-right:6px;vertical-align:1px}.st40-dot.off{opacity:.25}
     .st40-btn{width:100%;min-height:44px;border:1px solid rgba(255,255,255,.18);border-radius:22px;background:transparent;color:#fff;font-size:12px;margin-top:10px}.st40-btn.primary{background:#fff;color:#000;border-color:#fff;font-weight:650}.st40-btn:disabled{opacity:.35}
+    /* Keep the everyday Me screen clear; account actions live behind a header shortcut. */
+    .st40-account-shortcut{margin-left:auto;flex:0 0 60px;min-width:52px;min-height:50px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:1px solid rgba(255,255,255,.22);border-radius:18px;background:#090909;color:#fff;padding:5px 4px;cursor:pointer;-webkit-tap-highlight-color:transparent;position:relative}
+    .st40-account-shortcut svg{display:block;width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+    .st40-account-shortcut-label{font-size:9px;line-height:1.1;color:rgba(255,255,255,.7)}
+    .st40-account-shortcut-dot{position:absolute;width:6px;height:6px;border-radius:50%;background:#fff;right:8px;top:7px}
+    .st40-account-shortcut:focus-visible{outline:2px solid #fff;outline-offset:3px}
     .st40-form{border:1px solid rgba(255,255,255,.14);border-radius:23px;background:#090909;padding:16px;margin:12px 0}.st40-field{display:block;margin:12px 0}.st40-field span{display:block;font-size:10px;color:rgba(255,255,255,.45);margin:0 0 6px}.st40-field input{box-sizing:border-box;width:100%;height:46px;border:1px solid rgba(255,255,255,.18);border-radius:14px;background:#000;color:#fff;padding:0 13px;font-size:15px;outline:none}.st40-check{display:flex;gap:10px;align-items:flex-start;font-size:11px;line-height:1.5;color:rgba(255,255,255,.58);margin:14px 0}.st40-check input{margin-top:2px}.st40-msg{font-size:11px;line-height:1.45;color:rgba(255,255,255,.48);min-height:16px;margin-top:8px}.st40-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.st40-metric{border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:11px}.st40-metric b{display:block;font-size:17px}.st40-metric span{display:block;font-size:9px;color:rgba(255,255,255,.42);margin-top:4px;line-height:1.35}
   `;document.head.appendChild(style);
 
@@ -93,31 +99,43 @@
 
   async function logout(){const s=session();try{if(s?.token)await post({action:"logout",sessionToken:s.token})}catch(_){}clearSession();await refresh(true);window.dispatchEvent(new CustomEvent("setka:v40-account",{detail:{authenticated:false}}));C.showMe()}
 
-  async function showCabinet(){const st=await refresh(true);if(!st?.authenticated)return showLogin();const cp=corpus()||{},b=screen("Аккаунт SETKA","Вход подключает приватную синхронизацию ко всему обычному интерфейсу SETKA.","МОЯ SETKA"),card=document.createElement("div");card.className="st40-card";card.innerHTML=`<div class="st40-id">${esc(st.testerId)}</div><div class="st40-copy">Все обычные разделы SETKA уже работают как твой личный интерфейс: история, заметки, состояния и сохранённые паттерны остаются на своих местах и синхронизируются приватно.</div><div class="st40-ok"><span class="st40-dot ${cp.ok?"":"off"}"></span>${cp.ok?"Приватная синхронизация включена":"Синхронизация ожидается"}</div><div class="st40-ok"><span class="st40-dot ${st.consented?"":"off"}"></span>${st.consented?"Исследовательский режим включён":"Нужно подтвердить актуальные условия"}</div>`;b.appendChild(card);if(!st.consented)button(b,"Подтвердить актуальные условия",null,showConsent,true);button(b,"Сменить пароль",null,showChangePassword);button(b,"Выйти","Личные заметки и история останутся в этом браузере даже после выхода.",logout);}
+  async function showCabinet(){const st=await refresh(true);if(!st?.authenticated)return showLogin();const cp=corpus()||{},b=screen("Аккаунт SETKA","Вход подключает приватную синхронизацию ко всему обычному интерфейсу SETKA.","МОЯ SETKA"),card=document.createElement("div");card.className="st40-card";card.innerHTML=`<div class="st40-id">${esc(st.testerId)}</div><div class="st40-copy">Все обычные разделы SETKA уже работают как твой личный интерфейс: история, заметки, состояния и сохранённые паттерны остаются на своих местах и синхронизируются приватно.</div><div class="st40-ok"><span class="st40-dot ${cp.ok?"":"off"}"></span>${cp.ok?"Приватная синхронизация включена":"Синхронизация ожидается"}</div><div class="st40-ok"><span class="st40-dot ${st.consented?"":"off"}"></span>${st.consented?"Исследовательский режим включён":"Нужно подтвердить актуальные условия"}</div>`;const wrap=document.createElement("div");wrap.id="st40TesterCabinet";wrap.className="st40-section";wrap.appendChild(card);b.appendChild(wrap);if(!st.consented)button(b,"Подтвердить актуальные условия",null,showConsent,true);button(b,"Сменить пароль",null,showChangePassword);button(b,"Выйти","Личные заметки и история останутся в этом браузере даже после выхода.",logout);}
 
   function isMeScreen(){
     const layer=document.getElementById("st34Layer");
     return !!layer&&!layer.classList.contains("hidden")&&layer.querySelector(".st-title")?.textContent?.trim()==="Я";
   }
+  async function openAccount(){
+    const st=await refresh(true);
+    if(st?.authenticated)return showCabinet();
+    if(!st?.claimed)return showClaim();
+    if(!st.hasPassword)return showSetPassword();
+    return showLogin();
+  }
   function renderMe(){
     if(!isMeScreen())return;
-    // The current participant UI renders #stBody directly. The retired
-    // st37MeTools placeholder no longer exists and must not gate account entry.
-    const body=document.querySelector("#st34Layer #stBody");
-    if(!body)return;
+    const header=document.querySelector("#st34Layer .st-top");
+    if(!header)return;
+    // A small header entry replaces the always-visible account and technical cards.
+    // This continues to work when the Me screen is re-rendered after navigation.
     const old=document.getElementById("st37MeTools");
     if(old)old.style.display="none";
-    let wrap=document.getElementById("st40TesterCabinet");
-    if(wrap)wrap.remove();
-    wrap=document.createElement("div");wrap.id="st40TesterCabinet";wrap.className="st40-section";wrap.innerHTML='<div class="st40-label">АККАУНТ SETKA</div>';const st=cached();
-    const card=document.createElement("div");card.className="st40-card";
-    if(!st?.claimed){card.innerHTML='<div class="st40-id">Гость</div><div class="st40-copy">SETKA работает без регистрации. Код тестировщика нужен только если хочешь подключить приватную синхронизацию и исследовательский режим.</div>';button(card,"У меня есть код тестировщика",null,showClaim,true)}
-    else if(!st.hasPassword){card.innerHTML=`<div class="st40-id">${esc(st.testerId)}</div><div class="st40-copy">Tester ID подключён. Создай пароль, чтобы связать весь текущий интерфейс SETKA с приватной синхронизацией.</div>`;button(card,"Создать пароль",null,showSetPassword,true)}
-    else if(!st.authenticated){card.innerHTML=`<div class="st40-id">${esc(st.testerId)}</div><div class="st40-copy">Войди, чтобы история, заметки, состояния и сохранённые паттерны синхронизировались с твоим приватным профилем.</div>`;button(card,"Войти",null,showLogin,true)}
-    else{const cp=corpus()||{};card.innerHTML=`<div class="st40-id">${esc(st.testerId)}</div><div class="st40-copy">Вход выполнен. Весь обычный интерфейс SETKA уже является твоим личным пространством.</div><div class="st40-ok"><span class="st40-dot ${cp.ok?"":"off"}"></span>${cp.ok?"Приватная синхронизация включена":"Синхронизация ожидается"}</div>`;button(card,"Сменить пароль",null,showChangePassword);button(card,"Выйти","SETKA продолжит работать локально",logout)}
-    wrap.appendChild(card);
-    // Keep sign-in / account status visible before the history and note cards.
-    body.prepend(wrap);
+    let button=header.querySelector("#st40AccountButton");
+    if(!button){
+      button=document.createElement("button");
+      button.type="button";
+      button.id="st40AccountButton";
+      button.className="st40-account-shortcut";
+      button.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"></circle><path d="M5.5 20v-1.5a6.5 6.5 0 0 1 13 0V20"></path></svg><span class="st40-account-shortcut-label">Аккаунт</span>';
+      button.addEventListener("click",openAccount);
+      header.appendChild(button);
+    }
+    const authenticated=!!cached()?.authenticated;
+    button.title=authenticated?"Аккаунт SETKA · вход выполнен":"Аккаунт SETKA · вход";
+    button.setAttribute("aria-label",button.title);
+    let dot=button.querySelector(".st40-account-shortcut-dot");
+    if(authenticated&&!dot){dot=document.createElement("span");dot.className="st40-account-shortcut-dot";dot.setAttribute("aria-hidden","true");button.appendChild(dot)}
+    else if(!authenticated&&dot)dot.remove();
   }
   const layer=document.getElementById("st34Layer");
   const mo=new MutationObserver(records=>{
