@@ -1,0 +1,29 @@
+name: Verify SETKA Research Admin v1
+on:
+  pull_request:
+    paths: ['standalone-research-admin-v1.html', 'research-v1/**', 'supabase/functions/setka-research-admin-v1/**', 'tests/research-admin-v1*', '.github/workflows/check-research-admin-v1.yml']
+  push:
+    branches: ['research/admin-v1-20261013']
+    paths: ['standalone-research-admin-v1.html', 'research-v1/**', 'supabase/functions/setka-research-admin-v1/**', 'tests/research-admin-v1*', '.github/workflows/check-research-admin-v1.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check standalone modules
+        run: |
+          node --check research-v1/app.mjs
+          node --check research-v1/model.mjs
+          node --check research-v1/replay.mjs
+          node --check research-v1/renderer.mjs
+          cmp research-v1/model.mjs supabase/functions/setka-research-admin-v1/model.mjs
+      - name: Verify data invariants and original admin preservation
+        run: node --test tests/research-admin-v1.test.mjs tests/standalone-v34-community-aggregate.test.mjs tests/standalone-v34-admin-restoration.test.mjs tests/standalone-v34-note-merge-integrity.test.mjs
+      # Live smoke reads are run manually using a key supplied via hidden stdin.
+      # No credentials or real private records are used in GitHub Actions.

@@ -1,0 +1,50 @@
+{
+  "version": "SETKA-RESEARCH-1.0.0",
+  "parentCommit": "9a1530f1c145d2925ad8517b33b127c884948035",
+  "supabaseProject": "gfchgaphzhxufwdhrcis",
+  "edgeFunction": "setka-research-admin-v1",
+  "edgeVersion": 3,
+  "checkedAt": "2026-10-13T15:32:39.984Z",
+  "isolatedAndOriginalRegressionTests": {"passed": 21, "failed": 0},
+  "liveAPI": {
+    "status": "PASS",
+    "unauthorizedPrivateRead": "DENIED",
+    "unauthorizedExperimentWrite": "DENIED",
+    "foreignOrigin": "DENIED",
+    "getRequests": "DENIED",
+    "existingAdminAuthentication": "PASS",
+    "allSourcesAccessibleAndComplete": true,
+    "canonicalSessions": 3,
+    "canonicalExposures": 37,
+    "canonicalConfigurationSaves": 11,
+    "canonicalTotalsMatchSupabaseViews": true,
+    "sessionAndExposureDuplicateCheck": "PASS",
+    "credentialFieldsAbsent": true,
+    "currentAccountReplay": {"events": 44,"states":12,"coverage":"partial"},
+    "archivedReplaySample": {"events":28,"states":0,"coverage":"partial"},
+    "notePatternAndExactConfig": "PASS",
+    "oldAdminAPI": "PASS",
+    "communityAndModerationFeed": "PASS",
+    "excludedSimulatedPhysiology": 145,
+    "syntheticExperimentsCreated": 0,
+    "temporaryVerificationKey": "REVOKED"
+  },
+  "migrations": [
+    {"version":"20261013152135","name":"research_admin_v1_archived_replay_service_read"},
+    {"version":"20261013152554","name":"research_admin_v1_experiment_planning_registry"}
+  ],
+  "browser": {
+    "protectedFullJourney": "REQUIRES_OWNER_SECURE_LOGIN",
+    "isolatedReplayControls": "PENDING_PUBLICATION",
+    "realIPhoneSafariAndNewFrontActionSync": "NOT_VERIFIED"
+  },
+  "unverifiedWrites": ["moderation-positive-action-on-author-submitted-note", "owner-experiment-plan-and-rollback"],
+  "limits": [
+    "Guests currently keep history locally; their total product usage is unknown.",
+    "Replay is procedural reconstruction, not pixel video; some states, renderer versions and viewport data are missing.",
+    "Historical fragment count is not visit count.",
+    "Recommendation rule is explained but actual historical recommendation delivery is not recorded.",
+    "Experiment planning is implemented; runtime participant assignments are not connected."
+  ],
+  "existingFrontAndFullAdminModified": false
+}
