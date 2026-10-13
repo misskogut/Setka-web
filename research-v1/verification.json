@@ -5,7 +5,10 @@
   "edgeFunction": "setka-research-admin-v1",
   "edgeVersion": 3,
   "checkedAt": "2026-10-13T15:32:39.984Z",
-  "isolatedAndOriginalRegressionTests": {"passed": 21, "failed": 0},
+  "isolatedAndOriginalRegressionTests": {
+    "passed": 21,
+    "failed": 0
+  },
   "liveAPI": {
     "status": "PASS",
     "unauthorizedPrivateRead": "DENIED",
@@ -20,8 +23,16 @@
     "canonicalTotalsMatchSupabaseViews": true,
     "sessionAndExposureDuplicateCheck": "PASS",
     "credentialFieldsAbsent": true,
-    "currentAccountReplay": {"events": 44,"states":12,"coverage":"partial"},
-    "archivedReplaySample": {"events":28,"states":0,"coverage":"partial"},
+    "currentAccountReplay": {
+      "events": 44,
+      "states": 12,
+      "coverage": "partial"
+    },
+    "archivedReplaySample": {
+      "events": 28,
+      "states": 0,
+      "coverage": "partial"
+    },
     "notePatternAndExactConfig": "PASS",
     "oldAdminAPI": "PASS",
     "communityAndModerationFeed": "PASS",
@@ -30,15 +41,43 @@
     "temporaryVerificationKey": "REVOKED"
   },
   "migrations": [
-    {"version":"20261013152135","name":"research_admin_v1_archived_replay_service_read"},
-    {"version":"20261013152554","name":"research_admin_v1_experiment_planning_registry"}
+    {
+      "version": "20261013152135",
+      "name": "research_admin_v1_archived_replay_service_read"
+    },
+    {
+      "version": "20261013152554",
+      "name": "research_admin_v1_experiment_planning_registry"
+    }
   ],
   "browser": {
-    "protectedFullJourney": "REQUIRES_OWNER_SECURE_LOGIN",
-    "isolatedReplayControls": "PENDING_PUBLICATION",
-    "realIPhoneSafariAndNewFrontActionSync": "NOT_VERIFIED"
+    "protectedFullJourney": "NOT_CONFIRMED_BROWSER_AUTH_TOOL_TIMEOUT",
+    "isolatedReplayControls": {
+      "status": "PASS",
+      "playAndAnimation": true,
+      "pause": true,
+      "seekHome": true,
+      "eventMarkers": true,
+      "allSpeeds": [
+        0.5,
+        1,
+        2,
+        3,
+        4,
+        8
+      ],
+      "missingInitialStateNotInvented": true,
+      "fixtureOnly": true
+    },
+    "realIPhoneSafariAndNewFrontActionSync": "NOT_VERIFIED",
+    "publishedLoginPage": "PASS",
+    "authRequestResult": "UNKNOWN",
+    "authRetryPerformed": false
   },
-  "unverifiedWrites": ["moderation-positive-action-on-author-submitted-note", "owner-experiment-plan-and-rollback"],
+  "unverifiedWrites": [
+    "moderation-positive-action-on-author-submitted-note",
+    "owner-experiment-plan-and-rollback"
+  ],
   "limits": [
     "Guests currently keep history locally; their total product usage is unknown.",
     "Replay is procedural reconstruction, not pixel video; some states, renderer versions and viewport data are missing.",
@@ -46,5 +85,15 @@
     "Recommendation rule is explained but actual historical recommendation delivery is not recorded.",
     "Experiment planning is implemented; runtime participant assignments are not connected."
   ],
-  "existingFrontAndFullAdminModified": false
+  "existingFrontAndFullAdminModified": false,
+  "publication": {
+    "url": "https://misskogut.github.io/Setka-web/standalone-research-admin-v1.html",
+    "pullRequest": "https://github.com/misskogut/Setka-web/pull/10",
+    "commit": "b6534b0aff00a22f2ce5318b75ad461bf814675e",
+    "mergeCommit": "297f685035201efd08b0c2b3a73c5632c6c918a2",
+    "ciRun": "https://github.com/misskogut/Setka-web/actions/runs/38423365297",
+    "pagesDeploymentRun": "https://github.com/misskogut/Setka-web/actions/runs/38423635626",
+    "status": "SUCCEEDED"
+  }
 }
+
