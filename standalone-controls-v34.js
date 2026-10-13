@@ -62,8 +62,9 @@
   const clamp=v=>Math.max(0,Math.min(1,v));
   function point(e){const w=Math.max(1,innerWidth),h=Math.max(1,innerHeight),nx=clamp(e.clientX/w),ny=clamp(e.clientY/h);return{x:Math.round(e.clientX),y:Math.round(e.clientY),nx:Number(nx.toFixed(4)),ny:Number(ny.toFixed(4)),zone:ny<.22?"top":ny>.78?"bottom":nx<.33?"left":nx>.67?"right":"center"}}
   function targetMeta(t){const el=t?.closest?.("button,[role=button],input,textarea,select,.pattern-tile")||t;return{targetId:el?.id||null,targetRole:el?.getAttribute?.("role")||el?.tagName?.toLowerCase?.()||null,targetClass:String(el?.className||"").split(/\s+/).filter(Boolean).slice(0,4).join(" ")||null}}
-  function emit(type,payload){C.recordEvent?.(type,payload,!!activeSession())}
+  function emit(type,payload){const recorder=window.__SETKA_REPLAY_CAPTURE_V1__,detailed=/^(screen_pointer_|ui_tap|screen_scroll)/.test(type);if(detailed&&(!recorder||!recorder.enabled()||recorder.restricted()))return;C.recordEvent?.(type,{...payload,...(detailed?{replayCapture:!!recorder}:{})},!!activeSession())}
   document.addEventListener("pointerdown",e=>{
+    if(e.target?.closest?.("input,textarea,select"))return;
     const p=point(e);pointers.set(e.pointerId,{...p,lastX:e.clientX,lastY:e.clientY,at:performance.now(),pointerType:e.pointerType||"unknown"});
     emit("screen_pointer_down",{...p,...targetMeta(e.target),pointerType:e.pointerType||"unknown",fingers:pointers.size,view:Setka.getState?.()?.view||null})
   },true);

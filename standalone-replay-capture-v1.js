@@ -15,11 +15,12 @@
     const f=kind==='favorite'?S.getFavorites().find(x=>String(x.id)===id):(C.publicCommunity||[]).find(x=>String(x.id)===id);
     return f?.config?{patternId:f.baseId||f.patternId||f.pattern_id||pid,patternVersion:f.patternVersion||f.pattern_version,config:clone(f.config),frame:f.previewFrame??f.preview_frame??44,preview:true}:null;
   }
+  function restricted(){const layer=q("#st34Layer");return !!(layer&&!layer.classList.contains("hidden")&&(layer.querySelector(".st40-form,#st40TesterCabinet,input[type=password]")||/пароль|войти|вход|код тестировщика/i.test(layer.querySelector(".st-title")?.textContent||"")))}
   function screen(){
     if(!enabled())return null;
     const layer=q('#st34Layer'),overlay=layer&&!layer.classList.contains('hidden'),st=S.getState(),kind=overlay?'overlay':st.view;
     // Never inspect credentials, account identifiers, recovery forms or typed text.
-    if(overlay&&(layer.querySelector('.st40-form,#st40TesterCabinet,input[type=password]')||/пароль|войти|вход|код тестировщика/i.test(layer.querySelector('.st-title')?.textContent||'')))
+    if(restricted())
       return{version:1,kind:'restricted',title:'Защищённый экран кабинета',viewport:viewport(),elements:[],reason:'credentials-excluded'};
     const roots=overlay?[layer,q('#st34Nav')]:st.view==='game'?[q('.game-ui')]:[q('#libraryScreen'),q('#st34Nav')];
     const elements=[];
@@ -27,7 +28,7 @@
       for(const el of [root,...root.querySelectorAll('*')]){
         if(elements.length>=120)break;
         if(!shown(el)||el.closest('#stReplaySettings,[id^=st40],.st40-form,#isolated-test-tools')||el.closest('svg')&&el.tagName.toLowerCase()!=='svg'||el.id==='patternCanvas')continue;
-        const style=getComputedStyle(el),r=box(el),item={rect:r};
+        const style=getComputedStyle(el),r=box(el),item={rect:r,...(['favoriteButton','modeLabel'].includes(el.id)?{control:el.id}:{})};
         if(el.tagName.toLowerCase()==='svg'){
           const shapes=[...el.querySelectorAll('path,rect,circle,line,polyline,polygon,ellipse')].slice(0,40).map(n=>{
             const attrs={};for(const k of ['d','x','y','width','height','rx','ry','cx','cy','r','x1','y1','x2','y2','points']){const v=n.getAttribute(k);if(v&&/^[-\d.,\sMmLlHhVvCcSsQqTtAaZzEe+]+$/.test(v))attrs[k]=v}
@@ -66,16 +67,19 @@
     const input=card.querySelector('input');input.checked=enabled();input.onchange=()=>{const d=C.getData();d.settings=d.settings||{};d.settings.replayDetailsEnabled=input.checked;d.settings.replayDetailsConsentAt=new Date().toISOString();C.save();lastUi='';C.recordEvent('replay_consent',{enabled:input.checked,version:1},false);if(input.checked)schedule('explicit-consent');window.dispatchEvent(new CustomEvent('setka:v34-sync-request'))};
     body.appendChild(card);
   }
-  window.addEventListener('setka:standalone-event',e=>{if(['ui_snapshot','screen_pointer_move','screen_pointer_down','screen_pointer_up','ui_tap','replay_consent'].includes(e.detail?.type))return;schedule(e.detail?.type);setTimeout(settings,120)});
+  window.addEventListener('setka:standalone-event',e=>{if(e.detail?.type==='screen_pointer_up'){schedule('touch');return}if(['ui_snapshot','screen_pointer_move','screen_pointer_down','ui_tap','replay_consent'].includes(e.detail?.type))return;schedule(e.detail?.type);setTimeout(settings,120)});
   window.addEventListener('setka:pattern-special',e=>C.recordEvent('pattern_state',{reason:e.detail?.action||'special',state:C.stateSnapshot()}));
-  document.addEventListener('pointerdown',e=>pointer('screen_pointer_down',e),{passive:true});
-  document.addEventListener('pointerup',e=>pointer('screen_pointer_up',e),{passive:true});
-  document.addEventListener('pointercancel',e=>pointer('screen_pointer_cancel',e),{passive:true});
-  document.addEventListener('pointermove',e=>{if(!e.buttons||Date.now()-lastMove<200)return;lastMove=Date.now();pointer('screen_pointer_move',e)},{passive:true});
+  // The production deep-telemetry module already records each pointer once.
+  if(!window.__SETKA_V34_DEEP_TELEMETRY__){
+    document.addEventListener('pointerdown',e=>pointer('screen_pointer_down',e),{passive:true});
+    document.addEventListener('pointerup',e=>pointer('screen_pointer_up',e),{passive:true});
+    document.addEventListener('pointercancel',e=>pointer('screen_pointer_cancel',e),{passive:true});
+    document.addEventListener('pointermove',e=>{if(!e.buttons||Date.now()-lastMove<200)return;lastMove=Date.now();pointer('screen_pointer_move',e)},{passive:true});
+  }
   function pointer(type,e){if(!enabled()||screen()?.kind==='restricted'||e.target.closest('input,textarea,select,#stReplaySettings'))return;C.recordEvent(type,{replayCapture:true,nx:e.clientX/innerWidth,ny:e.clientY/innerHeight,pointerType:e.pointerType,fingers:1,viewport:viewport()},true);if(type==='screen_pointer_up')schedule('touch')}
   const observer=new MutationObserver(()=>{if(observerBusy)return;observerBusy=true;setTimeout(()=>{observerBusy=false;settings()},120)});observer.observe(document.body,{childList:true,subtree:true});
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)schedule('visible')});
   window.addEventListener('resize',()=>schedule('resize'));
-  window.__SETKA_REPLAY_CAPTURE_V1__={screen,capture,enabled,build:BUILD};
+  window.__SETKA_REPLAY_CAPTURE_V1__={screen,capture,enabled,restricted,build:BUILD};
   setTimeout(settings,500);
 })();

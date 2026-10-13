@@ -27,5 +27,5 @@ export function screenAt(events,stateEntry,t){
  if(uiAt<viewAt&&ui?.kind!==view||uiAt<screenAt)ui=null;
  if(ui?.kind==='game'||ui?.kind==='library')overlay=null;
  if(ui?.kind==='overlay')overlay={title:ui.title||overlay?.title||'Экран приложения',kicker:ui.kicker||'SETKA'};
- return {visible,view,overlay,ui};
+ return {visible,view,overlay,ui,uiAt};
 }

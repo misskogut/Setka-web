@@ -1,6 +1,6 @@
-import {mountReplay} from '../research-v1/replay.mjs?v=1.1.0';
+import {mountReplay} from '../research-v1/replay.mjs?v=1.1.1';
 import {recordedStates} from '../research-v1/replay-model.mjs';
-const link=document.createElement('link');link.rel='stylesheet';link.href='../research-v1/style.css?v=1.1.0';const stylesheetReady=()=>new Promise(resolve=>{link.onload=resolve;document.head.append(link)});
+const link=document.createElement('link');link.rel='stylesheet';link.href='../research-v1/style.css?v=1.1.1';const stylesheetReady=()=>new Promise(resolve=>{link.onload=resolve;document.head.append(link)});
 const bar=document.createElement('div');bar.id='isolated-test-tools';
 Object.assign(bar.style,{position:'fixed',left:'8px',right:'8px',top:'2px',zIndex:400000,background:'#eeeeeb',color:'#111',padding:'4px 8px',fontSize:'10px',borderRadius:'8px',display:'flex',justifyContent:'space-between',alignItems:'center'});
 bar.innerHTML='<span>Изолированный тест · запись в Supabase заблокирована</span><button style="font-size:10px;padding:4px 6px">Открыть Replay проверки</button>';document.body.append(bar);

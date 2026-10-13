@@ -1,9 +1,9 @@
-import {resolveRecipe} from './recipe.mjs?v=1.1.0';
-import {draw} from './renderer.mjs?v=1.1.0';
+import {resolveRecipe} from './recipe.mjs?v=1.1.1';
+import {draw} from './renderer.mjs?v=1.1.1';
 const finite=v=>v!=null&&Number.isFinite(Number(v));
 const color=v=>/^#[\da-f]{3,8}$|^rgba?\([\d\s.,%]+\)$/i.test(String(v))?String(v):'transparent';
 // Render recorded primitives only. No HTML, input values, executable SVG or URLs.
-export function paintInterface(root,ui,width,height){
+export function paintInterface(root,ui,width,height,state={}){
  root.replaceChildren();if(!ui?.elements||!Array.isArray(ui.elements))return false;
  const vw=Number(ui.viewport?.width),vh=Number(ui.viewport?.height);
  if(!(vw>0&&vh>0))return false;
@@ -30,7 +30,7 @@ export function paintInterface(root,ui,width,height){
     borderRadius:`${Math.max(0,Math.min(300,Number(e.radius)||0))}px`,fontSize:`${Math.max(6,Math.min(80,Number(e.fontSize)||12))}px`,
     fontWeight:/^\d{3}$/.test(String(e.fontWeight))?String(e.fontWeight):'400',textAlign:['left','center','right'].includes(e.align)?e.align:'left',
     padding:`${Number(pad[1])||0}px ${Number(pad[0])||0}px`,opacity:Math.max(0,Math.min(1,finite(e.opacity)?Number(e.opacity):1)),whiteSpace:'pre-wrap'});
-   el.textContent=String(e.text||'').slice(0,350);
+   el.textContent=e.control==='favoriteButton'&&Object.hasOwn(state,'favoriteId')?(state.favoriteId?'♥':'♡'):String(e.text||'').slice(0,350);
   }
   root.appendChild(el);
  }
