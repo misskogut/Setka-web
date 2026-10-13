@@ -2,6 +2,7 @@
 // Read-only product analytics. Explicit research-plan edits use a service-only transaction.
 // Moderation is delegated to the existing API; no experiment assigns real participants.
 import { buildData, replayCoverage, ARRAY, num, time } from './model.mjs';
+import { recordedStates } from './replay-model.mjs';
 const URL_BASE = Deno.env.get('SUPABASE_URL') || '';
 const SERVICE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const ORIGIN = 'https://misskogut.github.io';
@@ -83,7 +84,7 @@ async function replay(b:any){
       read('session_events','id,t_ms,event_type,payload,created_at',{session_id:`eq.${b.sessionId}`},100000,'t_ms,id'),
       read('session_snapshots','id,t_ms,app_state,created_at',{session_id:`eq.${b.sessionId}`},100000,'t_ms,id')]);
     if(!s.rows.length)return reply({error:'record_not_found'},404);
-    const session=s.rows[0],events=ev.rows.map(x=>normalEvent(x,session.started_at,`legacy:${session.participant_id}`)),states=st.rows.map(x=>({tMs:x.t_ms,state:x.app_state,source:'session-snapshot'}));
+    const session=s.rows[0],events=ev.rows.map(x=>normalEvent(x,session.started_at,`legacy:${session.participant_id}`)),states=[...recordedStates(events),...st.rows.map(x=>({tMs:x.t_ms,state:x.app_state,source:'session-snapshot'}))].sort((a,b)=>a.tMs-b.tMs);
     return reply({ok:true,session,events,states,coverage:replayCoverage({events,states,truncated:ev.truncated||st.truncated}),truncated:ev.truncated||st.truncated,durationMs:Math.max(0,(time(session.ended_at||session.last_seen_at)||0)-(time(session.started_at)||0))});
   }
   if(!validId(b.deviceId)||(!validId(b.sessionId)&&!validId(b.replayKey,500)))return reply({error:'invalid_selection'},400);
@@ -107,10 +108,7 @@ async function replay(b:any){
   }
   for(const x of ev.rows)map.set(String(x.event_id),x);
   const events=[...map.values()].map(x=>normalEvent(x,start,b.deviceId)).sort((a,b)=>(a.tMs??Infinity)-(b.tMs??Infinity));
-  const states=events.filter(e=>e.tMs!==null&&(e.payload.state||e.type==='app_state')).map(e=>({tMs:e.tMs,state:e.payload.state||e.payload,source:e.source}));
-  // A note is a single recorded frame, never a fabricated session-opening state.
-  for(const p of payloads)for(const note of ARRAY(p.notes))if(b.sessionId&&String(note.sessionId)===String(b.sessionId)&&note.state&&num(note.sessionElapsedMs)!==null)states.push({tMs:num(note.sessionElapsedMs),state:note.replaySnapshot?{...note.state,...note.replaySnapshot}:note.state,source:'note-snapshot'});
-  states.sort((a,b)=>a.tMs-b.tMs);
+  const states=recordedStates(events,payloads.flatMap(p=>ARRAY(p.notes)),b.sessionId);
   const durationMs=Math.max(0,num(dig?.duration_ms,0),...events.map(e=>num(e.tMs,0)),...(session?[Math.max(0,(time(session.ended_at||session.endedAt)||time(start)||0)-(time(start)||0))]:[]));
   const truncated=ev.truncated||dg.truncated;
   return reply({ok:true,session:session||{started_at:start,ended_at:dig?.ended_at},digest:dig||null,events,states,durationMs,coverage:replayCoverage({events,states,digest:dig,truncated}),truncated,
@@ -147,7 +145,7 @@ Deno.serve(async(req:Request)=>{
     if(b.action==='save-experiment')return await saveExperiment(b,adminId);
     if(b.action==='overview')return await overview();
     if(b.action==='replay')return await replay(b);
-    if(b.action==='check')return reply({ok:true,projectId:'gfchgaphzhxufwdhrcis',version:'SETKA-RESEARCH-1.0.0'});
+    if(b.action==='check')return reply({ok:true,projectId:'gfchgaphzhxufwdhrcis',version:'SETKA-RESEARCH-1.1.0'});
     return reply({error:'unknown_action'},400);
   }catch(e){console.error('Research read failed',e instanceof Error?e.message:'unknown');return reply({error:'data_unavailable'},503);}
 });

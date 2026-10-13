@@ -1,10 +1,10 @@
 name: Verify SETKA Research Admin v1
 on:
   pull_request:
-    paths: ['standalone-research-admin-v1.html', 'research-v1/**', 'supabase/functions/setka-research-admin-v1/**', 'tests/research-admin-v1*', '.github/workflows/check-research-admin-v1.yml']
+    paths: ['standalone-research-admin-v1.html', 'research-v1/**', 'supabase/functions/setka-research-admin-v1/**', 'tests/research-admin-v1*', 'tests/research-replay-integrity-v1*', 'standalone-replay-capture-v1.js', 'standalone-core-v34.js', 'standalone-sync-v34.js', 'standalone-private-corpus-v40.js', 'standalone-v34.html', '.github/workflows/check-research-admin-v1.yml']
   push:
     branches: ['research/admin-v1-20261013']
-    paths: ['standalone-research-admin-v1.html', 'research-v1/**', 'supabase/functions/setka-research-admin-v1/**', 'tests/research-admin-v1*', '.github/workflows/check-research-admin-v1.yml']
+    paths: ['standalone-research-admin-v1.html', 'research-v1/**', 'supabase/functions/setka-research-admin-v1/**', 'tests/research-admin-v1*', 'tests/research-replay-integrity-v1*', 'standalone-replay-capture-v1.js', 'standalone-core-v34.js', 'standalone-sync-v34.js', 'standalone-private-corpus-v40.js', 'standalone-v34.html', '.github/workflows/check-research-admin-v1.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -22,8 +22,16 @@ jobs:
           node --check research-v1/model.mjs
           node --check research-v1/replay.mjs
           node --check research-v1/renderer.mjs
+          node --check research-v1/recipe.mjs
+          node --check research-v1/interface.mjs
+          node --check research-v1/replay-model.mjs
+          node --check standalone-replay-capture-v1.js
+          node --check standalone-core-v34.js
+          node --check standalone-sync-v34.js
+          node --check standalone-private-corpus-v40.js
           cmp research-v1/model.mjs supabase/functions/setka-research-admin-v1/model.mjs
+          cmp research-v1/replay-model.mjs supabase/functions/setka-research-admin-v1/replay-model.mjs
       - name: Verify data invariants and original admin preservation
-        run: node --test tests/research-admin-v1.test.mjs tests/standalone-v34-community-aggregate.test.mjs tests/standalone-v34-admin-restoration.test.mjs tests/standalone-v34-note-merge-integrity.test.mjs
+        run: node --test tests/research-admin-v1.test.mjs tests/research-replay-integrity-v1.test.mjs tests/standalone-v34-integrity.test.mjs tests/standalone-v34-community-aggregate.test.mjs tests/standalone-v34-admin-restoration.test.mjs tests/standalone-v34-note-merge-integrity.test.mjs
       # Live smoke reads are run manually using a key supplied via hidden stdin.
       # No credentials or real private records are used in GitHub Actions.
