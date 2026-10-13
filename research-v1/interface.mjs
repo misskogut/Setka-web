@@ -1,5 +1,5 @@
-import {resolveRecipe} from './recipe.mjs?v=1.1.1';
-import {draw} from './renderer.mjs?v=1.1.1';
+import {resolveRecipe} from './recipe.mjs?v=1.1.2';
+import {draw} from './renderer.mjs?v=1.1.2';
 const finite=v=>v!=null&&Number.isFinite(Number(v));
 const color=v=>/^#[\da-f]{3,8}$|^rgba?\([\d\s.,%]+\)$/i.test(String(v))?String(v):'transparent';
 // Render recorded primitives only. No HTML, input values, executable SVG or URLs.

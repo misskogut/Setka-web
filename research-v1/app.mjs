@@ -1,7 +1,7 @@
-import {resolveRecipe} from './recipe.mjs?v=1.1.1';
-import {sliceData,median,num,time,exactSnapshot,VERSION} from './model.mjs?v=1.1.1';
-import {patterns,draw,exactPattern,rendererVersion,configKey} from './renderer.mjs?v=1.1.1';
-import {mountReplay,patternName,eventName,parameterName,COVERAGE,clock} from './replay.mjs?v=1.1.1';
+import {resolveRecipe} from './recipe.mjs?v=1.1.2';
+import {sliceData,median,num,time,exactSnapshot,VERSION} from './model.mjs?v=1.1.2';
+import {patterns,draw,exactPattern,rendererVersion,configKey} from './renderer.mjs?v=1.1.2';
+import {mountReplay,patternName,eventName,parameterName,COVERAGE,clock} from './replay.mjs?v=1.1.2';
 
 const API='https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-research-admin-v1';
 const COMMUNITY_API='https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-admin-community-v38';

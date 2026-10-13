@@ -1,10 +1,11 @@
 // Phone/timeline playback ported from admin-replay-first-v34.js.
 // Uses the production multipattern renderer and recorded states; no default state.
-import {draw,rendererVersion} from './renderer.mjs?v=1.1.1';
-import {num} from './model.mjs?v=1.1.1';
-import {resolveRecipe} from './recipe.mjs?v=1.1.1';
-import {screenAt} from './replay-model.mjs?v=1.1.1';
-import {paintInterface} from './interface.mjs?v=1.1.1';
+import {rendererVersion} from './renderer.mjs?v=1.1.2';
+import {num} from './model.mjs?v=1.1.2';
+import {resolveRecipe} from './recipe.mjs?v=1.1.2';
+import {screenAt} from './replay-model.mjs?v=1.1.2';
+import {paintInterface} from './interface.mjs?v=1.1.2';
+import {canvasGeometry,drawRecordedCanvas} from './replay-geometry.mjs?v=1.1.2';
 export const COVERAGE={full:'Полная',partial:'Частичная',summary:'Только сводка',none:'Данных нет'};
 export const EVENT_NAMES={ui_snapshot:'Сохранён экран',replay_consent:'Изменено согласие на Replay',instructions_close:'Закрыта инструкция',game_back:'Возврат в библиотеку',pattern_open:'Открыт паттерн',pattern_state:'Изменены настройки',app_state:'Слепок экрана',screen:'Открыт экран',session_screen:'Экран сессии',session_view:'Смена экрана',view:'Смена экрана',nav:'Переход',color:'Изменён цвет',color_change:'Изменён цвет',favorite_save:'Сохранена конфигурация',favorite_remove:'Снято сохранение',note_create:'Создана заметка',session_start:'Начало сессии',session_end:'Конец сессии',feedback_submit:'Самооценка после',session_feedback:'Самооценка после',feedback_prompt:'Запрос самооценки',screen_pointer_down:'Касание',screen_pointer_move:'Движение пальца',screen_pointer_up:'Конец касания',screen_pointer_cancel:'Отмена касания',gesture_start:'Начало жеста',gesture_end:'Конец жеста',visibility:'Видимость приложения',library_page:'Раздел библиотеки',session_library_page:'Раздел библиотеки',ui_tap:'Нажата кнопка',screen_scroll:'Прокрутка',note_snapshot:'Слепок заметки',continuation_start:'Просмотр после оценки',instructions_open:'Инструкция',exit:'Выход'};
 export const eventName=t=>EVENT_NAMES[t]||'Другое зарегистрированное действие';
@@ -26,6 +27,7 @@ export function mountReplay(root,data,{title='Воспроизведение с�
   root.querySelector('.phone').style.aspectRatio=`${canvas.width}/${canvas.height}`;
   root.querySelector('.replay-technical').textContent=JSON.stringify({coverage:data.coverage,provenance:data.provenance||null,rendererVersion,recordedViewport:viewport||null,truncated:!!data.truncated,digest:data.digest||null},null,2);
   let eventPage=0,lastUI=null;
+  const patternSurface=document.createElement('canvas');
   function showEvents(){const page=root.querySelector('.events-page'),rows=meaningful.slice(eventPage*30,eventPage*30+30);page.innerHTML=rows.map((e,i)=>`<button class="event-item" data-index="${eventPage*30+i}"><time>${clock(e.tMs)}</time><span>${esc(eventName(e.type))}</span></button>`).join('')||'<p class="muted">Действия не записаны.</p>';if(meaningful.length>30)page.insertAdjacentHTML('beforeend',`<div class="row"><button class="events-prev" ${eventPage===0?'disabled':''}>Назад</button><span>${eventPage+1} / ${Math.ceil(meaningful.length/30)}</span><button class="events-next" ${(eventPage+1)*30>=meaningful.length?'disabled':''}>Далее</button></div>`);page.querySelectorAll('[data-index]').forEach(b=>b.onclick=()=>{const e=meaningful[Number(b.dataset.index)];pause();paint(e.tMs,true);if(e.type==='note_create'&&onNote)onNote(e);});const prev=page.querySelector('.events-prev'),next=page.querySelector('.events-next');if(prev)prev.onclick=()=>{eventPage--;showEvents();};if(next)next.onclick=()=>{eventPage++;showEvents();};}
   showEvents();
   // Markers use real event offsets. Dense RAW events stay in the paged list.
@@ -44,9 +46,9 @@ export function mountReplay(root,data,{title='Воспроизведение с�
       canvas.hidden=false;message.hidden=true;
       const frame=Number(state.frame)+Math.max(0,t-entry.tMs)/16.6667;
       if(seek||entry!==lastState||lastFrame!==null&&frame<lastFrame){canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);}
-      draw(canvas,recipe.config,frame,recipe.renderId,false);lastFrame=frame;
+      drawRecordedCanvas(canvas,patternSurface,recipe,state,frame,seek||entry!==lastState||lastFrame!==null&&frame<lastFrame);lastFrame=frame;
       caption.textContent=`${patternName(recipe.renderId)} · ${recipe.config.colorModeIndex===undefined?'':`цвет ${Number(recipe.config.colorModeIndex)+1}`}`;
-      status.textContent=[recipe.compatibility==='historical-alias'?'Исторический рендер найден. Исходная версия и идентификатор сохранены.':'',recipe.configurationSource==='configuration-code'?'Настройки восстановлены из сохранённого кода конфигурации.':'',ui?.elements?.length?`Элементы интерфейса сохранены на ${clock(screen.uiAt)}. Состояние паттерна обновляется по событиям.`:'Элементы интерфейса этого экрана не записаны; показан подтверждённый паттерн.',entry.source==='note-snapshot'?'Подтверждён кадр создания заметки.':viewport?'Размер экрана сохранён.':'Размер исходного экрана неизвестен; масштаб приблизительный.',state.config?.backgroundAlpha<254||recipe.renderId==='stereo-dna'?'Шлейф между кадрами зависит от истории отрисовки; после перемотки он приблизительный.':''].filter(Boolean).join(' ');
+      status.textContent=[recipe.compatibility==='historical-alias'?'Исторический рендер найден. Исходная версия и идентификатор сохранены.':'',recipe.configurationSource==='configuration-code'?'Настройки восстановлены из сохранённого кода конфигурации.':'',ui?.elements?.length?`Элементы интерфейса сохранены на ${clock(screen.uiAt)}. Состояние паттерна обновляется по событиям.`:'Элементы интерфейса этого экрана не записаны; показан подтверждённый паттерн.',entry.source==='note-snapshot'?'Подтверждён кадр создания заметки.':viewport?'Размер экрана сохранён.':'Размер исходного экрана неизвестен; масштаб приблизительный.',canvasGeometry(state)?'Границы полотна сохранены.':'Границы полотна не записаны; обрезка изображения приблизительная.',state.config?.backgroundAlpha<254||recipe.renderId==='stereo-dna'?'Шлейф между кадрами зависит от истории отрисовки; после перемотки он приблизительный.':''].filter(Boolean).join(' ');
     }else{
       canvas.hidden=true;lastFrame=null;caption.textContent='';
       const hasUI=visible&&ui?.elements?.length;

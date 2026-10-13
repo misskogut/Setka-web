@@ -1,8 +1,8 @@
 {
-  "version": "SETKA-RESEARCH-1.1.1",
+  "version": "SETKA-RESEARCH-1.1.2",
   "checkedAt": "2026-10-13T19:03:34.044Z",
   "projectId": "gfchgaphzhxufwdhrcis",
-  "localRegressionChecks": 57,
+  "localRegressionChecks": 59,
   "realApi": {
     "checkedAt": "2026-10-13T19:03:34.044Z",
     "allPassed": true,
@@ -203,6 +203,8 @@
     "isolatedProductionFrontJourney": "PASS",
     "patternOpenColorFavoriteNoteInstructionsFeedbackEnd": "PASS_ISOLATED_NO_REMOTE_WRITES",
     "playPause": "PASS_ISOLATED",
+    "finishToPersonalNoteNavigation": "PASS_PUBLISHED_ISOLATED",
+    "frontBrowserEngines": ["Chromium", "WebKit"],
     "seekEventMarker": "PASS_ISOLATED",
     "speeds": [
       0.5,
