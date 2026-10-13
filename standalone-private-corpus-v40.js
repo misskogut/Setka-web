@@ -23,7 +23,7 @@
       notes:Array.isArray(d.notes)?d.notes:[],
       symptoms:Array.isArray(d.symptoms)?d.symptoms:[],
       checkins:Array.isArray(d.checkins)?d.checkins:[],
-      events:Array.isArray(d.events)?d.events:[],
+      events:(Array.isArray(d.events)?d.events:[]).filter(e=>!(["ui_snapshot"].includes(e.type)||e.payload?.replayCapture)||window.__SETKA_TESTER_CABINET_V40__?.state?.()?.consented===true),
       patternExposures:Array.isArray(d.patternExposures)?d.patternExposures:[],
       physio:d.physio||{samples:[],sources:[]},
       invites:Array.isArray(d.invites)?d.invites:[],

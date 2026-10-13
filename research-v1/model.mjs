@@ -1,5 +1,5 @@
 // Shared, pure data contract. The server supplies rows; this module never makes up rows.
-export const VERSION = 'SETKA-RESEARCH-1.0.0';
+export const VERSION = 'SETKA-RESEARCH-1.1.0';
 export const ARRAY = v => Array.isArray(v) ? v : [];
 export const num = (v, fallback = null) => v !== null && v !== '' && v !== undefined && Number.isFinite(Number(v)) ? Number(v) : fallback;
 export const time = v => { const t = typeof v === 'number' ? v : Date.parse(v || ''); return Number.isFinite(t) ? t : null; };
@@ -83,7 +83,7 @@ export function buildData(raw, sources=[], now=new Date().toISOString()) {
   for(const x of ARRAY(raw.deviceExposures)){const id=participantForDevice(x.device_id);if(canonicalAccounts.has(id))continue;const e=exposureRow(x,id,'legacy-device',x.device_id);if(e)exposures.push(e);}
   for(const x of ARRAY(raw.accountExposures)){const e=exposureRow(x,`account:${x.tester_id}`,'account');if(e){const meta=exposureMetadata.get(e.id);exposures.push({...meta,...e,config:meta?.config||null,phase:meta?.phase||null});}}
   for(const x of ARRAY(raw.legacyUsage)){const sid=`legacy:${x.participant_id}::${x.session_id}`;exposures.push({id:`legacy-usage:${x.id}`,participantId:`legacy:${x.participant_id}`,sessionId:sid,source:'legacy-usage',current:false,patternId:x.pattern_id,configKey:x.config_hash,config:x.config||null,durationMs:num(x.duration_ms),startedAt:sessions.find(s=>s.id===sid)?.startedAt||null,phase:null});}
-  const canonicalFavoriteAccounts=new Set(ARRAY(raw.accountFavorites).map(x=>`account:${x.tester_id}`));
+  const canonicalFavoriteAccounts=new Set((sources.some(s=>s.key==='accountFavorites'&&s.ok&&!s.truncated)?ARRAY(raw.accounts):ARRAY(raw.accountFavorites)).map(x=>`account:${x.tester_id}`));
   const favKept=favorites.filter(x=>!canonicalFavoriteAccounts.has(x.participantId));favorites.length=0;favorites.push(...favKept);
   for(const x of ARRAY(raw.accountFavorites))favorites.push({id:`account:${x.tester_id}::${x.config_key}`,participantId:`account:${x.tester_id}`,source:'account',current:true,patternId:x.pattern_id,configKey:x.config_key,config:x.config,savedAt:x.saved_at});
   for(const x of ARRAY(raw.deviceFavorites)){const id=participantForDevice(x.device_id);if(canonicalFavoriteAccounts.has(id))continue;favorites.push({id:`${id}::${x.config_key}`,participantId:id,current:false,source:'legacy-device',patternId:x.pattern_id,configKey:x.config_key,config:x.config,savedAt:x.saved_at});}

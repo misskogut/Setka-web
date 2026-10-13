@@ -62,7 +62,7 @@
     for(const item of (d.sessions||[])){
       if(!item?.id)continue;
       const sid=String(item.id);
-      sessions.push({id:sid,startedAt:item.startedAt||null,endedAt:item.endedAt||null,completed:!!(item.completed||item.endedAt)});
+      sessions.push({id:sid,startedAt:item.startedAt||null,endedAt:item.endedAt||null,completed:item.completed===true});
       if(coveredSessions.has(sid))continue;
       const base=Date.parse(item.startedAt||"");
       for(const [i,u] of (item.usage||[]).entries()){
@@ -78,7 +78,7 @@
     lastUsageStats={sessions:sessions.length,exposures:exposures.length};
     return{sessions:sessions.slice(-5000),exposures:exposures.slice(-20000)};
   }
-  function signature(){const fav=favorites(),u=serviceUsage(),last=u.sessions.at(-1)||{};return [fav.map(x=>`${x.configKey}:${x.id||""}`).join(","),u.sessions.length,last.id||"",last.endedAt||"",u.exposures.length,u.exposures.reduce((a,x)=>a+(Number(x.durationMs)||0),0)].join("|")}
+  function signature(){const fav=favorites(),u=serviceUsage(),last=u.sessions.at(-1)||{};return [fav.map(x=>`${x.configKey}:${x.id||""}`).join(","),u.sessions.length,last.id||"",last.endedAt||"",u.sessions.map(s=>`${s.id}:${s.completed?1:0}`).join(","),u.exposures.length,u.exposures.reduce((a,x)=>a+(Number(x.durationMs)||0),0)].join("|")}
   async function post(url,payload,keepalive=false){
     const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json",apikey:API_KEY},body:JSON.stringify(payload),keepalive});
     const out=await r.json().catch(()=>({}));if(!r.ok)throw new Error(out.error||`http_${r.status}`);return out;
