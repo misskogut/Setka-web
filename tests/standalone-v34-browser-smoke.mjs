@@ -164,21 +164,49 @@ async function go(){
   assert.deepEqual(restored.notes.map(n=>n.replayPatternId),["dandelion","stereo-dna"]);
   assert.deepEqual(restored.notes.map(n=>n.configId),["dandelion","stereo-dna"]);
   console.log("V41 ARCHIVE RELOAD PRESERVED HISTORY",JSON.stringify(restored));
-  // Regression: the tester ID/password entry must remain reachable through
-  // the current Me screen even though legacy #st37MeTools was removed.
+  // The main Me screen stays focused on personal history; account entry is in
+  // a small header button, and the login, password and sync controls are one tap away.
   assert.equal(await page.locator("#st37MeTools").count(),0);
   await page.locator('#st34Nav button[data-p="me"]').click();
-  const cabinet=page.locator('#st34Layer #st40TesterCabinet');
-  await cabinet.waitFor({timeout:10000});
-  assert.equal(await cabinet.isVisible(),true);
-  await cabinet.getByRole('button',{name:'У меня есть код тестировщика'}).click();
+  const account=page.locator('#st40AccountButton');
+  await account.waitFor({timeout:10000});
+  assert.equal(await account.isVisible(),true);
+  assert.equal(await page.locator('#st34Layer #st40TesterCabinet').count(),0);
+  assert.equal(await page.locator('#st34Layer #st40PrivateCorpusStatus').count(),0);
+  assert.match(await page.locator('#st34Layer .st-title').innerText(),/^Я$/);
+  await account.click();
   await page.locator('#st34Layer input').first().waitFor({timeout:10000});
   assert.match(await page.locator('#st34Layer .st-title').innerText(),/Подключить тестирование/);
-  // Returning from the registration form to Me must also restore the entry.
+  // Returning from the account form must restore the small shortcut.
   await page.locator('#st34Nav button[data-p="me"]').click();
-  await cabinet.waitFor({timeout:10000});
-  assert.equal(await cabinet.isVisible(),true);
-  console.log('TESTER ID ENTRY REMAINS VISIBLE IN ME AND AFTER RETURN PASS');
+  await account.waitFor({timeout:10000});
+  assert.equal(await account.isVisible(),true);
+  assert.equal(await page.locator('#st34Layer #st40TesterCabinet').count(),0);
+  console.log('COMPACT ACCOUNT SHORTCUT AND GUEST ENTRY PASS');
+
+  // Local browser-only account-status fixture: verify signed-in controls are
+  // reachable from the same icon, never exposed as giant cards on Me.
+  await page.route('**/functions/v1/setka-tester-account-v40', async route=>{
+    await route.fulfill({status:200,contentType:'application/json',
+      headers:{'access-control-allow-origin':'*'},
+      body:JSON.stringify({ok:true,claimed:true,hasPassword:true,
+        authenticated:true,testerId:'T-TEST-UI',consented:true})});
+  });
+  await page.evaluate(async()=>{
+    await window.__SETKA_TESTER_CABINET_V40__.refresh();
+    window.SetkaStandaloneV34.showMe();
+  });
+  await account.waitFor({timeout:10000});
+  await account.click();
+  await page.locator('#st40TesterCabinet').waitFor({timeout:10000});
+  assert.match(await page.locator('#st34Layer .st-title').innerText(),/Аккаунт SETKA/);
+  assert.equal(await page.getByRole('button',{name:'Сменить пароль'}).count(),1);
+  assert.equal(await page.getByRole('button',{name:/Выйти/}).count(),1);
+  await page.locator('#st40PrivateCorpusStatus').waitFor({timeout:10000});
+  await page.locator('#st34Nav button[data-p="me"]').click();
+  await account.waitFor({timeout:10000});
+  assert.equal(await page.locator('#st34Layer #st40TesterCabinet').count(),0);
+  console.log('SIGNED-IN ACCOUNT ACTIONS AND TECHNICAL STATUS IN ACCOUNT ONLY PASS');
 
   await page.screenshot({path:"tests/visual-smoke/personal-notes.png",fullPage:true});
   await page.screenshot({path:"tests/visual-smoke/base-patterns.png",fullPage:true});
