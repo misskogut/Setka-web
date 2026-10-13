@@ -23,6 +23,7 @@ jobs:
           node --check research-v1/replay.mjs
           node --check research-v1/renderer.mjs
           node --check research-v1/recipe.mjs
+          node --check research-v1/replay-geometry.mjs
           node --check research-v1/interface.mjs
           node --check research-v1/replay-model.mjs
           node --check standalone-replay-capture-v1.js
