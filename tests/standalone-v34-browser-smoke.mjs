@@ -212,7 +212,7 @@ async function go(){
   // reload, regardless of private-cloud availability.
   await page.locator('#st34Nav button[data-p="symptoms"]').click();
   await page.locator('#st34Layer .st34-add-state').click();
-  await page.locator('#st34Layer .st34-state-preset').filter({hasText:'Усталость'}).click();
+  await page.getByRole('button',{name:'Усталость',exact:true}).click();
   await page.locator('#st34Layer .st34-state-card').first().waitFor();
   await page.locator('#st34Layer .st34-mark-btn').first().click();
   await page.locator('#st34Layer .st34-mark-editor.open input[type="range"]').first().fill('6');
