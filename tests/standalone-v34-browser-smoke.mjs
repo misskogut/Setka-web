@@ -175,7 +175,9 @@ async function go(){
   assert.equal(await page.locator('#st34Layer #st40PrivateCorpusStatus').count(),0);
   assert.match(await page.locator('#st34Layer .st-title').innerText(),/^Я$/);
   await account.click();
-  await page.locator('#st34Layer input').first().waitFor({timeout:10000});
+  // Replay opt-in is also an input on Me. Wait for the actual account form,
+  // so a checkbox cannot satisfy the asynchronous navigation boundary.
+  await page.locator('#st34Layer .st40-form input').first().waitFor({timeout:10000});
   assert.match(await page.locator('#st34Layer .st-title').innerText(),/Подключить тестирование/);
   // Returning from the account form must restore the small shortcut.
   await page.locator('#st34Nav button[data-p="me"]').click();
