@@ -164,6 +164,22 @@ async function go(){
   assert.deepEqual(restored.notes.map(n=>n.replayPatternId),["dandelion","stereo-dna"]);
   assert.deepEqual(restored.notes.map(n=>n.configId),["dandelion","stereo-dna"]);
   console.log("V41 ARCHIVE RELOAD PRESERVED HISTORY",JSON.stringify(restored));
+  // Regression: the tester ID/password entry must remain reachable through
+  // the current Me screen even though legacy #st37MeTools was removed.
+  assert.equal(await page.locator("#st37MeTools").count(),0);
+  await page.locator('#st34Nav button[data-p="me"]').click();
+  const cabinet=page.locator('#st34Layer #st40TesterCabinet');
+  await cabinet.waitFor({timeout:10000});
+  assert.equal(await cabinet.isVisible(),true);
+  await cabinet.getByRole('button',{name:'У меня есть код тестировщика'}).click();
+  await page.locator('#st34Layer input').first().waitFor({timeout:10000});
+  assert.match(await page.locator('#st34Layer .st-title').innerText(),/Подключить тестирование/);
+  // Returning from the registration form to Me must also restore the entry.
+  await page.locator('#st34Nav button[data-p="me"]').click();
+  await cabinet.waitFor({timeout:10000});
+  assert.equal(await cabinet.isVisible(),true);
+  console.log('TESTER ID ENTRY REMAINS VISIBLE IN ME AND AFTER RETURN PASS');
+
   await page.screenshot({path:"tests/visual-smoke/personal-notes.png",fullPage:true});
   await page.screenshot({path:"tests/visual-smoke/base-patterns.png",fullPage:true});
   console.log("ALL 7 PATTERNS PASS",JSON.stringify(result));
