@@ -16,7 +16,7 @@
   const visible=()=>!layer.classList.contains('hidden');
   const title=()=>wrap.querySelector('.st-title')?.textContent?.trim()||'';
   let page=pageByTitle[title()]||'today',contentPage=page,frame=0,savedRoute=null,fromDock=false;
-  const drafts=new Map();
+  const drafts=new Map(),savedComposers=new WeakSet();
   document.body.classList.add('setka-sheet-layout');
   nav.setAttribute('role','navigation');nav.setAttribute('aria-label','Основные разделы SETKA');
   nav.innerHTML=tabs.map(t=>`<button type="button" data-p="${t.key}" aria-label="${t.label}" aria-controls="st34Layer" aria-expanded="false"><span class="st-dock-icon"><svg viewBox="0 0 24 24" aria-hidden="true">${t.icon}</svg></span><span class="st-dock-label">${t.label}</span></button>`).join('');
@@ -38,6 +38,7 @@
   function queueSync(){if(frame)return;frame=requestAnimationFrame(()=>{frame=0;sync()})}
   function saveDraft(){
     if(title()!=='Записать мысль'||!wrap.querySelector('textarea')||wrap.querySelector('.st40-form'))return;
+    if(savedComposers.has(wrap.querySelector('textarea')))return;
     // Retain only live DOM nodes for an unsaved note. No text or credentials
     // are copied into browser storage or analytics by the sheet controller.
     drafts.set('notes',{nodes:[...wrap.childNodes],scrollTop:wrap.scrollTop,route:window.SetkaStandaloneNavigationV34?.getCurrentPanel?.()});
@@ -92,7 +93,10 @@
   new MutationObserver(queueSync).observe(layer,{attributes:true,attributeFilter:['class'],childList:true,subtree:true});
   new MutationObserver(queueSync).observe(game,{attributes:true,attributeFilter:['class']});
   window.addEventListener('setka:standalone-event',e=>{
-    if(e.detail?.type==='note_create'){drafts.delete('notes');contentPage=null}
+    if(e.detail?.type==='note_create'){
+      const editor=wrap.querySelector('textarea');if(editor)savedComposers.add(editor);
+      drafts.delete('notes');contentPage=null;
+    }
   });
   layer.addEventListener('transitionend',e=>{
     if(e.target===layer&&e.propertyName==='transform')window.dispatchEvent(new CustomEvent('setka:sheet-settled',{detail:{open:visible(),page}}));
