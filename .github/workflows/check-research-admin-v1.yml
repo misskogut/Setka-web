@@ -20,6 +20,8 @@ jobs:
         run: |
           node --check research-v1/app.mjs
           node --check research-v1/model.mjs
+          node --check research-v1/physiology.mjs
+          cmp research-v1/physiology.mjs supabase/functions/setka-research-admin-v1/physiology.mjs
           node --check research-v1/replay.mjs
           node --check research-v1/renderer.mjs
           node --check research-v1/recipe.mjs
@@ -34,6 +36,6 @@ jobs:
           cmp research-v1/model.mjs supabase/functions/setka-research-admin-v1/model.mjs
           cmp research-v1/replay-model.mjs supabase/functions/setka-research-admin-v1/replay-model.mjs
       - name: Verify data invariants and original admin preservation
-        run: node --test tests/front-cloud-integrity-v1.test.mjs tests/research-admin-v1.test.mjs tests/research-replay-integrity-v1.test.mjs tests/standalone-v34-integrity.test.mjs tests/standalone-v34-community-aggregate.test.mjs tests/standalone-v34-admin-restoration.test.mjs tests/standalone-v34-note-merge-integrity.test.mjs
+        run: node --test tests/front-cloud-integrity-v1.test.mjs tests/research-admin-v1.test.mjs tests/standalone-pulse-v1.test.mjs tests/research-replay-integrity-v1.test.mjs tests/standalone-v34-integrity.test.mjs tests/standalone-v34-community-aggregate.test.mjs tests/standalone-v34-admin-restoration.test.mjs tests/standalone-v34-note-merge-integrity.test.mjs
       # Live smoke reads are run manually using a key supplied via hidden stdin.
       # No credentials or real private records are used in GitHub Actions.

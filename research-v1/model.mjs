@@ -1,5 +1,6 @@
+import {isRealPhysio,physioKind} from './physiology.mjs';
 // Shared, pure data contract. The server supplies rows; this module never makes up rows.
-export const VERSION = 'SETKA-RESEARCH-1.1.0';
+export const VERSION = 'SETKA-RESEARCH-1.3.0';
 export const ARRAY = v => Array.isArray(v) ? v : [];
 export const num = (v, fallback = null) => v !== null && v !== '' && v !== undefined && Number.isFinite(Number(v)) ? Number(v) : fallback;
 export const time = v => { const t = typeof v === 'number' ? v : Date.parse(v || ''); return Number.isFinite(t) ? t : null; };
@@ -34,7 +35,7 @@ function exposureRow(x, participantId, source, deviceId=null) {
   const pid=x.pattern_id || x.patternId || x.config?.patternId;
   if (!xid || !pid) return null;
   const sid=x.session_id || x.sessionId;
-  return { id:`${participantId}::${xid}`, originalId:String(xid), participantId,deviceId,source,
+  return { id:`${participantId}::${xid}`, originalId:String(xid), participantId,deviceId,source,visitId:x.visit_id||x.visitId||null,patternVersion:x.pattern_version??x.patternVersion??null,
     current:source==='account',sessionId:sid ? `${participantId}::${sid}` : null, patternId:pid,
     configKey:x.config_key || x.configKey || null,config:x.config || null,
     startedAt:x.started_at || x.startedAt || null,endedAt:x.ended_at || x.endedAt || null,
@@ -69,7 +70,7 @@ export function buildData(raw, sources=[], now=new Date().toISOString()) {
     for(const x of ARRAY(payload.notes)){if(!x.id)continue;notes.push({...x,id:`${participantId}::${x.id}`,originalId:x.id,participantId,deviceId:row.device_id,sessionId:x.sessionId?`${participantId}::${x.sessionId}`:null,source:row.source,current:isCurrent,observedAt:x.observedAt||null,snapshot:exactSnapshot(x)});}
     for(const x of ARRAY(row.favorites)){favorites.push({...x,id:`${participantId}::${x.configKey||x.id}`,participantId,current:isCurrent,source:row.source,patternId:x.patternId||x.baseId||x.config?.patternId,configKey:x.configKey||null,savedAt:x.savedAt||x.createdAt});}
     for(const [key,target] of [['symptoms',symptoms],['checkins',checkins],['invites',invites]])for(const x of ARRAY(payload[key]))target.push({...x,participantId,deviceId:row.device_id,source:row.source,current:isCurrent});
-    for(const x of ARRAY(payload.physio?.samples))physio.push({...x,participantId,current:isCurrent,source:row.source});
+    for(const x of ARRAY(payload.physio?.samples))physio.push({...x,participantId,deviceId:row.device_id,originalSessionId:x.sessionId||null,sessionId:x.sessionId?`${participantId}::${x.sessionId}`:null,current:isCurrent,source:row.source});
     for(const x of ARRAY(payload.events))archiveEvents.push({...x,participantId,deviceId:row.device_id,source:row.source});
   }
   for(const x of ARRAY(raw.legacySessions)){const id=`legacy:${x.participant_id}`,s=sessionRow(x,id,'legacy-research');if(s){delete s.session_token_hash;sessions.push(s);}}
@@ -102,7 +103,7 @@ export function buildData(raw, sources=[], now=new Date().toISOString()) {
   }
   return {version:VERSION,projectId:'gfchgaphzhxufwdhrcis',updatedAt:now,sources,
     participants:[...participants.values()],sessions:ds,exposures:es,favorites:fs,notes:ns,visits,digests,
-    symptoms:unique(symptoms,x=>`${x.participantId}:${x.id}`),checkins:unique(checkins,x=>`${x.participantId}:${x.id}`),physio:unique(physio.filter(x=>x.quality!=='simulated'&&x.simulated!==true&&!String(x.sourceType||'').includes('demo')),x=>`${x.participantId}:${x.id||x.observedAt}`),excludedSimulatedPhysio:physio.filter(x=>x.quality==='simulated'||x.simulated===true||String(x.sourceType||'').includes('demo')).length,invites:unique(invites,x=>`${x.participantId}:${x.id}`),archiveEvents,
+    symptoms:unique(symptoms,x=>`${x.participantId}:${x.id}`),checkins:unique(checkins,x=>`${x.participantId}:${x.id}`),physio:unique(physio.filter(isRealPhysio),x=>`${x.participantId}:${x.id||x.observedAt}`),excludedSimulatedPhysio:physio.filter(x=>physioKind(x)==='simulated').length,excludedUnverifiedPhysio:physio.filter(x=>['unverified','invalid'].includes(physioKind(x))).length,invites:unique(invites,x=>`${x.participantId}:${x.id}`),archiveEvents,
     communityMetrics:raw.serviceMetrics?.[0]||null,patternMetrics:ARRAY(raw.patternMetrics),configMetrics:ARRAY(raw.configMetrics),
     experiments:ARRAY(raw.experiments),experimentRevisions:ARRAY(raw.experimentRevisions),contributions:ARRAY(raw.contributions),consents:ARRAY(raw.consents),diagnostics:ARRAY(raw.diagnostics),publicNotes:ARRAY(raw.publicNotes),
     warnings:[{code:'guest-local-only',message:'Текущие гости хранят историю на своём устройстве. В этих показателях их использование не учтено.'},{code:'identity',message:'Исторические гостевые устройства не объединены в людей. Число устройств не равно числу людей.'},...sources.filter(s=>!s.ok||s.truncated).map(s=>({code:'source-incomplete',message:`Источник «${s.label}» ${s.truncated?'загружен не полностью':'недоступен'}.`}))]};

@@ -27,7 +27,7 @@ try{
   await tab('today').click();
   await page.waitForFunction(()=>document.querySelector('#st34Layer').getBoundingClientRect().bottom<=document.querySelector('#st34Nav').getBoundingClientRect().top);
   const cardRect=await card.boundingBox(),dockRect=await dock.boundingBox();
-  assert.ok(cardRect.y>100&&cardRect.height<844*.8,'card must leave the patterns visible above it');
+  assert.ok(cardRect.y<=20&&cardRect.height>844*.85,'card must rise to the top of the available screen');
   assert.ok(cardRect.y+cardRect.height<=dockRect.y,'card overlaps the dock');
   assert.equal(await page.locator('#libraryScreen.active').count(),1);
   assert.equal(await tab('today').getAttribute('aria-expanded'),'true');
@@ -45,7 +45,7 @@ try{
   await card.locator('.st34-mark-editor.open input[type=range]').fill('6');
   await card.locator('.st34-mark-save').first().click();
   assert.ok((await page.evaluate(()=>window.SetkaStandaloneV34.getData().checkins.length))>0);
-  await tab('me').click();await page.getByRole('button',{name:'Приватность и данные',exact:true}).waitFor();
+  await tab('me').click();await page.getByRole('button',{name:/Аккаунт SETKA/}).waitFor();assert.equal(await page.locator('#st40DataSettingsButton').count(),0);
   assert.equal(await card.locator('#stReplaySettings').count(),0);
   mkdirSync('tests/visual-smoke',{recursive:true});
   await page.screenshot({path:'tests/visual-smoke/bottom-card-me.png'});

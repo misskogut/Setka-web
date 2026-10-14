@@ -175,24 +175,9 @@ async function go(){
   assert.equal(await page.locator('#st34Layer #st40PrivateCorpusStatus').count(),0);
   assert.match(await page.locator('#st34Layer .st-title').innerText(),/^Я$/);
   assert.equal(await page.locator('#stReplaySettings').count(),0,'Replay consent must not appear as a feature card on Me');
-  const privacy=page.getByRole('button',{name:'Приватность и данные',exact:true});
-  await privacy.waitFor({timeout:10000});
-  await privacy.click();
-  const activityConsent=page.getByRole('checkbox',{name:'Сохранять подробную историю действий',exact:true});
-  await activityConsent.waitFor({timeout:10000});
-  assert.equal(await activityConsent.isChecked(),false,'additional activity collection is off by default');
-  assert.match(await page.locator('#st40PrivacySettings').innerText(),/Визуализация там создаётся кодом/);
-  assert.match(await page.locator('#st40PrivacySettings').innerText(),/Видеозапись не ведётся/);
-  await activityConsent.check();
-  assert.equal(await page.evaluate(()=>window.__SETKA_REPLAY_CAPTURE_V1__.enabled()),true);
-  assert.equal(await page.evaluate(()=>window.__SETKA_REPLAY_CAPTURE_V1__.restricted()),true,'privacy settings are excluded from detailed activity');
-  await activityConsent.uncheck();
-  assert.equal(await page.evaluate(()=>window.__SETKA_REPLAY_CAPTURE_V1__.enabled()),false);
-  await page.locator('#st34Layer .st-back').click();
-  await privacy.waitFor({timeout:10000});
-  assert.equal(await page.locator('#stReplaySettings').count(),0);
-  assert.equal(await page.getByRole('button',{name:'Приватность и данные',exact:true}).count(),1);
-  console.log('ADMIN REPLAY SEPARATED FROM PARTICIPANT PRIVACY SETTINGS PASS');
+  assert.equal(await page.locator('#st40DataSettingsButton,#st40PrivacySettings').count(),0,'standalone privacy settings are removed from the front');
+  assert.equal(await page.evaluate(()=>window.__SETKA_REPLAY_CAPTURE_V1__.enabled()),false,'a guest has not opted into detailed activity');
+  console.log('NO SEPARATE PRIVACY SCREEN AND NO GUEST DETAILED CAPTURE PASS');
   await account.click();
   // Wait for the actual account form, independent of the privacy setting.
   await page.locator('#st34Layer .st40-form input').first().waitFor({timeout:10000});

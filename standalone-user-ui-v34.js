@@ -175,7 +175,7 @@
   }
 
   function pulseForSession(sid){
-    const a=(C.getData().physio?.samples||[]).filter(x=>x.sessionId===sid&&x.metric==="heart_rate"&&x.value!=null&&Number.isFinite(Number(x.value)));
+    const a=(C.pulse?.realHeartRates(C.getData().physio?.samples)||[]).filter(x=>x.sessionId===sid);
     if(!a.length)return null;const vals=a.map(x=>Number(x.value));
     return{avg:Math.round(vals.reduce((p,q)=>p+q,0)/vals.length),min:Math.min(...vals),max:Math.max(...vals)};
   }
@@ -244,26 +244,12 @@
   }
 
   function showPulse(){
-    C.setNav("me");
-    let connect=null,stop=null;
-    if(typeof original.showPhysio==="function"){
-      original.showPhysio();
-      for(const btn of document.querySelectorAll("#stBody .st-action")){
-        const t=btn.textContent||"";
-        if(t.includes("Bluetooth-пульсометр"))connect=btn.onclick;
-        if(t.includes("Остановить датчик"))stop=btn.onclick;
-      }
-    }
-    const d=C.getData(),samples=(d.physio?.samples||[]).filter(x=>x.metric==="heart_rate"&&x.value!=null&&Number.isFinite(Number(x.value))),vals=samples.map(x=>Number(x.value));
-    const b=C.screen("Пульс","Если подключить совместимый пульсометр, SETKA сможет сопоставлять изменения пульса с твоими сессиями.","МОИ ДАННЫЕ",showMe);
-    if(vals.length){
-      const latest=vals.at(-1),avg=Math.round(vals.reduce((p,q)=>p+q,0)/vals.length);
-      simpleCard(b,"Последние наблюдения",`Сейчас в истории последнее значение — ${latest} уд/мин. Среднее по сохранённым измерениям — ${avg} уд/мин.`);
-    }else simpleCard(b,"Пока нет показаний","Можно пользоваться SETKA и без датчика. Пульс — дополнительный слой наблюдений.");
-    if(connect)action(b,"Подключить пульсометр","Найти совместимый Bluetooth-датчик",connect);
-    else simpleCard(b,"Подключение датчика","Этот браузер не поддерживает прямое подключение пульсометра. Сохранённые измерения доступны в истории; для нового подключения нужен браузер с поддержкой Bluetooth.");
-    if(stop)action(b,"Отключить пульсометр","Остановить получение показаний",stop);
+    C.setNav("pulse");
+    const b=C.screen("Пульс","Измерения настоящего датчика и их связь с твоими сессиями.","МОИ ДАННЫЕ",showMe);
+    const root=document.createElement("div");root.id="stPulseReal";b.appendChild(root);
+    if(C.pulse)C.pulse.render();else root.innerHTML='<div class="st-empty">Подготавливаем подключение датчика…</div>';
   }
+  window.addEventListener("setka:pulse-ready",()=>{if(document.querySelector("#st34Layer .st-title")?.textContent==="Пульс")C.pulse?.render()});
 
   function resetLocal(){
     if(!confirm("Удалить твою локальную историю SETKA на этом устройстве?"))return;
