@@ -42,9 +42,15 @@
   function injectTodayFinish(){
     const layer=document.getElementById("st34Layer"),title=layer?.querySelector?.(".st-title"),body=layer?.querySelector?.("#stBody");
     if(!layer||layer.classList.contains("hidden")||title?.textContent!=="Сегодня"||!body)return;
-    body.querySelector(".st34-finish-today")?.remove();
-    const s=activeSession();if(!s||!["measured","after_feedback"].includes(s.phase))return;
+    const existing=body.querySelector(".st34-finish-today"),s=activeSession();
+    if(!s||!["measured","after_feedback"].includes(s.phase)){existing?.remove();return}
+    // The observer also sees our insertion. Keep a current button in place so
+    // opening Today during a live session cannot create an endless mutation loop.
+    const key=`${s.id}:${s.phase}`;
+    if(existing?.dataset.sessionKey===key)return;
+    existing?.remove();
     const b=document.createElement("button");b.type="button";b.className="st-action st34-finish-today";
+    b.dataset.sessionKey=key;
     b.innerHTML=`<b>Завершить сессию</b><span>${s.phase==="measured"?"Остановить измеряемую часть и перейти к итоговой оценке":"Закончить свободное продолжение после оценки"}</span>`;
     b.onclick=()=>finishRequest("today");body.prepend(b);
   }
