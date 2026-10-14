@@ -61,6 +61,9 @@ on:
       - 'tests/standalone-v34-open-admin-browser-smoke.mjs'
       - 'standalone-admin-evolution-v35.html'
       - 'standalone-v34.html'
+      - 'standalone-sheets-v1.js'
+      - 'standalone-sheets-v1.css'
+      - 'tests/standalone-sheets-v1-browser-smoke.mjs'
       - 'tests/front-cloud-integrity-v1.test.mjs'
       - 'supabase/functions/setka-public-notes-v37/**'
       - 'tests/standalone-v34-integrity.test.mjs'
@@ -85,6 +88,7 @@ jobs:
       - run: node --check app-v3-multipattern.js
       - run: node --check app-v7-multipattern.js
       - run: node --check standalone-multipattern-bridge-v34.js
+      - run: node --check standalone-sheets-v1.js
       - run: node --check standalone-core-v34.js
       - run: node --check standalone-runtime-v34.js
       - run: node --check standalone-favorites-repair-v34.js
@@ -149,9 +153,11 @@ jobs:
       - run: npm install --no-save --ignore-scripts playwright esbuild
       - run: npx playwright install --with-deps chromium webkit
       - run: node tests/standalone-v34-browser-smoke.mjs
+      - run: node tests/standalone-sheets-v1-browser-smoke.mjs
       - run: node tests/standalone-v34-admin-browser-smoke.mjs
       - run: node tests/standalone-v34-open-admin-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/standalone-v34-browser-smoke.mjs
+      - run: SETKA_BROWSER=webkit node tests/standalone-sheets-v1-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/standalone-v34-admin-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/standalone-v34-open-admin-browser-smoke.mjs
       - run: ./node_modules/.bin/esbuild supabase/functions/setka-pattern-knowledge-v40/index.ts --outfile=/tmp/setka-admin-backend-check.js --format=esm

@@ -24,7 +24,7 @@
       const privacy=!!layer?.querySelector('#st40PrivacySettings');
       return{version:1,kind:'restricted',title:privacy?'Настройки приватности':'Защищённый экран кабинета',viewport:viewport(),elements:[],reason:privacy?'privacy-settings-excluded':'credentials-excluded'};
     }
-    const roots=overlay?[layer,q('#st34Nav')]:st.view==='game'?[q('.game-ui')]:[q('#libraryScreen'),q('#st34Nav')];
+    const roots=overlay?(window.__SETKA_SHEET_LAYOUT_V1__?[q('#libraryScreen.active'),q('.game-ui'),q('#st34SheetBackdrop'),layer,q('#st34Nav')]:[layer,q('#st34Nav')]):st.view==='game'?[q('.game-ui')]:[q('#libraryScreen'),q('#st34Nav')];
     const elements=[];
     for(const root of roots.filter(Boolean)){
       for(const el of [root,...root.querySelectorAll('*')]){
@@ -94,6 +94,8 @@
   const observer=new MutationObserver(()=>{if(observerBusy)return;observerBusy=true;setTimeout(()=>{observerBusy=false;privacyEntry()},120)});observer.observe(document.body,{childList:true,subtree:true});
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)schedule('visible')});
   window.addEventListener('resize',()=>schedule('resize'));
+  window.addEventListener('setka:sheet-settled',()=>schedule('sheet-settled'));
+  window.visualViewport?.addEventListener('resize',()=>schedule('visible-viewport'));
   window.__SETKA_REPLAY_CAPTURE_V1__={screen,capture,enabled,restricted,build:BUILD};
   setTimeout(privacyEntry,500);
 })();

@@ -1,0 +1,118 @@
+body.setka-sheet-layout {
+  --setka-keyboard-inset: 0px;
+  --setka-visible-height: 100dvh;
+  --setka-dock-space: calc(82px + env(safe-area-inset-bottom, 0px));
+  --setka-sheet-max: min(70dvh, calc(var(--setka-visible-height) - var(--setka-dock-space) - 68px));
+}
+body.setka-sheet-layout #st34Nav {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  height: 64px;
+  width: min(calc(100% - 22px), 480px);
+  bottom: calc(8px + env(safe-area-inset-bottom, 0px) + var(--setka-keyboard-inset));
+  border-radius: 32px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, .35);
+}
+body.setka-sheet-layout #st34Nav button {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  min-height: 54px;
+  padding: 3px 0;
+  font-size: 9px;
+  font-weight: 500;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: color .18s, background .18s;
+}
+body.setka-sheet-layout #st34Nav .st-dock-icon { width: 22px; height: 22px; line-height: 0; }
+body.setka-sheet-layout #st34Nav svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+body.setka-sheet-layout #st34Nav .st-dock-label { font-size: 9px; line-height: 12px; }
+body.setka-sheet-layout #st34Nav button:focus-visible { outline: 2px solid white; outline-offset: -3px; }
+
+body.setka-sheet-layout #st34Layer {
+  inset: auto;
+  left: 50%;
+  bottom: calc(var(--setka-dock-space) + var(--setka-keyboard-inset));
+  width: min(calc(100% - 22px), 520px);
+  max-height: var(--setka-sheet-max);
+  min-height: min(250px, var(--setka-sheet-max));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, .21);
+  border-radius: 30px;
+  background: #0a0a0a;
+  box-shadow: 0 -12px 50px rgba(0, 0, 0, .38), 0 12px 40px rgba(0, 0, 0, .6);
+  transform: translate(-50%, 0);
+  opacity: 1;
+  visibility: visible;
+  transition: transform .3s cubic-bezier(.22, .8, .25, 1), opacity .2s, visibility 0s;
+}
+body.setka-sheet-layout #st34Layer.hidden {
+  display: flex;
+  transform: translate(-50%, calc(100% + var(--setka-dock-space) + 20px));
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: transform .28s cubic-bezier(.4, 0, .8, .4), opacity .2s, visibility 0s .28s;
+}
+body.setka-sheet-layout #st34Layer > .st-wrap {
+  width: 100%;
+  max-width: none;
+  max-height: calc(var(--setka-sheet-max) - 34px);
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 6px 18px 22px;
+  touch-action: pan-y;
+}
+body.setka-sheet-layout #st34Layer .st-top { margin-bottom: 17px; gap: 9px; }
+body.setka-sheet-layout #st34Layer .st-top > div { flex: 1; min-width: 0; }
+body.setka-sheet-layout #st34Layer .st-title { font-size: 23px; line-height: 1.15; overflow-wrap: anywhere; }
+body.setka-sheet-layout #st34Layer .st-back { flex: 0 0 36px; width: 36px; height: 36px; font-size: 22px; }
+body.setka-sheet-layout #st34Layer .st-copy { font-size: 12px; margin-bottom: 16px; }
+body.setka-sheet-layout #st34Layer .st40-account-shortcut { flex-basis: 48px; min-width: 48px; min-height: 45px; margin-left: 0; border-radius: 15px; }
+body.setka-sheet-layout #st34Layer .st-action { min-height: 57px; border-radius: 20px; }
+body.setka-sheet-layout #st34Layer .st-card { border-radius: 20px; }
+.st-sheet-grip {
+  flex: 0 0 34px;
+  width: 100%;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  touch-action: none;
+}
+.st-sheet-grip span { width: 36px; height: 4px; border-radius: 3px; background: rgba(255, 255, 255, .28); }
+.st-sheet-grip:focus-visible { outline: 1px solid white; outline-offset: -6px; border-radius: 24px; }
+#st34SheetBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 108900;
+  border: 0;
+  padding: 0;
+  background: rgba(0, 0, 0, .24);
+  opacity: 1;
+  transition: opacity .2s, visibility 0s;
+}
+#st34SheetBackdrop.hidden { opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .2s, visibility 0s .25s; }
+body.setka-sheet-layout #st34SensorQuick { display: none; }
+body.setka-sheet-layout #libraryScreen { padding-bottom: calc(var(--setka-dock-space) + 14px) !important; }
+body.setka-sheet-layout .swipe-hint { bottom: calc(var(--setka-dock-space) + 8px); font-size: 9px; }
+body.setka-sheet-layout #gameScreen .bottom-controls { bottom: calc(var(--setka-dock-space) + 12px); }
+body.setka-sheet-layout #gameScreen .toast { bottom: calc(var(--setka-dock-space) + 86px); }
+@media (max-width: 520px) {
+  body.setka-sheet-layout #st34Layer input:not([type=checkbox]):not([type=range]):not([type=radio]),
+  body.setka-sheet-layout #st34Layer textarea { font-size: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  body.setka-sheet-layout #st34Layer, #st34SheetBackdrop { transition: none; }
+}

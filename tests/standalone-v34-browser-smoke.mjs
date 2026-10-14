@@ -188,7 +188,7 @@ async function go(){
   assert.equal(await page.evaluate(()=>window.__SETKA_REPLAY_CAPTURE_V1__.restricted()),true,'privacy settings are excluded from detailed activity');
   await activityConsent.uncheck();
   assert.equal(await page.evaluate(()=>window.__SETKA_REPLAY_CAPTURE_V1__.enabled()),false);
-  await page.locator('#st34Nav button[data-p="me"]').click();
+  await page.locator('#st34Layer .st-back').click();
   await privacy.waitFor({timeout:10000});
   assert.equal(await page.locator('#stReplaySettings').count(),0);
   assert.equal(await page.getByRole('button',{name:'Приватность и данные',exact:true}).count(),1);
@@ -198,7 +198,7 @@ async function go(){
   await page.locator('#st34Layer .st40-form input').first().waitFor({timeout:10000});
   assert.match(await page.locator('#st34Layer .st-title').innerText(),/Подключить тестирование/);
   // Returning from the account form must restore the small shortcut.
-  await page.locator('#st34Nav button[data-p="me"]').click();
+  await page.locator('#st34Layer .st-back').click();
   await account.waitFor({timeout:10000});
   assert.equal(await account.isVisible(),true);
   assert.equal(await page.locator('#st34Layer #st40TesterCabinet').count(),0);
@@ -225,7 +225,7 @@ async function go(){
   assert.match(await page.locator('#st40TesterCabinet').innerText(),/Передача истории в облачный архив ожидается/);
   assert.equal(await page.getByRole('button',{name:/Выйти/}).count(),1);
   await page.locator('#st40PrivateCorpusStatus').waitFor({timeout:10000});
-  await page.locator('#st34Nav button[data-p="me"]').click();
+  await page.locator('#st34Layer .st-back').click();
   await account.waitFor({timeout:10000});
   assert.equal(await page.locator('#st34Layer #st40TesterCabinet').count(),0);
   console.log('SIGNED-IN ACCOUNT ACTIONS AND TECHNICAL STATUS IN ACCOUNT ONLY PASS');
