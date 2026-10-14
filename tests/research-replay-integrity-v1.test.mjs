@@ -29,3 +29,10 @@ test('sheet dock stays visible over a pattern and respects intentional immersive
   const update=vm.runInNewContext(src.slice(a,b)+'\nupdateGameControls;',{window:{__SETKA_SHEET_LAYOUT_V1__:{}},game:{classList:{contains:name=>name==='active'||name==='st34-hidden-ui'&&immersive}},layer:{classList:{contains:()=>closed}},activeSession:null,noteBtn:{classList:{toggle(){}}},timer:{classList:{toggle(){}}},nav:{classList:{toggle:(_,value)=>{hidden=value}}}});
   update();assert.equal(hidden,false);immersive=true;update();assert.equal(hidden,true);closed=false;update();assert.equal(hidden,false);
 });
+test('recorded interface respects a scrolling card clip instead of showing off-card rows',()=>{
+  const src=read('standalone-replay-capture-v1.js'),a=src.indexOf('  function recordedClip('),b=src.indexOf('  function shown(',a);
+  const parent={parentElement:null,getBoundingClientRect:()=>({left:0,top:20,right:200,bottom:100})};
+  const el={parentElement:parent,getBoundingClientRect:()=>({left:10,top:60,right:110,bottom:160})};
+  const clip=vm.runInNewContext(src.slice(a,b)+'\nrecordedClip;',{innerWidth:390,innerHeight:844,document:{body:{}},getComputedStyle:()=>({overflowX:'visible',overflowY:'auto'})});
+  assert.deepEqual(Array.from(clip(el)),[10,60,100,40]);el.getBoundingClientRect=()=>({left:10,top:150,right:110,bottom:180});assert.equal(clip(el)[3],0);
+});

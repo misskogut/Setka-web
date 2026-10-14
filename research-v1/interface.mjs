@@ -13,6 +13,11 @@ export function paintInterface(root,ui,width,height,state={}){
   const [x,y,w,h]=e.rect.map(Number);if(w<=0||h<=0||w>5000||h>5000)continue;
   const el=document.createElement(e.visual?'canvas':'div');
   Object.assign(el.style,{position:'absolute',left:`${x}px`,top:`${y}px`,width:`${w}px`,height:`${h}px`,boxSizing:'border-box',overflow:'hidden'});
+  if(Array.isArray(e.clip)&&e.clip.length===4&&e.clip.every(finite)){
+   const [cx,cy,cw,ch]=e.clip.map(Number);
+   const top=Math.max(0,Math.min(h,cy-y)),right=Math.max(0,Math.min(w,x+w-cx-cw)),bottom=Math.max(0,Math.min(h,y+h-cy-ch)),left=Math.max(0,Math.min(w,cx-x));
+   el.style.clipPath=`inset(${top}px ${right}px ${bottom}px ${left}px)`;
+  }
   if(e.visual){el.width=Math.max(1,Math.round(w));el.height=Math.max(1,Math.round(h));const r=resolveRecipe(e.visual);if(r.ok&&finite(e.visual.frame))draw(el,r.config,Number(e.visual.frame),r.renderId,e.visual.preview===true);}
   else if(e.svg){
    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.style.width='100%';svg.style.height='100%';

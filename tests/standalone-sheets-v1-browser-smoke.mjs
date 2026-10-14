@@ -36,7 +36,9 @@ try{
   await tab('today').click();await card.waitFor({state:'visible'});
   await tab('notes').click();assert.match(await card.innerText(),/Заметки/);
   await tab('pulse').click();assert.match(await card.innerText(),/Пульс/);
-  assert.equal(await page.getByRole('button',{name:/Подключить пульсометр/}).count(),1);
+  const bluetooth=await page.evaluate(()=>!!navigator.bluetooth);
+  assert.equal(await page.getByRole('button',{name:/Подключить пульсометр/}).count(),bluetooth?1:0);
+  if(!bluetooth)assert.match(await card.innerText(),/Этот браузер не поддерживает/);
   await tab('symptoms').click();
   await card.locator('.st34-add-state').click();await page.getByRole('button',{name:'Усталость',exact:true}).click();
   await card.locator('.st34-mark-btn').first().click();
@@ -63,13 +65,13 @@ try{
   assert.ok(controls.y+controls.height<dockRect.y,'game controls overlap the dock');
   await page.getByRole('button',{name:'Добавить заметку',exact:true}).click();
   const draft='Изолированная проверка карточки';await card.locator('textarea').fill(draft);
-  const before=await page.evaluate(()=>window.SetkaStandaloneV34.getActiveSession().measuredActiveMs);
   await tab('today').click();await tab('notes').click();
   assert.equal(await card.locator('textarea').inputValue(),draft,'tab switch discarded the note draft');
   await tab('notes').click();await card.waitFor({state:'hidden'});
   await tab('notes').click();await card.waitFor({state:'visible'});
   assert.equal(await card.locator('textarea').inputValue(),draft,'collapse discarded the note draft');
   // While the sheet is open, measured viewing time must stay paused.
+  const before=await page.evaluate(()=>window.SetkaStandaloneV34.getActiveSession().measuredActiveMs);
   await sleep(650);
   const after=await page.evaluate(()=>window.SetkaStandaloneV34.getActiveSession().measuredActiveMs);
   assert.equal(after,before);

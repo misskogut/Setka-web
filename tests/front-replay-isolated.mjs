@@ -1,4 +1,4 @@
-import {mountReplay} from '../research-v1/replay.mjs?v=1.1.2';
+import {mountReplay} from '../research-v1/replay.mjs?v=1.2.0';
 import {recordedStates} from '../research-v1/replay-model.mjs';
 const link=document.createElement('link');link.rel='stylesheet';link.href='../research-v1/style.css?v=1.1.2';const stylesheetReady=()=>new Promise(resolve=>{link.onload=resolve;document.head.append(link)});
 const bar=document.createElement('div');bar.id='isolated-test-tools';
