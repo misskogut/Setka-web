@@ -2,7 +2,7 @@
   "version": "SETKA-RESEARCH-1.1.2",
   "checkedAt": "2026-10-13T19:03:34.044Z",
   "projectId": "gfchgaphzhxufwdhrcis",
-  "localRegressionChecks": 59,
+  "localRegressionChecks": 69,
   "realApi": {
     "checkedAt": "2026-10-13T19:03:34.044Z",
     "allPassed": true,
@@ -204,7 +204,10 @@
     "patternOpenColorFavoriteNoteInstructionsFeedbackEnd": "PASS_ISOLATED_NO_REMOTE_WRITES",
     "playPause": "PASS_ISOLATED",
     "finishToPersonalNoteNavigation": "PASS_PUBLISHED_ISOLATED",
-    "frontBrowserEngines": ["Chromium", "WebKit"],
+    "frontBrowserEngines": [
+      "Chromium",
+      "WebKit"
+    ],
     "seekEventMarker": "PASS_ISOLATED",
     "speeds": [
       0.5,
@@ -222,5 +225,26 @@
     "realModerationMutation": "NOT_PERFORMED_NO_PENDING_RECORDS"
   },
   "temporaryApiVerificationCredentialRevoked": true,
-  "prodSyntheticRecordsCreated": 0
+  "prodSyntheticRecordsCreated": 0,
+  "additionalCloudAudit": {
+    "checkedAt": "2026-10-14T00:58:49.506632Z",
+    "isolatedChecks": 10,
+    "realLogErrors": {
+      "endpoint": "setka-public-notes-v37",
+      "status": 500,
+      "count": 2,
+      "code": "42P10",
+      "cause": "partial-account-source-unique-index"
+    },
+    "currentData": {
+      "sessions": 3,
+      "exposures": 37,
+      "favorites": 11,
+      "lastArchiveUpdatedAt": "2026-10-06T16:00:29.583977Z",
+      "lastArchiveCapturedAt": "2026-08-31T16:24:26.216Z"
+    },
+    "latestAuthenticatedDeviceRoundtrip": "NOT_CONFIRMED",
+    "publicNoteMutation": "NOT_CONFIRMED",
+    "physicalIphone": "NOT_CONFIRMED"
+  }
 }

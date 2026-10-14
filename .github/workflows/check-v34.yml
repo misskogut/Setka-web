@@ -61,6 +61,8 @@ on:
       - 'tests/standalone-v34-open-admin-browser-smoke.mjs'
       - 'standalone-admin-evolution-v35.html'
       - 'standalone-v34.html'
+      - 'tests/front-cloud-integrity-v1.test.mjs'
+      - 'supabase/functions/setka-public-notes-v37/**'
       - 'tests/standalone-v34-integrity.test.mjs'
       - 'tests/standalone-v34-note-merge-integrity.test.mjs'
       - 'tests/setka-tester-account-ownership.test.mjs'
@@ -129,7 +131,7 @@ jobs:
       - run: node --check standalone-admin-evolution-v35.js
       - run: node --check standalone-admin-evolution-pattern-lab-v35.js
       - run: node --check admin-replay-first-v34.js
-      - run: node --test tests/standalone-v34-integrity.test.mjs
+      - run: node --test tests/front-cloud-integrity-v1.test.mjs tests/standalone-v34-integrity.test.mjs
       - run: node --test tests/standalone-v34-community-aggregate.test.mjs
       - run: node --test tests/standalone-v34-note-merge-integrity.test.mjs
       - run: node --test tests/setka-tester-account-ownership.test.mjs
@@ -156,6 +158,7 @@ jobs:
       - run: ./node_modules/.bin/esbuild supabase/functions/setka-community-patterns-v38/index.ts --outfile=/tmp/setka-community-feed-check.js --format=esm
       - run: ./node_modules/.bin/esbuild supabase/functions/setka-tester-archive-v37/index.ts --outfile=/tmp/setka-tester-archive-check.js --format=esm
       - run: ./node_modules/.bin/esbuild supabase/functions/setka-tester-account-v40/index.ts --outfile=/tmp/setka-tester-account-check.js --format=esm
+      - run: ./node_modules/.bin/esbuild supabase/functions/setka-public-notes-v37/index.ts --outfile=/tmp/setka-public-note-check.js --format=esm
       - run: ./node_modules/.bin/esbuild supabase/functions/setka-standalone-v34/index.ts --outfile=/tmp/setka-standalone-runtime-check.js --format=esm
       - uses: actions/upload-artifact@v4
         if: always()

@@ -31,7 +31,7 @@
     return null;
   }
   function bridge(){try{return JSON.parse(localStorage.getItem(BRIDGE_KEY)||"null")}catch(_){return null}}
-  function corpus(){try{return JSON.parse(localStorage.getItem(CORPUS_KEY)||"null")}catch(_){return null}}
+  function corpus(){const current=window.__SETKA_PRIVATE_CORPUS_V40__?.status?.();if(current)return current;try{return JSON.parse(localStorage.getItem(CORPUS_KEY)||"null")}catch(_){return null}}
   function safeState(v){
     if(!v||typeof v!=="object")return v;
     const {sessionToken,recoveryCode,password,...safe}=v;
@@ -99,7 +99,31 @@
 
   async function logout(){const s=session();try{if(s?.token)await post({action:"logout",sessionToken:s.token})}catch(_){}clearSession();await refresh(true);window.dispatchEvent(new CustomEvent("setka:v40-account",{detail:{authenticated:false}}));C.showMe()}
 
-  async function showCabinet(){const st=await refresh(true);if(!st?.authenticated)return showLogin();const cp=corpus()||{},b=screen("Аккаунт SETKA","Вход подключает приватную синхронизацию ко всему обычному интерфейсу SETKA.","МОЯ SETKA"),card=document.createElement("div");card.className="st40-card";card.innerHTML=`<div class="st40-id">${esc(st.testerId)}</div><div class="st40-copy">Все обычные разделы SETKA уже работают как твой личный интерфейс: история, заметки, состояния и сохранённые паттерны остаются на своих местах и синхронизируются приватно.</div><div class="st40-ok"><span class="st40-dot ${cp.ok?"":"off"}"></span>${cp.ok?"Приватная синхронизация включена":"Синхронизация ожидается"}</div><div class="st40-ok"><span class="st40-dot ${st.consented?"":"off"}"></span>${st.consented?"Исследовательский режим включён":"Нужно подтвердить актуальные условия"}</div>`;const wrap=document.createElement("div");wrap.id="st40TesterCabinet";wrap.className="st40-section";wrap.appendChild(card);b.appendChild(wrap);if(!st.consented)button(b,"Подтвердить актуальные условия",null,showConsent,true);button(b,"Сменить пароль",null,showChangePassword);button(b,"Выйти","Личные заметки и история останутся в этом браузере даже после выхода.",logout);}
+  function syncMessage(cp={}){
+    if(cp.ok===true&&cp.updatedAt){
+      const when=new Date(cp.updatedAt).toLocaleString("ru-RU",{dateStyle:"short",timeStyle:"short"});
+      return cp.restored?`Облачный архив получен. Последнее обновление: ${when}`:`Последняя передача истории: ${when}`;
+    }
+    if(cp.enabled&&cp.ok===false)return "Не удалось синхронизировать историю. Данные остаются на устройстве; попробуй ещё раз.";
+    return "Передача истории в облачный архив ожидается.";
+  }
+  async function showCabinet(){
+    const st=await refresh(true);if(!st?.authenticated)return showLogin();
+    const cp=corpus()||{},b=screen("Аккаунт SETKA","Состояние входа и личного облачного архива.","МОЯ SETKA"),card=document.createElement("div");
+    card.className="st40-card";
+    card.innerHTML=`<div class="st40-id">${esc(st.testerId)}</div><div class="st40-copy">История, заметки, состояния и сохранённые паттерны находятся в обычных разделах SETKA. После успешной синхронизации их копия доступна в личном облачном архиве.</div><div class="st40-ok"><span class="st40-dot ${cp.ok===true?"":"off"}"></span>${esc(syncMessage(cp))}</div><div class="st40-ok"><span class="st40-dot ${st.consented?"":"off"}"></span>${st.consented?"Исследовательский режим включён":"Нужно подтвердить актуальные условия"}</div>`;
+    const wrap=document.createElement("div");wrap.id="st40TesterCabinet";wrap.className="st40-section";wrap.appendChild(card);b.appendChild(wrap);
+    const syncButton=button(b,"Синхронизировать сейчас","Обновить личный архив и общие показатели",async()=>{
+      syncButton.disabled=true;syncButton.textContent="Синхронизация…";
+      try{
+        const ok=await window.__SETKA_PRIVATE_CORPUS_V40__?.sync?.();
+        if(ok)await C.sandbox?.sync?.();
+      }finally{await showCabinet()}
+    });
+    if(!st.consented)button(b,"Подтвердить актуальные условия",null,showConsent,true);
+    button(b,"Сменить пароль",null,showChangePassword);
+    button(b,"Выйти","Личные заметки и история останутся в этом браузере даже после выхода.",logout);
+  }
 
   function isMeScreen(){
     const layer=document.getElementById("st34Layer");
