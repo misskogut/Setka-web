@@ -8,7 +8,7 @@
   const STATUS_KEY="setka-v40:private-corpus-status";
   const FAVORITES_KEY="setka-web:favorites:v1";
   const BUILD="v40.private-cloud.2";
-  let busy=false,timer=0,lastSignature="",hydrated=false,authoritative=false,hydrationPromise=null,lastStatus=null;
+  let busy=false,timer=0,physioTimer=0,lastSignature="",hydrated=false,authoritative=false,hydrationPromise=null,lastStatus=null;
 
   const clone=v=>v==null?v:JSON.parse(JSON.stringify(v));
   function session(){
@@ -128,6 +128,7 @@
   function schedule(ms=1200){clearTimeout(timer);timer=setTimeout(()=>sync(false),ms)}
   window.addEventListener("setka:standalone-event",()=>schedule(1000));
   window.addEventListener("setka:pattern-exposure",()=>schedule(800));
+  window.addEventListener("setka:physio-sample",()=>{if(!physioTimer)physioTimer=setTimeout(()=>{physioTimer=0;sync(false)},10000)});
   window.addEventListener("setka:v34-sync-request",()=>schedule(900));
   window.addEventListener("setka:favorite-saved",()=>schedule(700));
   window.addEventListener("setka:favorite-removed",()=>schedule(700));

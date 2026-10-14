@@ -111,7 +111,7 @@
   window.addEventListener("setka:library-page",e=>{if(C.getActiveSession())originalRecord("session_library_page",{page:e.detail?.page,state:C.stateSnapshot()},true)});
   setTimeout(()=>{if(Setka.getState?.()?.view==="game")openExposure("runtime-init",Setka.getState?.())},100);
 
-  C.patternExposure={visitId,list:()=>clone(ensureExposures()),flush:()=>closeExposure("flush")};
+  C.patternExposure={visitId,list:()=>clone(ensureExposures()),current:()=>document.hidden||!document.getElementById("st34Layer")?.classList.contains("hidden")||document.getElementById("instructionsModal")?.classList.contains("open")?null:clone(current),flush:()=>closeExposure("flush")};
   window.__SETKA_STANDALONE_V34_READY__=true;
   window.__SETKA_PATTERN_EXPOSURE_V35_2__=true;
 })();

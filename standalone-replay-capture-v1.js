@@ -1,9 +1,14 @@
 (() => {
   'use strict';
   const C=window.SetkaStandaloneV34,S=window.SetkaApp;if(!C||!S)return;
-  const BUILD='v34-activity-consent-ui-2',clone=v=>JSON.parse(JSON.stringify(v)),q=s=>document.querySelector(s);
+  const BUILD='v34-research-activity-3',clone=v=>JSON.parse(JSON.stringify(v)),q=s=>document.querySelector(s);
   let timer=0,lastUi='',lastMove=0,observerBusy=false;
-  const enabled=()=>C.getData?.().settings?.replayDetailsEnabled===true;
+  const enabled=()=>{
+    const choice=C.getData?.().settings?.replayDetailsEnabled;
+    if(typeof choice==='boolean')return choice;
+    const account=window.__SETKA_TESTER_CABINET_V40__?.state?.();
+    return account?.authenticated===true&&account?.consented===true;
+  };
   const viewport=()=>({width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio||1});
   function recordedClip(el){
     const r=el.getBoundingClientRect();let left=Math.max(0,r.left),top=Math.max(0,r.top),right=Math.min(innerWidth,r.right),bottom=Math.min(innerHeight,r.bottom);
@@ -70,27 +75,7 @@
     if(snapshots.length>80){const old=new Set(snapshots.slice(0,-80).map(e=>e.id));d.events=d.events.filter(e=>!old.has(e.id));d.settings.replayTrimmedScreens=(d.settings.replayTrimmedScreens||0)+old.size;C.save()}
   }
   function schedule(reason){clearTimeout(timer);timer=setTimeout(()=>capture(reason),100)}
-  function showPrivacySettings(){
-    const body=C.screen('Приватность и данные','Управляй дополнительными данными для исследования удобства SETKA.','НАСТРОЙКИ',()=>C.showMe());
-    const wrap=document.createElement('div');wrap.id='st40PrivacySettings';body.appendChild(wrap);
-    const card=document.createElement('div');card.id='stReplaySettings';card.className='st-card';
-    card.innerHTML='<b>Подробная история действий</b><p class="st-muted">Открытые разделы, параметры паттернов, расположение кнопок и касания помогают исследователю восстановить ход сессии в закрытой админке. Визуализация там создаётся кодом по сохранённым событиям и настройкам. Видеозапись не ведётся.</p><p class="st-muted">Вводимый текст, пароли и экраны входа исключены. У гостя данные остаются на устройстве. После входа и подтверждения участия они могут сохраняться в личном облачном архиве SETKA. Дополнительный сбор можно выключить в любой момент.</p><label class="st-row"><input type="checkbox" style="width:20px;height:20px;flex-shrink:0"><span>Сохранять подробную историю действий</span></label>';
-    const input=card.querySelector('input');input.checked=enabled();input.onchange=()=>{const d=C.getData();d.settings=d.settings||{};d.settings.replayDetailsEnabled=input.checked;d.settings.replayDetailsConsentAt=new Date().toISOString();C.save();lastUi='';C.recordEvent('replay_consent',{enabled:input.checked,version:2},false);if(input.checked)schedule('explicit-consent');window.dispatchEvent(new CustomEvent('setka:v34-sync-request'))};
-    wrap.appendChild(card);
-  }
-  function privacyEntry(){
-    const layer=q('#st34Layer'),title=layer?.querySelector('.st-title')?.textContent?.trim();
-    if(!layer||layer.classList.contains('hidden')||!['Я','Моя SETKA','Аккаунт SETKA'].includes(title))return;
-    // Consent is a data setting. Session playback belongs to the admin, and
-    // never appears as a card or player in the participant's personal screen.
-    layer.querySelector('#stReplaySettings')?.remove();
-    const header=layer.querySelector('.st-top');if(!header||header.querySelector('#st40DataSettingsButton'))return;
-    const button=document.createElement('button');button.type='button';button.id='st40DataSettingsButton';button.className='st40-account-shortcut';
-    button.setAttribute('aria-label','Приватность и данные');button.title='Приватность и данные';
-    button.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 17h16"></path><circle cx="9" cy="7" r="3" fill="#090909"></circle><circle cx="15" cy="17" r="3" fill="#090909"></circle></svg><span class="st40-account-shortcut-label">Настройки</span>';
-    button.onclick=showPrivacySettings;header.appendChild(button);
-  }
-  window.addEventListener('setka:standalone-event',e=>{if(e.detail?.type==='screen_pointer_up'){schedule('touch');return}if(['ui_snapshot','screen_pointer_move','screen_pointer_down','ui_tap','replay_consent'].includes(e.detail?.type))return;schedule(e.detail?.type);setTimeout(privacyEntry,120)});
+  window.addEventListener('setka:standalone-event',e=>{if(e.detail?.type==='screen_pointer_up'){schedule('touch');return}if(['ui_snapshot','screen_pointer_move','screen_pointer_down','ui_tap','replay_consent'].includes(e.detail?.type))return;schedule(e.detail?.type)});
   window.addEventListener('setka:pattern-special',e=>C.recordEvent('pattern_state',{reason:e.detail?.action||'special',state:C.stateSnapshot()}));
   // The production deep-telemetry module already records each pointer once.
   if(!window.__SETKA_V34_DEEP_TELEMETRY__){
@@ -100,11 +85,10 @@
     document.addEventListener('pointermove',e=>{if(!e.buttons||Date.now()-lastMove<200)return;lastMove=Date.now();pointer('screen_pointer_move',e)},{passive:true});
   }
   function pointer(type,e){if(!enabled()||screen()?.kind==='restricted'||e.target.closest('input,textarea,select,#stReplaySettings'))return;C.recordEvent(type,{replayCapture:true,nx:e.clientX/innerWidth,ny:e.clientY/innerHeight,pointerType:e.pointerType,fingers:1,viewport:viewport()},true);if(type==='screen_pointer_up')schedule('touch')}
-  const observer=new MutationObserver(()=>{if(observerBusy)return;observerBusy=true;setTimeout(()=>{observerBusy=false;privacyEntry()},120)});observer.observe(document.body,{childList:true,subtree:true});
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)schedule('visible')});
   window.addEventListener('resize',()=>schedule('resize'));
   window.addEventListener('setka:sheet-settled',()=>schedule('sheet-settled'));
   window.visualViewport?.addEventListener('resize',()=>schedule('visible-viewport'));
   window.__SETKA_REPLAY_CAPTURE_V1__={screen,capture,enabled,restricted,build:BUILD};
-  setTimeout(privacyEntry,500);
+  window.addEventListener('setka:v40-account',()=>{lastUi='';schedule('research-consent')});
 })();

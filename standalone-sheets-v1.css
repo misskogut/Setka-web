@@ -2,7 +2,7 @@ body.setka-sheet-layout {
   --setka-keyboard-inset: 0px;
   --setka-visible-height: 100dvh;
   --setka-dock-space: calc(82px + env(safe-area-inset-bottom, 0px));
-  --setka-sheet-max: min(70dvh, calc(var(--setka-visible-height) - var(--setka-dock-space) - 68px));
+  --setka-sheet-max: calc(var(--setka-visible-height) - var(--setka-dock-space) - max(8px, env(safe-area-inset-top, 0px)));
 }
 body.setka-sheet-layout #st34Nav {
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -38,7 +38,8 @@ body.setka-sheet-layout #st34Layer {
   bottom: calc(var(--setka-dock-space) + var(--setka-keyboard-inset));
   width: min(calc(100% - 22px), 520px);
   max-height: var(--setka-sheet-max);
-  min-height: min(250px, var(--setka-sheet-max));
+  height: var(--setka-sheet-max);
+  min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -61,6 +62,7 @@ body.setka-sheet-layout #st34Layer.hidden {
   transition: transform .28s cubic-bezier(.4, 0, .8, .4), opacity .2s, visibility 0s .28s;
 }
 body.setka-sheet-layout #st34Layer > .st-wrap {
+  flex: 1;
   width: 100%;
   max-width: none;
   max-height: calc(var(--setka-sheet-max) - 34px);

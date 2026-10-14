@@ -107,5 +107,5 @@
     document.body.style.setProperty('--setka-keyboard-inset',`${Math.max(0,innerHeight-height-offset)}px`);
   }
   window.visualViewport?.addEventListener('resize',viewport);window.visualViewport?.addEventListener('scroll',viewport);window.addEventListener('resize',viewport);
-  window.__SETKA_SHEET_LAYOUT_V1__={version:'1.2.0',close,activate};viewport();sync();
+  window.__SETKA_SHEET_LAYOUT_V1__={version:'1.3.0',close,activate};viewport();sync();
 })();
