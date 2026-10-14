@@ -8,13 +8,18 @@
   const STATUS_KEY="setka-v40:private-corpus-status";
   const FAVORITES_KEY="setka-web:favorites:v1";
   const BUILD="v40.private-cloud.2";
-  let busy=false,timer=0,lastSignature="",hydrated=false,authoritative=false,hydrationPromise=null;
+  let busy=false,timer=0,lastSignature="",hydrated=false,authoritative=false,hydrationPromise=null,lastStatus=null;
 
   const clone=v=>v==null?v:JSON.parse(JSON.stringify(v));
-  function session(){try{return JSON.parse(localStorage.getItem(SESSION_KEY)||"null")}catch(_){return null}}
+  function session(){
+    for(const kind of ["localStorage","sessionStorage"]){
+      try{const store=kind==="localStorage"?localStorage:sessionStorage;const value=JSON.parse(store.getItem(SESSION_KEY)||"null");if(value?.token)return value}catch(_){}
+    }
+    return null;
+  }
   function did(){return C.sandbox?.deviceId||null}
-  function status(){try{return JSON.parse(localStorage.getItem(STATUS_KEY)||"null")}catch(_){return null}}
-  function saveStatus(v){try{localStorage.setItem(STATUS_KEY,JSON.stringify(v))}catch(_){}window.dispatchEvent(new CustomEvent("setka:v40-private-corpus",{detail:v}))}
+  function status(){if(lastStatus)return lastStatus;try{return JSON.parse(localStorage.getItem(STATUS_KEY)||"null")}catch(_){return null}}
+  function saveStatus(v){lastStatus=v;try{localStorage.setItem(STATUS_KEY,JSON.stringify(v))}catch(_){}window.dispatchEvent(new CustomEvent("setka:v40-private-corpus",{detail:v}))}
   function archive(){
     const d=clone(C.getData?.()||{});
     return {

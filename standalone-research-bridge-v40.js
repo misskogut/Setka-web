@@ -10,7 +10,12 @@
   const BUILD="v40.privacy.2";
   let busy=false,timer=0,lastSignature="";
 
-  function session(){try{return JSON.parse(localStorage.getItem(SESSION_KEY)||"null")}catch(_){return null}}
+  function session(){
+    for(const kind of ["localStorage","sessionStorage"]){
+      try{const store=kind==="localStorage"?localStorage:sessionStorage;const value=JSON.parse(store.getItem(SESSION_KEY)||"null");if(value?.token)return value}catch(_){}
+    }
+    return null;
+  }
   function saveBridge(v){try{localStorage.setItem(BRIDGE_KEY,JSON.stringify(v))}catch(_){}window.dispatchEvent(new CustomEvent("setka:v40-research-bridge",{detail:v}))}
   function bridgeStatus(){try{return JSON.parse(localStorage.getItem(BRIDGE_KEY)||"null")}catch(_){return null}}
   async function post(url,payload,keepalive=false){const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json",apikey:KEY},body:JSON.stringify(payload),keepalive});const out=await r.json().catch(()=>({}));if(!r.ok){const e=new Error(out.error||`http_${r.status}`);e.status=r.status;throw e}return out}
