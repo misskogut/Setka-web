@@ -57,7 +57,7 @@
         p.sessionId=n?.sessionId||null;
       }
     }
-    p.scrollTop=Number(layer?.scrollTop)||0;
+    p.scrollTop=Number((window.__SETKA_SHEET_LAYOUT_V1__?layer?.querySelector(".st-wrap"):layer)?.scrollTop)||0;
     p.windowScroll=Number(window.scrollY)||0;
     return p;
   }
@@ -75,7 +75,7 @@
   }
   function restoreScroll(o){
     requestAnimationFrame(()=>{
-      if(layer&&!layer.classList.contains("hidden"))layer.scrollTop=Math.max(0,Number(o.scrollTop)||0);
+      if(layer&&!layer.classList.contains("hidden")){const scroller=window.__SETKA_SHEET_LAYOUT_V1__?layer.querySelector(".st-wrap"):layer;if(scroller)scroller.scrollTop=Math.max(0,Number(o.scrollTop)||0)}
       else window.scrollTo?.(0,Math.max(0,Number(o.windowScroll)||0));
     });
   }

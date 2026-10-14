@@ -5,7 +5,16 @@
   let timer=0,lastUi='',lastMove=0,observerBusy=false;
   const enabled=()=>C.getData?.().settings?.replayDetailsEnabled===true;
   const viewport=()=>({width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio||1});
-  function shown(el){if(!el)return false;for(let p=el;p&&p!==document.body;p=p.parentElement){const c=getComputedStyle(p);if(c.display==='none'||c.visibility==='hidden'||c.opacity==='0')return false}const r=el.getBoundingClientRect(),s=getComputedStyle(el);return r.width>0&&r.height>0&&r.bottom>0&&r.right>0&&r.top<innerHeight&&r.left<innerWidth&&s.display!=='none'&&s.visibility!=='hidden'&&s.opacity!=='0'}
+  function recordedClip(el){
+    const r=el.getBoundingClientRect();let left=Math.max(0,r.left),top=Math.max(0,r.top),right=Math.min(innerWidth,r.right),bottom=Math.min(innerHeight,r.bottom);
+    for(let p=el.parentElement;p&&p!==document.body;p=p.parentElement){
+      const style=getComputedStyle(p),b=p.getBoundingClientRect();
+      if(/^(hidden|clip|scroll|auto)$/.test(style.overflowX)){left=Math.max(left,b.left);right=Math.min(right,b.right)}
+      if(/^(hidden|clip|scroll|auto)$/.test(style.overflowY)){top=Math.max(top,b.top);bottom=Math.min(bottom,b.bottom)}
+    }
+    return [left,top,Math.max(0,right-left),Math.max(0,bottom-top)].map(x=>Math.round(x*10)/10);
+  }
+  function shown(el){if(!el)return false;for(let p=el;p&&p!==document.body;p=p.parentElement){const c=getComputedStyle(p);if(c.display==='none'||c.visibility==='hidden'||c.opacity==='0')return false}const clip=recordedClip(el);return clip[2]>0&&clip[3]>0}
   function box(el){const r=el.getBoundingClientRect();return [r.left,r.top,r.width,r.height].map(x=>Math.round(x*10)/10)}
   function recipe(canvas){
     const tile=canvas.closest('.pattern-tile'),nid=canvas.closest('[data-note-id]')?.dataset.noteId;
@@ -24,13 +33,13 @@
       const privacy=!!layer?.querySelector('#st40PrivacySettings');
       return{version:1,kind:'restricted',title:privacy?'Настройки приватности':'Защищённый экран кабинета',viewport:viewport(),elements:[],reason:privacy?'privacy-settings-excluded':'credentials-excluded'};
     }
-    const roots=overlay?[layer,q('#st34Nav')]:st.view==='game'?[q('.game-ui')]:[q('#libraryScreen'),q('#st34Nav')];
+    const roots=overlay?(window.__SETKA_SHEET_LAYOUT_V1__?[q('#libraryScreen.active'),q('.game-ui'),q('#st34SheetBackdrop'),layer,q('#st34Nav')]:[layer,q('#st34Nav')]):st.view==='game'?[q('.game-ui')]:[q('#libraryScreen'),q('#st34Nav')];
     const elements=[];
     for(const root of roots.filter(Boolean)){
       for(const el of [root,...root.querySelectorAll('*')]){
         if(elements.length>=120)break;
         if(!shown(el)||el.closest('#stReplaySettings,[id^=st40],.st40-form,#isolated-test-tools')||el.closest('svg')&&el.tagName.toLowerCase()!=='svg'||el.id==='patternCanvas')continue;
-        const style=getComputedStyle(el),r=box(el),item={rect:r,...(['favoriteButton','modeLabel'].includes(el.id)?{control:el.id}:{})};
+        const style=getComputedStyle(el),r=box(el),clip=recordedClip(el),item={rect:r,...(clip.some((value,i)=>value!==r[i])?{clip}:{}),...(['favoriteButton','modeLabel'].includes(el.id)?{control:el.id}:{})};
         if(el.tagName.toLowerCase()==='svg'){
           const shapes=[...el.querySelectorAll('path,rect,circle,line,polyline,polygon,ellipse')].slice(0,40).map(n=>{
             const attrs={};for(const k of ['d','x','y','width','height','rx','ry','cx','cy','r','x1','y1','x2','y2','points']){const v=n.getAttribute(k);if(v&&/^[-\d.,\sMmLlHhVvCcSsQqTtAaZzEe+]+$/.test(v))attrs[k]=v}
@@ -94,6 +103,8 @@
   const observer=new MutationObserver(()=>{if(observerBusy)return;observerBusy=true;setTimeout(()=>{observerBusy=false;privacyEntry()},120)});observer.observe(document.body,{childList:true,subtree:true});
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)schedule('visible')});
   window.addEventListener('resize',()=>schedule('resize'));
+  window.addEventListener('setka:sheet-settled',()=>schedule('sheet-settled'));
+  window.visualViewport?.addEventListener('resize',()=>schedule('visible-viewport'));
   window.__SETKA_REPLAY_CAPTURE_V1__={screen,capture,enabled,restricted,build:BUILD};
   setTimeout(privacyEntry,500);
 })();
