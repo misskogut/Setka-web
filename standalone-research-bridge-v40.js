@@ -21,7 +21,7 @@
   async function post(url,payload,keepalive=false){const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json",apikey:KEY},body:JSON.stringify(payload),keepalive});const out=await r.json().catch(()=>({}));if(!r.ok){const e=new Error(out.error||`http_${r.status}`);e.status=r.status;throw e}return out}
   async function shaText(v){const d=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(String(v)));return[...new Uint8Array(d)].map(b=>b.toString(16).padStart(2,"0")).join("")}
   function daypart(v){const h=new Date(v||Date.now()).getHours();if(h<6)return"night";if(h<12)return"morning";if(h<18)return"day";return"evening"}
-  function pulse(sid){const a=(C.getData()?.physio?.samples||[]).filter(x=>x?.sessionId===sid&&x.metric==="heart_rate"&&Number.isFinite(Number(x.value)));if(!a.length)return null;const vals=a.map(x=>Number(x.value));return{avg:vals.reduce((p,q)=>p+q,0)/vals.length,min:Math.min(...vals),max:Math.max(...vals),samples:vals.length}}
+  function pulse(sid,u,s){const start=Date.parse(s.startedAt)+Number(u.startedMs),end=Date.parse(s.startedAt)+Number(u.endedMs);const a=(C.pulse?.realHeartRates(C.getData()?.physio?.samples)||[]).filter(x=>x.sessionId===sid&&x.payload?.patternVisible===true&&x.configKey===u.configKey&&x.patternId===u.patternId&&Number.isFinite(start)&&Number.isFinite(end)&&Date.parse(x.observedAt)>=start&&Date.parse(x.observedAt)<end);if(!a.length)return null;const vals=a.map(x=>Number(x.value));return{avg:vals.reduce((p,q)=>p+q,0)/vals.length,min:Math.min(...vals),max:Math.max(...vals),samples:vals.length}}
   function finished(s){return !!(s?.endedAt||s?.completed||s?.phase==="done_feedback"||s?.phase==="finished")}
   function sig(){const ss=(C.getData()?.sessions||[]).filter(finished),last=ss.at(-1)||{};return[ss.length,last.id||"",last.phase||"",last.endedAt||"",(last.usage||[]).length,(last.usage||[]).reduce((a,x)=>a+(Number(x.durationMs)||0),0)].join("|")}
   async function contributions(consentCutoff=0){
@@ -34,9 +34,10 @@
       if(!usage.length)continue;
       const totals={measured:0,after_feedback:0,exploration:0};
       for(const u of usage){const p=["measured","after_feedback","exploration"].includes(u.phase)?u.phase:(s.requestKey==="explore"?"exploration":"measured");totals[p]+=Number(u.durationMs)||0}
-      const group=await shaText(`outcome|${s.id}`),hr=pulse(s.id);
+      const group=await shaText(`outcome|${s.id}`);
       for(let i=0;i<usage.length;i++){
         const u=usage[i],patternId=u.patternId||u.config?.patternId||"tentacle-orbit",config=u.config||{},configKey=u.configKey||Setka.configKey?.(config,patternId)||`${patternId}|${JSON.stringify(config)}`,phase=["measured","after_feedback","exploration"].includes(u.phase)?u.phase:(s.requestKey==="explore"?"exploration":"measured"),total=Math.max(1,totals[phase]||0),weight=Math.max(0,Math.min(1,(Number(u.durationMs)||0)/total)),isOutcome=phase==="measured"&&s.requestKey!=="explore",key=await shaText(`contribution|${s.id}|${phase}|${i}|${configKey}`);
+        const hr=pulse(s.id,u,s);
         out.push({
           contributionKey:key,outcomeGroup:group,participationWeight:isOutcome?weight:null,
           sessionStartedAt:s.startedAt||null,
@@ -44,7 +45,7 @@
           durationMs:Math.max(0,Number(u.durationMs)||0),saved:!!u.saved,
           preState:isOutcome?s.preState??null:null,postState:isOutcome?s.postState??null:null,helped:isOutcome?s.helped??null:null,completed:!!s.completed,
           daypart:daypart(s.startedAt),
-          heartRate:hr?{avg:hr.avg,min:hr.min,max:hr.max,samples:Math.max(0,Math.round(hr.samples*weight))}:null
+          heartRate:hr?{avg:hr.avg,min:hr.min,max:hr.max,samples:hr.samples}:null
         });
       }
     }

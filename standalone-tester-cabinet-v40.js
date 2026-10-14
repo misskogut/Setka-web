@@ -121,10 +121,29 @@
       }finally{await showCabinet()}
     });
     if(!st.consented)button(b,"Подтвердить актуальные условия",null,showConsent,true);
+    button(b,'Пригласить в SETKA','Создать пригласительный ID и посмотреть, кто его принял',showInvites);
     button(b,"Сменить пароль",null,showChangePassword);
     button(b,"Выйти","Личные заметки и история останутся в этом браузере даже после выхода.",logout);
   }
 
+  async function showInvites(){
+    const st=await refresh(true);if(!st?.authenticated)return showLogin();
+    const b=C.screen('Приглашения','Каждый новый ID закрепляется за твоим аккаунтом. Другой человек принимает приглашение и создаёт свой пароль.','АККАУНТ',showCabinet);
+    const f=document.createElement('div');f.className='st40-form';f.id='st40InvitePanel';b.append(f);
+    const name=field(f,'Название или назначение приглашений','text','Мои приглашения'),qty=field(f,'Сколько новых ID','number','1');name.maxLength=120;qty.min='1';qty.step='1';
+    const message=msg(f),result=document.createElement('div');f.append(result);let generated=[];
+    const copy=button(f,'Скопировать выданные коды',null,async()=>{try{await navigator.clipboard.writeText(generated.map(x=>`${x.testerId}: ${x.code}`).join('\n'));message.textContent='Коды скопированы'}catch(_){message.textContent='Выдели и скопируй коды ниже'}});copy.hidden=true;
+    const go=button(f,'Создать пригласительные ID',null,async()=>{
+      const total=Number(qty.value),label=name.value.trim();if(!label||label.length>120||!Number.isInteger(total)||total<1||total>2147483647){message.textContent='Введи название и целое количество больше нуля';return}
+      go.disabled=true;name.disabled=true;qty.disabled=true;generated=[];result.replaceChildren();copy.hidden=true;let batchId=null;
+      try{while(generated.length<total&&f.isConnected){const out=await post({action:'issue-invites',sessionToken:session()?.token,label,count:Math.min(100,total-generated.length),requestedCount:total,batchId,requestId:crypto.randomUUID()});batchId=out.batchId;generated.push(...out.items);result.textContent=generated.map(x=>`${x.testerId}: ${x.code}`).join('\n');result.style.cssText='white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.7;user-select:text';copy.hidden=false;message.textContent=`Создано ${generated.length} из ${total}. Скопируй коды до закрытия карточки: повторно они не показываются.`;}
+      }catch(_){message.textContent=`Выдача прервалась. Получено кодов: ${generated.length}. Скопируй их и обнови историю; перед повторной выдачей проверь созданные ID.`}
+      finally{go.disabled=false;name.disabled=false;qty.disabled=false;await loadList();}
+    },true);
+    const list=document.createElement('div');b.append(list);
+    async function loadList(){try{const out=await post({action:'my-invites',sessionToken:session()?.token});if(!list.isConnected)return;list.innerHTML=`<h3>Мои приглашения · ${out.items.length}</h3>`;for(const x of out.items){const row=document.createElement('article');row.className='st40-card';row.innerHTML=`<b>${esc(x.invite_label||'Без названия')}</b><p>${esc(x.tester_id)}</p><div class="st40-copy">${!x.active?'Отключён':x.password_set_at?'Аккаунт создан':x.consumed_at?'Приглашение принято':'Ожидает активации'} · ${esc(C.dt(x.created_at))}</div>`;list.append(row)}if(!out.items.length)list.insertAdjacentHTML('beforeend','<p class="st40-copy">Ты пока не выдавал приглашения.</p>');if(out.truncated)list.insertAdjacentHTML('beforeend','<p class="st40-copy">Показаны последние 10 000 приглашений.</p>')}catch(_){list.textContent='Не удалось загрузить приглашения. Обнови карточку.'}}
+    await loadList();
+  }
   function isMeScreen(){
     const layer=document.getElementById("st34Layer");
     return !!layer&&!layer.classList.contains("hidden")&&layer.querySelector(".st-title")?.textContent?.trim()==="Я";

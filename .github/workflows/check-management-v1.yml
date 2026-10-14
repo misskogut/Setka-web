@@ -1,0 +1,25 @@
+name: Verify SETKA names, referrals and activity
+on:
+  pull_request:
+    paths: ['research-v1/**', 'standalone-catalog-v1.js', 'standalone-activity-v1.js', 'standalone-tester-cabinet-v40.js', 'supabase/functions/setka-tester-account-v40/**', 'supabase/functions/setka-research-admin-v1/**', 'tests/research-management-v1*', '.github/workflows/check-management-v1.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  postgres-and-contract:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: isolated-ci-only
+          POSTGRES_DB: setka_isolated
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node --test tests/research-management-v1.test.mjs
+      - run: psql -h 127.0.0.1 -U postgres -d setka_isolated -f tests/research-management-v1-db.sql
+        env: {PGPASSWORD: isolated-ci-only}

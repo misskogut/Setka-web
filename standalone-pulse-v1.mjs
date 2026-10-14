@@ -1,4 +1,4 @@
-import {parseHeartRateMeasurement,realHeartRates,isRealPhysio} from './research-v1/physiology.mjs?v=1.3.0';
+import {parseHeartRateMeasurement,realHeartRates,isRealPhysio} from './research-v1/physiology.mjs?v=1.4.0';
 
 export function createPulseController({C,bluetooth,context=()=>({}),now=()=>Date.now(),changed=()=>{},samplesReceived=()=>{}}){
   let device=null,characteristic=null,generation=0,status='idle',last=null,error='',listener=null,disconnectListener=null;
@@ -55,12 +55,14 @@ export function createPulseController({C,bluetooth,context=()=>({}),now=()=>Date
 if(typeof window!=='undefined'&&window.SetkaStandaloneV34){
   const C=window.SetkaStandaloneV34,S=window.SetkaApp,esc=C.esc;
   const context=()=>{
+    C.patternExposure?.refresh?.();
     const session=C.getActiveSession(),exposure=C.patternExposure?.current?.(),st=S.getState?.(),protectedScreen=window.__SETKA_REPLAY_CAPTURE_V1__?.restricted?.();
     const shown=!!exposure&&st?.view==='game'&&!document.hidden;
     return {sessionId:session?.id||null,phase:session?.phase||'free',sessionElapsedMs:session?Math.max(0,Date.now()-Date.parse(session.startedAt)):null,
       visitId:C.patternExposure?.visitId||null,exposureId:shown?exposure.exposureId:null,patternVisible:shown,
       patternId:shown?exposure.patternId:null,patternVersion:shown?S.getPatterns?.().find(p=>p.id===exposure.patternId)?.version??null:null,
       configKey:shown?exposure.configKey:null,frame:shown&&Number.isFinite(st.frame)?st.frame:null,
+      config:shown?JSON.parse(JSON.stringify(st.config)):null,
       view:protectedScreen?'protected':document.hidden?'background':!document.getElementById('st34Layer').classList.contains('hidden')?'overlay':st?.view||null};
   };
   const controller=createPulseController({C,bluetooth:navigator.bluetooth,context,changed:()=>render(),samplesReceived:detail=>window.dispatchEvent(new CustomEvent('setka:physio-sample',{detail}))});

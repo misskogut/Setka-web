@@ -3,6 +3,7 @@
 // Moderation is delegated to the existing API; no experiment assigns real participants.
 import { buildData, replayCoverage, ARRAY, num, time } from './model.mjs';
 import { recordedStates } from './replay-model.mjs';
+import {issueInvites} from './invites.mjs';
 const URL_BASE = Deno.env.get('SUPABASE_URL') || '';
 const SERVICE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const ORIGIN = 'https://misskogut.github.io';
@@ -28,6 +29,10 @@ async function read(table:string,select:string,filters:Record<string,string>={},
 async function sha(v:string){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(v));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');}
 async function authorized(key:unknown){if(typeof key!=='string'||!key.trim()||key.length>300)return false;const x=await read('admin_keys','id',{key_hash:`eq.${await sha(key.trim())}`,active:'eq.true'},2);return x.rows.length===1?x.rows[0].id:false;}
 const SOURCES = [
+  ['patternCatalog','setka_research_v1_pattern_catalog','pattern_id,title,revision,updated_at','Названия паттернов','pattern_id'],
+  ['patternNameHistory','setka_research_v1_pattern_names_history','pattern_id,revision,title,created_at','История названий','pattern_id,revision'],
+  ['issuedInvites','setka_research_v1_invites','*','Выданные пригласительные ID','created_at,tester_id'],
+  ['inviteBatches','setka_research_v1_invite_batches','id,label,issued_by_tester_id,requested_count,created_at','Пакеты приглашений','created_at,id'],
   ['devices','prototype_v34_devices','device_id,label,subject_key,channel,first_seen_at,last_seen_at,viewport,app_version,active,updated_at','Устройства','device_id'],
   ['aliases','prototype_v34_participant_aliases','device_id,label,updated_at','Названия участников','device_id'],
   ['accounts','prototype_v40_tester_accounts','tester_id,research_subject_id,password_set_at,consent_version,consent_at,active,last_login_at,created_at,updated_at','Аккаунты тестировщиков','tester_id'],
@@ -71,6 +76,15 @@ async function overview(){
   return reply({ok:true,data:buildData(raw,statuses)});
 }
 function validId(v:unknown,max=220){return typeof v==='string'&&v.length>0&&v.length<=max&&!/[\u0000-\u001f]/.test(v);}
+async function rpc(name:string,args:any){
+ const res=await fetch(`${URL_BASE}/rest/v1/rpc/${name}`,{method:'POST',headers:{apikey:SERVICE,Authorization:`Bearer ${SERVICE}`,'Content-Type':'application/json'},body:JSON.stringify(args)});
+ const out=await res.json();if(!res.ok)throw new Error(out.message||'write_failed');return out;
+}
+async function renamePattern(b:any,adminId:string){
+ const title=String(b.title||'').trim();if(!validId(b.patternId,100)||!title||title.length>80||/[\u0000-\u001f]/.test(title)||!Number.isInteger(b.expectedRevision))return reply({error:'invalid_title'},400);
+ try{return reply({ok:true,item:await rpc('setka_research_v1_rename_pattern',{p_pattern_id:b.patternId,p_title:title,p_expected_revision:b.expectedRevision,p_admin_key_id:adminId})});}
+ catch(e){return reply({error:e.message==='revision_conflict'?'revision_conflict':'rename_failed'},e.message==='revision_conflict'?409:503);}
+}
 function normalEvent(x:any,start:any,participantId:string){
   const at=x.wall_at||x.created_at||x.wallAt;
   const offset=num(x.t_ms??x.tMs);const relative=offset!==null?offset:(time(at)!==null&&time(start)!==null?Math.max(0,time(at)!-time(start)!):null);
@@ -141,7 +155,11 @@ Deno.serve(async(req:Request)=>{
   try{
     const text=await req.text();if(text.length>16000)return reply({error:'request_too_large'},413);
     const b=JSON.parse(text);
+    // Only public display names are released here. No account or research rows.
+    if(b.action==='catalog'){const r=await read('setka_research_v1_pattern_catalog','pattern_id,title,revision,updated_at',{},1000,'pattern_id');return reply({ok:true,items:r.rows,updatedAt:new Date().toISOString()});}
     const adminId=await authorized(b.adminKey);if(!adminId)return reply({error:'invalid_admin_key'},403);
+    if(b.action==='rename-pattern')return await renamePattern(b,adminId);
+    if(b.action==='issue-invites'){try{return reply(await issueInvites(b,{adminId},rpc));}catch(e){const code=e.message;return reply({error:code},/invalid_|request_already_issued|batch_complete|batch_not_owned/.test(code)?409:503);}}
     if(b.action==='save-experiment')return await saveExperiment(b,adminId);
     if(b.action==='overview')return await overview();
     if(b.action==='replay')return await replay(b);

@@ -1,6 +1,6 @@
 import {isRealPhysio,physioKind} from './physiology.mjs';
 // Shared, pure data contract. The server supplies rows; this module never makes up rows.
-export const VERSION = 'SETKA-RESEARCH-1.3.0';
+export const VERSION = 'SETKA-RESEARCH-1.4.0';
 export const ARRAY = v => Array.isArray(v) ? v : [];
 export const num = (v, fallback = null) => v !== null && v !== '' && v !== undefined && Number.isFinite(Number(v)) ? Number(v) : fallback;
 export const time = v => { const t = typeof v === 'number' ? v : Date.parse(v || ''); return Number.isFinite(t) ? t : null; };
@@ -60,7 +60,7 @@ export function buildData(raw, sources=[], now=new Date().toISOString()) {
     else participants.set(id,{id,label:aliases.get(d.device_id)||`Гостевое устройство ${i+1}`,status:'guest',current:false,firstAt:d.first_seen_at,lastAt:d.last_seen_at,devices:[d.device_id],source:'legacy-device',active:d.active!==false,identityNote:'Устройство не подтверждает личность человека.'});
   });
   for(const p of ARRAY(raw.legacyParticipants))participants.set(`legacy:${p.id}`,{id:`legacy:${p.id}`,label:p.label||p.access_code||'Участник ранней версии',status:'tester',current:false,firstAt:p.created_at,lastAt:p.last_seen_at,devices:[],source:'legacy-research',active:p.active!==false});
-  const sessions=[],exposures=[],favorites=[],notes=[],symptoms=[],checkins=[],physio=[],invites=[],archiveEvents=[];
+  const sessions=[],exposures=[],favorites=[],notes=[],symptoms=[],checkins=[],physio=[],invites=[],archiveEvents=[],activityIntervals=[];
   const metadataSessions=new Map();
   for(const row of [...snapshots.map(x=>({...x,tester_id:archivedDevice.get(x.device_id),source:'legacy-snapshot'})),...archives.map(x=>({...x,source:'private-archive'}))]){
     const participantId=row.tester_id&&accountIds.has(row.tester_id)?`account:${row.tester_id}`:participantForDevice(row.device_id);
@@ -72,6 +72,7 @@ export function buildData(raw, sources=[], now=new Date().toISOString()) {
     for(const [key,target] of [['symptoms',symptoms],['checkins',checkins],['invites',invites]])for(const x of ARRAY(payload[key]))target.push({...x,participantId,deviceId:row.device_id,source:row.source,current:isCurrent});
     for(const x of ARRAY(payload.physio?.samples))physio.push({...x,participantId,deviceId:row.device_id,originalSessionId:x.sessionId||null,sessionId:x.sessionId?`${participantId}::${x.sessionId}`:null,current:isCurrent,source:row.source});
     for(const x of ARRAY(payload.events))archiveEvents.push({...x,participantId,deviceId:row.device_id,source:row.source});
+    for(const x of ARRAY(payload.activityIntervals))activityIntervals.push({...x,participantId,deviceId:row.device_id,current:isCurrent,originalSessionId:x.sessionId||null,sessionId:x.sessionId?`${participantId}::${x.sessionId}`:null});
   }
   for(const x of ARRAY(raw.legacySessions)){const id=`legacy:${x.participant_id}`,s=sessionRow(x,id,'legacy-research');if(s){delete s.session_token_hash;sessions.push(s);}}
   for(const x of ARRAY(raw.deviceSessions)){const id=participantForDevice(x.device_id),s=sessionRow(x,id,id.startsWith('account:')?'account':'legacy-device',x.device_id);if(s)sessions.push({...s,...(metadataSessions.get(s.id)||{})});}
@@ -82,7 +83,7 @@ export function buildData(raw, sources=[], now=new Date().toISOString()) {
   const canonicalAccounts=new Set(ARRAY(raw.accountExposures).map(x=>`account:${x.tester_id}`));
   const kept=exposures.filter(x=>!canonicalAccounts.has(x.participantId));exposures.length=0;exposures.push(...kept);
   for(const x of ARRAY(raw.deviceExposures)){const id=participantForDevice(x.device_id);if(canonicalAccounts.has(id))continue;const e=exposureRow(x,id,'legacy-device',x.device_id);if(e)exposures.push(e);}
-  for(const x of ARRAY(raw.accountExposures)){const e=exposureRow(x,`account:${x.tester_id}`,'account');if(e){const meta=exposureMetadata.get(e.id);exposures.push({...meta,...e,config:meta?.config||null,phase:meta?.phase||null});}}
+  for(const x of ARRAY(raw.accountExposures)){const e=exposureRow(x,`account:${x.tester_id}`,'account');if(e){const meta=exposureMetadata.get(e.id);exposures.push({...meta,...e,config:meta?.config||null,phase:meta?.phase||null,visitId:meta?.visitId||e.visitId,patternVersion:meta?.patternVersion??e.patternVersion});}}
   for(const x of ARRAY(raw.legacyUsage)){const sid=`legacy:${x.participant_id}::${x.session_id}`;exposures.push({id:`legacy-usage:${x.id}`,participantId:`legacy:${x.participant_id}`,sessionId:sid,source:'legacy-usage',current:false,patternId:x.pattern_id,configKey:x.config_hash,config:x.config||null,durationMs:num(x.duration_ms),startedAt:sessions.find(s=>s.id===sid)?.startedAt||null,phase:null});}
   const canonicalFavoriteAccounts=new Set((sources.some(s=>s.key==='accountFavorites'&&s.ok&&!s.truncated)?ARRAY(raw.accounts):ARRAY(raw.accountFavorites)).map(x=>`account:${x.tester_id}`));
   const favKept=favorites.filter(x=>!canonicalFavoriteAccounts.has(x.participantId));favorites.length=0;favorites.push(...favKept);
@@ -103,6 +104,7 @@ export function buildData(raw, sources=[], now=new Date().toISOString()) {
   }
   return {version:VERSION,projectId:'gfchgaphzhxufwdhrcis',updatedAt:now,sources,
     participants:[...participants.values()],sessions:ds,exposures:es,favorites:fs,notes:ns,visits,digests,
+    activityIntervals:unique(activityIntervals,x=>`${x.participantId}:${x.id}`),patternCatalog:ARRAY(raw.patternCatalog),patternNameHistory:ARRAY(raw.patternNameHistory),issuedInvites:ARRAY(raw.issuedInvites),inviteBatches:ARRAY(raw.inviteBatches),
     symptoms:unique(symptoms,x=>`${x.participantId}:${x.id}`),checkins:unique(checkins,x=>`${x.participantId}:${x.id}`),physio:unique(physio.filter(isRealPhysio),x=>`${x.participantId}:${x.id||x.observedAt}`),excludedSimulatedPhysio:physio.filter(x=>physioKind(x)==='simulated').length,excludedUnverifiedPhysio:physio.filter(x=>['unverified','invalid'].includes(physioKind(x))).length,invites:unique(invites,x=>`${x.participantId}:${x.id}`),archiveEvents,
     communityMetrics:raw.serviceMetrics?.[0]||null,patternMetrics:ARRAY(raw.patternMetrics),configMetrics:ARRAY(raw.configMetrics),
     experiments:ARRAY(raw.experiments),experimentRevisions:ARRAY(raw.experimentRevisions),contributions:ARRAY(raw.contributions),consents:ARRAY(raw.consents),diagnostics:ARRAY(raw.diagnostics),publicNotes:ARRAY(raw.publicNotes),
@@ -117,6 +119,7 @@ export function sliceData(data,{scope='current',from=null,to=null}={}) {
   const favorites=data.favorites.filter(s=>inScope(s)&&inPeriod(s.savedAt));
   const notes=data.notes.filter(s=>inScope(s)&&inPeriod(s.observedAt));
   const visits=data.visits.filter(s=>inScope(s)&&inPeriod(s.startedAt));
+  const physio=(data.physio||[]).filter(s=>inScope(s)&&inPeriod(s.observedAt)),activityIntervals=(data.activityIntervals||[]).filter(s=>inScope(s)&&inPeriod(s.startedAt));
   const activeIds=new Set([...sessions,...exposures,...favorites,...notes,...visits].map(x=>x.participantId));
   const participants=data.participants.filter(inScope),active=participants.filter(p=>activeIds.has(p.id));
   const durations=exposures.map(x=>x.durationMs).filter(x=>x!==null&&x>=0);
@@ -124,7 +127,7 @@ export function sliceData(data,{scope='current',from=null,to=null}={}) {
     const dates=new Set([...data.sessions.filter(s=>s.participantId===p.id).map(s=>s.startedAt),...data.exposures.filter(s=>s.participantId===p.id).map(s=>s.startedAt)].filter(v=>time(v)!==null).map(v=>new Date(time(v)+14400000).toISOString().slice(0,10)));
     return dates.size>1;
   });
-  return {sessions,exposures,favorites,notes,visits,participants,active,returners,inPeriod,
+  return {sessions,exposures,favorites,notes,visits,participants,active,returners,inPeriod,physio,activityIntervals,
     metrics:{active:active.length,new:participants.filter(p=>inPeriod(p.firstAt)).length,sessions:sessions.length,visits:scope==='current'?null:visits.length,
       durationMs:durations.length?durations.reduce((a,b)=>a+b,0):null,averageMs:durations.length?durations.reduce((a,b)=>a+b,0)/durations.length:null,
       returners:returners.length,completed:sessions.filter(s=>s.completed).length,configurations:new Set(favorites.map(x=>x.configKey).filter(Boolean)).size,notes:notes.length}};
