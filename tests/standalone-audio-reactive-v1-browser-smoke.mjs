@@ -32,7 +32,12 @@ try{
     Object.defineProperty(window,"AudioContext",{configurable:true,value:FakeAudioContext});
   });
   await page.goto(base+"/standalone-v34.html",{waitUntil:"domcontentloaded"});
-  await page.locator("#allPatternsPanel .pattern-tile").first().click();
+  // Enter gameplay through its real public API. A tile click can open the
+  // optional start-session choice sheet instead of gameplay.
+  await page.evaluate(()=>{
+    const p=window.SetkaApp.getPatterns()[0];
+    window.SetkaApp.openConfig(p.defaults,{type:"base",id:p.id,patternId:p.id});
+  });
   await page.locator("#gameScreen.active").waitFor();
   const toggle=page.locator("#st34AudioButton");
   await toggle.waitFor();
