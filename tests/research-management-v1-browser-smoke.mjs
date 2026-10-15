@@ -1,8 +1,13 @@
-// Isolated browser/API fixtures only. Every Supabase request is intercepted.
+// Isolated browser/API fixtures only. API transport stays on localhost, then is
+// intercepted: even unload/keepalive requests cannot reach the real Supabase.
 import assert from 'node:assert/strict';import {spawn} from 'node:child_process';import {mkdirSync} from 'node:fs';import {chromium,webkit} from 'playwright';
 import {buildData} from '../research-v1/model.mjs';import {patterns,configKey} from '../research-v1/renderer.mjs';
 const port=49319,base=`http://127.0.0.1:${port}`,server=spawn('python3',['-m','http.server',String(port),'--bind','127.0.0.1'],{stdio:'ignore'});
 let browser;
+const localApiTransport=()=>{const nativeFetch=window.fetch.bind(window);window.fetch=(input,init)=>{
+ const prefix='https://gfchgaphzhxufwdhrcis.supabase.co';
+ return nativeFetch(typeof input==='string'&&input.startsWith(prefix)?location.origin+input.slice(prefix.length):input,init);
+};};
 try{
  for(let i=0;i<30;i++){try{if((await fetch(base)).ok)break}catch{}await new Promise(r=>setTimeout(r,100))}
  browser=await (process.env.SETKA_BROWSER==='webkit'?webkit:chromium).launch({headless:true,args:process.env.SETKA_BROWSER==='webkit'?[]:['--no-sandbox']});
@@ -19,6 +24,7 @@ try{
   if(url.endsWith('setka-tester-archive-v37'))out={ok:true,archive:{payload:{openedPatterns:[]},favorites:[],sourceDevices:1}};
   await r.fulfill({status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*','access-control-allow-headers':'content-type,apikey,authorization','access-control-allow-methods':'POST,OPTIONS'},body:JSON.stringify(out)});
  });
+ await front.addInitScript(localApiTransport);
  await front.addInitScript(()=>localStorage.setItem('setka-v40:cabinet-session',JSON.stringify({token:'isolated-fixture-only'})));
  await front.goto(base+'/standalone-v34.html',{waitUntil:'domcontentloaded'});await front.waitForFunction(()=>!!window.__SETKA_PATTERN_CATALOG_V1__&&!!window.SetkaStandaloneV34.activity);
  assert.equal(await front.locator('.base-tile .setka-new-pattern').count(),7);
@@ -37,7 +43,7 @@ try{
  await front.getByLabel('Название или назначение приглашений').fill('Изолированные приглашения');await front.getByLabel('Сколько новых ID').fill('2');await front.getByRole('button',{name:'Создать пригласительные ID',exact:true}).click();
  await front.getByText('Мои приглашения · 2',{exact:true}).waitFor();assert.equal(ownIssued.length,2);assert.equal(await front.locator('#st40InvitePanel').count(),1);
 
- const admin=await browser.newPage({viewport:{width:1200,height:900}});admin.on('pageerror',e=>errors.push(e.message));
+ const admin=await browser.newPage({viewport:{width:1200,height:900}});admin.on('pageerror',e=>errors.push(e.message));await admin.addInitScript(localApiTransport);
  const start='2026-10-14T17:00:00Z',cfg=patterns.find(x=>x.id==='dandelion').defaults,key=configKey(cfg,'dandelion'),issuer='T-OWNERAAA';
  const raw={accounts:[{tester_id:issuer,created_at:start}],devices:[{device_id:'fixture-device',subject_key:issuer}],patternCatalog:catalog,patternNameHistory:[{pattern_id:'dandelion',revision:1,title:'Одуванчик',created_at:start}],issuedInvites:[],inviteBatches:[],archives:[{device_id:'fixture-device',tester_id:issuer,payload:{sessions:[{id:'s',startedAt:start,endedAt:'2026-10-14T17:00:20Z',measuredActiveMs:20000}],patternExposures:[{exposureId:'e',sessionId:'s',patternId:'dandelion',patternVersion:1,configKey:key,config:cfg,startedAt:start,endedAt:'2026-10-14T17:00:20Z',durationMs:20000}],activityIntervals:[{id:'a',exposureId:'e',sessionId:'s',patternId:'dandelion',configKey:key,startedAt:start,endedAt:'2026-10-14T17:00:15Z',durationMs:15000,touches:3,moves:10,configChanges:2,coverage:'observed'}],physio:{samples:[{id:'p',sessionId:'s',exposureId:'e',patternId:'dandelion',configKey:key,value:82,metric:'heart_rate',unit:'bpm',observedAt:'2026-10-14T17:00:05Z',sourceType:'ble_heart_rate',quality:'ok',payload:{patternVisible:true,config:cfg}}]}}}]};
  const sources=['accounts','accountSessions','accountExposures','accountFavorites','issuedInvites','patternCatalog'].map(key=>({key,ok:true,truncated:false,label:key,count:0}));let chunks=[];
