@@ -233,8 +233,8 @@ async function go(){
   await page.locator('#st40TesterCabinet').waitFor({timeout:10000});
   assert.match(await page.locator('#st34Layer .st-title').innerText(),/Аккаунт SETKA/);
   assert.equal(await page.getByRole('button',{name:'Сменить пароль'}).count(),1);
-  assert.equal(await page.getByRole('button',{name:/Синхронизировать сейчас/}).count(),1);
-  assert.match(await page.locator('#st40TesterCabinet').innerText(),/Передача истории в облачный архив ожидается/);
+  assert.equal(await page.getByRole('button',{name:/Синхронизировать сейчас/}).count(),0,'archive sync is automatic; never require a manual button');
+  assert.match(await page.locator('#st40TesterCabinet').innerText(),/автоматически|обновится при восстановлении связи|обновлён автоматически/);
   assert.equal(await page.getByRole('button',{name:/Выйти/}).count(),1);
   await page.locator('#st40PrivateCorpusStatus').waitFor({timeout:10000});
   await page.locator('#st34Layer .st-back').click();
