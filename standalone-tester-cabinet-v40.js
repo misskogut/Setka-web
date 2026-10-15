@@ -120,12 +120,14 @@
   function syncMessage(cp={}){
     if(cp.ok===true&&cp.updatedAt){
       const dt=new Date(cp.updatedAt);
-      return Number.isFinite(dt.getTime())?"Личный архив обновлён автоматически · "+
-        dt.toLocaleString("ru-RU",{dateStyle:"short",timeStyle:"short"}):
-        "Личный облачный архив синхронизирован";
+      const when=Number.isFinite(dt.getTime())?
+        " · "+dt.toLocaleString("ru-RU",{dateStyle:"short",timeStyle:"short"}):"";
+      return cp.restored?"Личный архив восстановлен из облака"+when:
+        "История автоматически передана в облако"+when;
     }
-    if(cp.enabled&&cp.ok===false)return "История сохранена на устройстве · облако обновится при восстановлении связи";
-    return "Данные сохраняются автоматически. Архив обновляется в фоне.";
+    if(cp.enabled&&cp.ok===false)
+      return "Облачное обновление пока не прошло. Данные на устройстве сохранены; повторим автоматически.";
+    return "Облачное обновление ожидается. На устройстве всё сохраняется автоматически.";
   }
   function updateCabinetSync(){
     const el=document.getElementById("st40CabinetAutoSync");
