@@ -14,7 +14,7 @@ try{
   const errors=[];page.on("pageerror",e=>errors.push(e.message));
   await page.route("**/functions/v1/**",r=>r.fulfill({status:200,contentType:"application/json",headers:{"access-control-allow-origin":"*"},body:JSON.stringify({ok:true,items:[],notes:[],metrics:{},profile:{}})}));
   await page.addInitScript(()=>{
-    const meter={started:0,stopped:0,denied:false};
+    const meter={started:0,stopped:0,denied:false,signal:"music"};
     window.__setkaMicFixture=meter;
     const track={kind:"audio",stop(){meter.stopped++},addEventListener(){}};
     Object.defineProperty(navigator,"mediaDevices",{configurable:true,value:{getUserMedia:async args=>{
@@ -25,7 +25,10 @@ try{
     class FakeAudioContext{
       constructor(){this.sampleRate=44100;this.state="running"}
       createMediaStreamSource(){return{connect(){},disconnect(){}}}
-      createAnalyser(){return {fftSize:1024,smoothingTimeConstant:0,frequencyBinCount:512,getByteFrequencyData(out){out.fill(210)}}}
+      createAnalyser(){return {fftSize:1024,smoothingTimeConstant:0,frequencyBinCount:512,
+        getByteFrequencyData(out){out.fill(meter.signal==="music"?210:0)},
+        getByteTimeDomainData(out){for(let i=0;i<out.length;i++)out[i]=meter.signal==="music"?Math.round(128+48*Math.sin(i*.17)):128}
+      }}
       async resume(){this.state="running"}
       async close(){this.state="closed"}
     }
@@ -43,6 +46,9 @@ try{
   await toggle.waitFor();
   assert.equal(await toggle.isVisible(),true);
   assert.equal(await toggle.getAttribute("aria-pressed"),"false");
+  assert.equal(await toggle.locator(".st34-audio-indicator").count(),0,"no activation dot");
+  const offStyle=await toggle.evaluate(el=>({opacity:Number(getComputedStyle(el).opacity),border:getComputedStyle(el).borderColor}));
+  assert.ok(offStyle.opacity<.45,"OFF should be faded like the eye control: "+JSON.stringify(offStyle));
   assert.equal(await page.locator("#st34Nav").isVisible(),false,"music toggle only in immersive gameplay");
   const bounds=await page.evaluate(()=>{
     const ids=["st34AudioButton","favoriteButton","libraryButton","st34Note"];
@@ -59,6 +65,8 @@ try{
   await toggle.click();
   await page.waitForFunction(()=>window.SetkaAudioReactiveV1?.isActive());
   assert.equal(await toggle.getAttribute("aria-pressed"),"true");
+  const onStyle=await toggle.evaluate(el=>Number(getComputedStyle(el).opacity));
+  assert.ok(onStyle>.90,"ON note must be bright without a dot: "+onStyle);
   const frame=await page.evaluate(()=>{
     // Analyzer is fed synthetic frequency energy; assert it really changes
     // the frame passed to every canonical pattern through the shared clock.
@@ -73,11 +81,20 @@ try{
     return details;
   });
   assert.equal(frame.length,7);
-  frame.forEach(x=>assert.ok(x.changed>61.2,"audio must modulate "+x.id+": "+JSON.stringify(x)));
+  frame.forEach(x=>assert.ok(x.changed>61.9,"audible music must produce visibly stronger motion in "+x.id+": "+JSON.stringify(x)));
   assert.equal(await toggle.getAttribute("aria-pressed"),"true","pattern navigation must not disable audio");
   const after=await page.evaluate(()=>({config:window.SetkaApp.getConfig(),favorites:window.SetkaApp.getFavorites(),meter:window.__setkaMicFixture,source:window.SetkaAudioReactiveV1.status().source}));
   assert.deepEqual(after.favorites,initial.favorites,"favorited recipes must not change");
   assert.equal(after.source,"microphone");
+  assert.equal(await page.evaluate(()=>window.SetkaAudioReactiveV1.status().heard),true);
+  const silent=await page.evaluate(()=>{
+    window.__setkaMicFixture.signal="silent";
+    const audio=window.SetkaAudioReactiveV1;
+    for(let i=0;i<90;i++)audio.nextFrame(100+i,2000+i*16.667);
+    const measure=audio.nextFrame(200,4000);
+    return {offset:measure-200,level:audio.status().level};
+  });
+  assert.ok(silent.level<.03,"silence must not invent music: "+JSON.stringify(silent));
   await toggle.click();
   assert.equal(await toggle.getAttribute("aria-pressed"),"false");
   assert.equal(await page.evaluate(()=>window.__setkaMicFixture.stopped),1,"OFF must stop microphone stream");
