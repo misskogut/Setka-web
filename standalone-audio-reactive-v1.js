@@ -16,6 +16,12 @@
   button.setAttribute("aria-label","Включить реакцию паттерна на музыку через микрофон");
   button.title="Реакция на музыку";
   button.innerHTML='<svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path d="M12.5 22V8l12-3v14"/><ellipse cx="9" cy="23" rx="4" ry="2.8" transform="rotate(-16 9 23)"/><ellipse cx="21" cy="20" rx="4" ry="2.8" transform="rotate(-16 21 20)"/></svg>';
+  // A five-point, colour-selector-like counter appears only in ON modes.
+  const dots=document.createElement("span");
+  dots.id="st34AudioModeDots";
+  dots.setAttribute("aria-hidden","true");
+  for(let i=0;i<5;i++){const dot=document.createElement("i");dot.className="st34-audio-dot";dots.appendChild(dot)}
+  button.appendChild(dots);
   ui.appendChild(button);
 
   const style=document.createElement("style");
@@ -31,6 +37,11 @@
     #gameScreen #st34Note.show {top:calc(var(--safe-top) + 101px)}
     #st34AudioButton svg {width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round}
     #st34AudioButton svg ellipse {fill:currentColor;stroke:none}
+    #st34AudioModeDots {position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);
+      display:flex;gap:5px;pointer-events:none;white-space:nowrap}
+    #st34AudioModeDots .st34-audio-dot {display:block;width:5px;height:5px;background:#fff;border-radius:50%;
+      opacity:0;transition:opacity .18s ease;box-shadow:0 0 4px rgba(255,255,255,.25)}
+    #st34AudioModeDots .st34-audio-dot.lit {opacity:.95}
     #gameScreen #st34AudioButton[aria-pressed="true"] {opacity:1;border-color:rgba(255,255,255,.75);background:rgba(0,0,0,.42)}
     #gameScreen #st34AudioButton[data-pending="true"] {opacity:.60}
     #gameScreen.st34-hidden-ui #st34AudioButton {opacity:0!important;pointer-events:none!important}
@@ -60,6 +71,17 @@
   // transient live measurements, not persisted to user configurations.
   let bands={low:0,mid:0,high:0,beat:0},bassReference=0;
   let releaseBands={low:0,mid:0,high:0,beat:0},releaseAt=0;
+  const profiles=[
+    {name:"Баланс",mix:{low:1,mid:1,high:1},beat:.15,space:1,rate:.99},
+    {name:"Пульс",mix:{low:1.45,mid:0,high:0},beat:.85,space:.35,rate:1},
+    {name:"Волна",mix:{low:.18,mid:1.65,high:0},beat:.10,space:.45,rate:.91},
+    {name:"Пространство",mix:{low:1.05,mid:1.05,high:0},beat:.25,space:2.0,rate:.94},
+    {name:"Детали",mix:{low:0,mid:.14,high:1.7},beat:.12,space:0,rate:.95}
+  ];
+  let mode=0,previousMode=0,modeChangedAt=0,releaseMode=0;
+  const profile=n=>profiles[n-1]||null;
+  const blend=()=>modeChangedAt?clamp((performance.now()-modeChangedAt)/380):1;
+  const lerp=(a,b,k)=>a+(b-a)*k;
 
   function announce(message){
     feedback.textContent=message;
@@ -69,7 +91,13 @@
   }
   function renderButton(){
     button.setAttribute("aria-pressed",String(active));
-    button.setAttribute("aria-label",active?"Выключить реакцию паттерна на музыку":"Включить реакцию паттерна на музыку через микрофон");
+    const current=profile(mode);
+    button.setAttribute("aria-label",active?
+      "Музыка: "+current.name+", режим "+mode+" из "+profiles.length+". Нажать для следующего режима"+(mode===profiles.length?" — выключить":""):
+      "Включить музыкальный эквалайзер через микрофон");
+    button.title=active?current.name+" · "+mode+"/"+profiles.length:"Реакция на музыку";
+    button.dataset.mode=String(mode);
+    [...dots.children].forEach((dot,i)=>dot.classList.toggle("lit",active&&i<mode));
     button.dataset.pending=String(pending);
     // Do not disable this control: a second tap must be able to cancel
     // a pending microphone permission request on iPhone.
@@ -86,8 +114,10 @@
     seq++; // Cancel any pending microphone permission before it resolves.
     if(active){
       releaseBands={...bands};
+      releaseMode=mode;
       releaseAt=performance.now();
     }
+    mode=0;previousMode=0;modeChangedAt=0;
     const old={mic:stream,ac:context,node:source,sink:silentOutput,fft:analyser};
     stream=null;context=null;source=null;analyser=null;silentOutput=null;frequencies=null;waveform=null;
     active=false;pending=false;smoothed=0;lastFrameTime=0;wasAudible=false;
@@ -147,9 +177,10 @@
       frequencies=new Uint8Array(fft.frequencyBinCount);
       waveform=new Uint8Array(fft.fftSize);
       smoothed=0;lastFrameTime=0;lastHeardAt=performance.now();lastSilentHintAt=0;wasAudible=false;
-      bands={low:0,mid:0,high:0,beat:0};bassReference=0;releaseAt=0;active=true;
+      bands={low:0,mid:0,high:0,beat:0};bassReference=0;releaseAt=0;
+      mode=1;previousMode=1;modeChangedAt=0;active=true;
       acquired.getAudioTracks().forEach(track=>track.addEventListener("ended",()=>{if(stream===acquired)stop(false)},{once:true}));
-      announce("Микрофон включён · включи музыку рядом");
+      announce("Музыка · 1/5 · Баланс");
     }catch(err){
       releaseResources({mic:acquired,ac,node,sink,fft});
       if(ticket===seq){
@@ -227,9 +258,10 @@
     // Old 1x..7x speed obscured every geometric response, especially
     // Dandelion's native 0.01 rad/frame rotation. In music mode the geometry
     // performs; animation advances CALMLY. This is phase-continuous on toggle.
-    const audioRate=patternId==="dandelion"
-      ?.19+smoothed*.16
-      :.60+smoothed*.25;
+    const p=profile(mode);
+    const old=profile(previousMode)||p;
+    const rateModifier=lerp(old?.rate||1,p?.rate||1,blend());
+    const audioRate=(patternId==="dandelion"?.19+smoothed*.16:.60+smoothed*.25)*rateModifier;
     return baseFrame+(deltaMs/16.6667)*(audioRate-1);
   }
   // Auditory energy changes actual geometry rather than just clock speed.
@@ -290,46 +322,91 @@
     if(kind==="mid")return Math.sin(time*2.05+.7);
     return Math.sin(time*2.8+1.4);
   };
-  function renderConfig(original,patternId){
-    const live=visualBands();
-    if(!live||!original||typeof original!=="object")return original;
-    const recipe=mappings[patternId];
-    if(!recipe)return original;
-    const out={...original},time=performance.now()/1000;
-    for(const [key,[channel,strength,min,max,mode]] of Object.entries(recipe)){
+  // Each preset uses DIFFERENT groups of genuine interactive controls.
+  // Only transient render-time copies change, never canonical configurations.
+  function configForMode(original,patternId,live,n,time){
+    const p=profile(n),recipe=mappings[patternId];
+    if(!p||!recipe)return original;
+    const out={...original};
+    for(const [key,[channel,strength,min,max,behaviour]] of Object.entries(recipe)){
       if(!Number.isFinite(original[key]))continue;
-      const level=clamp(live[channel]);
-      const signal=mode==="grow"?level:level*wave(time,channel);
+      const weight=p.mix[channel]||0;
+      if(weight<=0)continue;
+      const level=clamp(live[channel]*weight+live.beat*p.beat*(channel==="low"?1:.16));
+      const signal=behaviour==="grow"?level:level*wave(time,channel);
       out[key]=clamp(original[key]*(1+strength*signal),min,max);
     }
     return out;
   }
-  // Motion is applied INSIDE the DNA/Dandelion draw, after the renderer
-  // clears its background. Moving the whole canvas would smear/crop trails.
-  // Frequency envelopes control how far the figure travels in X and Y.
-  function offsets(patternId,w,h){
+  function renderConfig(original,patternId){
     const live=visualBands();
-    if(!live||!["stereo-dna","dandelion"].includes(patternId))return{x:0,y:0};
-    const time=performance.now()/1000;
-    const mult=patternId==="stereo-dna"?1:.62;
+    if(!live||!original||typeof original!=="object")return original;
+    const next=active?mode:releaseMode,old=active?previousMode:releaseMode;
+    const now=performance.now()/1000;
+    const dest=configForMode(original,patternId,live,next,now);
+    if(!active||old===next)return dest;
+    const k=blend();
+    if(k>=1)return dest;
+    const src=configForMode(original,patternId,live,old,now);
+    const result={...original};
+    for(const key of Object.keys(original)){
+      result[key]=Number.isFinite(src[key])&&Number.isFinite(dest[key])?
+        lerp(src[key],dest[key],k):original[key];
+    }
+    return result;
+  }
+  function modeOffsets(n,patternId,w,h,live,time){
+    const p=profile(n);
+    if(!p)return{x:0,y:0};
+    // Previous balanced mode keeps its original DNA/Dandelion sway.
+    // Spatial mode moves ALL current and future patterns within safe bounds.
+    const isOriginalPair=["stereo-dna","dandelion"].includes(patternId);
+    const strength=n===4?1:n===1&&isOriginalPair?.52:n===3&&isOriginalPair?.28:0;
+    if(!strength)return{x:0,y:0};
     return{
-      x:Math.sin(time*1.18+0.4)*clamp(live.low*mult,0,1)*Math.min(44,w*.11),
-      y:Math.sin(time*.82+1.1)*clamp(live.mid*mult,0,1)*Math.min(42,h*.055)
+      x:Math.sin(time*1.18+.4)*clamp(live.low*p.mix.low,0,1)*strength*Math.min(44,w*.11),
+      y:Math.sin(time*.82+1.1)*clamp(live.mid*p.mix.mid,0,1)*strength*Math.min(42,h*.055)
     };
   }
-  // Fall back for newly added renderers; their own geometry controls can be
-  // registered later, but shared animation and breathing keep working.
+  function offsets(patternId,w,h){
+    const live=visualBands();
+    if(!live)return{x:0,y:0};
+    const next=active?mode:releaseMode,old=active?previousMode:releaseMode;
+    const time=performance.now()/1000;
+    const dest=modeOffsets(next,patternId,w,h,live,time);
+    if(!active||old===next)return dest;
+    const src=modeOffsets(old,patternId,w,h,live,time),k=blend();
+    return{x:lerp(src.x,dest.x,k),y:lerp(src.y,dest.y,k)};
+  }
+  function modeScale(n,live){
+    const p=profile(n);
+    if(!p||!p.space)return 1;
+    const amp=n===4?.055:n===2?.038:n===5?.004:.026;
+    return 1+clamp((live.low*amp+live.beat*amp*.3)*p.space,0,.085);
+  }
   function viewportScale(){
     const live=visualBands();
-    return live?1+clamp(live.low*.026+live.beat*.008,0,.038):1;
+    if(!live)return 1;
+    const next=active?mode:releaseMode,old=active?previousMode:releaseMode;
+    const dest=modeScale(next,live);
+    return !active||old===next?dest:lerp(modeScale(old,live),dest,blend());
   }
-  button.addEventListener("click",()=>{if(active||pending)stop(false);else start()});
+  function advanceMode(){
+    if(mode>=profiles.length){stop(false);return}
+    previousMode=mode;
+    mode+=1;
+    modeChangedAt=performance.now();
+    renderButton();
+    announce("Музыка · "+mode+"/"+profiles.length+" · "+profile(mode).name);
+  }
+  button.addEventListener("click",()=>{if(pending)stop(false);else if(active)advanceMode();else start()});
   window.addEventListener("setka:view",e=>{if(e.detail?.view!=="game"&&(active||pending))stop()});
   document.addEventListener("visibilitychange",()=>{if(document.hidden&&(active||pending))stop()});
   window.addEventListener("pagehide",()=>{if(active||pending)stop()});
   window.SetkaAudioReactiveV1={
     isActive:()=>active, nextFrame, renderConfig, offsets, viewportScale, stop,
-    status:()=>({active,pending,source:active?"microphone":"none",level:active?smoothed:0,heard:active&&wasAudible,
+    status:()=>({active,pending,mode,modeName:profile(mode)?.name||"Выключен",modes:profiles.map(p=>p.name),
+      source:active?"microphone":"none",level:active?smoothed:0,heard:active&&wasAudible,
       bands:active?{...bands}:{low:0,mid:0,high:0,beat:0}})
   };
   renderButton();

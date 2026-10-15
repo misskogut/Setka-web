@@ -74,6 +74,9 @@ try{
   await page.waitForFunction(()=>Number(getComputedStyle(document.getElementById("st34AudioButton")).opacity)>.90);
   const onStyle=await toggle.evaluate(el=>Number(getComputedStyle(el).opacity));
   assert.ok(onStyle>.90,"ON note must be bright without a dot: "+onStyle);
+  assert.equal(await toggle.locator("#st34AudioModeDots .st34-audio-dot.lit").count(),1,
+    "the first press must show one glowing dot");
+  assert.equal(await page.evaluate(()=>window.SetkaAudioReactiveV1.status().mode),1);
   const frame=await page.evaluate(()=>{
     // Analyzer is fed synthetic frequency energy; assert it really changes
     // the frame passed to every canonical pattern through the shared clock.
@@ -128,15 +131,21 @@ try{
   }
   // Both canvas axes are driven by independent music bands; results cannot
   // be merely the original image moving faster.
-  const movement=await page.evaluate(()=>{
-    const a=window.SetkaAudioReactiveV1,old=a.offsets("stereo-dna",390,844);
-    return new Promise(resolve=>setTimeout(()=>{
-      const updated=a.offsets("stereo-dna",390,844);
-      resolve({before:old,after:updated});
-    },180));
+  const movement=await page.evaluate(async ()=>{
+    const a=window.SetkaAudioReactiveV1,samples=[];
+    window.__setkaMicFixture.signal="music";
+    for(let i=0;i<50;i++)a.nextFrame(i,performance.now()+i*17,"stereo-dna");
+    for(let k=0;k<5;k++){
+      samples.push(a.offsets("stereo-dna",390,844));
+      await new Promise(resolve=>setTimeout(resolve,180));
+    }
+    return samples;
   });
-  assert.ok(Math.abs(movement.after.x-movement.before.x)>.05,"DNA must move horizontally");
-  assert.ok(Math.abs(movement.after.y-movement.before.y)>.05,"DNA must move vertically");
+  for(const axis of ["x","y"]){
+    const values=movement.map(p=>p[axis]);
+    assert.ok(Math.max(...values)-Math.min(...values)>.05,
+      "DNA must move on "+axis+" across a musical cycle: "+JSON.stringify(movement));
+  }
   assert.ok(geometry.viewport>1&&geometry.viewport<=1.05,"future renderers need universal viewport modulation");
   for(const name of ["low","mid","high"])
     assert.ok(geometry.bands[name]>.1,"independent "+name+" music channel must be measured");
@@ -155,6 +164,53 @@ try{
   assert.ok(frequencyTest.bass.low>frequencyTest.bass.high+.15,"bass needs a distinct low-frequency response: "+JSON.stringify(frequencyTest));
   assert.ok(frequencyTest.treble.high>frequencyTest.treble.low+.15,"treble needs a distinct high-frequency response: "+JSON.stringify(frequencyTest));
   console.log("INDEPENDENT BASS AND TREBLE RESPONSE PASS",JSON.stringify(frequencyTest));
+  // The same note cycles five real equalizer variants, THEN OFF. Switching
+  // styles must NOT reopen the microphone or change canonical presets.
+  const names=["Баланс","Пульс","Волна","Пространство","Детали"];
+  const profiles=[];
+  for(let index=0;index<names.length;index++){
+    if(index>0)await toggle.click();
+    const n=index+1;
+    assert.equal(await toggle.getAttribute("aria-pressed"),"true");
+    assert.equal(await toggle.locator("#st34AudioModeDots .st34-audio-dot.lit").count(),n,
+      "EQ mode "+n+" should light precisely "+n+" dots");
+    assert.equal(await page.evaluate(()=>window.SetkaAudioReactiveV1.status().mode),n);
+    assert.equal(await page.evaluate(()=>window.__setkaMicFixture.started),1,
+      "switching EQ variants must reuse the same microphone stream");
+    await page.waitForTimeout(420); // the geometric interpolation finishes
+    const measurement=await page.evaluate(()=>{
+      const eq=window.SetkaAudioReactiveV1;
+      window.__setkaMicFixture.signal="music";
+      const t=performance.now();
+      for(let i=0;i<48;i++)eq.nextFrame(70+i,t+i*17,"stereo-dna");
+      const shapes=window.SetkaApp.getPatterns().map(pattern=>{
+        const result=eq.renderConfig(pattern.defaults,pattern.id);
+        return {id:pattern.id,
+          changes:Object.keys(result).filter(key=>Number.isFinite(pattern.defaults[key])&&
+            Math.abs(result[key]-pattern.defaults[key])>.00001).map(key=>[key,Math.round(result[key]*10000)/10000])};
+      });
+      const motion=window.SetkaApp.getPatterns().map(p=>({id:p.id,...eq.offsets(p.id,390,844)}));
+      return{mode:eq.status().mode,name:eq.status().modeName,shapes,motion,scale:eq.viewportScale()};
+    });
+    assert.equal(measurement.name,names[index]);
+    assert.equal(measurement.shapes.length,7);
+    measurement.shapes.forEach(p=>assert.ok(p.changes.length>=1,
+      "Each style must modulate the real geometry for "+p.id+": "+JSON.stringify(measurement)));
+    if(n===4)for(const p of measurement.motion)assert.ok(Math.abs(p.x)+Math.abs(p.y)>.05,
+      "Spatial mode must move ALL seven patterns in X/Y: "+JSON.stringify(p));
+    if(n===5)assert.ok(measurement.scale<1.01,"Detail mode should emphasize small elements instead of zoom");
+    profiles.push(measurement);
+  }
+  const dnaSignatures=profiles.map(m=>JSON.stringify(m.shapes.find(p=>p.id==="stereo-dna").changes));
+  assert.equal(new Set(dnaSignatures).size,5,
+    "EQ modes must produce five actually different DNA configurations: "+JSON.stringify(dnaSignatures));
+  assert.ok(profiles[1].shapes.find(p=>p.id==="stereo-dna").changes.every(([key])=>
+    ["amplitude","eyeSeparation","zoom"].includes(key)),
+    "Pulse should favor bass-driven swelling, not every control");
+  assert.ok(profiles[4].shapes.find(p=>p.id==="stereo-dna").changes.some(([key])=>key==="pointSize"),
+    "Detail should activate high-frequency dots");
+  console.log("FIVE EQUALIZER MODES / DOTS / ONE STREAM / 7 PATTERNS PASS",
+    JSON.stringify(profiles.map(p=>({mode:p.mode,name:p.name,changes:p.shapes.map(x=>[x.id,x.changes.map(c=>c[0])])}))));
   assert.equal(await toggle.getAttribute("aria-pressed"),"true","pattern navigation must not disable audio");
   const after=await page.evaluate(()=>({config:window.SetkaApp.getConfig(),favorites:window.SetkaApp.getFavorites(),meter:window.__setkaMicFixture,source:window.SetkaAudioReactiveV1.status().source}));
   assert.deepEqual(after.favorites,initial.favorites,"favorited recipes must not change");
@@ -177,8 +233,11 @@ try{
     return Object.keys(p.defaults).every(k=>typeof p.defaults[k]!=="number"||Math.abs(out[k]-p.defaults[k])<.005);
   });
   assert.equal(silenceGeometry,true,"silence must return to original pattern parameters");
-  await toggle.click();
+  await toggle.click(); // mode 5 -> completely OFF
   assert.equal(await toggle.getAttribute("aria-pressed"),"false");
+  assert.equal(await page.evaluate(()=>window.SetkaAudioReactiveV1.status().mode),0);
+  assert.equal(await toggle.locator("#st34AudioModeDots .st34-audio-dot.lit").count(),0,
+    "all equalizer dots must disappear on OFF");
   assert.equal(await page.evaluate(()=>window.__setkaMicFixture.stopped),1,"OFF must stop microphone stream");
   await page.evaluate(()=>{window.__setkaMicFixture.denied=true});
   await toggle.click();
