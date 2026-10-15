@@ -267,9 +267,7 @@
   async function resetLocal(){
     const root=document.querySelector("#st34Layer #stBody");
     if(!await C.inlineConfirm(root,{title:"Очистить историю на устройстве?",body:"Локальные сессии, состояния и заметки будут удалены. Сохранённый архив аккаунта останется на сервере.",accept:"Очистить историю"}))return;
-    try{await window.SetkaPersonalStorageV1?.clear()}catch(_){C.inlineStatus(root,"Не удалось очистить историю. Попробуй ещё раз.","error");return}
-    try{localStorage.removeItem("setka-standalone:v34");localStorage.removeItem("setka-standalone:active:v34")}catch(_){}
-    location.reload();
+    if(await C.clearLocalHistory())location.reload();else C.inlineStatus(root,"Не удалось очистить историю. Попробуй ещё раз.","error");
   }
 
   function showMe(){

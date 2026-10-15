@@ -54,7 +54,7 @@
   window.addEventListener("storage",e=>{if(e.key!==KEY||!e.newValue)return;try{if(mergeStoredStates(JSON.parse(e.newValue)))window.dispatchEvent(new CustomEvent("setka:states-restored"))}catch(_){}});
   try{activeSession=JSON.parse(localStorage.getItem(ACTIVE_KEY)||"null")||JSON.parse(localStorage.getItem(OLD_ACTIVE)||"null")}catch(_){}
   function mergeStateRecords(local=[],remote=[]){
-    const rows=new Map(),stamp=x=>Date.parse(x?.updatedAt||x?.observedAt||x?.createdAt||"")||0;
+    const rows=new Map(),stamp=x=>Date.parse(x?.updatedAt||x?.observedAt||x?.endedAt||x?.feedbackSubmittedAt||x?.wallAt||x?.createdAt||x?.startedAt||"")||0;
     for(const x of [...(Array.isArray(remote)?remote:[]),...(Array.isArray(local)?local:[])]){
       if(!x||typeof x!=="object")continue;const key=x.id?String(x.id):JSON.stringify(x),old=rows.get(key);
       if(!old||stamp(x)>=stamp(old))rows.set(key,x);
@@ -66,6 +66,7 @@
     const before=JSON.stringify([data.symptoms,data.checkins]);data.symptoms=mergeStateRecords(data.symptoms,stored.symptoms);data.checkins=mergeStateRecords(data.checkins,stored.checkins);return before!==JSON.stringify([data.symptoms,data.checkins]);
   }
   function save(){
+    if(storageState?.resetting)return false;
     const generation=++saveGeneration;let stored=null;try{stored=JSON.parse(localStorage.getItem(KEY)||"null")}catch(_){}mergeStoredStates(stored);
     try{
       if(usingPersonalStore)throw new Error("personal_store_active");
@@ -81,6 +82,12 @@
       }).catch(error=>{if(generation===saveGeneration)notifyStorage({ok:false,pending:false,kind:"memory",error:String(error?.name||error)});return false});
       return false;
     }
+  }
+
+  async function clearLocalHistory(){
+    await localReady;const previous=storageState;++saveGeneration;storageState={...previous,resetting:true};window.dispatchEvent(new Event('setka:local-reset-started'));
+    try{await persisting;await personalStore?.clear();localStorage.removeItem(KEY);localStorage.removeItem(ACTIVE_KEY);data=blank();activeSession=null;return true}
+    catch(_){storageState=previous;window.dispatchEvent(new Event('setka:local-reset-cancelled'));return false}
   }
 
   function saveActive(){try{activeSession?localStorage.setItem(ACTIVE_KEY,JSON.stringify(activeSession)):localStorage.removeItem(ACTIVE_KEY)}catch(_){}}
@@ -177,7 +184,7 @@
   function showNotes(){const b=screen("Заметки","Мысль хранится отдельно от ♥ и всегда знает точную конфигурацию, время и фазу.","МОЯ ПАМЯТЬ",showMe);if(!data.notes.length){b.innerHTML='<div class="st-empty">Пока заметок нет.</div>';return}data.notes.slice().reverse().forEach(n=>{const row=document.createElement("div");row.className="st-note";row.innerHTML=`<div>${esc(n.text)}</div><div class="st-note-time">${dt(n.observedAt)} · ${esc(n.phase||"standalone")}${n.requestKey?` · ${esc(INTENTS.find(x=>x[0]===n.requestKey)?.[1]||n.requestKey)}`:""}</div>`;if(n.config){const open=document.createElement("button");open.className="st-secondary";open.style.height="38px";open.textContent="Открыть эту конфигурацию ↗";open.onclick=()=>{hideLayer();Setka.openConfig?.(n.config,{type:"memory",id:n.id,communityId:n.communityId||null})};row.appendChild(open)}b.appendChild(row)})}
   function showSessions(){const b=screen("Сессии","Измеряемая часть и добровольное продолжение хранятся отдельно внутри одной сессии.","ИСТОРИЯ",showMe);if(!data.sessions.length){b.innerHTML='<div class="st-empty">Сессий пока нет.</div>';return}data.sessions.slice().reverse().forEach(s=>{const row=document.createElement("button");row.className="st-action";const il=INTENTS.find(x=>x[0]===s.requestKey)?.[1]||"Сессия";row.innerHTML=`<b>${esc(il)} · ${Math.round((s.plannedSeconds||0)/60)} мин</b><span>${dt(s.startedAt)} · ${FACES.find(x=>x[0]===s.preState)?.[1]||"—"} → ${FACES.find(x=>x[0]===s.postState)?.[1]||"—"} · активность ${fmt(s.measuredActiveMs||0)}${s.continuedAfterFeedback?` · продолжение ${fmt(s.afterFeedbackActiveMs||0)}`:""}</span>`;row.onclick=()=>window.SetkaStandaloneV34?.showSessionDetail?.(s.id);b.appendChild(row)})}
   function showMe(){setNav("me");const b=screen("Я","Локальная память и исследовательские данные этого устройства.","БЕЗ ID",showPatterns);action(b,"Заметки",`${data.notes.length} сохранено`,showNotes);action(b,"Сессии",`${data.sessions.length} записано`,showSessions);action(b,"Путь / Replay",`${data.events.length} событий`,()=>window.SetkaStandaloneV34?.showJourney?.());action(b,"Инвайты","Локальный прототип веток приглашений",()=>window.SetkaStandaloneV34?.showInvites?.());action(b,"Физиология",`${data.physio?.samples?.length||0} измерений`,()=>window.SetkaStandaloneV34?.showPhysio?.());action(b,"Сбросить локальные данные","Удалит только данные автономной v34",resetLocal)}
-  async function resetLocal(){const root=wrap.querySelector('#stBody');if(!await window.SetkaStandaloneV34?.inlineConfirm?.(root,{title:"Очистить историю на устройстве?",body:"Локальные сессии, состояния и заметки будут удалены.",accept:"Очистить историю"}))return;try{await personalStore?.clear()}catch(_){window.SetkaStandaloneV34?.inlineStatus?.(root,"Не удалось очистить историю.","error");return}data=blank();activeSession=null;usingPersonalStore=false;save();saveActive();showMe()}
+  async function resetLocal(){const root=wrap.querySelector('#stBody');if(!await window.SetkaStandaloneV34?.inlineConfirm?.(root,{title:"Очистить историю на устройстве?",body:"Локальные сессии, состояния и заметки будут удалены.",accept:"Очистить историю"}))return;if(await clearLocalHistory())location.reload();else window.SetkaStandaloneV34?.inlineStatus?.(root,"Не удалось очистить историю.","error")}
 
   nav.addEventListener("click",e=>{const b=e.target.closest("button[data-p]");if(!b)return;recordEvent("nav",{page:b.dataset.p},false);if(b.dataset.p==="patterns")showPatterns();if(b.dataset.p==="today")showToday();if(b.dataset.p==="symptoms")showSymptoms();if(b.dataset.p==="me")showMe()});
 
@@ -199,7 +206,7 @@
   function restore(){if(!activeSession)return;const r=data.sessions.find(x=>x.id===activeSession.id);if(!r){activeSession=null;saveActive();return}Object.assign(r,activeSession);if(activeSession.phase==="measured"&&Date.now()>=Date.parse(activeSession.deadlineAt)){postSurvey("timer");return}if(activeSession.phase==="feedback"){postSurvey(activeSession.completionReason||"timer");return}if(activeSession.phase==="done_feedback"){showFeedbackResult();return}if(["measured","after_feedback"].includes(activeSession.phase)){lastTick=Date.now();lastInteraction=Date.now();startTicker();updateGameControls()}}
 
   window.SetkaStandaloneV34={
-    getData:()=>data,mergeStateRecords,getActiveSession:()=>activeSession,save,ready:localReady,whenSaved:()=>persisting,storageStatus:()=>({...storageState}),recordEvent,stateSnapshot,showToday,showPatterns,showSymptoms,showMe,showNotes,showSessions,screen,hideLayer,setNav,preSurvey,startSession,finishSession,showFeedbackResult,updateGameControls,INTENTS,FACES,DURATIONS,fmt,dt,esc,id,localOffset,
+    getData:()=>data,mergeStateRecords,getActiveSession:()=>activeSession,save,clearLocalHistory,ready:localReady,whenSaved:()=>persisting,storageStatus:()=>({...storageState}),recordEvent,stateSnapshot,showToday,showPatterns,showSymptoms,showMe,showNotes,showSessions,screen,hideLayer,setNav,preSurvey,startSession,finishSession,showFeedbackResult,updateGameControls,INTENTS,FACES,DURATIONS,fmt,dt,esc,id,localOffset,
     addPhysioSample(sample){data.physio=data.physio||{samples:[],sources:[]};data.physio.samples.push(sample);if(data.physio.samples.length>10000)data.physio.samples.splice(0,data.physio.samples.length-10000);save()},
     setPublicCommunity(items){window.SetkaStandaloneV34.publicCommunity=Array.isArray(items)?items:[]},publicCommunity:[]
   };
