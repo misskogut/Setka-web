@@ -95,7 +95,7 @@
   async function post(payload,keepalive=false){
     // A failed or stalled cloud request must never stall local navigation.
     // Keepalive requests must not use AbortController on page unload.
-    const ctl=keepalive?null:new AbortController(),clock=ctl?setTimeout(()=>ctl.abort(),18000):null;
+    const ctl=keepalive||typeof AbortController!=="function"?null:new AbortController(),clock=ctl?setTimeout(()=>ctl.abort(),18000):null;
     try{
       const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json",apikey:KEY},
         body:JSON.stringify(payload),keepalive,...(ctl?{signal:ctl.signal}:{})});
@@ -117,7 +117,7 @@
       // Write RPC merges by ID; replaying the same payload once is safe.
       // Never retry bad authentication, malformed data, or page-unload writes.
       if(keepalive||pageClosing||e?.status===401||e?.status===403||
-         (e?.status&&e.status<500)||navigator.onLine===false)throw e;
+         (e?.status&&e.status<500)||(typeof navigator!=="undefined"&&navigator.onLine===false))throw e;
       await new Promise(resolve=>setTimeout(resolve,1150));
       if(pageClosing)throw e;
       return post(payload,false);
