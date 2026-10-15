@@ -72,6 +72,12 @@ for(const throwOnStorage of [false,true])test('private archive uses the existing
 test('research contribution bridge uses the same temporary session',async()=>{
   const {context,requests,token}=storageContext('standalone-research-bridge-v40.js',{throwOnStorage:true});assert.equal(await context.__SETKA_RESEARCH_BRIDGE_V40__.sync(),true);assert.deepEqual(requests.map(x=>x.body.action),['status','my-status']);assert.ok(requests.every(x=>x.body.sessionToken===token));
 });
-test('account screen distinguishes an old restored archive, failed upload and pending upload',()=>{
-  const src=read('standalone-tester-cabinet-v40.js'),a=src.indexOf('  function syncMessage('),b=src.indexOf('  async function showCabinet(){',a),message=vm.runInNewContext(src.slice(a,b)+'\nsyncMessage;');assert.match(message({ok:true,restored:true,updatedAt:'2026-08-31T10:00:00Z'}),/Облачный архив получен.*Последнее обновление/);assert.match(message({enabled:true,ok:false}),/Не удалось синхронизировать/);assert.match(message({}),/ожидается/);assert.match(message({ok:true,updatedAt:'2026-10-14T01:00:00Z'}),/Последняя передача истории/);
+test('account screen distinguishes cloud restore, pending automatic upload and a failed receipt',()=>{
+  const src=read('standalone-tester-cabinet-v40.js'),a=src.indexOf('  function syncMessage('),b=src.indexOf('  function updateCabinetSync(){',a),message=vm.runInNewContext(src.slice(a,b)+'\nsyncMessage;');
+  assert.match(message({ok:true,restored:true,updatedAt:'2026-08-31T10:00:00Z'}),/архив восстановлен из облака/);
+  assert.doesNotMatch(message({ok:true,restored:true,updatedAt:'2026-08-31T10:00:00Z'}),/передана в облако/);
+  assert.match(message({enabled:true,ok:false}),/обновление пока не прошло/i);
+  assert.match(message({enabled:true,ok:false}),/автоматически/);
+  assert.match(message({}),/ожидается/);
+  assert.match(message({ok:true,updatedAt:'2026-10-14T01:00:00Z'}),/автоматически передана в облако/);
 });
