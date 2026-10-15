@@ -8,7 +8,7 @@ try{
  await new Promise(ok=>server.listen(49321,'127.0.0.1',ok));browser=await(process.env.SETKA_BROWSER==='webkit'?webkit:chromium).launch({headless:true,args:process.env.SETKA_BROWSER==='webkit'?[]:['--no-sandbox']});
  async function scenario({saved=false,blocked=false,expired=false,originDenied=false}={}){
   const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true}),requests=[];
-  if(saved)await context.addInitScript(k=>{localStorage.setItem(k,'isolated-stale-key');sessionStorage.setItem(k,'isolated-stale-session')},storageKey);
+  if(saved)await context.addInitScript(k=>{if(!localStorage.getItem('isolated-seeded')){localStorage.setItem(k,'isolated-stale-key');sessionStorage.setItem(k,'isolated-stale-session');localStorage.setItem('isolated-seeded','1')}},storageKey);
   if(blocked)await context.addInitScript(()=>{Storage.prototype.getItem=Storage.prototype.setItem=Storage.prototype.removeItem=function(){throw new DOMException('Blocked in isolated fixture','SecurityError')}});
   await context.route('**/functions/v1/**',async route=>{
    if(route.request().method()==='OPTIONS'){await route.fulfill({status:204,headers:{'access-control-allow-origin':'*','access-control-allow-headers':'content-type,apikey','access-control-allow-methods':'POST,OPTIONS'}});return}
