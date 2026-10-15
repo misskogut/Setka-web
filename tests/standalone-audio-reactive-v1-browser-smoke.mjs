@@ -23,9 +23,10 @@ try{
       meter.started++;return{getTracks:()=>[track],getAudioTracks:()=>[track]};
     }}});
     class FakeAudioContext{
-      constructor(){this.sampleRate=44100;this.state="running"}
+      constructor(){this.sampleRate=44100;this.state="running";this.destination={speaker:true}}
       createMediaStreamSource(){return{connect(){},disconnect(){}}}
-      createAnalyser(){return {fftSize:1024,smoothingTimeConstant:0,frequencyBinCount:512,
+      createGain(){const sink={gain:{value:1},connect(destination){meter.sinkValue=this.gain.value;meter.sinkConnected=destination?.speaker===true},disconnect(){}};return sink}
+      createAnalyser(){return {fftSize:1024,smoothingTimeConstant:0,frequencyBinCount:512,connect(target){meter.analyserConnected=!!target},disconnect(){},
         getByteFrequencyData(out){out.fill(meter.signal==="music"?210:0)},
         getByteTimeDomainData(out){for(let i=0;i<out.length;i++)out[i]=meter.signal==="music"?Math.round(128+48*Math.sin(i*.17)):128}
       }}
@@ -87,6 +88,9 @@ try{
   const after=await page.evaluate(()=>({config:window.SetkaApp.getConfig(),favorites:window.SetkaApp.getFavorites(),meter:window.__setkaMicFixture,source:window.SetkaAudioReactiveV1.status().source}));
   assert.deepEqual(after.favorites,initial.favorites,"favorited recipes must not change");
   assert.equal(after.source,"microphone");
+  assert.equal(after.meter.sinkValue,0,"microphone must NEVER be sent audibly to the speaker");
+  assert.equal(after.meter.sinkConnected,true,"analyzer graph must be pulled by Safari");
+  assert.equal(after.meter.analyserConnected,true);
   assert.equal(await page.evaluate(()=>window.SetkaAudioReactiveV1.status().heard),true);
   const silent=await page.evaluate(()=>{
     window.__setkaMicFixture.signal="silent";
