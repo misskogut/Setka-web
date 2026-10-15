@@ -280,7 +280,7 @@ test("animated pattern previews advance smoothly and resume without time or rebu
     drawThumbnail:(canvas,config,frame)=>draws.push({canvas,frame})
   };
   const api=vm.runInNewContext(source.slice(v0,v1)+source.slice(a,b)+
-    "\n({previewTiles,previewFrame,syncLibraryPreviews,stopLibraryPreviews})",context);
+    "\n({previewTiles,previewFrame,previewRenderedFrame,syncLibraryPreviews,stopLibraryPreviews})",context);
   const tile=id=>({
     id,isConnected:true,
     closest:()=>({classList:{contains:()=>false}}),
@@ -295,9 +295,11 @@ test("animated pattern previews advance smoothly and resume without time or rebu
   const deltas=draws.slice(1).map((p,i)=>p.frame-draws[i].frame);
   assert.ok(deltas.every(d=>d>0&&d<3),"no multi-frame phase leaps within normal rendering");
   const last=draws.at(-1).frame;
-  // The freshly recreated thumbnail uses the live phase, not a constant frame.
-  const rebuilt=api.previewFrame(44);
-  assert.ok(Math.abs(rebuilt-last)<2,"recreated card starts at continuous phase");
+  // A rebuild uses precisely the last painted phase, never a logical phase
+  // that advanced between two browser repaints.
+  const rebuilt=api.previewRenderedFrame(44);
+  assert.equal(rebuilt,last,"recreated card matches the last displayed frame exactly");
+  assert.ok(Math.abs(api.previewFrame(44)-last)<2,"logical preview phase stays close to the displayed phase");
   api.previewTiles.delete(canvas);canvas=tile("rebuilt");
   api.previewTiles.set(canvas,{frame:44,config:{},patternId:"breathing-fractal-growth"});
   hidden=true;api.syncLibraryPreviews();
