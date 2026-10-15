@@ -280,7 +280,7 @@ test("animated pattern previews advance smoothly and resume without time or rebu
     drawThumbnail:(canvas,config,frame)=>draws.push({canvas,frame})
   };
   const api=vm.runInNewContext(source.slice(v0,v1)+source.slice(a,b)+
-    "\\n({previewTiles,previewFrame,syncLibraryPreviews,stopLibraryPreviews})",context);
+    "\n({previewTiles,previewFrame,syncLibraryPreviews,stopLibraryPreviews})",context);
   const tile=id=>({
     id,isConnected:true,
     closest:()=>({classList:{contains:()=>false}}),
