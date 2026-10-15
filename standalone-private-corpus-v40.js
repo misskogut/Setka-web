@@ -92,7 +92,37 @@
       e.length,last(e).id||"",x.length,last(x).exposureId||"",last(x).durationMs||0,
       p.length,last(p).id||"",f.length,digest(f),digest(d.settings),digest(d.openedPatterns),digest(d.activityIntervals)].join("|");
   }
-  async function post(payload,keepalive=false){const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json",apikey:KEY},body:JSON.stringify(payload),keepalive});const out=await r.json().catch(()=>({}));if(!r.ok){const e=new Error(out.error||`http_${r.status}`);e.status=r.status;throw e}return out}
+  async function post(payload,keepalive=false){
+    // A failed or stalled cloud request must never stall local navigation.
+    // Keepalive requests must not use AbortController on page unload.
+    const ctl=keepalive?null:new AbortController(),clock=ctl?setTimeout(()=>ctl.abort(),18000):null;
+    try{
+      const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json",apikey:KEY},
+        body:JSON.stringify(payload),keepalive,...(ctl?{signal:ctl.signal}:{})});
+      const out=await r.json().catch(()=>({}));
+      if(!r.ok||out.ok===false){
+        const e=new Error(out.error||"http_"+r.status);
+        e.status=r.status;
+        throw e;
+      }
+      return out;
+    }catch(e){
+      if(e?.name==="AbortError"){const timeout=new Error("archive_timeout");timeout.status=0;throw timeout}
+      throw e;
+    }finally{if(clock!=null)clearTimeout(clock)}
+  }
+  async function autoRetryPost(payload,keepalive=false){
+    try{return await post(payload,keepalive)}
+    catch(e){
+      // Write RPC merges by ID; replaying the same payload once is safe.
+      // Never retry bad authentication, malformed data, or page-unload writes.
+      if(keepalive||pageClosing||e?.status===401||e?.status===403||
+         (e?.status&&e.status<500)||navigator.onLine===false)throw e;
+      await new Promise(resolve=>setTimeout(resolve,1150));
+      if(pageClosing)throw e;
+      return post(payload,false);
+    }
+  }
   async function pull(){const s=session();if(!s?.token)throw new Error("auth_required");return post({action:"pull",sessionToken:s.token,deviceId:did()})}
   async function restoreFromCloud(){
     if(C.ready)await C.ready;
@@ -143,11 +173,19 @@
       // device and retry in the foreground; do not turn an impossible closing
       // upload into a failed cloud receipt or send a destructive partial archive.
       if(keepalive&&new Blob([JSON.stringify(payload)]).size>60000)return false;
-      pendingWrite=post(payload,keepalive);const out=await pendingWrite;
+      pendingWrite=autoRetryPost(payload,keepalive);const out=await pendingWrite;
       const receipt=out.stateHistory||{symptoms:sent.symptoms,checkins:sent.checkins};
       if(out.stateHistory){const d=C.getData(),before=stateFingerprint(d);d.symptoms=mergeRecords(d.symptoms,receipt.symptoms,"symptoms",10000);d.checkins=mergeRecords(d.checkins,receipt.checkins,"checkins",10000);C.save?.();if(before!==stateFingerprint(d))window.dispatchEvent(new CustomEvent("setka:states-restored"));}
       lastSignature=sig;const st={enabled:true,ok:true,build:BUILD,updatedAt:out.updatedAt,counts:out.counts||{},stateFingerprint:stateFingerprint(receipt),statesVerified:!!out.stateHistory,privacy:"private-account-only",publicExposure:false};saveStatus(st);return true;
-    }catch(e){const st={enabled:true,ok:false,build:BUILD,error:String(e?.message||e),stage:"sync",privacy:"private-account-only",publicExposure:false};saveStatus(st);return false}finally{busy=false}
+    }catch(e){
+      // Do not erase a last proven cloud receipt when a later network call
+      // fails. Keep the failure locally for diagnostics; the next automatic
+      // attempt will resume without any user action.
+      const previous=status()||{};
+      const st={...previous,enabled:true,ok:false,build:BUILD,error:String(e?.message||e),
+        stage:"sync",pendingRetry:true,privacy:"private-account-only",publicExposure:false};
+      saveStatus(st);return false;
+    }finally{busy=false}
   }
   async function remoteStatus(){const s=session();if(!s?.token)return null;return post({action:"status",sessionToken:s.token,deviceId:did()})}
   function schedule(ms=1200){clearTimeout(timer);timer=setTimeout(()=>sync(false),ms)}
@@ -165,6 +203,7 @@
   window.addEventListener("pageshow",e=>{pageClosing=false;if(e.persisted)schedule(0)});
   window.addEventListener('setka:local-reset-started',()=>{pageClosing=true;clearTimeout(timer);clearTimeout(physioTimer)});
   window.addEventListener('setka:local-reset-cancelled',()=>{pageClosing=false;schedule(500)});
+  window.addEventListener("online",()=>schedule(350));
   setInterval(()=>sync(false),45000);
   setTimeout(()=>sync(true),2200);
   window.__SETKA_PRIVATE_CORPUS_V40__={sync:async()=>{if(busy)await pendingWrite.catch(()=>false);return sync(true)},pull,restore:restoreFromCloud,remoteStatus,status,authoritative:()=>!!(hydrated&&authoritative&&session()?.token),build:BUILD};
