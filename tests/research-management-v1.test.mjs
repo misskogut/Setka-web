@@ -35,3 +35,11 @@ test('a verified account archive remains current before the canonical projection
  const d=buildData({accounts:[{tester_id:'A'}],archives:[{tester_id:'A',device_id:'isolated-contract',payload:{patternExposures:[{exposureId:'e',patternId:'dandelion',startedAt:interval.startedAt,endedAt:interval.endedAt,durationMs:15000}]}}]});
  const view=sliceData(d,{scope:'current'});assert.equal(view.exposures.length,1);assert.equal(view.metrics.durationMs,15000);assert.equal(view.exposures[0].participantId,'account:A');
 });
+
+test('closing an unhydrated page keeps local changes and defers cloud pull until foreground sync',async()=>{
+ const source=readFileSync(new URL('../standalone-private-corpus-v40.js',import.meta.url),'utf8'),listeners=new Map(),calls=[],rows=new Map([['setka-v40:cabinet-session',JSON.stringify({token:'isolated-unit-fixture-only'})]]),storage={getItem:k=>rows.get(k)||null,setItem:(k,v)=>rows.set(k,v)};
+ const window={SetkaStandaloneV34:{sandbox:{deviceId:'isolated-device'},getData:()=>({}),save(){}},SetkaApp:{getFavorites:()=>[]},addEventListener:(name,fn)=>listeners.set(name,fn),dispatchEvent(){}};
+ vm.runInNewContext(source,{window,localStorage:storage,sessionStorage:storage,document:{addEventListener(){}},CustomEvent:class{constructor(type,options){this.type=type;this.detail=options?.detail}},setTimeout:()=>0,setInterval:()=>0,clearTimeout(){},fetch:async(url,init)=>{calls.push(JSON.parse(init.body).action);return{ok:true,json:async()=>({ok:true,archive:null})}}});
+ assert.equal(await listeners.get('pagehide')(),false);assert.deepEqual(calls,[]);
+ assert.equal(await window.__SETKA_PRIVATE_CORPUS_V40__.sync(),true);assert.deepEqual(calls,['pull','sync']);
+});

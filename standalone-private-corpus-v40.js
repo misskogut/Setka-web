@@ -117,6 +117,9 @@
   }
   async function sync(force=false,keepalive=false){
     const s=session(),deviceId=did();if(!s?.token||!deviceId){saveStatus({enabled:false,reason:"not_authenticated",build:BUILD,privacy:"private-account-only"});return false}
+    // Unload cannot restore the remote archive first. Keep local changes for the
+    // next foreground sync instead of starting an unsafe pull in a closing page.
+    if(keepalive&&!hydrated)return false;
     const loaded=await ensureHydrated();
     if(!loaded){
       saveStatus({enabled:true,ok:false,build:BUILD,stage:"restore",error:"archive_restore_required_before_sync",privacy:"private-account-only",publicExposure:false});
