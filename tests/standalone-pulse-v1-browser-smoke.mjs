@@ -37,6 +37,10 @@ try{
   await page.evaluate(()=>window.__isolatedPulse.send([16,82,0,4]));
   const sample=await page.evaluate(()=>{const C=window.SetkaStandaloneV34,x=C.getData().physio.samples.filter(x=>x.metric==='heart_rate').at(-1);return {x,session:C.getActiveSession().id,config:window.SetkaApp.getState().configKey}});
   assert.equal(sample.x.sessionId,sample.session);assert.equal(sample.x.patternId,'rgb-glitch-rings');assert.equal(sample.x.configKey,sample.config);assert.ok(sample.x.exposureId);assert.ok(Number.isFinite(sample.x.frame));assert.equal(sample.x.payload.patternVisible,true);
+  assert.equal(await tab('pulse').isVisible(),false,'the dock stays hidden during immersive pattern viewing');
+  await page.locator('#libraryButton').click();
+  await page.locator('#libraryScreen.active').waitFor();
+  assert.equal(await tab('pulse').isVisible(),true,'Pulse remains available in the library dock');
   await tab('pulse').click();await page.evaluate(()=>window.__isolatedPulse.send([0,88]));
   const overlay=await page.evaluate(()=>window.SetkaStandaloneV34.getData().physio.samples.at(-1));assert.equal(overlay.payload.patternVisible,false);assert.equal(overlay.patternId,null);
   await page.getByRole('button',{name:/^Отключить пульсометр/}).click();

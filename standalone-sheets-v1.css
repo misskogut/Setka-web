@@ -109,8 +109,28 @@ body.setka-sheet-layout #st34Layer .st-card { border-radius: 20px; }
 body.setka-sheet-layout #st34SensorQuick { display: none; }
 body.setka-sheet-layout #libraryScreen { padding-bottom: calc(var(--setka-dock-space) + 14px) !important; }
 body.setka-sheet-layout .swipe-hint { bottom: calc(var(--setka-dock-space) + 8px); font-size: 9px; }
-body.setka-sheet-layout #gameScreen .bottom-controls { bottom: calc(var(--setka-dock-space) + 12px); }
-body.setka-sheet-layout #gameScreen .toast { bottom: calc(var(--setka-dock-space) + 86px); }
+/* An open pattern is an immersive canvas, not a sixth dock screen.
+   Reveal the dock when an actual information sheet is opened (e.g. Notes). */
+body.setka-sheet-layout:has(#gameScreen.active):has(#st34Layer.hidden) #st34Nav {
+  display: none !important;
+}
+body.setka-sheet-layout #gameScreen .bottom-controls {
+  bottom: calc(var(--setka-dock-space) + 12px);
+}
+body.setka-sheet-layout:has(#gameScreen.active):has(#st34Layer.hidden) #gameScreen .bottom-controls {
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 22px);
+}
+/* The canonical toast already has a top offset in styles.css. Setting a
+   bottom offset AS WELL stretched it into the huge iPhone-height rectangle. */
+body.setka-sheet-layout #gameScreen .toast {
+  bottom: auto;
+  max-width: calc(100% - 40px);
+  height: auto;
+  box-sizing: border-box;
+  border: 0;
+  text-align: center;
+  white-space: normal;
+}
 @media (max-width: 520px) {
   body.setka-sheet-layout #st34Layer input:not([type=checkbox]):not([type=range]):not([type=radio]),
   body.setka-sheet-layout #st34Layer textarea { font-size: 16px; }

@@ -78,6 +78,14 @@
     }else{fromDock=true;try{tab.open();contentPage=key}finally{fromDock=false}}
     sync();window.dispatchEvent(new CustomEvent('setka:sheet-presentation',{detail:{open:true,page}}));
   }
+  // When the dock is hidden during full-screen gameplay, the in-pattern "+"
+  // must still reopen the user's unsaved note instead of replacing it with
+  // an empty composer. Intercept only when a collapsed draft already exists.
+  game.querySelector('#st34Note')?.addEventListener('click',e=>{
+    if(visible()||!drafts.has('notes'))return;
+    e.preventDefault();e.stopImmediatePropagation();
+    activate('notes');
+  },true);
   // Window capture owns dock routing before the older document-level listeners.
   // Their working section renderers stay intact and are called above.
   window.addEventListener('click',e=>{
