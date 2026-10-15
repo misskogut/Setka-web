@@ -4,6 +4,8 @@ on:
     paths:
       - 'app-v3-multipattern.js'
       - 'app-v7-multipattern.js'
+      - 'standalone-audio-reactive-v1.js'
+      - 'tests/standalone-audio-reactive-v1-browser-smoke.mjs'
       - 'standalone-multipattern-bridge-v34.js'
       - 'standalone-core-v34.js'
       - 'standalone-runtime-v34.js'
@@ -97,6 +99,7 @@ jobs:
           node-version: '22'
       - run: node --check app-v3-multipattern.js
       - run: node --check app-v7-multipattern.js
+      - run: node --check standalone-audio-reactive-v1.js
       - run: node --check standalone-multipattern-bridge-v34.js
       - run: node --check standalone-pulse-v1.mjs
       - run: node --check standalone-catalog-v1.js
@@ -169,12 +172,14 @@ jobs:
       - run: npx playwright install --with-deps chromium webkit
       - run: node tests/standalone-v34-browser-smoke.mjs
       - run: node tests/standalone-sheets-v1-browser-smoke.mjs
+      - run: node tests/standalone-audio-reactive-v1-browser-smoke.mjs
       - run: node tests/standalone-pulse-v1-browser-smoke.mjs
       - run: node tests/research-management-v1-browser-smoke.mjs
       - run: node tests/standalone-v34-admin-browser-smoke.mjs
       - run: node tests/standalone-v34-open-admin-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/standalone-v34-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/standalone-sheets-v1-browser-smoke.mjs
+      - run: SETKA_BROWSER=webkit node tests/standalone-audio-reactive-v1-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/standalone-pulse-v1-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/research-management-v1-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/standalone-v34-admin-browser-smoke.mjs
