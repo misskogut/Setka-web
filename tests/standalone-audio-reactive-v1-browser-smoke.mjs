@@ -131,15 +131,21 @@ try{
   }
   // Both canvas axes are driven by independent music bands; results cannot
   // be merely the original image moving faster.
-  const movement=await page.evaluate(()=>{
-    const a=window.SetkaAudioReactiveV1,old=a.offsets("stereo-dna",390,844);
-    return new Promise(resolve=>setTimeout(()=>{
-      const updated=a.offsets("stereo-dna",390,844);
-      resolve({before:old,after:updated});
-    },180));
+  const movement=await page.evaluate(async ()=>{
+    const a=window.SetkaAudioReactiveV1,samples=[];
+    window.__setkaMicFixture.signal="music";
+    for(let i=0;i<50;i++)a.nextFrame(i,performance.now()+i*17,"stereo-dna");
+    for(let k=0;k<5;k++){
+      samples.push(a.offsets("stereo-dna",390,844));
+      await new Promise(resolve=>setTimeout(resolve,180));
+    }
+    return samples;
   });
-  assert.ok(Math.abs(movement.after.x-movement.before.x)>.05,"DNA must move horizontally");
-  assert.ok(Math.abs(movement.after.y-movement.before.y)>.05,"DNA must move vertically");
+  for(const axis of ["x","y"]){
+    const values=movement.map(p=>p[axis]);
+    assert.ok(Math.max(...values)-Math.min(...values)>.05,
+      "DNA must move on "+axis+" across a musical cycle: "+JSON.stringify(movement));
+  }
   assert.ok(geometry.viewport>1&&geometry.viewport<=1.05,"future renderers need universal viewport modulation");
   for(const name of ["low","mid","high"])
     assert.ok(geometry.bands[name]>.1,"independent "+name+" music channel must be measured");
