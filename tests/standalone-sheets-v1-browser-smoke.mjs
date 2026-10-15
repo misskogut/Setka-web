@@ -70,9 +70,10 @@ try{
   await page.locator('#toast.show').waitFor();
   const toastInfo=await page.locator('#gameScreen #toast').evaluate(el=>{
     const css=getComputedStyle(el),r=el.getBoundingClientRect();
-    return {bottom:css.bottom,height:r.height,width:r.width,borderWidth:css.borderTopWidth};
+    return {height:r.height,width:r.width,borderWidth:css.borderTopWidth};
   });
-  assert.equal(toastInfo.bottom,'auto');
+  // getComputedStyle() resolves an absolutely positioned element's 'auto'
+  // bottom to a pixel value. Its actual box HEIGHT is the stable regression.
   assert.ok(toastInfo.height<65,'saved toast stretched across the gameplay canvas: '+JSON.stringify(toastInfo));
   assert.equal(toastInfo.borderWidth,'0px');
   await page.getByRole('button',{name:'Добавить заметку',exact:true}).click();
