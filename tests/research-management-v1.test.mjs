@@ -41,5 +41,6 @@ test('closing an unhydrated page keeps local changes and defers cloud pull until
  const window={SetkaStandaloneV34:{sandbox:{deviceId:'isolated-device'},getData:()=>({}),save(){}},SetkaApp:{getFavorites:()=>[]},addEventListener:(name,fn)=>listeners.set(name,fn),dispatchEvent(){}};
  vm.runInNewContext(source,{window,localStorage:storage,sessionStorage:storage,document:{addEventListener(){}},CustomEvent:class{constructor(type,options){this.type=type;this.detail=options?.detail}},setTimeout:()=>0,setInterval:()=>0,clearTimeout(){},fetch:async(url,init)=>{calls.push(JSON.parse(init.body).action);return{ok:true,json:async()=>({ok:true,archive:null})}}});
  assert.equal(await listeners.get('pagehide')(),false);assert.deepEqual(calls,[]);
+ assert.equal(await window.__SETKA_PRIVATE_CORPUS_V40__.sync(),false);listeners.get('pageshow')({persisted:true});
  assert.equal(await window.__SETKA_PRIVATE_CORPUS_V40__.sync(),true);assert.deepEqual(calls,['pull','sync']);
 });

@@ -8,7 +8,7 @@
   const STATUS_KEY="setka-v40:private-corpus-status";
   const FAVORITES_KEY="setka-web:favorites:v1";
   const BUILD="v40.private-cloud.3-states";
-  let pendingWrite=Promise.resolve(),busy=false,timer=0,physioTimer=0,lastSignature="",hydrated=false,authoritative=false,hydrationPromise=null,lastStatus=null;
+  let pageClosing=false,pendingWrite=Promise.resolve(),busy=false,timer=0,physioTimer=0,lastSignature="",hydrated=false,authoritative=false,hydrationPromise=null,lastStatus=null;
 
   const clone=v=>v==null?v:JSON.parse(JSON.stringify(v));
   function session(){
@@ -95,8 +95,9 @@
   async function post(payload,keepalive=false){const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json",apikey:KEY},body:JSON.stringify(payload),keepalive});const out=await r.json().catch(()=>({}));if(!r.ok){const e=new Error(out.error||`http_${r.status}`);e.status=r.status;throw e}return out}
   async function pull(){const s=session();if(!s?.token)throw new Error("auth_required");return post({action:"pull",sessionToken:s.token,deviceId:did()})}
   async function restoreFromCloud(){
+    if(pageClosing)return false;
     const s=session();if(!s?.token){hydrated=false;authoritative=false;return false}
-    const out=await pull(),a=out?.archive;
+    const out=await pull();if(pageClosing)return false;const a=out?.archive;
     if(!a){
       hydrated=true;authoritative=true;lastSignature="";
       saveStatus({enabled:true,ok:true,restored:false,stateFingerprint:stateFingerprint({}),statesVerified:false,build:BUILD,updatedAt:null,counts:null,sourceDevices:0,privacy:"private-account-only",publicExposure:false});
@@ -116,18 +117,20 @@
     hydrationPromise=restoreFromCloud().catch(e=>{hydrated=false;authoritative=false;saveStatus({enabled:true,ok:false,build:BUILD,error:String(e?.message||e),stage:"restore",privacy:"private-account-only",publicExposure:false});return false}).finally(()=>{hydrationPromise=null});
     return hydrationPromise;
   }
-  async function sync(force=false,keepalive=false){
+  async function sync(force=false,keepalive=false,closingWrite=false){
+    if(pageClosing&&!closingWrite)return false;
     const s=session(),deviceId=did();if(!s?.token||!deviceId){saveStatus({enabled:false,reason:"not_authenticated",build:BUILD,privacy:"private-account-only"});return false}
     // Unload cannot restore the remote archive first. Keep local changes for the
     // next foreground sync instead of starting an unsafe pull in a closing page.
     if(keepalive&&!hydrated)return false;
     const loaded=hydrated||await ensureHydrated();
+    if(pageClosing&&!closingWrite)return false;
     if(!loaded){
       saveStatus({enabled:true,ok:false,build:BUILD,stage:"restore",error:"archive_restore_required_before_sync",privacy:"private-account-only",publicExposure:false});
       return false;
     }
     C.save?.();
-    const sig=signature();if(!force&&sig===lastSignature)return true;if(busy)return false;busy=true;
+    const sig=signature();if((!force||keepalive)&&sig===lastSignature)return true;if(busy)return false;busy=true;
     try{
       const sent=archive();pendingWrite=post({action:"sync",sessionToken:s.token,deviceId,capturedAt:new Date().toISOString(),archive:sent,favorites:favorites()},keepalive);const out=await pendingWrite;
       const receipt=out.stateHistory||{symptoms:sent.symptoms,checkins:sent.checkins};
@@ -147,7 +150,8 @@
   window.addEventListener("setka:favorite-removed",()=>schedule(700));
   window.addEventListener("setka:v40-account",()=>{hydrated=false;authoritative=false;hydrationPromise=null;setTimeout(()=>sync(true),120)});
   document.addEventListener("visibilitychange",()=>{if(document.hidden)sync(true,true);else schedule(500)});
-  window.addEventListener("pagehide",()=>sync(true,true));
+  window.addEventListener("pagehide",()=>{pageClosing=true;clearTimeout(timer);clearTimeout(physioTimer);return sync(true,true,true)});
+  window.addEventListener("pageshow",e=>{pageClosing=false;if(e.persisted)schedule(0)});
   setInterval(()=>sync(false),45000);
   setTimeout(()=>sync(true),2200);
   window.__SETKA_PRIVATE_CORPUS_V40__={sync:async()=>{if(busy)await pendingWrite.catch(()=>false);return sync(true)},pull,restore:restoreFromCloud,remoteStatus,status,authoritative:()=>!!(hydrated&&authoritative&&session()?.token),build:BUILD};

@@ -28,6 +28,13 @@ test('a malformed old browser value does not block saving a new registered state
 test('a hydrated page starts its keepalive write inside the pagehide handler',async()=>{
  const listeners=new Map(),calls=[],storage={getItem:()=>JSON.stringify({token:'isolated-only'}),setItem(){}},data={sessions:[],notes:[],symptoms:[],checkins:[],events:[],settings:{}};
  const context={JSON,Date,Number,Error,CustomEvent:class{constructor(type,opts){this.type=type;this.detail=opts?.detail}},localStorage:storage,sessionStorage:storage,document:{addEventListener(){}},setTimeout:()=>1,setInterval:()=>1,clearTimeout(){},addEventListener:(name,fn)=>listeners.set(name,fn),dispatchEvent(){},SetkaStandaloneV34:{sandbox:{deviceId:'isolated'},getData:()=>data,save(){}},SetkaApp:{getFavorites:()=>[]},fetch:async(url,init)=>{calls.push({body:JSON.parse(init.body),keepalive:init.keepalive});return{ok:true,json:async()=>({ok:true,archive:null,counts:{},stateHistory:{symptoms:[],checkins:[]}})}}};context.window=context;
- vm.runInNewContext(read('standalone-private-corpus-v40.js'),context);await context.__SETKA_PRIVATE_CORPUS_V40__.sync();calls.length=0;
+ vm.runInNewContext(read('standalone-private-corpus-v40.js'),context);await context.__SETKA_PRIVATE_CORPUS_V40__.sync();calls.length=0;data.symptoms.push({id:'last-state',name:'Усталость',createdAt:'2026-10-15T13:05:00Z'});
  const finishing=listeners.get('pagehide')();assert.equal(calls.length,1,'keepalive must begin before pagehide returns');assert.equal(calls[0].keepalive,true);await finishing;
+});
+
+test('a cloud pull resolving after pagehide cannot start a late upload',async()=>{
+ const listeners=new Map(),calls=[],storage={getItem:()=>JSON.stringify({token:'isolated-only'}),setItem(){}},data={sessions:[],notes:[],symptoms:[],checkins:[],events:[],settings:{}};let finishPull;const delayed=new Promise(ok=>finishPull=ok);
+ const context={JSON,Date,Number,Error,CustomEvent:class{constructor(type,opts){this.type=type;this.detail=opts?.detail}},localStorage:storage,sessionStorage:storage,document:{addEventListener(){}},setTimeout:()=>1,setInterval:()=>1,clearTimeout(){},addEventListener:(name,fn)=>listeners.set(name,fn),dispatchEvent(){},SetkaStandaloneV34:{sandbox:{deviceId:'isolated'},getData:()=>data,save(){}},SetkaApp:{getFavorites:()=>[]},fetch:async(url,init)=>{const body=JSON.parse(init.body);calls.push(body.action);if(body.action==='pull')await delayed;return{ok:true,json:async()=>({ok:true,archive:null})}}};context.window=context;
+ vm.runInNewContext(read('standalone-private-corpus-v40.js'),context);const sending=context.__SETKA_PRIVATE_CORPUS_V40__.sync();assert.deepEqual(calls,['pull']);await listeners.get('pagehide')();finishPull();assert.equal(await sending,false);assert.deepEqual(calls,['pull']);
+ await listeners.get('pageshow')({persisted:true});assert.equal(await context.__SETKA_PRIVATE_CORPUS_V40__.sync(),true);assert.deepEqual(calls,['pull','pull','sync']);
 });
