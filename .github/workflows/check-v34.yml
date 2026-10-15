@@ -6,6 +6,7 @@ on:
       - 'app-v7-multipattern.js'
       - 'standalone-audio-reactive-v1.js'
       - 'standalone-audio-reactive-v2.js'
+      - 'standalone-audio-reactive-v3.js'
       - 'tests/standalone-audio-reactive-v1-browser-smoke.mjs'
       - 'standalone-multipattern-bridge-v34.js'
       - 'standalone-core-v34.js'
@@ -102,6 +103,7 @@ jobs:
       - run: node --check app-v7-multipattern.js
       - run: node --check standalone-audio-reactive-v1.js
       - run: node --check standalone-audio-reactive-v2.js
+      - run: node --check standalone-audio-reactive-v3.js
       - run: node --check standalone-multipattern-bridge-v34.js
       - run: node --check standalone-pulse-v1.mjs
       - run: node --check standalone-catalog-v1.js
