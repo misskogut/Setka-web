@@ -53,7 +53,7 @@
   ui.appendChild(feedback);
 
   const clamp=(v,a=0,b=1)=>Math.min(b,Math.max(a,v));
-  let stream=null,context=null,source=null,analyser=null,frequencies=null,waveform=null;
+  let stream=null,context=null,source=null,analyser=null,silentOutput=null,frequencies=null,waveform=null;
   let active=false,pending=false,seq=0,smoothed=0,lastFrameTime=0,feedbackTimer=0;
   let lastHeardAt=0,lastSilentHintAt=0,wasAudible=false;
 
@@ -71,15 +71,17 @@
     // a pending microphone permission request on iPhone.
   }
   function releaseResources(resources){
-    const {mic,ac,node}=resources||{};
+    const {mic,ac,node,sink,fft}=resources||{};
     try{node?.disconnect()}catch(_){}
+    try{fft?.disconnect()}catch(_){}
+    try{sink?.disconnect()}catch(_){}
     try{mic?.getTracks()?.forEach(track=>track.stop())}catch(_){}
     try{ac?.close?.()?.catch?.(()=>{})}catch(_){}
   }
   function stop(silent=true){
     seq++; // Cancel any pending microphone permission before it resolves.
-    const old={mic:stream,ac:context,node:source};
-    stream=null;context=null;source=null;analyser=null;frequencies=null;waveform=null;
+    const old={mic:stream,ac:context,node:source,sink:silentOutput,fft:analyser};
+    stream=null;context=null;source=null;analyser=null;silentOutput=null;frequencies=null;waveform=null;
     active=false;pending=false;smoothed=0;lastFrameTime=0;wasAudible=false;
     lastHeardAt=0;lastSilentHintAt=0;
     releaseResources(old);
@@ -93,7 +95,7 @@
       return;
     }
     pending=true;const ticket=++seq;renderButton();
-    let acquired=null,ac=null,node=null;
+    let acquired=null,ac=null,node=null,sink=null,fft=null;
     try{
       // AudioContext is created directly from a button gesture for iOS Safari.
       const AudioCtor=window.AudioContext||window.webkitAudioContext;
@@ -111,10 +113,17 @@
         releaseResources({mic:acquired,ac});return;
       }
       node=ac.createMediaStreamSource(acquired);
-      const fft=ac.createAnalyser();
+      fft=ac.createAnalyser();
       fft.fftSize=1024;
       fft.smoothingTimeConstant=.72;
       node.connect(fft);
+      // Safari may not pull microphone samples from an unconnected analyzer.
+      // Route it through a ZERO-gain sink so the graph runs, without ever
+      // sending microphone audio to the speakers (no echo or recording).
+      sink=ac.createGain();
+      sink.gain.value=0;
+      fft.connect(sink);
+      sink.connect(ac.destination);
       // Safari may suspend audio while the system permission sheet is shown.
       // Give it a bounded second resume attempt; never leave the button
       // indefinitely pending if the browser requires another user gesture.
@@ -122,17 +131,17 @@
         await Promise.race([ac.resume().catch(()=>{}),new Promise(resolve=>setTimeout(resolve,1200))]);
       }
       if(ticket!==seq||!game.classList.contains("active")||document.hidden){
-        releaseResources({mic:acquired,ac,node});return;
+        releaseResources({mic:acquired,ac,node,sink,fft});return;
       }
       if(ac.state!=="running")throw new Error("audio-suspended");
-      stream=acquired;context=ac;source=node;analyser=fft;
+      stream=acquired;context=ac;source=node;analyser=fft;silentOutput=sink;
       frequencies=new Uint8Array(fft.frequencyBinCount);
       waveform=new Uint8Array(fft.fftSize);
       smoothed=0;lastFrameTime=0;lastHeardAt=performance.now();lastSilentHintAt=0;wasAudible=false;active=true;
       acquired.getAudioTracks().forEach(track=>track.addEventListener("ended",()=>{if(stream===acquired)stop(false)},{once:true}));
       announce("Микрофон включён · включи музыку рядом");
     }catch(err){
-      releaseResources({mic:acquired,ac,node});
+      releaseResources({mic:acquired,ac,node,sink,fft});
       if(ticket===seq){
         const denied=err?.name==="NotAllowedError"||err?.name==="PermissionDeniedError";
         const suspended=err?.message==="audio-suspended";
