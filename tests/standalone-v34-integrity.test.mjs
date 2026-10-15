@@ -259,3 +259,51 @@ test("private archive recognizes state selection and checkins even without new e
   assert.notEqual(sign(),last,"a new state checkin triggers private sync");
 });
 
+
+
+test("animated pattern previews advance smoothly and resume without time or rebuild jumps", () => {
+  const source=read("app-v7-multipattern.js");
+  const v0=source.indexOf("  const previewTiles=");
+  const v1=source.indexOf("  const touch=",v0);
+  const a=source.indexOf("  function canAnimateLibrary()");
+  const b=source.indexOf('  for(const event of ["setka:overlay-visibility"',a);
+  assert.ok(v0>=0&&v1>v0&&a>v1&&b>a);
+  const draws=[],queue=new Map();
+  let nextId=0,hidden=false;
+  const context={
+    window:{matchMedia:()=>({matches:false})},
+    document:{get hidden(){return hidden},getElementById:()=>null},
+    libraryScreen:{classList:{contains:s=>s==="active"}},
+    requestAnimationFrame(fn){const id=++nextId;queue.set(id,fn);return id},
+    cancelAnimationFrame(id){queue.delete(id)},
+    innerWidth:390,innerHeight:844,
+    drawThumbnail:(canvas,config,frame)=>draws.push({canvas,frame})
+  };
+  const api=vm.runInNewContext(source.slice(v0,v1)+source.slice(a,b)+
+    "\\n({previewTiles,previewFrame,syncLibraryPreviews,stopLibraryPreviews})",context);
+  const tile=id=>({
+    id,isConnected:true,
+    closest:()=>({classList:{contains:()=>false}}),
+    getBoundingClientRect:()=>({top:120,bottom:200,left:20,right:100})
+  });
+  let canvas=tile("old");
+  api.previewTiles.set(canvas,{frame:44,config:{},patternId:"breathing-fractal-growth"});
+  const step=now=>{const item=queue.entries().next().value;assert.ok(item,"scheduled preview tick");queue.delete(item[0]);item[1](now)};
+  api.syncLibraryPreviews();
+  for(let t=100;t<600;t+=16)step(t);
+  assert.ok(draws.length>=8,"preview repaint cadence at least approximately 30fps");
+  const deltas=draws.slice(1).map((p,i)=>p.frame-draws[i].frame);
+  assert.ok(deltas.every(d=>d>0&&d<3),"no multi-frame phase leaps within normal rendering");
+  const last=draws.at(-1).frame;
+  // The freshly recreated thumbnail uses the live phase, not a constant frame.
+  const rebuilt=api.previewFrame(44);
+  assert.ok(Math.abs(rebuilt-last)<2,"recreated card starts at continuous phase");
+  api.previewTiles.delete(canvas);canvas=tile("rebuilt");
+  api.previewTiles.set(canvas,{frame:44,config:{},patternId:"breathing-fractal-growth"});
+  hidden=true;api.syncLibraryPreviews();
+  hidden=false;api.syncLibraryPreviews();
+  step(5500); // long time hidden must not advance phase by minutes/seconds
+  assert.ok(Math.abs(draws.at(-1).frame-last)<2,"return from background never jumps forward");
+  step(5516);
+  assert.ok(draws.at(-1).frame>=last,"resumed preview never resets to the start");
+});
