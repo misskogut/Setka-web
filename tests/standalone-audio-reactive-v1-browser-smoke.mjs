@@ -55,6 +55,32 @@ try{
   assert.equal(await toggle.locator(".st34-audio-indicator").count(),0,"no activation dot");
   const offStyle=await toggle.evaluate(el=>({opacity:Number(getComputedStyle(el).opacity),border:getComputedStyle(el).borderColor}));
   assert.ok(offStyle.opacity<.45,"OFF should be faded like the eye control: "+JSON.stringify(offStyle));
+  // Use the same radial indicator geometry as the existing colour button:
+  // its 42px circle around a 62px button leaves an 11px gap; the 54px
+  // music button must keep that gap for all five equally spaced dots.
+  const rings=await page.evaluate(()=>{
+    const audio=document.getElementById("st34AudioButton").getBoundingClientRect();
+    const color=document.getElementById("colorButton").getBoundingClientRect();
+    const centre=r=>({x:r.left+r.width/2,y:r.top+r.height/2});
+    const point=(el,c)=>{
+      const r=el.getBoundingClientRect(),x=r.left+r.width/2-c.x,y=r.top+r.height/2-c.y;
+      return{radius:Math.hypot(x,y),angle:(Math.atan2(y,x)*180/Math.PI+360)%360};
+    };
+    return{
+      audioWidth:audio.width,colorWidth:color.width,
+      audioDots:[...document.querySelectorAll("#st34AudioModeDots .st34-audio-dot")].map(el=>point(el,centre(audio))),
+      colorFirst:point(document.querySelector("#colorDots .color-dot"),centre(color))
+    };
+  });
+  assert.equal(rings.audioDots.length,5,"five EQ dots must surround the note");
+  const targetRadius=rings.audioWidth/2+(rings.colorFirst.radius-rings.colorWidth/2);
+  for(const [index,dot] of rings.audioDots.entries()){
+    assert.ok(Math.abs(dot.radius-targetRadius)<1.5,
+      "EQ dot must sit on the same outer ring offset as a colour dot: "+JSON.stringify(rings));
+    const angle=(270+index*72)%360;
+    assert.ok(Math.abs((((dot.angle-angle)+540)%360)-180)<1.5,
+      "EQ dots must form a clockwise circle starting at 12 o'clock: "+JSON.stringify(rings));
+  }
   assert.equal(await page.locator("#st34Nav").isVisible(),false,"music toggle only in immersive gameplay");
   const bounds=await page.evaluate(()=>{
     const ids=["st34AudioButton","favoriteButton","libraryButton","st34Note"];
