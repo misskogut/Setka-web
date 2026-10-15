@@ -115,13 +115,16 @@
     if(previewAnimation)return;
     const tick=now=>{
       if(!canAnimateLibrary()){stopLibraryPreviews();return}
-      if(previewLastTick){
-        // Bound phase advancement after a long frame: the drawing slows down
-        // gracefully instead of leaping through its geometry.
-        previewPhase+=Math.max(0,Math.min(PREVIEW_MAX_STEP_MS,now-previewLastTick))/16.6667*PREVIEW_SPEED;
-      }
-      previewLastTick=now;
+      // Advance the shared phase only when a real frame is painted. If the
+      // clock runs ahead between paints, a library rebuild flashes a future
+      // frame instead of the exact frame the user was just looking at.
       if(!previewLastPaint||now-previewLastPaint>=PREVIEW_INTERVAL_MS){
+        if(previewLastTick){
+          // Bound phase advancement after Safari throttles a frame: slow down
+          // gracefully instead of leaping through the geometry.
+          previewPhase+=Math.max(0,Math.min(PREVIEW_MAX_STEP_MS,now-previewLastTick))/16.6667*PREVIEW_SPEED;
+        }
+        previewLastTick=now;
         previewLastPaint=now;
         previewPaintPhase=previewPhase;
         for(const [canvas,item] of previewTiles){
