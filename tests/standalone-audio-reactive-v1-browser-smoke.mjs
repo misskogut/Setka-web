@@ -219,6 +219,28 @@ try{
       return{mode:eq.status().mode,name:eq.status().modeName,shapes,motion,scale:eq.viewportScale()};
     });
     assert.equal(measurement.name,names[index]);
+    // Mode 3 must actually move the FISH centre side-to-side (not merely
+    // change wave speed or use a copy of the spatial orbit).
+    if(n===3){
+      const dance=await page.evaluate(async()=>{
+        const a=window.SetkaAudioReactiveV1;
+        window.__setkaMicFixture.signal="music";
+        const values=[];
+        for(let i=0;i<19;i++){
+          values.push(a.offsets("fish-wave",390,844));
+          await new Promise(resolve=>setTimeout(resolve,76));
+        }
+        return values;
+      });
+      const x=dance.map(p=>p.x),y=dance.map(p=>p.y);
+      assert.ok(Math.max(...x)-Math.min(...x)>28,
+        "Wave mode must move fish centre ACROSS the screen: "+JSON.stringify(dance));
+      assert.ok(Math.max(...x)-Math.min(...x)>Math.max(...y)-Math.min(...y)*2,
+        "Fish dance must be primarily left-right, not the spatial XY orbit");
+      const changedFish=measurement.shapes.find(p=>p.id==="fish-wave").changes.map(x=>x[0]);
+      for(const key of ["waveAmplitude","waveSpeed","ringSpacing"])
+        assert.ok(changedFish.includes(key),"Fish choreography must change native "+key);
+    }
     assert.equal(measurement.shapes.length,7);
     measurement.shapes.forEach(p=>assert.ok(p.changes.length>=1,
       "Each style must modulate the real geometry for "+p.id+": "+JSON.stringify(measurement)));
