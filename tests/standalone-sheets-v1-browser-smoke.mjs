@@ -60,15 +60,31 @@ try{
   await page.getByRole('button',{name:'5 мин',exact:true}).click();
   await page.getByRole('button',{name:'Начать',exact:true}).click();await card.waitFor({state:'hidden'});
   await page.getByRole('button',{name:'Открыть паттерн RGB Glitch Rings. Удерживай, чтобы сохранить',exact:true}).click();
-  await page.locator('#gameScreen.active').waitFor();assert.equal(await dock.isVisible(),true);
+  await page.locator('#gameScreen.active').waitFor();
+  assert.equal(await dock.isVisible(),false,'immersive pattern viewing must hide the bottom navigation');
   const controls=await page.locator('#gameScreen .bottom-controls').boundingBox();
-  assert.ok(controls.y+controls.height<dockRect.y,'game controls overlap the dock');
+  assert.ok(controls.y+controls.height<844,'game controls must fit at the bottom of the screen');
+  // Saving a favorite must show only a compact toast, not the huge bordered
+  // sheet-shaped rectangle reported on a real iPhone.
+  await page.locator('#favoriteButton').click();
+  await page.locator('#toast.show').waitFor();
+  const toastInfo=await page.locator('#gameScreen #toast').evaluate(el=>{
+    const css=getComputedStyle(el),r=el.getBoundingClientRect();
+    return {bottom:css.bottom,height:r.height,width:r.width,borderWidth:css.borderTopWidth};
+  });
+  assert.equal(toastInfo.bottom,'auto');
+  assert.ok(toastInfo.height<65,'saved toast stretched across the gameplay canvas: '+JSON.stringify(toastInfo));
+  assert.equal(toastInfo.borderWidth,'0px');
   await page.getByRole('button',{name:'Добавить заметку',exact:true}).click();
+  await card.waitFor({state:'visible'});
+  assert.equal(await dock.isVisible(),true,'dock should return when an actual notes sheet is open');
   const draft='Изолированная проверка карточки';await card.locator('textarea').fill(draft);
   await tab('today').click();await tab('notes').click();
   assert.equal(await card.locator('textarea').inputValue(),draft,'tab switch discarded the note draft');
   await tab('notes').click();await card.waitFor({state:'hidden'});
-  await tab('notes').click();await card.waitFor({state:'visible'});
+  assert.equal(await dock.isVisible(),false,'closing the note card restores immersive gameplay');
+  await page.getByRole('button',{name:'Добавить заметку',exact:true}).click();
+  await card.waitFor({state:'visible'});
   assert.equal(await card.locator('textarea').inputValue(),draft,'collapse discarded the note draft');
   // While the sheet is open, measured viewing time must stay paused.
   const before=await page.evaluate(()=>window.SetkaStandaloneV34.getActiveSession().measuredActiveMs);
@@ -76,6 +92,7 @@ try{
   const after=await page.evaluate(()=>window.SetkaStandaloneV34.getActiveSession().measuredActiveMs);
   assert.equal(after,before);
   await page.getByRole('button',{name:'Сохранить',exact:true}).click();await card.waitFor({state:'hidden'});
+  assert.equal(await dock.isVisible(),false,'saved note must return to unobstructed gameplay');
   const note=await page.evaluate(()=>{
     const n=window.SetkaStandaloneV34.getData().notes.at(-1);
     return{patternId:n.patternId,snapshotPattern:n.replaySnapshot?.patternId,frame:n.replaySnapshot?.frame,sessionId:n.sessionId};
