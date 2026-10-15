@@ -74,6 +74,8 @@ on:
       - 'tests/state-persistence-v1*'
       - 'research-v1/physiology.mjs'
       - 'research-v1/app.mjs'
+      - 'research-v1/access.mjs'
+      - 'tests/research-admin-v1-access*'
       - 'research-v1/pulse-ui.mjs'
       - 'research-v1/invites.mjs'
       - 'tests/standalone-pulse-v1*'
