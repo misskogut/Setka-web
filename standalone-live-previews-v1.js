@@ -60,7 +60,8 @@
   }
   function schedule() {
     if (!handle && previews.size && mayAnimate()) {
-      lastPaint = 0;
+      // Never reset lastPaint between adjacent rAF ticks. Doing that would
+      // freeze the shared phase at zero despite repeated Canvas redraws.
       handle = requestAnimationFrame(tick);
     }
   }
