@@ -64,18 +64,14 @@ try{
   assert.equal(await dock.isVisible(),false,'immersive pattern viewing must hide the bottom navigation');
   const controls=await page.locator('#gameScreen .bottom-controls').boundingBox();
   assert.ok(controls.y+controls.height<844,'game controls must fit at the bottom of the screen');
-  // Saving a favorite must show only a compact toast, not the huge bordered
-  // sheet-shaped rectangle reported on a real iPhone.
+  // Saving a favorite must remain functional but be SILENT in immersive mode.
+  // No text toast or bordered tooltip may interrupt the live geometry.
+  const savedBefore=(await page.evaluate(()=>window.SetkaApp.getFavorites().length));
   await page.locator('#favoriteButton').click();
-  await page.locator('#toast.show').waitFor();
-  const toastInfo=await page.locator('#gameScreen #toast').evaluate(el=>{
-    const css=getComputedStyle(el),r=el.getBoundingClientRect();
-    return {height:r.height,width:r.width,borderWidth:css.borderTopWidth};
-  });
-  // getComputedStyle() resolves an absolutely positioned element's 'auto'
-  // bottom to a pixel value. Its actual box HEIGHT is the stable regression.
-  assert.ok(toastInfo.height<65,'saved toast stretched across the gameplay canvas: '+JSON.stringify(toastInfo));
-  assert.equal(toastInfo.borderWidth,'0px');
+  assert.equal(await page.evaluate(()=>window.SetkaApp.getFavorites().length),savedBefore+1,
+    'favorite button must still persist the selected pattern');
+  const toastDisplay=await page.locator('#gameScreen #toast').evaluate(el=>getComputedStyle(el).display);
+  assert.equal(toastDisplay,'none','no gameplay toast/announcement over the pattern');
   await page.getByRole('button',{name:'Добавить заметку',exact:true}).click();
   await card.waitFor({state:'visible'});
   assert.equal(await dock.isVisible(),true,'dock should return when an actual notes sheet is open');
