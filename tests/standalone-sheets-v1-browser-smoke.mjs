@@ -98,9 +98,15 @@ try{
     return{patternId:n.patternId,snapshotPattern:n.replaySnapshot?.patternId,frame:n.replaySnapshot?.frame,sessionId:n.sessionId};
   });
   assert.equal(note.patternId,'rgb-glitch-rings');assert.equal(note.snapshotPattern,'rgb-glitch-rings');assert.ok(Number.isFinite(note.frame));assert.ok(note.sessionId);
-  await tab('notes').click();assert.equal(await card.locator('textarea').count(),0,'saved draft reopened as a new note');
+  // With the gameplay dock hidden, open the existing Notes list via the
+  // real section renderer (as if entered from the dock in the library).
+  await page.evaluate(()=>window.SetkaStandaloneV34.showNotes());
+  await card.waitFor({state:'visible'});
+  assert.equal(await dock.isVisible(),true);
+  assert.equal(await card.locator('textarea').count(),0,'saved draft reopened as a new note');
   assert.match(await card.innerText(),new RegExp(draft));
   await tab('notes').click();await card.waitFor({state:'hidden'});
+  assert.equal(await dock.isVisible(),false);
   await page.getByRole('button',{name:'Завершить сессию',exact:true}).click();
   await card.locator('.st-faces').waitFor();await card.locator('.st-face').nth(3).click();
   await page.getByRole('button',{name:'Немного',exact:true}).click();
