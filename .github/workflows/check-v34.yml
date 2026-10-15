@@ -65,6 +65,8 @@ on:
       - 'tests/standalone-v34-open-admin-browser-smoke.mjs'
       - 'standalone-admin-evolution-v35.html'
       - 'standalone-v34.html'
+      - 'scripts/build-standalone-release.mjs'
+      - 'tests/standalone-one-link-release.test.mjs'
       - 'standalone-pulse-v1.mjs'
       - 'standalone-catalog-v1.js'
       - 'standalone-activity-v1.js'
@@ -106,6 +108,8 @@ jobs:
       - run: node --check standalone-audio-reactive-v1.js
       - run: node --check standalone-audio-reactive-v2.js
       - run: node --check standalone-audio-reactive-v3.js
+      - run: node --check scripts/build-standalone-release.mjs
+      - run: node --test tests/standalone-one-link-release.test.mjs
       - run: node --check standalone-multipattern-bridge-v34.js
       - run: node --check standalone-pulse-v1.mjs
       - run: node --check standalone-catalog-v1.js
