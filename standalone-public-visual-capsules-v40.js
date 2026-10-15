@@ -17,6 +17,7 @@
     const source = note.replaySnapshot || note.visualRecipe || note.visualCapsule || {};
     const rawConfig = source.config || note.config || note.state?.config || {};
     const hinted = source.patternId || note.patternId || note.state?.patternId || rawConfig.patternId || null;
+    if(note.noteType==='text'||(!hinted&&!Object.keys(rawConfig).length))return null;
     let config = clone(rawConfig), patternId = hinted || "tentacle-orbit";
     try { config = S?.cloneConfig?.(rawConfig, hinted) || config; patternId = config?.patternId || patternId; } catch (_) {}
     let configHash = source.configHash || note.configHash || note.state?.configKey || null;
@@ -37,6 +38,7 @@
   }
 
   function encodePreview(recipe) {
+    if(!recipe)return null;
     const S = window.SetkaApp;
     if (!S?.renderPreview) return null;
     const sizes = [[256,180,.68],[220,155,.64],[180,126,.60]];

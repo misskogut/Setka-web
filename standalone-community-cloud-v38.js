@@ -103,7 +103,7 @@
       head.querySelector(".st34-note-text").textContent=note.text||"";
       head.querySelector(".st34-note-meta").textContent=meta.join(" · ");
       card.appendChild(head);
-      if(note.config){
+      if(pid&&note.config&&Object.keys(note.config).length){
         const open=document.createElement("button");open.type="button";open.className="st34-note-preview-button";open.setAttribute("aria-label","Открыть паттерн из заметки");
         const canvas=document.createElement("canvas");canvas.className="st34-note-preview";canvas.width=720;canvas.height=500;open.appendChild(canvas);
         const mark=document.createElement("span");mark.className="st34-note-open-mark";mark.textContent="Открыть ↗";open.appendChild(mark);

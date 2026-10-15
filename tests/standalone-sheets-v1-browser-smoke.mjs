@@ -115,6 +115,14 @@ try{
   await page.setViewportSize({width:1280,height:900});
   await page.waitForFunction(()=>document.querySelector('#st34Layer').getBoundingClientRect().width<600);
   await page.screenshot({path:'tests/visual-smoke/bottom-card-desktop.png'});
+  const beforeReset=await page.evaluate(()=>window.SetkaStandaloneV34.getData().createdAt);
+  await tab('me').click();await page.getByRole('button',{name:/^Очистить мою историю/}).click();await card.locator('.st-inline-confirm').waitFor();
+  await card.getByRole('button',{name:'Отмена',exact:true}).click();assert.ok(await page.evaluate(()=>window.SetkaStandaloneV34.getData().notes.length)>0);
+  await page.getByRole('button',{name:/^Очистить мою историю/}).click();await Promise.all([page.waitForNavigation({waitUntil:'domcontentloaded'}),card.getByRole('button',{name:'Очистить историю',exact:true}).click()]);
+  await page.waitForFunction(()=>!!window.SetkaStandaloneV34);await page.evaluate(()=>window.SetkaStandaloneV34.ready);
+  const reset=await page.evaluate(()=>({root:window.SetkaStandaloneV34.getData().createdAt,notes:window.SetkaStandaloneV34.getData().notes.length,states:window.SetkaStandaloneV34.getData().symptoms.length}));
+  assert.notEqual(reset.root,beforeReset);assert.equal(reset.notes,0);assert.equal(reset.states,0);
+  console.log('INLINE LOCAL RESET DOES NOT REWRITE OLD HISTORY ON PAGEHIDE PASS');
   assert.deepEqual(errors,[]);
   console.log('REAL UI SESSION, FROZEN NOTE, DRAFT RESTORE AND PAUSED WATCH TIME PASS',JSON.stringify({pattern:note.patternId,completed:ended.completed,apiCallsIntercepted:api.length}));
 }finally{await browser?.close();server.kill('SIGTERM')}

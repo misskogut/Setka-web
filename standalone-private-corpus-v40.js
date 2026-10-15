@@ -95,6 +95,7 @@
   async function post(payload,keepalive=false){const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json",apikey:KEY},body:JSON.stringify(payload),keepalive});const out=await r.json().catch(()=>({}));if(!r.ok){const e=new Error(out.error||`http_${r.status}`);e.status=r.status;throw e}return out}
   async function pull(){const s=session();if(!s?.token)throw new Error("auth_required");return post({action:"pull",sessionToken:s.token,deviceId:did()})}
   async function restoreFromCloud(){
+    if(C.ready)await C.ready;
     if(pageClosing)return false;
     const s=session();if(!s?.token){hydrated=false;authoritative=false;return false}
     const out=await pull();if(pageClosing)return false;const a=out?.archive;
@@ -118,7 +119,9 @@
     return hydrationPromise;
   }
   async function sync(force=false,keepalive=false,closingWrite=false){
+    if(C.storageStatus?.().resetting)return false;
     if(pageClosing&&!closingWrite)return false;
+    if(!keepalive&&C.ready)await C.ready;
     const s=session(),deviceId=did();if(!s?.token||!deviceId){saveStatus({enabled:false,reason:"not_authenticated",build:BUILD,privacy:"private-account-only"});return false}
     // Unload cannot restore the remote archive first. Keep local changes for the
     // next foreground sync instead of starting an unsafe pull in a closing page.
@@ -130,9 +133,17 @@
       return false;
     }
     C.save?.();
+    if(!keepalive&&C.whenSaved)await C.whenSaved();
+    if((pageClosing&&!closingWrite)||C.storageStatus?.().resetting)return false;
     const sig=signature();if((!force||keepalive)&&sig===lastSignature)return true;if(busy)return false;busy=true;
     try{
-      const sent=archive();pendingWrite=post({action:"sync",sessionToken:s.token,deviceId,capturedAt:new Date().toISOString(),archive:sent,favorites:favorites()},keepalive);const out=await pendingWrite;
+      const sent=archive(),payload={action:"sync",sessionToken:s.token,deviceId,capturedAt:new Date().toISOString(),archive:sent,favorites:favorites()};
+      // The Fetch standard caps the entire in-flight keepalive body budget at
+      // 64 KiB. A full personal archive may be several MB. Keep it durably on
+      // device and retry in the foreground; do not turn an impossible closing
+      // upload into a failed cloud receipt or send a destructive partial archive.
+      if(keepalive&&new Blob([JSON.stringify(payload)]).size>60000)return false;
+      pendingWrite=post(payload,keepalive);const out=await pendingWrite;
       const receipt=out.stateHistory||{symptoms:sent.symptoms,checkins:sent.checkins};
       if(out.stateHistory){const d=C.getData(),before=stateFingerprint(d);d.symptoms=mergeRecords(d.symptoms,receipt.symptoms,"symptoms",10000);d.checkins=mergeRecords(d.checkins,receipt.checkins,"checkins",10000);C.save?.();if(before!==stateFingerprint(d))window.dispatchEvent(new CustomEvent("setka:states-restored"));}
       lastSignature=sig;const st={enabled:true,ok:true,build:BUILD,updatedAt:out.updatedAt,counts:out.counts||{},stateFingerprint:stateFingerprint(receipt),statesVerified:!!out.stateHistory,privacy:"private-account-only",publicExposure:false};saveStatus(st);return true;
@@ -152,6 +163,8 @@
   document.addEventListener("visibilitychange",()=>{if(document.hidden)sync(true,true);else schedule(500)});
   window.addEventListener("pagehide",()=>{pageClosing=true;clearTimeout(timer);clearTimeout(physioTimer);return sync(true,true,true)});
   window.addEventListener("pageshow",e=>{pageClosing=false;if(e.persisted)schedule(0)});
+  window.addEventListener('setka:local-reset-started',()=>{pageClosing=true;clearTimeout(timer);clearTimeout(physioTimer)});
+  window.addEventListener('setka:local-reset-cancelled',()=>{pageClosing=false;schedule(500)});
   setInterval(()=>sync(false),45000);
   setTimeout(()=>sync(true),2200);
   window.__SETKA_PRIVATE_CORPUS_V40__={sync:async()=>{if(busy)await pendingWrite.catch(()=>false);return sync(true)},pull,restore:restoreFromCloud,remoteStatus,status,authoritative:()=>!!(hydrated&&authoritative&&session()?.token),build:BUILD};

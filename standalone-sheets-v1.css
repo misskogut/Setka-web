@@ -131,6 +131,21 @@ body.setka-sheet-layout #gameScreen .toast {
   text-align: center;
   white-space: normal;
 }
+body.setka-sheet-layout .pattern-tile .mini-heart {
+  top: -2px;
+  right: -2px;
+  bottom: auto;
+  z-index: 3;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(0,0,0,.7);
+  font-size: 15px;
+  line-height: 1;
+  pointer-events: none;
+}
 @media (max-width: 520px) {
   body.setka-sheet-layout #st34Layer input:not([type=checkbox]):not([type=range]):not([type=radio]),
   body.setka-sheet-layout #st34Layer textarea { font-size: 16px; }

@@ -110,7 +110,7 @@
       const label=document.createElement("div");label.className="st34-note-preview-label";label.textContent="ПАТТЕРН В МОМЕНТ ЗАМЕТКИ";card.appendChild(label);
       requestAnimationFrame(()=>{try{Setka.renderPreview?.(canvas,clone(n.config),n.frame??44,n.patternId||n.config?.patternId||null)}catch(e){console.warn("SETKA note preview failed",e)}});
     }else if(!compact){
-      const empty=document.createElement("div");empty.className="st34-note-no-preview";empty.textContent="У этой старой заметки визуальный момент не сохранился";card.appendChild(empty);
+      const empty=document.createElement("div");empty.className="st34-note-no-preview";empty.textContent=n.noteType==="text"?"Заметка без паттерна":"У этой старой заметки визуальный момент не сохранился";card.appendChild(empty);
     }
     parent.appendChild(card);return card;
   }
@@ -147,10 +147,23 @@
   }
 
   function showNotes(){
-    C.setNav("me");const d=C.getData();
+    C.setNav("notes");const d=C.getData();
     const b=C.screen("Заметки","Мысли и визуальные моменты, которые ты захотела сохранить.","МОЯ ПАМЯТЬ",showMe);
-    if(!d.notes.length){b.innerHTML='<div class="st-empty">Пока заметок нет.</div>';return}
-    for(const n of d.notes.slice().reverse())renderNoteCard(b,n);
+    const add=document.createElement("button");add.type="button";add.className="st-secondary st-note-add";add.setAttribute("aria-label","Добавить заметку без паттерна");add.innerHTML='<span aria-hidden="true">+</span> Написать заметку';b.appendChild(add);
+    add.onclick=()=>{
+      if(b.querySelector(".st-note-editor"))return;
+      const form=document.createElement("form");form.className="st-note-editor";form.innerHTML='<label for="stPlainNoteText">Новая заметка без паттерна</label><textarea id="stPlainNoteText" class="st-textarea" placeholder="Что хочется записать?" required maxlength="5000"></textarea><div class="st-row"><button type="button" class="st-secondary">Отмена</button><button type="submit" class="st-primary">Сохранить заметку</button></div>';add.after(form);let note=null;
+      const field=form.querySelector("textarea"),cancel=form.querySelector('[type="button"]'),submit=form.querySelector('[type="submit"]');cancel.onclick=()=>form.remove();field.focus();
+      form.onsubmit=async e=>{e.preventDefault();const text=field.value.trim();if(!text){C.inlineStatus(form,"Напиши текст заметки.");return}submit.disabled=true;cancel.disabled=true;
+        if(!note){const now=new Date().toISOString();note={id:C.id("note"),noteType:"text",text,observedAt:now,updatedAt:now,localOffsetMinutes:C.localOffset(),phase:"standalone",sessionId:null,sessionElapsedMs:null,requestKey:null,patternId:null,patternVersion:null,sourceType:"personal_note",sourceId:null,communityId:null,configHash:null,config:null,frame:null,state:null};d.notes.push(note)}else{note.text=text;note.updatedAt=new Date().toISOString()}
+        C.save();C.inlineStatus(form,"Сохраняем заметку…");
+        const saved=C.whenSaved?await C.whenSaved():true;window.dispatchEvent(new CustomEvent("setka:v34-sync-request"));
+        if(saved){C.recordEvent("note_create",{noteId:note.id,noteType:"text",patternId:null,state:null},false);showNotes()}else{C.inlineStatus(form,"Пока не удалось сохранить заметку на устройстве. Текст остаётся здесь; попробуй сохранить ещё раз.","error");submit.disabled=false;cancel.disabled=false}
+      };
+    };
+    const list=document.createElement("div");list.className="st-notes-list";b.appendChild(list);
+    if(!d.notes.length){list.innerHTML='<div class="st-empty">Пока заметок нет. Нажми «+», чтобы записать мысль.</div>';return}
+    for(const n of d.notes.slice().reverse())renderNoteCard(list,n);
   }
 
   function showSessions(){
@@ -251,10 +264,10 @@
   }
   window.addEventListener("setka:pulse-ready",()=>{if(document.querySelector("#st34Layer .st-title")?.textContent==="Пульс")C.pulse?.render()});
 
-  function resetLocal(){
-    if(!confirm("Удалить твою локальную историю SETKA на этом устройстве?"))return;
-    try{localStorage.removeItem("setka-standalone:v34");localStorage.removeItem("setka-standalone:active:v34")}catch(_){}
-    location.reload();
+  async function resetLocal(){
+    const root=document.querySelector("#st34Layer #stBody");
+    if(!await C.inlineConfirm(root,{title:"Очистить историю на устройстве?",body:"Локальные сессии, состояния и заметки будут удалены. Сохранённый архив аккаунта останется на сервере.",accept:"Очистить историю"}))return;
+    if(await C.clearLocalHistory())location.reload();else C.inlineStatus(root,"Не удалось очистить историю. Попробуй ещё раз.","error");
   }
 
   function showMe(){
