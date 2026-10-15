@@ -75,6 +75,8 @@ on:
       - 'research-v1/pulse-ui.mjs'
       - 'research-v1/invites.mjs'
       - 'tests/standalone-pulse-v1*'
+      - 'standalone-storage-v1.js'
+      - 'standalone-inline-actions-v1.js'
       - 'standalone-sheets-v1.js'
       - 'standalone-sheets-v1.css'
       - 'tests/standalone-sheets-v1-browser-smoke.mjs'
@@ -112,6 +114,8 @@ jobs:
       - run: node --test tests/standalone-pulse-v1.test.mjs
       - run: node --check standalone-sheets-v1.js
       - run: node --check standalone-core-v34.js
+      - run: node --check standalone-storage-v1.js
+      - run: node --check standalone-inline-actions-v1.js
       - run: node --check standalone-runtime-v34.js
       - run: node --check standalone-favorites-repair-v34.js
       - run: node --check standalone-favorite-native-guard-v34.js

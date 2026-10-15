@@ -283,26 +283,27 @@
     if (publicationBusy) return;
     publicationBusy = true;
     button.disabled = true;
+    const card=button.closest('.st34-note-card')||button.parentElement;
     try {
       await refreshPub(true);
       const current = pub.get(String(note.id));
       const status = current?.status || statusOf(note);
       if (status === "published") {
-        if (!confirm("Убрать эту заметку из анонимного сообщества? Личная заметка останется у тебя.")) return;
+        if (!await C.inlineConfirm(card,{title:"Снять заметку с публикации?",body:"Личная заметка останется у тебя.",accept:"Снять публикацию"})) return;
         await noteApi("unpublish", {sourceNoteKey:note.id});
         const next = {...current, id:current?.id || note.publicNoteId || null, sourceNoteKey:note.id, status:"unpublished", isPublic:false};
         pub.set(String(note.id), next);
         setLocalStatus(note, "unpublished", next.id);
         C.recordEvent?.("public_note_unpublish", {noteId:note.id}, false);
       } else if (status === "pending") {
-        if (!confirm("Отозвать запрос на публикацию? Личная заметка останется у тебя.")) return;
+        if (!await C.inlineConfirm(card,{title:"Отозвать запрос?",body:"Заметка останется у тебя и исчезнет из очереди модерации.",accept:"Отозвать запрос"})) return;
         await noteApi("cancel-submission", {sourceNoteKey:note.id});
         const next = {...current, id:current?.id || note.publicNoteId || null, sourceNoteKey:note.id, status:"private", isPublic:false};
         pub.set(String(note.id), next);
         setLocalStatus(note, "private", next.id);
         C.recordEvent?.("public_note_moderation_withdraw", {noteId:note.id}, false);
       } else {
-        if (!confirm("Отправить эту заметку на модерацию? Если SETKA одобрит её, в сообщество попадут только текст и связанный визуальный паттерн. ID тестировщика, сессия, симптомы, пульс и личная история публично не показываются.")) return;
+        if (!await C.inlineConfirm(card,{title:"Предложить заметку сообществу?",body:"После одобрения будут видны текст и паттерн, если он прикреплён. Аккаунт и личная история публично не показываются.",accept:"Отправить на модерацию"})) return;
         await C.sandbox?.sync?.();
         const out = await noteApi("submit", {note:clone(note)});
         const next = {id:out.id, sourceNoteKey:note.id, status:out.status || "pending", isPublic:false, submittedAt:out.submittedAt || new Date().toISOString()};
@@ -313,7 +314,7 @@
       schedulePrivateArchive(500);
     } catch (e) {
       console.warn("SETKA note moderation action failed", e);
-      alert("Не удалось изменить запрос на публикацию.");
+      C.inlineStatus(card,"Не удалось изменить запрос на публикацию. Попробуй ещё раз.","error");
     } finally {
       publicationBusy = false;
       button.disabled = false;
@@ -322,6 +323,7 @@
   }
 
   function drawPreview(canvas, note) {
+    if(!note.patternId&&!note.config?.patternId)return;
     if (note.visualSnapshot?.dataUrl) {
       const img = new Image();
       img.onload = () => {
@@ -341,9 +343,11 @@
     const d = C.getData?.();
     if (!d?.notes || d.notes.some(x => x.publicNoteId === note.id && x.sourceType === "public_note")) return false;
     const now = new Date().toISOString(), pid = note.patternId || note.config?.patternId || null;
+    const hasPattern=!!(pid&&note.config&&Object.keys(note.config).length);
     const local = {
       id: `public-note-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
       text: note.text,
+      noteType:hasPattern?"pattern":"text",
       observedAt: now,
       localOffsetMinutes: -new Date().getTimezoneOffset(),
       phase: "saved_from_community",
@@ -358,10 +362,10 @@
       publicNoteId: note.id,
       originalPublishedAt: note.createdAt || null,
       configHash: note.configKey || null,
-      config: clone(note.config || {}),
+      config: hasPattern?clone(note.config):null,
       frame: note.frame ?? null,
       visualSnapshot: clone(note.visualSnapshot || null),
-      state: {
+      state: hasPattern?{
         view: "memory",
         patternId: pid,
         patternVersion: note.patternVersion || 1,
@@ -371,7 +375,7 @@
         config: clone(note.config || {}),
         configKey: note.configKey || null,
         frame: note.frame ?? null
-      }
+      }:null
     };
     d.notes.push(local);
     C.save?.();
@@ -390,7 +394,7 @@
       button.classList.add("saved");
     } catch (_) {
       button.disabled = false;
-      alert("Не удалось сохранить заметку.");
+      C.inlineStatus(button.closest('.st34-note-card,.st37-public-card')||button.parentElement,"Не удалось сохранить заметку. Попробуй ещё раз.","error");
     }
   }
 
@@ -407,6 +411,7 @@
 
   function openPublicNote(note) {
     const pid = note.patternId || note.config?.patternId || null;
+    if(!pid||!note.config||!Object.keys(note.config).length)return;
     const cfg = {...clone(note.config || {}), ...(pid ? {patternId:pid} : {})};
     C.hideLayer?.();
     Setka.openConfig?.(cfg, {type:"public_note", id:note.id, patternId:pid, baseId:pid, noteId:note.id, frame:note.frame ?? 44});
@@ -435,7 +440,7 @@
         const card = document.createElement("article");
         card.className = "st34-note-card st37-public-card";
         card.innerHTML = `<div class="st34-note-text">${esc(note.text)}</div><div class="st37-community-meta">${esc(C.dt?.(note.createdAt) || "")}${note.saves ? ` · сохранили ${Number(note.saves)}` : ""}</div>`;
-        if (note.config) {
+        if ((note.patternId||note.config?.patternId)&&note.config&&Object.keys(note.config).length) {
           const canvas = document.createElement("canvas");
           canvas.className = "st37-community-preview";
           canvas.width = 720;
@@ -460,7 +465,8 @@
         save.textContent = already ? "Сохранено ✓" : "Сохранить себе";
         if (already) save.classList.add("saved");
         else save.onclick = () => savePublic(note, save);
-        actions.append(open, save);
+        if((note.patternId||note.config?.patternId)&&note.config&&Object.keys(note.config).length)actions.appendChild(open);
+        actions.appendChild(save);
         card.appendChild(actions);
         body.appendChild(card);
       }
@@ -498,7 +504,7 @@
       } catch (e) {
         button.disabled = false;
         button.textContent = "Подключить этот ID";
-        alert(e?.status === 409 ? "Этот ID уже привязан к другому устройству." : "ID не найден или уже недействителен.");
+        C.inlineStatus(body,e?.status === 409 ? "Этот ID уже привязан к другому устройству." : "ID не найден или уже недействителен.","error");
       }
     };
     body.appendChild(button);

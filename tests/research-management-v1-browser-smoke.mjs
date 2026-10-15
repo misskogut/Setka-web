@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';import {createServer} from 'node:http';i
 import {buildData} from '../research-v1/model.mjs';import {patterns,configKey} from '../research-v1/renderer.mjs';
 const port=49319,base=`http://127.0.0.1:${port}`,root=process.cwd();
 const catalog=patterns.map(x=>({pattern_id:x.id,title:x.id==='dandelion'?'Одуванчик':x.title,revision:1}));let ownIssued=[],savedArchive={payload:{openedPatterns:[],symptoms:[],checkins:[]},favorites:[]};
+const publications=new Map(),noteActions=[];
 const fixtureMerge=(old=[],next=[])=>[...new Map([...old,...next].map(x=>[x.id,x])).values()];
 const server=createServer(async(req,res)=>{
  try{
@@ -26,6 +27,14 @@ const server=createServer(async(req,res)=>{
      out={ok:true,updatedAt:savedArchive.updatedAt,stateHistory:{symptoms:savedArchive.payload.symptoms,checkins:savedArchive.payload.checkins},counts:{symptoms:savedArchive.payload.symptoms.length,checkins:savedArchive.payload.checkins.length}};
     }else out={ok:true,archive:{...savedArchive,sourceDevices:1}};
    }
+   if(path.endsWith('setka-public-notes-v37')){
+    if(b.action==='status')out={ok:true,items:[...publications.values()]};
+    if(b.action==='submit'){
+     assert.equal(b.note.patternId,null);assert.equal(b.note.config,null);assert.equal(b.note.visualCapsule,null);assert.equal(b.note.publicPreviewDataUrl,undefined);
+     noteActions.push('submit');const item={id:'isolated-public-note',sourceNoteKey:b.note.id,status:'pending',isPublic:false};publications.set(b.note.id,item);out={ok:true,...item};
+    }
+    if(b.action==='cancel-submission'){noteActions.push(b.action);publications.delete(b.sourceNoteKey);out={ok:true};}
+   }
    res.writeHead(200,{'Content-Type':'application/json'}).end(JSON.stringify(out));return;
   }
   const file=resolve(root,'.'+decodeURIComponent(path));if(!file.startsWith(root+'/')){res.writeHead(403).end();return}
@@ -42,7 +51,7 @@ try{
  await new Promise((ok,fail)=>{server.once('error',fail);server.listen(port,'127.0.0.1',ok)});
  browser=await (process.env.SETKA_BROWSER==='webkit'?webkit:chromium).launch({headless:true,args:process.env.SETKA_BROWSER==='webkit'?[]:['--no-sandbox']});
  const frontContext=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true}),front=await frontContext.newPage(),errors=[];
- front.on('pageerror',e=>errors.push({page:'front',message:e.message,stack:e.stack}));
+ front.on('pageerror',e=>errors.push({page:'front',message:e.message,stack:e.stack}));front.on('dialog',async d=>{errors.push({page:'front',nativeDialog:d.message()});await d.dismiss()});
  await front.addInitScript(localApiTransport);
  await front.addInitScript(()=>localStorage.setItem('setka-v40:cabinet-session',JSON.stringify({token:'isolated-fixture-only'})));
  await front.goto(base+'/standalone-v34.html',{waitUntil:'domcontentloaded'});await front.waitForFunction(()=>!!window.__SETKA_PATTERN_CATALOG_V1__&&!!window.SetkaStandaloneV34.activity);
@@ -76,10 +85,33 @@ try{
  await front.reload();await front.locator('#st34Nav [data-p="symptoms"]').click();await front.getByText('Усталость',{exact:true}).waitFor();assert.match(await front.locator('.st34-state-now').innerText(),/6\/10/);
  const other=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});other.on('pageerror',e=>errors.push({page:'other-device',message:e.message}));await other.addInitScript(localApiTransport);await other.addInitScript(()=>localStorage.setItem('setka-v40:cabinet-session',JSON.stringify({token:'isolated-fixture-only'})));await other.goto(base+'/standalone-v34.html');await other.waitForFunction(()=>!!window.__SETKA_PRIVATE_CORPUS_V40__);await other.evaluate(()=>window.__SETKA_PRIVATE_CORPUS_V40__.sync());await other.locator('#st34Nav [data-p="symptoms"]').click();await other.getByText('Усталость',{exact:true}).waitFor();assert.match(await other.locator('.st34-state-now').innerText(),/6\/10/);
  console.log('NEW BADGE, LIVE PREVIEWS WITHOUT USAGE, MULTITAB STATE/CHECKIN RETENTION AND CLOUD RESTORE ON ANOTHER DEVICE PASS');
+ // Fill actual Web Storage in this isolated origin; do not mock QuotaExceededError.
+ const fill=await front.evaluate(()=>{let size=0,step=1024*1024,refused=false;while(step>=1){try{localStorage.setItem('isolated-quota-filler','x'.repeat(size+step));size+=step}catch(e){refused=refused||e.name==='QuotaExceededError';step=Math.floor(step/2)}}return{size,refused}});
+ assert.ok(fill.refused&&fill.size>1000000,'the isolated browser did not reach its real Web Storage quota');
+ await front.locator('.st34-add-state').click();await front.getByRole('button',{name:'Трудно заснуть',exact:true}).tap();
+ await front.waitForFunction(()=>window.SetkaStandaloneV34.storageStatus().kind==='indexedDB'&&window.SetkaStandaloneV34.storageStatus().ok);
+ await stale.locator('#st34Nav [data-p="me"]').click();await stale.waitForFunction(()=>window.SetkaStandaloneV34.storageStatus().ok&&window.SetkaStandaloneV34.storageStatus().kind==='indexedDB');
+ await front.locator('#st34Nav [data-p="notes"]').click();await front.getByRole('button',{name:'Добавить заметку без паттерна',exact:true}).click();
+ const plain='Изолированная мысль без паттерна';await front.getByLabel('Новая заметка без паттерна').fill(plain);
+ await front.locator('#st34Nav [data-p="today"]').click();await front.locator('#st34Nav [data-p="notes"]').click();assert.equal(await front.getByLabel('Новая заметка без паттерна').inputValue(),plain);
+ await front.getByRole('button',{name:'Сохранить заметку',exact:true}).click();await front.getByText(plain,{exact:true}).waitFor();
+ const plainCard=front.locator('.st34-note-card').filter({hasText:plain});assert.equal(await plainCard.locator('canvas').count(),0);assert.match(await plainCard.innerText(),/Заметка без паттерна/);
+ await plainCard.getByRole('button',{name:'Предложить к публикации',exact:true}).click();await plainCard.locator('.st-inline-confirm').waitFor();
+ assert.deepEqual(noteActions,[]);await plainCard.getByRole('button',{name:'Отмена',exact:true}).click();assert.deepEqual(noteActions,[]);
+ await plainCard.getByRole('button',{name:'Предложить к публикации',exact:true}).click();await plainCard.getByRole('button',{name:'Отправить на модерацию',exact:true}).click();await plainCard.getByRole('button',{name:'На модерации · отозвать',exact:true}).waitFor();assert.deepEqual(noteActions,['submit']);
+ await plainCard.getByRole('button',{name:'На модерации · отозвать',exact:true}).click();await plainCard.getByRole('button',{name:'Отозвать запрос',exact:true}).click();await plainCard.getByRole('button',{name:'Предложить к публикации',exact:true}).waitFor();assert.deepEqual(noteActions,['submit','cancel-submission']);
+ await front.evaluate(()=>window.__SETKA_PRIVATE_CORPUS_V40__.sync());
+ await front.reload();await front.waitForFunction(()=>!!window.SetkaStandaloneV34);await front.evaluate(()=>window.SetkaStandaloneV34.ready);await front.locator('#st34Nav [data-p="symptoms"]').click();await front.getByText('Трудно заснуть',{exact:true}).waitFor();assert.match(await front.locator('#st34Layer').innerText(),/Усталость/);
+ await front.locator('#st34Nav [data-p="notes"]').click();await front.getByText(plain,{exact:true}).waitFor();assert.equal(await front.locator('.st34-note-card canvas').count(),0);
+ await front.evaluate(()=>window.__SETKA_PRIVATE_CORPUS_V40__.sync());const persistedPlain=savedArchive.payload.notes.find(n=>n.text===plain);assert.equal(persistedPlain.noteType,'text');assert.equal(persistedPlain.patternId,null);assert.equal(persistedPlain.config,null);assert.equal(persistedPlain.sessionId,null);
+ await other.evaluate(()=>window.__SETKA_PRIVATE_CORPUS_V40__.restore());await other.locator('#st34Nav [data-p="notes"]').click();await other.getByText(plain,{exact:true}).waitFor();
+ await other.locator('#st34Nav [data-p="notes"]').click();await other.locator('.base-tile[data-pattern-id="stereo-dna"]').click();await other.getByRole('button',{name:'Просто посмотреть',exact:true}).click();await other.locator('#favoriteButton').click();await other.locator('#libraryButton').click();await other.locator('#favoritesPagerButton').click();await other.locator('.favorite-tile .st34-info').first().waitFor();
+ const heart=await other.locator('.favorite-tile .mini-heart').first().boundingBox(),info=await other.locator('.favorite-tile .st34-info').first().boundingBox();assert.ok(heart.y+heart.height<info.y,'saved heart overlaps the information button');
+ console.log('REAL WEB STORAGE QUOTA, INDEXEDDB RETENTION THROUGH STALE TAB/RELOAD, PLAIN NOTES, INLINE MODERATION AND SEPARATE HEART POSITION PASS');
  const admin=await browser.newPage({viewport:{width:1200,height:900}});admin.on('pageerror',e=>errors.push({page:'admin',message:e.message,stack:e.stack}));
  const start='2026-10-14T17:00:00Z',cfg=patterns.find(x=>x.id==='dandelion').defaults,key=configKey(cfg,'dandelion'),issuer='T-OWNERAAA';
  const raw={accounts:[{tester_id:issuer,created_at:start}],devices:[{device_id:'fixture-device',subject_key:issuer}],patternCatalog:catalog,patternNameHistory:[{pattern_id:'dandelion',revision:1,title:'Одуванчик',created_at:start}],issuedInvites:[],inviteBatches:[],archives:[{device_id:'fixture-device',tester_id:issuer,payload:{sessions:[{id:'s',startedAt:start,endedAt:'2026-10-14T17:00:20Z',measuredActiveMs:20000}],patternExposures:[{exposureId:'e',sessionId:'s',patternId:'dandelion',patternVersion:1,configKey:key,config:cfg,startedAt:start,endedAt:'2026-10-14T17:00:20Z',durationMs:20000}],activityIntervals:[{id:'a',exposureId:'e',sessionId:'s',patternId:'dandelion',configKey:key,startedAt:start,endedAt:'2026-10-14T17:00:15Z',durationMs:15000,touches:3,moves:10,configChanges:2,coverage:'observed'}],physio:{samples:[{id:'p',sessionId:'s',exposureId:'e',patternId:'dandelion',configKey:key,value:82,metric:'heart_rate',unit:'bpm',observedAt:'2026-10-14T17:00:05Z',sourceType:'ble_heart_rate',quality:'ok',payload:{patternVisible:true,config:cfg}}]}}}]};
- raw.archives[0].payload.symptoms=savedArchive.payload.symptoms;raw.archives[0].payload.checkins=savedArchive.payload.checkins;
+ raw.archives[0].payload.symptoms=savedArchive.payload.symptoms;raw.archives[0].payload.checkins=savedArchive.payload.checkins;raw.archives[0].payload.notes=savedArchive.payload.notes;
  const sources=['accounts','accountSessions','accountExposures','accountFavorites','issuedInvites','patternCatalog'].map(key=>({key,ok:true,truncated:false,label:key,count:0}));let chunks=[];
  await admin.context().route('**/functions/v1/**',async r=>{const b=r.request().postDataJSON();let out={ok:true};
   if(b.action==='overview')out={ok:true,data:buildData(raw,sources)};
@@ -92,7 +124,7 @@ try{
  await admin.locator('.nav[data-page="patterns"]').click();await admin.locator('.pattern-card[data-id="dandelion"]').click();await admin.getByRole('button',{name:'Изменить название',exact:true}).click();await admin.locator('#pattern-title').fill('Изменено в изолированной админке');await admin.getByRole('button',{name:'Сохранить для всех',exact:true}).click();await admin.locator('#detail-content').getByRole('heading',{name:'Изменено в изолированной админке',exact:true}).waitFor();
  await front.evaluate(()=>window.__SETKA_PATTERN_CATALOG_V1__.refresh());assert.match(await front.locator('.base-tile[data-pattern-id="dandelion"]').getAttribute('aria-label'),/Изменено в изолированной админке/);
  await admin.locator('#close-dialog').click();await admin.locator('.nav[data-page="participants"]').click();await admin.locator('#invites-tab').click();await admin.getByRole('button',{name:'Создать ID или пакет',exact:true}).click();await admin.locator('#invite-label').fill('Изолированный пакет 101');await admin.locator('#invite-count').fill('101');await admin.locator('#invite-generate').click();await admin.getByText('Создано 101 из 101. Коды доступны до закрытия окна.',{exact:true}).waitFor();assert.deepEqual(chunks,[100,1]);assert.equal(raw.issuedInvites.length,101);
- await admin.locator('#close-dialog').click();await admin.locator('#people-tab').click();await admin.locator('#content [data-action="person"]').first().click();assert.match(await admin.locator('#detail-content').innerText(),/Усталость/);await admin.locator('#close-dialog').click();await admin.locator('.nav[data-page="sessions"]').click();await admin.locator('#sessions-results [data-action="session"]').click();assert.match(await admin.locator('#session-pulse').innerText(),/82 уд\/мин/);assert.match(await admin.locator('#session-pulse').innerText(),/3 касаний/);await admin.locator('.event-item').click();assert.match(await admin.locator('.replay-controls-top').innerText(),/Пульс: 82 уд\/мин/);
+ await admin.locator('#close-dialog').click();await admin.locator('#people-tab').click();await admin.locator('#content [data-action="person"]').first().click();assert.match(await admin.locator('#detail-content').innerText(),/Усталость/);assert.match(await admin.locator('#detail-content').innerText(),new RegExp(plain));await admin.getByRole('button',{name:'Открыть заметку',exact:true}).click();await admin.getByRole('heading',{name:'Заметка без паттерна',exact:true}).waitFor();assert.equal(await admin.locator('#detail-content canvas').count(),0);await admin.locator('#close-dialog').click();await admin.locator('.nav[data-page="sessions"]').click();await admin.locator('#sessions-results [data-action="session"]').click();assert.match(await admin.locator('#session-pulse').innerText(),/82 уд\/мин/);assert.match(await admin.locator('#session-pulse').innerText(),/3 касаний/);await admin.locator('.event-item').click();assert.match(await admin.locator('.replay-controls-top').innerText(),/Пульс: 82 уд\/мин/);
  await admin.locator('#close-dialog').click();await admin.locator('.nav[data-page="research"]').click();assert.match(await admin.locator('#research-body').innerText(),/82 уд\/мин/);await admin.locator('[data-research-tab="behavior"]').click();assert.match(await admin.locator('#research-body').innerText(),/Движения и настройки/);
  // On WebKit a single keepalive request cancelled during the deliberate
  // front reload can be reported as a CORS load failure even though the local

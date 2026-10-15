@@ -37,7 +37,7 @@
   }
   function queueSync(){if(frame)return;frame=requestAnimationFrame(()=>{frame=0;sync()})}
   function saveDraft(){
-    if(title()!=='Записать мысль'||!wrap.querySelector('textarea')||wrap.querySelector('.st40-form'))return;
+    if((title()!=='Записать мысль'&&!wrap.querySelector('.st-note-editor'))||!wrap.querySelector('textarea')||wrap.querySelector('.st40-form'))return;
     if(savedComposers.has(wrap.querySelector('textarea')))return;
     // Retain only live DOM nodes for an unsaved note. No text or credentials
     // are copied into browser storage or analytics by the sheet controller.

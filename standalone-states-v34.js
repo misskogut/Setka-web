@@ -40,24 +40,21 @@
 
   // This screen is local-first: never imply a cloud backup before its API
   // confirms a private archive write. A missing remote archive is not a zero.
-  function storedLocally(id){
-    try{
-      const d=JSON.parse(localStorage.getItem("setka-standalone:v34")||"null");
-      return !!d?.symptoms?.some(s=>s.id===id);
-    }catch(_){return false}
-  }
   function requestStateSync(){
     window.dispatchEvent(new Event("setka:v34-sync-request"));
   }
   function cloudStatusText(){
     const a=window.__SETKA_TESTER_CABINET_V40__?.state?.();
-    if(!a?.authenticated)return "Отметки хранятся в этом браузере. Для сохранения в аккаунте требуется вход.";
+    if(!a?.authenticated){const local=C.storageStatus?.();if(local?.pending)return "Сохраняем изменения на устройстве…";if(local?.ok===false)return "Пока не удалось сохранить изменения на устройстве. Оставь приложение открытым и попробуй ещё раз.";return "Отметки хранятся в этом браузере. Для сохранения в аккаунте требуется вход."}
     const status=window.__SETKA_PRIVATE_CORPUS_V40__?.status?.();
     if(!activeStates().length)return "Выбранных состояний пока нет. Добавь состояние ниже.";
     if(status?.ok&&status.statesVerified&&!status.statesPending&&status.updatedAt){
       const at=new Date(status.updatedAt),date=Number.isFinite(at.getTime())?at.toLocaleString("ru-RU",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"—";
       return "Состояния и отметки сохранены в аккаунте · "+date;
     }
+    const local=C.storageStatus?.();
+    if(local?.pending)return "Сохраняем изменения на устройстве…";
+    if(local?.ok===false)return "Сохранение на устройстве не подтверждено. Проверяем сохранение в аккаунте. Пока оставь приложение открытым.";
     if(status?.ok===false)return "Облачное сохранение не подтверждено. Изменения остаются в этом браузере.";
     return "Изменения сохранены в этом браузере. Ожидаем подтверждение аккаунта…";
   }
@@ -91,10 +88,9 @@
   function addState(name){
     name=String(name||"").trim();if(!name)return false;
     if(activeStates().some(x=>x.name.toLowerCase()===name.toLowerCase()))return false;
-    data().symptoms.push({id:C.id("sym"),name,active:true,lastIntensity:0,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});
+    const state={id:C.id("sym"),name,active:true,lastIntensity:0,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};data().symptoms.push(state);
     C.save();
-    if(!storedLocally(data().symptoms.at(-1).id))alert("Состояние пока не удалось сохранить на устройстве. Не закрывай приложение.");
-    C.recordEvent?.("symptom_added",{symptomId:data().symptoms.at(-1).id,name},false);
+    C.recordEvent?.("symptom_added",{symptomId:state.id,name},false);
     requestStateSync();
     return true;
   }
@@ -214,7 +210,7 @@
     if(layer&&!layer.classList.contains("hidden")&&layer.querySelector(".st-title")?.textContent?.trim()==="Состояния")
       showStates(currentRange);
   });
-  window.addEventListener("setka:v40-private-corpus",()=>{
+  for(const event of ["setka:v40-private-corpus","setka:local-storage"])window.addEventListener(event,()=>{
     const label=document.querySelector("#st34Layer .st34-states-sync-label");
     if(label)label.textContent=cloudStatusText();
   });
