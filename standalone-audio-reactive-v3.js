@@ -52,6 +52,7 @@
     #st34AudioModeDots .st34-audio-dot.lit {opacity:.95}
     #gameScreen #st34AudioButton[aria-pressed="true"] {opacity:1;border-color:rgba(255,255,255,.75);background:rgba(0,0,0,.42)}
     #gameScreen #st34AudioButton[data-pending="true"] {opacity:.60}
+    #gameScreen #st34AudioButton[data-error]:not([data-error=""]) {border-style:dashed}
     #gameScreen.st34-hidden-ui #st34AudioButton {opacity:0!important;pointer-events:none!important}
     #st34AudioButton:focus-visible {outline:2px solid white;outline-offset:3px}
     /* Silent gameplay: dots and button state only, no activation banners/toasts. */
@@ -89,8 +90,12 @@
   function renderButton(){
     button.setAttribute("aria-pressed",String(active));
     const current=profile(mode);
-    button.setAttribute("aria-label",active?
-      "Музыка: "+current.name+", режим "+mode+" из "+profiles.length+". Нажать для следующего режима"+(mode===profiles.length?" — выключить":""):
+    const err=button.dataset.error;
+    button.setAttribute("aria-label",err==="permission"?"Доступ к микрофону запрещён в браузере":
+      err==="suspended"?"Для запуска микрофона коснись ещё раз":
+      err==="unsupported"?"Микрофон недоступен в этом браузере":
+      err==="unknown"?"Микрофон недоступен. Попробуй повторно":
+      active?"Музыка: "+current.name+", режим "+mode+" из "+profiles.length+". Нажать для следующего режима"+(mode===profiles.length?" — выключить":""):
       "Включить музыкальный эквалайзер через микрофон");
     button.removeAttribute("title");
     button.dataset.mode=String(mode);
@@ -131,6 +136,7 @@
       button.setAttribute("aria-label","Микрофон недоступен в этом браузере");
       return;
     }
+    button.dataset.error="";
     pending=true;const ticket=++seq;renderButton();
     let acquired=null,ac=null,node=null,sink=null,fft=null;
     try{
