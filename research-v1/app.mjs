@@ -1,4 +1,5 @@
 import {pulseHtml,behaviorHtml} from './pulse-ui.mjs?v=1.4.0';
+import {accessLink,accessStorage,accessError} from './access.mjs?v=1.4.9';
 import {inviteState} from './invites.mjs?v=1.4.0';
 import {resolveRecipe} from './recipe.mjs?v=1.1.2';
 import {sliceData,median,num,time,exactSnapshot,VERSION} from './model.mjs?v=1.4.0';
@@ -8,7 +9,9 @@ import {mountReplay,patternName,setPatternNames,eventName,parameterName,COVERAGE
 const API='https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-research-admin-v1';
 const COMMUNITY_API='https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-admin-community-v38';
 const PUBLISHABLE='sb_publishable_1jL-x9_kp6rpfGghpSp_OA_OiXDnvsv';
-const OLD_KEY='setka-research:admin-key:v1';
+const entryAccess=accessLink(location.href),credentialStore=accessStorage();
+if(entryAccess.consumed)history.replaceState(history.state,'',entryAccess.path);
+let ownerTicket=entryAccess.ticket,loginRunning=false,accessWarning='';
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]));
 const fmtNum=v=>v===null||v===undefined?'Недостаточно данных':Number(v).toLocaleString('ru-RU',{maximumFractionDigits:1});
@@ -38,17 +41,26 @@ async function api(action,payload={},url=API){
   const out=await res.json().catch(()=>({}));
   if(!res.ok){const e=new Error(out.error||'data_unavailable');e.status=res.status;throw e;}return out;
 }
-function errorText(e){return e?.status===403?'Ключ не принят. Введите действующий ключ администратора SETKA.':e?.name==='TimeoutError'?'Сервер отвечает слишком долго. Попробуйте обновить данные.':e?.message==='core_data_unavailable'?'Основные источники данных недоступны. Показатели не рассчитаны.':'Не удалось получить данные. Проверьте соединение и попробуйте ещё раз.';}
+function errorText(e){return accessError(e)||(e?.message==='core_data_unavailable'?'Основные источники данных недоступны. Показатели не рассчитаны.':'Не удалось получить данные. Проверьте соединение и попробуйте ещё раз.');}
 async function login(e){
-  e?.preventDefault();adminKey=$('key').value.trim()||adminKey;if(!adminKey)return;
+  e?.preventDefault();if(loginRunning)return;
+  adminKey=$('key').value.trim()||adminKey;if(!adminKey&&!ownerTicket)return;
+  loginRunning=true;
   $('login-button').disabled=true;$('login-error').textContent='Проверяем доступ…';
   try{
-    await api('check');if($('remember').checked)localStorage.setItem(OLD_KEY,adminKey);else sessionStorage.setItem(OLD_KEY,adminKey);
+    if(ownerTicket){
+      const out=await api('redeem',{ticket:ownerTicket},'https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-admin-owner-recovery-v1');
+      if(out.ok!==true||typeof out.adminKey!=='string'||!out.adminKey)throw new Error('owner_recovery_unavailable');
+      adminKey=out.adminKey;ownerTicket='';
+    }
+    await api('check');
+    accessWarning=credentialStore.save(adminKey,$('remember').checked)?'':'Вход выполнен. Браузер не разрешил запомнить доступ; после закрытия страницы потребуется войти снова.';
     $('key').value='';$('login').hidden=true;$('workspace').hidden=false;$('login-error').textContent='';await refresh(true);
-  }catch(e){$('login-error').textContent=errorText(e);if(e.status===403){localStorage.removeItem(OLD_KEY);sessionStorage.removeItem(OLD_KEY);adminKey='';}}
-  finally{$('login-button').disabled=false;}
+  }catch(e){$('login-error').textContent=errorText(e);if(e.message==='invalid_admin_key'){credentialStore.clear(adminKey);adminKey='';}
+    if(['owner_link_expired_or_revoked','owner_access_revoked','invalid_link'].includes(e.message)){ownerTicket='';$('key').hidden=false;$('key').required=true;$('key-label').hidden=false;}}
+  finally{loginRunning=false;$('login-button').disabled=false;}
 }
-function logout(){adminKey='';localStorage.removeItem(OLD_KEY);sessionStorage.removeItem(OLD_KEY);data=null;communityData=null;player?.stop();stopPreviews();if(dialog.open)dialog.close();detail.replaceChildren();$('content').replaceChildren();$('workspace').hidden=true;$('login').hidden=false;$('login-error').textContent='';}
+function logout(){adminKey='';credentialStore.clear();accessWarning='';data=null;communityData=null;player?.stop();stopPreviews();if(dialog.open)dialog.close();detail.replaceChildren();$('content').replaceChildren();$('workspace').hidden=true;$('login').hidden=false;$('key').hidden=false;$('key').required=true;$('key-label').hidden=false;$('login-error').textContent='';}
 async function refresh(initial=false){
   if(busy)return;busy=true;$('refresh').disabled=true;$('refresh').textContent='Обновляем…';if(initial)$('content').innerHTML=loading();
   try{const out=await api('overview');if(!out.ok||!out.data)throw new Error('data_unavailable');data=out.data;setPatternNames(data.patternCatalog);lastError=null;communityData=null;communityError=null;$('updated').textContent=`Обновлено ${fmtDate(data.updatedAt)}`;$('live-status').textContent=data.sources.some(s=>!s.ok||s.truncated)?'Данные неполные':'Данные получены';render();}
@@ -65,7 +77,7 @@ function setPeriod(){
   render();
 }
 function navigate(next){if(!NAV[next])return;page=next;history.replaceState(null,'',`#${next}`);document.querySelectorAll('.nav').forEach(b=>b.classList.toggle('selected',b.dataset.page===page));$('page-number').textContent=NAV[page][0];$('page-title').textContent=NAV[page][1];$('page-description').textContent=NAV[page][2];render();}
-function render(){if(!data)return;stopPreviews();renderToken++;const view=sliceData(data,filters);$('notice').innerHTML=`<div class="notice">${filters.scope==='current'?'Показаны только данные вошедших аккаунтов. Гостевая история хранится на устройстве и здесь не учтена.':filters.scope==='history'?'Исторические записи показаны отдельно. Гостевое устройство не равно отдельному человеку.':'Аккаунты и исторические устройства показаны вместе. Неподтверждённые личности не объединены.'}${data.sources.some(s=>!s.ok||s.truncated)?' Часть источников недоступна — откройте диагностику.':''}${lastError?' Данные устарели: обновление не удалось.':''}</div>`;
+function render(){if(!data)return;stopPreviews();renderToken++;const view=sliceData(data,filters);$('notice').innerHTML=`${accessWarning?`<div class="notice" role="status">${esc(accessWarning)}</div>`:''}<div class="notice">${filters.scope==='current'?'Показаны только данные вошедших аккаунтов. Гостевая история хранится на устройстве и здесь не учтена.':filters.scope==='history'?'Исторические записи показаны отдельно. Гостевое устройство не равно отдельному человеку.':'Аккаунты и исторические устройства показаны вместе. Неподтверждённые личности не объединены.'}${data.sources.some(s=>!s.ok||s.truncated)?' Часть источников недоступна — откройте диагностику.':''}${lastError?' Данные устарели: обновление не удалось.':''}</div>`;
   ({home:homePage,sessions:sessionsPage,participants:participantsPage,patterns:patternsPage,community:communityPage,research:researchPage}[page])(view);
   bind($('content'));startPreviews();
 }
@@ -268,6 +280,8 @@ document.querySelectorAll('.nav').forEach(b=>b.onclick=()=>navigate(b.dataset.pa
 document.addEventListener('visibilitychange',()=>{if(document.hidden){player?.stop();stopPreviews();}else{startPreviews();if(data&&Date.now()-time(data.updatedAt)>60000)refresh();}});
 setInterval(()=>{if(adminKey&&!document.hidden&&!dialog.open)refresh();},60000);
 const route=location.hash.slice(1);if(NAV[route])page=route;
-try{adminKey=sessionStorage.getItem(OLD_KEY)||localStorage.getItem(OLD_KEY)||'';}catch(_){}
-if(adminKey){$('remember').checked=!!localStorage.getItem(OLD_KEY);login();}
+const savedAccess=credentialStore.load();adminKey=ownerTicket?'':entryAccess.key||savedAccess.key;
+$('remember').checked=entryAccess.consumed?true:savedAccess.remember;
+if(ownerTicket){$('key').hidden=true;$('key').required=false;$('key-label').hidden=true;$('login-error').textContent='Доступ владельца подготовлен. Нажмите «Открыть исследования».';}
+else if(adminKey)login();
 navigate(page);
