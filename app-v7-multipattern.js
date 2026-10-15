@@ -145,7 +145,16 @@
   function drawThumbnail(el,c,f=BASE_PREVIEW_FRAME,id=null){const t=el.getContext("2d"),pid=inferPatternId(c,id);renderPattern(t,el.width,el.height,cloneConfig(c,pid),Number.isFinite(Number(f))?Number(f):BASE_PREVIEW_FRAME,true,pid)}
   function renderPreview(el,c,f=BASE_PREVIEW_FRAME,id=null){drawThumbnail(el,c,f,id)}
   function resizeMainCanvas(){const r=app.getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,2);canvas.width=Math.max(1,Math.floor(r.width*dpr));canvas.height=Math.max(1,Math.floor(r.height*dpr));canvas.style.width=`${r.width}px`;canvas.style.height=`${r.height}px`;ctx.setTransform(dpr,0,0,dpr,0,0)}
-  function startAnimation(){if(animationFrame)return;const tick=now=>{if(!gameScreen.classList.contains("active")){animationFrame=0;return}currentFrame=(now-animationStart)/16.6667;const r=app.getBoundingClientRect();renderPattern(ctx,r.width,r.height,runtimeConfig,currentFrame,false,runtimePatternId);animationFrame=requestAnimationFrame(tick)};animationFrame=requestAnimationFrame(tick)}
+  function startAnimation(){if(animationFrame)return;const tick=now=>{if(!gameScreen.classList.contains("active")){animationFrame=0;return}const baseFrame=(now-animationStart)/16.6667;
+      // Universal audio modulation is applied to the ONE shared animation
+      // clock. Pattern implementations, saved configs and thumbnails are intact.
+      const sound=window.SetkaAudioReactiveV1;
+      const reactiveFrame=sound?.nextFrame?.(baseFrame,now);
+      currentFrame=Number.isFinite(reactiveFrame)?Math.max(0,reactiveFrame):baseFrame;
+      // Preserve the exact displayed frame when music is turned off, instead
+      // of snapping back to the unmodulated wall-clock animation position.
+      if(sound?.isActive?.())animationStart=now-currentFrame*16.6667;
+      const r=app.getBoundingClientRect();renderPattern(ctx,r.width,r.height,runtimeConfig,currentFrame,false,runtimePatternId);animationFrame=requestAnimationFrame(tick)};animationFrame=requestAnimationFrame(tick)}
   function stopAnimation(){if(animationFrame)cancelAnimationFrame(animationFrame);animationFrame=0}
 
   function renderPattern(t,w,h,c,f,thumb,id=null){const pid=inferPatternId(c,id);if(pid===DANDELION_ID)return renderDandelion(t,w,h,cloneConfig(c,pid),f,thumb);if(pid===FISH_ID)return renderFish(t,w,h,cloneConfig(c,pid),f,thumb);if(pid===BREATH_ID)return renderBreath(t,w,h,cloneConfig(c,pid),f,thumb);if(pid===GROWTH_ID)return renderGrowth(t,w,h,cloneConfig(c,pid),f,thumb);if(pid===RGB_ID)return renderRgb(t,w,h,cloneConfig(c,pid),f,thumb);if(pid===DNA_ID)return renderDna(t,w,h,cloneConfig(c,pid),f,thumb);return renderTentacle(t,w,h,cloneConfig(c,pid),f,thumb)}
