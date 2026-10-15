@@ -84,6 +84,32 @@ try{
   });
   assert.equal(frame.length,7);
   frame.forEach(x=>assert.ok(x.changed>61.9,"audible music must produce visibly stronger motion in "+x.id+": "+JSON.stringify(x)));
+  const geometry=await page.evaluate(()=>{
+    const audio=window.SetkaAudioReactiveV1;
+    const patterns=window.SetkaApp.getPatterns();
+    const cases=patterns.map(p=>{
+      const canonical=JSON.parse(JSON.stringify(p.defaults));
+      const original=JSON.parse(JSON.stringify(p.defaults));
+      const live=audio.renderConfig(p.defaults,p.id);
+      const changed=Object.keys(live).filter(key=>typeof canonical[key]==="number"&&Math.abs(live[key]-canonical[key])>1e-6);
+      const untouched=JSON.stringify(p.defaults)===JSON.stringify(original);
+      return{id:p.id,changed,untouched};
+    });
+    const future={patternId:"future-renderer",zoom:1};
+    const futureSafe=audio.renderConfig(future,"future-renderer")===future;
+    const viewport=audio.viewportScale();
+    return{cases,futureSafe,viewport,bands:audio.status().bands};
+  });
+  assert.equal(geometry.cases.length,7);
+  geometry.cases.forEach(x=>{
+    assert.equal(x.untouched,true,"canonical configuration was mutated: "+x.id);
+    assert.ok(x.changed.length>=3,"music should modulate three parameters in "+x.id+": "+JSON.stringify(x));
+  });
+  assert.equal(geometry.futureSafe,true,"new pattern recipes must remain untouched");
+  assert.ok(geometry.viewport>1&&geometry.viewport<=1.05,"future renderers need universal viewport modulation");
+  for(const name of ["low","mid","high"])
+    assert.ok(geometry.bands[name]>.1,"independent "+name+" music channel must be measured");
+  console.log("MULTIBAND GEOMETRY IN ALL 7 PATTERNS",JSON.stringify(geometry));
   assert.equal(await toggle.getAttribute("aria-pressed"),"true","pattern navigation must not disable audio");
   const after=await page.evaluate(()=>({config:window.SetkaApp.getConfig(),favorites:window.SetkaApp.getFavorites(),meter:window.__setkaMicFixture,source:window.SetkaAudioReactiveV1.status().source}));
   assert.deepEqual(after.favorites,initial.favorites,"favorited recipes must not change");
@@ -100,6 +126,12 @@ try{
     return {offset:measure-200,level:audio.status().level};
   });
   assert.ok(silent.level<.03,"silence must not invent music: "+JSON.stringify(silent));
+  const silenceGeometry=await page.evaluate(()=>{
+    const p=window.SetkaApp.getPatterns()[0];
+    const out=window.SetkaAudioReactiveV1.renderConfig(p.defaults,p.id);
+    return Object.keys(p.defaults).every(k=>typeof p.defaults[k]!=="number"||Math.abs(out[k]-p.defaults[k])<.005);
+  });
+  assert.equal(silenceGeometry,true,"silence must return to original pattern parameters");
   await toggle.click();
   assert.equal(await toggle.getAttribute("aria-pressed"),"false");
   assert.equal(await page.evaluate(()=>window.__setkaMicFixture.stopped),1,"OFF must stop microphone stream");
