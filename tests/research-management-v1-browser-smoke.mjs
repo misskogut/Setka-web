@@ -90,7 +90,9 @@ try{
  assert.ok(fill.refused&&fill.size>1000000,'the isolated browser did not reach its real Web Storage quota');
  await front.locator('.st34-add-state').click();await front.getByRole('button',{name:'Трудно заснуть',exact:true}).tap();
  await front.waitForFunction(()=>window.SetkaStandaloneV34.storageStatus().kind==='indexedDB'&&window.SetkaStandaloneV34.storageStatus().ok);
- await stale.locator('#st34Nav [data-p="me"]').click();await stale.waitForFunction(()=>window.SetkaStandaloneV34.storageStatus().ok&&window.SetkaStandaloneV34.storageStatus().kind==='indexedDB');
+ await stale.locator('#st34Nav [data-p="me"]').click();
+ const afterStale=await stale.evaluate(async()=>({ok:await window.SetkaStandaloneV34.whenSaved(),archive:await window.SetkaPersonalStorageV1.read()}));
+ assert.equal(afterStale.ok,true);assert.ok(afterStale.archive.payload.symptoms.some(s=>s.name==='Трудно заснуть'),'a smaller stale tab write must not erase the committed fallback state');
  await front.locator('#st34Nav [data-p="notes"]').click();await front.getByRole('button',{name:'Добавить заметку без паттерна',exact:true}).click();
  const plain='Изолированная мысль без паттерна';await front.getByLabel('Новая заметка без паттерна').fill(plain);
  await front.locator('#st34Nav [data-p="today"]').click();await front.locator('#st34Nav [data-p="notes"]').click();assert.equal(await front.getByLabel('Новая заметка без паттерна').inputValue(),plain);
