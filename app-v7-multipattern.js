@@ -45,7 +45,15 @@
 
   let activeLibraryPage="all",runtimePatternId=TENTACLE_ID,runtimeConfig=null,activeSource={type:"base",id:TENTACLE_ID,patternId:TENTACLE_ID,communityId:null};
   let communityItems=[],recommendedCommunity=new Set(),recommendedPatterns=new Set(),animationFrame=0,animationStart=performance.now(),currentFrame=0,toastTimer=0,tapTimes=[];
-  const previewTiles=new Map(),reducedPreviewMotion=window.matchMedia("(prefers-reduced-motion: reduce)");let previewAnimation=0,previewLast=0;const previewEpoch=performance.now();
+  const previewTiles=new Map(),reducedPreviewMotion=window.matchMedia("(prefers-reduced-motion: reduce)");
+  // A shared, resumable library clock prevents previews from skipping to a
+  // distant absolute frame after card rebuilds, tab switches or Safari pauses.
+  const PREVIEW_INTERVAL_MS=1000/30,PREVIEW_MAX_STEP_MS=40,PREVIEW_SPEED=.75;
+  let previewAnimation=0,previewLastPaint=0,previewLastTick=0,previewPhase=0,previewPaintPhase=0;
+  const previewFrame=base=>base+previewPhase;
+  // Recreated tiles must begin at the last *displayed* phase; the logical
+  // phase may have moved forward between two paint frames.
+  const previewRenderedFrame=base=>base+previewPaintPhase;
   const touch={fingers:0,primaryId:null,x:0,y:0,startX:0,startY:0,secondX:0,secondY:0,lastDist:null,lastStereoX:null};
   const mouse={down:false,fingers:1,x:0,y:0,startX:0,startY:0};
 
@@ -92,23 +100,45 @@
   function emptyPanel(p,icon,text){const e=document.createElement("div");e.className="empty-favorites";e.innerHTML=`<span class="big-heart">${icon}</span>${text}`;p.appendChild(e)}
   function normalizeCommunityItem(item){const baseId=inferPatternId(item?.config,item?.pattern_id||item?.patternId||item?.baseId);return{...item,baseId,patternId:baseId,config:cloneConfig(item?.config||patternById(baseId).defaults,baseId)}}
   function renderLibrary(){stopLibraryPreviews();previewTiles.clear();allPatternsPanel.replaceChildren();communityPanel.replaceChildren();favoritesPanel.replaceChildren();PATTERNS.forEach(p=>{const t=makePatternTile({kind:"base",id:p.id,baseId:p.id,patternId:p.id,config:p.defaults,previewFrame:BASE_PREVIEW_FRAME,title:p.title,patternVersion:p.version});if(recommendedPatterns.has(p.id))t.classList.add("recommended");allPatternsPanel.appendChild(t)});if(!communityItems.length)emptyPanel(communityPanel,"◎","Здесь появятся конфигурации,<br>которые сохраняют участники");else communityItems.forEach(raw=>{const item=normalizeCommunityItem(raw),t=makePatternTile({kind:"community",id:String(item.id),baseId:item.baseId,patternId:item.baseId,config:item.config,previewFrame:Number(item.preview_frame??item.previewFrame??BASE_PREVIEW_FRAME),saveCount:Number(item.saveCount)||0,communityId:String(item.id),parentCommunityId:item.parent_config_id||null,patternVersion:Number(item.pattern_version)||patternById(item.baseId).version});if(recommendedCommunity.has(String(item.id)))t.classList.add("recommended");communityPanel.appendChild(t)});if(!favorites.length)emptyPanel(favoritesPanel,"♥","Здесь появятся конфигурации,<br>которые ты сохранишь сердцем");else favorites.forEach(f=>favoritesPanel.appendChild(makePatternTile({kind:"favorite",id:f.id,patternId:f.baseId,...f})));setLibraryPage(activeLibraryPage,true)}
-  function makePatternTile(item){const patternId=inferPatternId(item.config,item.patternId||item.baseId||(item.kind==="base"?item.id:null)),b=document.createElement("button");b.type="button";b.className=`pattern-tile ${item.kind}-tile`;b.dataset.kind=item.kind;b.dataset.itemId=item.id;b.dataset.patternId=patternId;b.setAttribute("aria-label",item.kind==="favorite"?"Открыть сохраненную конфигурацию. Удерживай, чтобы удалить":item.kind==="community"?"Открыть конфигурацию сообщества. Удерживай, чтобы сохранить себе":`Открыть паттерн ${patternById(patternId).title}. Удерживай, чтобы сохранить`);const thumb=document.createElement("canvas");thumb.width=180;thumb.height=180;thumb.className="thumb-canvas";b.appendChild(thumb);drawThumbnail(thumb,item.config||patternById(patternId).defaults,item.previewFrame,patternId);previewTiles.set(thumb,{patternId,config:cloneConfig(item.config||patternById(patternId).defaults,patternId),frame:Number.isFinite(Number(item.previewFrame))?Number(item.previewFrame):BASE_PREVIEW_FRAME});if(item.kind==="favorite"){const h=document.createElement("span");h.className="mini-heart";h.textContent="♥";b.appendChild(h)}if(item.kind==="community"){const badge=document.createElement("span");badge.className="community-count";badge.textContent=`♥ ${Math.max(0,Number(item.saveCount)||0)}`;b.appendChild(badge)}const rec=document.createElement("span");rec.className="recommendation-mark";rec.textContent="●";b.appendChild(rec);let timer=0,held=false,sx=0,sy=0;const cancel=()=>{if(timer)clearTimeout(timer);timer=0};b.addEventListener("pointerdown",e=>{if(e.target.closest?.(".st34-info"))return;held=false;sx=e.clientX;sy=e.clientY;b.setPointerCapture?.(e.pointerId);timer=setTimeout(()=>{held=true;if(item.kind==="favorite"){const f=favorites.find(x=>x.id===item.id);if(f)removeFavorite(f,"tile_hold")}else{const cfg=item.kind==="base"?patternById(patternId).defaults:item.config,old=matchingFavorite(cfg,patternId);if(old)removeFavorite(old,"tile_hold");else saveFavorite(cfg,item.previewFrame,{origin:"tile_hold",baseId:patternId,communityId:item.kind==="community"?item.communityId:null,parentCommunityId:item.kind==="community"?item.communityId:null,patternVersion:item.patternVersion||patternById(patternId).version})}navigator.vibrate?.(18)},620)});b.addEventListener("pointermove",e=>{if(!held&&Math.hypot(e.clientX-sx,e.clientY-sy)>18)cancel()});b.addEventListener("pointercancel",cancel);b.addEventListener("pointerup",e=>{cancel();if(e.target.closest?.(".st34-info"))return;if(held){e.preventDefault();return}if(item.kind==="base")openConfig(patternById(patternId).defaults,{type:"base",id:patternId,patternId,communityId:null});if(item.kind==="favorite"){const f=favorites.find(x=>x.id===item.id);if(f)openConfig(f.config,{type:"favorite",id:f.id,patternId:f.baseId,communityId:f.communityId||null})}if(item.kind==="community")openConfig(item.config,{type:"community",id:item.communityId,patternId,communityId:item.communityId})});b.addEventListener("contextmenu",e=>e.preventDefault());return b}
+  function makePatternTile(item){const patternId=inferPatternId(item.config,item.patternId||item.baseId||(item.kind==="base"?item.id:null)),b=document.createElement("button");b.type="button";b.className=`pattern-tile ${item.kind}-tile`;b.dataset.kind=item.kind;b.dataset.itemId=item.id;b.dataset.patternId=patternId;b.setAttribute("aria-label",item.kind==="favorite"?"Открыть сохраненную конфигурацию. Удерживай, чтобы удалить":item.kind==="community"?"Открыть конфигурацию сообщества. Удерживай, чтобы сохранить себе":`Открыть паттерн ${patternById(patternId).title}. Удерживай, чтобы сохранить`);const thumb=document.createElement("canvas");thumb.width=180;thumb.height=180;thumb.className="thumb-canvas";b.appendChild(thumb);drawThumbnail(thumb,item.config||patternById(patternId).defaults,previewRenderedFrame(Number.isFinite(Number(item.previewFrame))?Number(item.previewFrame):BASE_PREVIEW_FRAME),patternId);previewTiles.set(thumb,{patternId,config:cloneConfig(item.config||patternById(patternId).defaults,patternId),frame:Number.isFinite(Number(item.previewFrame))?Number(item.previewFrame):BASE_PREVIEW_FRAME});if(item.kind==="favorite"){const h=document.createElement("span");h.className="mini-heart";h.textContent="♥";b.appendChild(h)}if(item.kind==="community"){const badge=document.createElement("span");badge.className="community-count";badge.textContent=`♥ ${Math.max(0,Number(item.saveCount)||0)}`;b.appendChild(badge)}const rec=document.createElement("span");rec.className="recommendation-mark";rec.textContent="●";b.appendChild(rec);let timer=0,held=false,sx=0,sy=0;const cancel=()=>{if(timer)clearTimeout(timer);timer=0};b.addEventListener("pointerdown",e=>{if(e.target.closest?.(".st34-info"))return;held=false;sx=e.clientX;sy=e.clientY;b.setPointerCapture?.(e.pointerId);timer=setTimeout(()=>{held=true;if(item.kind==="favorite"){const f=favorites.find(x=>x.id===item.id);if(f)removeFavorite(f,"tile_hold")}else{const cfg=item.kind==="base"?patternById(patternId).defaults:item.config,old=matchingFavorite(cfg,patternId);if(old)removeFavorite(old,"tile_hold");else saveFavorite(cfg,item.previewFrame,{origin:"tile_hold",baseId:patternId,communityId:item.kind==="community"?item.communityId:null,parentCommunityId:item.kind==="community"?item.communityId:null,patternVersion:item.patternVersion||patternById(patternId).version})}navigator.vibrate?.(18)},620)});b.addEventListener("pointermove",e=>{if(!held&&Math.hypot(e.clientX-sx,e.clientY-sy)>18)cancel()});b.addEventListener("pointercancel",cancel);b.addEventListener("pointerup",e=>{cancel();if(e.target.closest?.(".st34-info"))return;if(held){e.preventDefault();return}if(item.kind==="base")openConfig(patternById(patternId).defaults,{type:"base",id:patternId,patternId,communityId:null});if(item.kind==="favorite"){const f=favorites.find(x=>x.id===item.id);if(f)openConfig(f.config,{type:"favorite",id:f.id,patternId:f.baseId,communityId:f.communityId||null})}if(item.kind==="community")openConfig(item.config,{type:"community",id:item.communityId,patternId,communityId:item.communityId})});b.addEventListener("contextmenu",e=>e.preventDefault());return b}
 
   function openConfig(config,source={}){const sourcePattern=source.patternId||source.baseId||(source.type==="base"&&IDS.has(source.id)?source.id:null);runtimePatternId=inferPatternId(config,sourcePattern);runtimeConfig=cloneConfig(config||patternById(runtimePatternId).defaults,runtimePatternId);activeSource={type:source.type||"working",id:source.id||runtimePatternId,patternId:runtimePatternId,communityId:source.communityId||null};tapTimes=[];const initialFrame=Number.isFinite(Number(source.frame))?Math.max(0,Number(source.frame)):0;setScreen("game",initialFrame);emit("pattern-open",{patternId:runtimePatternId,sourceType:activeSource.type,sourceId:activeSource.id,communityId:activeSource.communityId,frame:initialFrame})}
   function canAnimateLibrary(){const overlay=document.getElementById("st34Layer");return !document.hidden&&!reducedPreviewMotion.matches&&libraryScreen.classList.contains("active")&&(!overlay||overlay.classList.contains("hidden"));}
-  function stopLibraryPreviews(){if(previewAnimation)cancelAnimationFrame(previewAnimation);previewAnimation=0;}
+  function stopLibraryPreviews(){
+    if(previewAnimation)cancelAnimationFrame(previewAnimation);
+    previewAnimation=0;previewLastPaint=0;previewLastTick=0;
+    // Intentionally retain previewPhase: a recreated tile must show exactly
+    // where the old tile stopped, never jump back or fast-forward.
+  }
   function syncLibraryPreviews(){
-    if(!canAnimateLibrary()){stopLibraryPreviews();return}if(previewAnimation)return;
+    if(!canAnimateLibrary()){stopLibraryPreviews();return}
+    if(previewAnimation)return;
     const tick=now=>{
-      if(!canAnimateLibrary()){previewAnimation=0;return}
-      if(now-previewLast>=80){previewLast=now;for(const [canvas,item] of previewTiles){
-        if(!canvas.isConnected){previewTiles.delete(canvas);continue}
-        const panel=canvas.closest('.pattern-panel');if(panel?.classList.contains('hidden-left')||panel?.classList.contains('hidden-right'))continue;
-        const rect=canvas.getBoundingClientRect();if(rect.bottom<0||rect.top>innerHeight||rect.right<0||rect.left>innerWidth)continue;
-        drawThumbnail(canvas,item.config,item.frame+(now-previewEpoch)/16.6667,item.patternId);
-      }}
+      if(!canAnimateLibrary()){stopLibraryPreviews();return}
+      // Advance the shared phase only when a real frame is painted. If the
+      // clock runs ahead between paints, a library rebuild flashes a future
+      // frame instead of the exact frame the user was just looking at.
+      if(!previewLastPaint||now-previewLastPaint>=PREVIEW_INTERVAL_MS){
+        if(previewLastTick){
+          // Bound phase advancement after Safari throttles a frame: slow down
+          // gracefully instead of leaping through the geometry.
+          previewPhase+=Math.max(0,Math.min(PREVIEW_MAX_STEP_MS,now-previewLastTick))/16.6667*PREVIEW_SPEED;
+        }
+        previewLastTick=now;
+        previewLastPaint=now;
+        previewPaintPhase=previewPhase;
+        for(const [canvas,item] of previewTiles){
+          if(!canvas.isConnected){previewTiles.delete(canvas);continue}
+          const panel=canvas.closest('.pattern-panel');
+          if(panel?.classList.contains('hidden-left')||panel?.classList.contains('hidden-right'))continue;
+          const rect=canvas.getBoundingClientRect();
+          if(rect.bottom<0||rect.top>innerHeight||rect.right<0||rect.left>innerWidth)continue;
+          drawThumbnail(canvas,item.config,previewFrame(item.frame),item.patternId);
+        }
+      }
       previewAnimation=requestAnimationFrame(tick);
-    };previewAnimation=requestAnimationFrame(tick);
+    };
+    previewAnimation=requestAnimationFrame(tick);
   }
   for(const event of ["setka:overlay-visibility","setka:sheet-presentation","setka:view"])window.addEventListener(event,syncLibraryPreviews);
   document.addEventListener("visibilitychange",syncLibraryPreviews);reducedPreviewMotion.addEventListener?.("change",syncLibraryPreviews);

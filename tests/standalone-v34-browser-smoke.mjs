@@ -93,6 +93,33 @@ async function go(){
     await modal.locator(".st34-close").click();
     result.push({patternId:pid,account,thumbBrightPixels:before,infoBrightPixels:bright});
   }
+
+  // Visual regression of the reported iPhone glitch: rebuilding the pattern
+  // tiles must render the same animation phase, not flash frame 44 and leap.
+  await page.waitForTimeout(650);
+  const continuity=await page.evaluate(()=>{
+    const S=window.SetkaApp;
+    const pixels=()=>[...document.querySelectorAll("#allPatternsPanel .pattern-tile canvas")].map(canvas=>{
+      const {data}=canvas.getContext("2d").getImageData(0,0,canvas.width,canvas.height);
+      const out=[];
+      for(let i=0;i<data.length;i+=24)out.push(data[i],data[i+1],data[i+2]);
+      return out;
+    });
+    const before=pixels();
+    S.renderLibrary();
+    const after=pixels();
+    return before.map((a,i)=>{
+      const b=after[i];let mismatch=0;
+      for(let p=0;p<a.length;p++)if(a[p]!==b[p])mismatch++;
+      return {patternId:document.querySelectorAll("#allPatternsPanel .pattern-tile")[i]?.dataset.patternId,
+        pixels:a.length,changed:mismatch,changedShare:mismatch/a.length};
+    });
+  });
+  assert.equal(continuity.length,7,"all seven canonical previews survive redraw");
+  for(const row of continuity)assert.ok(row.changedShare<0.015,
+    row.patternId+" preview must not jump when tiles are rebuilt: "+JSON.stringify(row));
+  console.log("LIVE PREVIEW PHASE STAYS STABLE ACROSS CATALOG REBUILD PASS",JSON.stringify(continuity));
+
   // One observed scenario per session, never per gesture/configuration change.
   await page.evaluate(()=>{
     const C=window.SetkaStandaloneV34,d=C.getData();
