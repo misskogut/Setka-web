@@ -59,6 +59,7 @@
   // Independent, smoothed channels for real visual modulation. These are
   // transient live measurements, not persisted to user configurations.
   let bands={low:0,mid:0,high:0,beat:0},bassReference=0;
+  let releaseBands={low:0,mid:0,high:0,beat:0},releaseAt=0;
 
   function announce(message){
     feedback.textContent=message;
@@ -83,6 +84,10 @@
   }
   function stop(silent=true){
     seq++; // Cancel any pending microphone permission before it resolves.
+    if(active){
+      releaseBands={...bands};
+      releaseAt=performance.now();
+    }
     const old={mic:stream,ac:context,node:source,sink:silentOutput,fft:analyser};
     stream=null;context=null;source=null;analyser=null;silentOutput=null;frequencies=null;waveform=null;
     active=false;pending=false;smoothed=0;lastFrameTime=0;wasAudible=false;
@@ -142,7 +147,7 @@
       frequencies=new Uint8Array(fft.frequencyBinCount);
       waveform=new Uint8Array(fft.fftSize);
       smoothed=0;lastFrameTime=0;lastHeardAt=performance.now();lastSilentHintAt=0;wasAudible=false;
-      bands={low:0,mid:0,high:0,beat:0};bassReference=0;active=true;
+      bands={low:0,mid:0,high:0,beat:0};bassReference=0;releaseAt=0;active=true;
       acquired.getAudioTracks().forEach(track=>track.addEventListener("ended",()=>{if(stream===acquired)stop(false)},{once:true}));
       announce("Микрофон включён · включи музыку рядом");
     }catch(err){
@@ -230,14 +235,21 @@
     "rgb-glitch-rings":{waveAmplitude:["low",.90,0,130],glitchOffset:["high",.85,0,12],strokeW:["mid",.36,.2,7]},
     "stereo-dna":{amplitude:["low",.38,5,150],spacing:["mid",.11,3,40],pointSize:["high",.45,.5,9]}
   };
+  function visualBands(){
+    if(active)return bands;
+    const k=clamp(1-(performance.now()-releaseAt)/380);
+    if(!releaseAt||k<=0)return null;
+    return Object.fromEntries(Object.entries(releaseBands).map(([name,v])=>[name,v*k]));
+  }
   function renderConfig(original,patternId){
-    if(!active||!original||typeof original!=="object")return original;
+    const live=visualBands();
+    if(!live||!original||typeof original!=="object")return original;
     const recipe=mappings[patternId];
     if(!recipe)return original; // Future renderers still get shared zoom/clock
     const out={...original};
     for(const [key,[bandName,strength,lo,hi]] of Object.entries(recipe)){
       if(!Number.isFinite(original[key]))continue;
-      const level=clamp(bands[bandName]+bands.beat*(bandName==="low"?.20:.06));
+      const level=clamp(live[bandName]+live.beat*(bandName==="low"?.20:.06));
       out[key]=clamp(original[key]*(1+strength*level),lo,hi);
     }
     return out;
@@ -246,7 +258,8 @@
   // overall musical envelope through their shared viewport. Always >1 scale:
   // black background stays fully covered and there are no edge artefacts.
   function viewportScale(){
-    return active?1+clamp(bands.low*.030+bands.beat*.012,0,.05):1;
+    const live=visualBands();
+    return live?1+clamp(live.low*.030+live.beat*.012,0,.05):1;
   }
   button.addEventListener("click",()=>{if(active||pending)stop(false);else start()});
   window.addEventListener("setka:view",e=>{if(e.detail?.view!=="game"&&(active||pending))stop()});
