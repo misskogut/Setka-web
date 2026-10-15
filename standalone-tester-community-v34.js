@@ -323,20 +323,29 @@
   }
 
   function drawPreview(canvas, note) {
-    if(!note.patternId&&!note.config?.patternId)return;
-    if (note.visualSnapshot?.dataUrl) {
-      const img = new Image();
-      img.onload = () => {
-        const ctx = canvas.getContext("2d"), w = canvas.width, h = canvas.height;
-        ctx.fillStyle = "#000";
-        ctx.fillRect(0, 0, w, h);
-        const s = Math.min(w / img.width, h / img.height), dw = img.width * s, dh = img.height * s;
-        ctx.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
-      };
-      img.src = note.visualSnapshot.dataUrl;
-      return;
+    const saved=note.replaySnapshot;
+    const pid=saved?.patternId||note.patternId||note.config?.patternId||null;
+    const config=saved?.config||note.config;
+    const frame=saved?.frame??note.frame??44;
+    // Prefer a live Canvas renderer of the exact saved configuration.
+    // Old still previews are fallback only, never the primary presentation.
+    if(pid&&config&&Object.keys(config).length){
+      try {
+        Setka.renderPreview?.(canvas,clone(config),frame,pid);
+        if(canvas.dataset.setkaLivePreview==="true"||typeof Setka.renderPreview==="function")return;
+      } catch (_) {}
     }
-    try { Setka.renderPreview?.(canvas, clone(note.config), note.frame ?? 44, note.patternId); } catch (_) {}
+    if(note.visualSnapshot?.dataUrl){
+      const img=new Image();
+      img.onload=()=>{
+        if(canvas.dataset.setkaLivePreview==="true")return;
+        const ctx=canvas.getContext("2d"),w=canvas.width,h=canvas.height;
+        ctx.fillStyle="#000";ctx.fillRect(0,0,w,h);
+        const scale=Math.min(w/img.width,h/img.height);
+        ctx.drawImage(img,(w-img.width*scale)/2,(h-img.height*scale)/2,img.width*scale,img.height*scale);
+      };
+      img.src=note.visualSnapshot.dataUrl;
+    }
   }
 
   function copyLocal(note) {
