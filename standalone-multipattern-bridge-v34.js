@@ -36,7 +36,7 @@
   function showChoice(t){
     document.getElementById("st34MpChoice")?.remove();
     const o=document.createElement("div");o.id="st34MpChoice";
-    o.innerHTML='<div class="st34mp-choice"><h2>Запустить новую сессию?</h2><p>Для измеряемой сессии сначала зафиксируем запрос, состояние и время. Или можно просто открыть «Одуванчик» без опроса.</p><button class="st-primary">Запустить сессию</button><button class="st-secondary">Просто посмотреть</button><button class="st-secondary st34mp-cancel" style="border:0;color:rgba(255,255,255,.4)">Отмена</button></div>';
+    o.innerHTML=`<div class="st34mp-choice"><h2>Запустить новую сессию?</h2><p>Для измеряемой сессии сначала зафиксируем запрос, состояние и время. Или можно просто открыть «${C.esc(Setka.getPatternTitle?.(t.patternId)||t.patternId)}» без опроса.</p><button class="st-primary">Запустить сессию</button><button class="st-secondary">Просто посмотреть</button><button class="st-secondary st34mp-cancel" style="border:0;color:rgba(255,255,255,.4)">Отмена</button></div>`;
     document.body.appendChild(o);
     o.querySelector(".st-primary").onclick=()=>{o.remove();C.preSurvey({config:clone(t.config),source:{type:t.kind,id:t.itemId,patternId:t.patternId,communityId:t.communityId||null}})};
     o.querySelectorAll(".st-secondary")[0].onclick=()=>{o.remove();C.recordEvent?.("session_choice",{choice:"browse",patternId:t.patternId},false);directOpen(t)};

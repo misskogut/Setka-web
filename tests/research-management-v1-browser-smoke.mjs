@@ -1,5 +1,5 @@
 // Isolated browser/API fixtures only. Every Supabase request is intercepted.
-import assert from 'node:assert/strict';import {spawn} from 'node:child_process';import {chromium,webkit} from 'playwright';
+import assert from 'node:assert/strict';import {spawn} from 'node:child_process';import {mkdirSync} from 'node:fs';import {chromium,webkit} from 'playwright';
 import {buildData} from '../research-v1/model.mjs';import {patterns,configKey} from '../research-v1/renderer.mjs';
 const port=49319,base=`http://127.0.0.1:${port}`,server=spawn('python3',['-m','http.server',String(port),'--bind','127.0.0.1'],{stdio:'ignore'});
 let browser;
@@ -22,7 +22,9 @@ try{
  await front.addInitScript(()=>localStorage.setItem('setka-v40:cabinet-session',JSON.stringify({token:'isolated-fixture-only'})));
  await front.goto(base+'/standalone-v34.html',{waitUntil:'domcontentloaded'});await front.waitForFunction(()=>!!window.__SETKA_PATTERN_CATALOG_V1__&&!!window.SetkaStandaloneV34.activity);
  assert.equal(await front.locator('.base-tile .setka-new-pattern').count(),7);
- await front.locator('.base-tile[data-pattern-id="dandelion"]').click();await front.waitForFunction(()=>!!window.SetkaStandaloneV34.activity.current());
+ await front.locator('.base-tile[data-pattern-id="dandelion"]').click();
+ assert.equal(await front.locator('.base-tile[data-pattern-id="dandelion"] .setka-new-pattern').count(),1,'choice is not a pattern opening');
+ await front.getByRole('button',{name:'Просто посмотреть',exact:true}).click();await front.waitForFunction(()=>!!window.SetkaStandaloneV34.activity.current());
  assert.equal(await front.locator('.base-tile[data-pattern-id="dandelion"] .setka-new-pattern').count(),0);
  await front.locator('#patternCanvas').tap({position:{x:190,y:330}});await front.evaluate(()=>window.SetkaStandaloneV34.activity.flush());
  const activity=await front.evaluate(()=>window.SetkaStandaloneV34.getData().activityIntervals);assert.ok(activity.some(x=>x.patternId==='dandelion'&&x.touches>0&&x.coverage==='observed'));assert.ok(activity.every(x=>x.configKey&&x.exposureId));
@@ -53,4 +55,10 @@ try{
  await admin.locator('#close-dialog').click();await admin.locator('.nav[data-page="sessions"]').click();await admin.locator('#sessions-results [data-action="session"]').click();assert.match(await admin.locator('#session-pulse').innerText(),/82 уд\/мин/);assert.match(await admin.locator('#session-pulse').innerText(),/3 касаний/);await admin.locator('.event-item').click();assert.match(await admin.locator('.replay-controls-top').innerText(),/Пульс: 82 уд\/мин/);
  await admin.locator('#close-dialog').click();await admin.locator('.nav[data-page="research"]').click();assert.match(await admin.locator('#research-body').innerText(),/82 уд\/мин/);await admin.locator('[data-research-tab="behavior"]').click();assert.match(await admin.locator('#research-body').innerText(),/Движения и настройки/);
  assert.deepEqual(errors,[]);console.log('ISOLATED FRONT/ADMIN NAME LINK, NEW BADGE PERSISTENCE, ACCOUNT INVITES, BULK IDS, PULSE TIMELINE AND BEHAVIOR UI PASS');
+}catch(error){
+ for(const context of browser?.contexts()||[])for(const page of context.pages()){
+  console.log('ISOLATED FIXTURE FAILURE STATE',page.url(),(await page.locator('body').innerText()).slice(-5000));
+  mkdirSync('tests/visual-smoke',{recursive:true});await page.screenshot({path:`tests/visual-smoke/management-fixture-${context.pages().indexOf(page)}.png`});
+ }
+ throw error;
 }finally{await browser?.close();server.kill('SIGTERM')}
