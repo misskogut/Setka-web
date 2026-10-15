@@ -23,6 +23,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Stamp one stable SETKA URL with deployment revision
+        run: node scripts/build-standalone-release.mjs
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
