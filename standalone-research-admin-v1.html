@@ -13,7 +13,7 @@
   <section id="login" class="login-screen">
     <div class="login-brand"><span class="wordmark">SETKA</span><span class="eyebrow">ИССЛЕДОВАНИЯ</span></div>
     <div class="login-card"><div class="eyebrow">ЗАКРЫТЫЙ ДОСТУП</div><h1>Понимать, что<br>происходит в SETKA.</h1><p class="muted">Участники, паттерны и точные состояния.<br>Только зарегистрированные данные.</p>
-      <form id="login-form"><label for="key">Действующий ключ администратора SETKA</label><input id="key" name="key" type="password" autocomplete="current-password" required placeholder="Ключ администратора"><label class="checkbox"><input id="remember" type="checkbox">Запомнить на этом устройстве</label><button class="primary" id="login-button" type="submit">Открыть исследования <span>↗</span></button><p id="login-error" class="error" role="alert"></p></form>
+      <form id="login-form"><label id="key-label" for="key">Действующий ключ администратора SETKA</label><input id="key" name="key" type="password" autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false" required placeholder="Ключ администратора"><label class="checkbox"><input id="remember" type="checkbox">Запомнить на этом устройстве</label><button class="primary" id="login-button" type="submit">Открыть исследования <span>↗</span></button><p id="login-error" class="error" role="alert"></p></form>
       <p class="small muted">Используется существующий вход SETKA. Личные сведения доступны только после проверки доступа сервером.</p>
       <a class="quiet-link" href="standalone-admin-v34.html">Открыть прежнюю полную админку ↗</a>
     </div><div class="login-footer">Исследовательская админка · Версия 1.4</div>
@@ -35,6 +35,6 @@
     </main>
   </div>
   <dialog id="detail-dialog"><div class="dialog-top"><span id="dialog-label" class="eyebrow">ПОДРОБНОСТИ</span><button id="close-dialog" class="icon-button" aria-label="Закрыть подробности">×</button></div><div id="detail-content"></div></dialog>
-  <script type="module" src="research-v1/app.mjs?v=1.4.8"></script>
+  <script type="module" src="research-v1/app.mjs?v=1.4.9"></script>
 </body>
 </html>

@@ -74,6 +74,8 @@ on:
       - 'tests/state-persistence-v1*'
       - 'research-v1/physiology.mjs'
       - 'research-v1/app.mjs'
+      - 'research-v1/access.mjs'
+      - 'tests/research-admin-v1-access*'
       - 'research-v1/pulse-ui.mjs'
       - 'research-v1/invites.mjs'
       - 'tests/standalone-pulse-v1*'
@@ -187,6 +189,7 @@ jobs:
       - run: node tests/standalone-audio-reactive-v1-browser-smoke.mjs
       - run: node tests/standalone-pulse-v1-browser-smoke.mjs
       - run: node tests/research-management-v1-browser-smoke.mjs
+      - run: node tests/research-admin-v1-access-browser-smoke.mjs
       - run: node tests/standalone-v34-admin-browser-smoke.mjs
       - run: node tests/standalone-v34-open-admin-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/standalone-v34-browser-smoke.mjs
@@ -194,6 +197,7 @@ jobs:
       - run: SETKA_BROWSER=webkit node tests/standalone-audio-reactive-v1-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/standalone-pulse-v1-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/research-management-v1-browser-smoke.mjs
+      - run: SETKA_BROWSER=webkit node tests/research-admin-v1-access-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/standalone-v34-admin-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/standalone-v34-open-admin-browser-smoke.mjs
       - run: ./node_modules/.bin/esbuild supabase/functions/setka-pattern-knowledge-v40/index.ts --outfile=/tmp/setka-admin-backend-check.js --format=esm
