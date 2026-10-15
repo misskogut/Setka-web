@@ -26,6 +26,8 @@
       color: #fff; background: rgba(0,0,0,.42);
       transition: border-color .2s, background .2s, opacity .2s;
     }
+    /* Keep the original in-pattern note composer below the new music icon. */
+    #gameScreen #st34Note.show {top:calc(var(--safe-top) + 101px)}
     #st34AudioButton svg {width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round}
     #st34AudioButton svg ellipse {fill:currentColor;stroke:none}
     #st34AudioButton .st34-audio-indicator {position:absolute;right:8px;top:8px;width:5px;height:5px;border-radius:50%;background:#fff;opacity:0}
