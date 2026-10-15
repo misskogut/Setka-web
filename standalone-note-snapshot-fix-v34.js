@@ -185,7 +185,13 @@
     const note=resolveNote(card); if(!note) return;
     const replay=replayOf(note); if(!replay.config) return;
     const canvas=card.querySelector("canvas.st34-note-preview");
-    if (canvas) drawNoteSnapshot(canvas,note,replay).catch(e=>console.warn("SETKA note snapshot failed",e));
+    if(canvas){
+      const live=window.SetkaLivePreviewsV1;
+      // Keep the immutable creation-time note snapshot as the SOURCE of
+      // the animated canvas; do not replay a JPEG/PNG over a running preview.
+      if(!live?.register?.(canvas,replay.config,replay.frame,replay.pid))
+        drawNoteSnapshot(canvas,note,replay).catch(e=>console.warn("SETKA note snapshot failed",e));
+    }
     const open=card.querySelector(".st34-note-preview-button");
     if (open) open.onclick=e=>{e?.preventDefault?.();e?.stopPropagation?.();C.hideLayer?.();Setka.openConfig?.(clone(replay.config),{type:"memory",id:note.id,patternId:replay.pid,baseId:replay.pid,communityId:note.communityId||null,noteId:note.id,frame:replay.frame});};
     const label=card.querySelector(".st34-note-preview-label");
@@ -200,5 +206,6 @@
 
   new MutationObserver(records=>{for(const record of records)for(const node of record.addedNodes)if(node.nodeType===1)scan(node)}).observe(document.documentElement,{childList:true,subtree:true});
   installLiveBinding(); scan();
-  window.__SETKA_NOTE_SNAPSHOT_FIX_V34__=6;
+  window.__SETKA_NOTE_REPLAY_V34__={replayOf};
+  window.__SETKA_NOTE_SNAPSHOT_FIX_V34__=7;
 })();
