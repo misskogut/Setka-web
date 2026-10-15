@@ -49,7 +49,7 @@ try{
  assert.equal(await front.locator('.base-tile .setka-new-pattern').first().innerText(),'new');
  const firstPreview=await front.locator('.base-tile .thumb-canvas').first().evaluate(c=>c.toDataURL());
  await front.waitForFunction(before=>document.querySelector('.base-tile .thumb-canvas').toDataURL()!==before,firstPreview);
- assert.equal(await front.evaluate(()=>window.SetkaStandaloneV34.getData().patternExposures.length),0,'animated previews are not recorded views');
+ assert.equal(await front.evaluate(()=>(window.SetkaStandaloneV34.getData().patternExposures||[]).length),0,'animated previews are not recorded views');
 
  await front.locator('.base-tile[data-pattern-id="dandelion"]').click();
  assert.equal(await front.locator('.base-tile[data-pattern-id="dandelion"] .setka-new-pattern').count(),1,'choice is not a pattern opening');
