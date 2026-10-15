@@ -16,11 +16,20 @@
   button.setAttribute("aria-label","Включить реакцию паттерна на музыку через микрофон");
   button.title="Реакция на музыку";
   button.innerHTML='<svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path d="M12.5 22V8l12-3v14"/><ellipse cx="9" cy="23" rx="4" ry="2.8" transform="rotate(-16 9 23)"/><ellipse cx="21" cy="20" rx="4" ry="2.8" transform="rotate(-16 21 20)"/></svg>';
-  // A five-point, colour-selector-like counter appears only in ON modes.
+  // Match the colour selector: dots orbit the button, never form a row below it.
+  // The colour button is 62px wide with a 42px ring; this 54px button
+  // uses a 38px ring to preserve the same 11px gap outside its border.
   const dots=document.createElement("span");
   dots.id="st34AudioModeDots";
   dots.setAttribute("aria-hidden","true");
-  for(let i=0;i<5;i++){const dot=document.createElement("i");dot.className="st34-audio-dot";dots.appendChild(dot)}
+  const dotCount=5,ringRadius=38;
+  for(let i=0;i<dotCount;i++){
+    const dot=document.createElement("i");
+    dot.className="st34-audio-dot";
+    const angle=(-90+i*360/dotCount)*Math.PI/180;
+    dot.style.transform=`translate(${Math.cos(angle)*ringRadius}px,${Math.sin(angle)*ringRadius}px)`;
+    dots.appendChild(dot);
+  }
   button.appendChild(dots);
   ui.appendChild(button);
 
@@ -37,10 +46,10 @@
     #gameScreen #st34Note.show {top:calc(var(--safe-top) + 101px)}
     #st34AudioButton svg {width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round}
     #st34AudioButton svg ellipse {fill:currentColor;stroke:none}
-    #st34AudioModeDots {position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);
-      display:flex;gap:5px;pointer-events:none;white-space:nowrap}
-    #st34AudioModeDots .st34-audio-dot {display:block;width:5px;height:5px;background:#fff;border-radius:50%;
-      opacity:0;transition:opacity .18s ease;box-shadow:0 0 4px rgba(255,255,255,.25)}
+    #st34AudioModeDots {position:absolute;inset:-12px;pointer-events:none}
+    #st34AudioModeDots .st34-audio-dot {display:block;position:absolute;left:50%;top:50%;
+      width:5px;height:5px;margin:-2.5px;background:#fff;border-radius:50%;
+      opacity:0;transition:opacity .18s ease;box-shadow:0 0 4px rgba(255,255,255,.5)}
     #st34AudioModeDots .st34-audio-dot.lit {opacity:.95}
     #gameScreen #st34AudioButton[aria-pressed="true"] {opacity:1;border-color:rgba(255,255,255,.75);background:rgba(0,0,0,.42)}
     #gameScreen #st34AudioButton[data-pending="true"] {opacity:.60}
