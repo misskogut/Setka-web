@@ -27,8 +27,13 @@ try{
       createMediaStreamSource(){return{connect(){},disconnect(){}}}
       createGain(){const sink={gain:{value:1},connect(destination){meter.sinkValue=this.gain.value;meter.sinkConnected=destination?.speaker===true},disconnect(){}};return sink}
       createAnalyser(){return {fftSize:1024,smoothingTimeConstant:0,frequencyBinCount:512,connect(target){meter.analyserConnected=!!target},disconnect(){},
-        getByteFrequencyData(out){out.fill(meter.signal==="music"?210:0)},
-        getByteTimeDomainData(out){for(let i=0;i<out.length;i++)out[i]=meter.signal==="music"?Math.round(128+48*Math.sin(i*.17)):128}
+        getByteFrequencyData(out){
+          if(meter.signal==="music"){out.fill(210);return}
+          out.fill(0);
+          const range=meter.signal==="bass"?[70,320]:meter.signal==="middle"?[400,1500]:meter.signal==="treble"?[2300,6500]:null;
+          if(range)for(let i=0;i<out.length;i++){const hz=i*44100/1024;if(hz>=range[0]&&hz<range[1])out[i]=230}
+        },
+        getByteTimeDomainData(out){for(let i=0;i<out.length;i++)out[i]=meter.signal!=="silent"?Math.round(128+48*Math.sin(i*.17)):128}
       }}
       async resume(){this.state="running"}
       async close(){this.state="closed"}
@@ -110,6 +115,20 @@ try{
   for(const name of ["low","mid","high"])
     assert.ok(geometry.bands[name]>.1,"independent "+name+" music channel must be measured");
   console.log("MULTIBAND GEOMETRY IN ALL 7 PATTERNS",JSON.stringify(geometry));
+  // Frequency-specific fixture: switching the same synthetic microphone from
+  // bass to treble must move different independent channels, not just speed.
+  const frequencyTest=await page.evaluate(()=>{
+    const audio=window.SetkaAudioReactiveV1;
+    let now=5000;const step=(signal)=>{
+      window.__setkaMicFixture.signal=signal;
+      for(let i=0;i<48;i++){now+=17;audio.nextFrame(now/16.67,now)}
+      return {...audio.status().bands};
+    };
+    return{bass:step("bass"),treble:step("treble")};
+  });
+  assert.ok(frequencyTest.bass.low>frequencyTest.bass.high+.15,"bass needs a distinct low-frequency response: "+JSON.stringify(frequencyTest));
+  assert.ok(frequencyTest.treble.high>frequencyTest.treble.low+.15,"treble needs a distinct high-frequency response: "+JSON.stringify(frequencyTest));
+  console.log("INDEPENDENT BASS AND TREBLE RESPONSE PASS",JSON.stringify(frequencyTest));
   assert.equal(await toggle.getAttribute("aria-pressed"),"true","pattern navigation must not disable audio");
   const after=await page.evaluate(()=>({config:window.SetkaApp.getConfig(),favorites:window.SetkaApp.getFavorites(),meter:window.__setkaMicFixture,source:window.SetkaAudioReactiveV1.status().source}));
   assert.deepEqual(after.favorites,initial.favorites,"favorited recipes must not change");
