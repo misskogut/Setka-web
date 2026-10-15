@@ -36,6 +36,7 @@ on:
       - 'standalone-note-snapshot-fix-v34.js'
       - 'standalone-tester-community-v34.js'
       - 'standalone-tester-cabinet-v40.js'
+      - 'tests/standalone-invites-autosync-browser-smoke.mjs'
       - 'standalone-private-corpus-v40.js'
       - 'standalone-research-bridge-v40.js'
       - 'standalone-community-cloud-v38.js'
@@ -191,6 +192,7 @@ jobs:
       - run: node tests/standalone-sheets-v1-browser-smoke.mjs
       - run: node tests/standalone-audio-reactive-v1-browser-smoke.mjs
       - run: node tests/standalone-live-previews-v1-browser-smoke.mjs
+      - run: node tests/standalone-invites-autosync-browser-smoke.mjs
       - run: node tests/standalone-pulse-v1-browser-smoke.mjs
       - run: node tests/research-management-v1-browser-smoke.mjs
       - run: node tests/research-admin-v1-access-browser-smoke.mjs
@@ -200,6 +202,7 @@ jobs:
       - run: SETKA_BROWSER=webkit node tests/standalone-sheets-v1-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/standalone-audio-reactive-v1-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/standalone-live-previews-v1-browser-smoke.mjs
+      - run: SETKA_BROWSER=webkit node tests/standalone-invites-autosync-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/standalone-pulse-v1-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/research-management-v1-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/research-admin-v1-access-browser-smoke.mjs
