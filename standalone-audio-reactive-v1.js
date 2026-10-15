@@ -56,6 +56,9 @@
   let stream=null,context=null,source=null,analyser=null,silentOutput=null,frequencies=null,waveform=null;
   let active=false,pending=false,seq=0,smoothed=0,lastFrameTime=0,feedbackTimer=0;
   let lastHeardAt=0,lastSilentHintAt=0,wasAudible=false;
+  // Independent, smoothed channels for real visual modulation. These are
+  // transient live measurements, not persisted to user configurations.
+  let bands={low:0,mid:0,high:0,beat:0},bassReference=0;
 
   function announce(message){
     feedback.textContent=message;
@@ -84,6 +87,7 @@
     stream=null;context=null;source=null;analyser=null;silentOutput=null;frequencies=null;waveform=null;
     active=false;pending=false;smoothed=0;lastFrameTime=0;wasAudible=false;
     lastHeardAt=0;lastSilentHintAt=0;
+    bands={low:0,mid:0,high:0,beat:0};bassReference=0;
     releaseResources(old);
     renderButton();
     if(!silent)announce("Реакция на музыку выключена");
@@ -137,7 +141,8 @@
       stream=acquired;context=ac;source=node;analyser=fft;silentOutput=sink;
       frequencies=new Uint8Array(fft.frequencyBinCount);
       waveform=new Uint8Array(fft.fftSize);
-      smoothed=0;lastFrameTime=0;lastHeardAt=performance.now();lastSilentHintAt=0;wasAudible=false;active=true;
+      smoothed=0;lastFrameTime=0;lastHeardAt=performance.now();lastSilentHintAt=0;wasAudible=false;
+      bands={low:0,mid:0,high:0,beat:0};bassReference=0;active=true;
       acquired.getAudioTracks().forEach(track=>track.addEventListener("ended",()=>{if(stream===acquired)stop(false)},{once:true}));
       announce("Микрофон включён · включи музыку рядом");
     }catch(err){
@@ -172,12 +177,27 @@
       for(let i=a;i<b;i++)total+=frequencies[i];
       return total/Math.max(1,b-a)/255;
     };
+    const low=clamp((band(70,320)-.035)*2.1);
+    const mid=clamp((band(320,1900)-.035)*2.1);
+    const high=clamp((band(1900,6800)-.035)*2.3);
     const spectral=band(90,700)*.40+band(700,2800)*.60;
     // Significant mic audio should be noticeable even on slow fractals.
     // Natural silence stays at 0; do not invent a beat when no sound exists.
     const raw=clamp(Math.max(rms*5.0,spectral*1.1));
     const energy=clamp((raw-.085)*2.15);
     smoothed+=((energy>smoothed)?.24:.11)*(energy-smoothed);
+    // Attack/release on each band keeps geometry continuous and prevents
+    // rapid frequency noise from turning into violent pattern jumps.
+    // Waveform RMS supplements low frequencies on bass-poor phone mics.
+    const targetLow=clamp(Math.max(low*.76,energy*.38));
+    const targets={low:targetLow,mid:clamp(Math.max(mid,energy*.24)),high:clamp(Math.max(high,energy*.16))};
+    for(const key of ["low","mid","high"]){
+      const goal=targets[key];
+      bands[key]+=((goal>bands[key])?.19:.09)*(goal-bands[key]);
+    }
+    bassReference+=.045*(targetLow-bassReference);
+    const transient=clamp((targetLow-bassReference-.09)*2.1);
+    bands.beat=Math.max(bands.beat*.87,transient);
     const deltaMs=lastFrameTime?clamp(now-lastFrameTime,0,48):0;
     lastFrameTime=now;
     if(energy>.085){
@@ -198,13 +218,44 @@
     // Runtime configuration, color, stored frames and favorites stay intact.
     return baseFrame+(deltaMs/16.6667)*smoothed*6;
   }
+  // Small, safe mappings to actual parameters of the seven existing
+  // renderers.  Do not touch discrete topology counts, colour modes, stereo
+  // angle or user-chosen values: render overrides exist for ONE frame only.
+  const mappings={
+    "tentacle-orbit":{baseRadius:["low",.40,0,120],circleSize:["high",.50,.1,10],lineWeight:["mid",.35,.1,8]},
+    "dandelion":{zoom:["low",.16,.2,5],pointSize:["high",.40,.3,16],lineWeight:["mid",.32,.1,6]},
+    "fish-wave":{waveAmplitude:["low",.85,0,120],ringSpacing:["mid",.09,1,30],strokeW:["high",.42,.2,7]},
+    "breathing-fractal":{pulseAmp:["low",.75,0,2],baseLen:["mid",.18,10,150],strokeW:["high",.35,.2,7]},
+    "breathing-fractal-growth":{zoom:["low",.13,.2,5],baseLen:["mid",.20,10,150],strokeW:["high",.38,.2,7]},
+    "rgb-glitch-rings":{waveAmplitude:["low",.90,0,130],glitchOffset:["high",.85,0,12],strokeW:["mid",.36,.2,7]},
+    "stereo-dna":{amplitude:["low",.38,5,150],spacing:["mid",.11,3,40],pointSize:["high",.45,.5,9]}
+  };
+  function renderConfig(original,patternId){
+    if(!active||!original||typeof original!=="object")return original;
+    const recipe=mappings[patternId];
+    if(!recipe)return original; // Future renderers still get shared zoom/clock
+    const out={...original};
+    for(const [key,[bandName,strength,lo,hi]] of Object.entries(recipe)){
+      if(!Number.isFinite(original[key]))continue;
+      const level=clamp(bands[bandName]+bands.beat*(bandName==="low"?.20:.06));
+      out[key]=clamp(original[key]*(1+strength*level),lo,hi);
+    }
+    return out;
+  }
+  // All pattern renderers, including ones added later, respond subtly to the
+  // overall musical envelope through their shared viewport. Always >1 scale:
+  // black background stays fully covered and there are no edge artefacts.
+  function viewportScale(){
+    return active?1+clamp(bands.low*.030+bands.beat*.012,0,.05):1;
+  }
   button.addEventListener("click",()=>{if(active||pending)stop(false);else start()});
   window.addEventListener("setka:view",e=>{if(e.detail?.view!=="game"&&(active||pending))stop()});
   document.addEventListener("visibilitychange",()=>{if(document.hidden&&(active||pending))stop()});
   window.addEventListener("pagehide",()=>{if(active||pending)stop()});
   window.SetkaAudioReactiveV1={
-    isActive:()=>active, nextFrame, stop,
-    status:()=>({active,pending,source:active?"microphone":"none",level:active?smoothed:0,heard:active&&wasAudible})
+    isActive:()=>active, nextFrame, renderConfig, viewportScale, stop,
+    status:()=>({active,pending,source:active?"microphone":"none",level:active?smoothed:0,heard:active&&wasAudible,
+      bands:active?{...bands}:{low:0,mid:0,high:0,beat:0}})
   };
   renderButton();
 })();
