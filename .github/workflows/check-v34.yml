@@ -65,6 +65,7 @@ on:
       - 'standalone-catalog-v1.js'
       - 'standalone-activity-v1.js'
       - 'tests/research-management-v1*'
+      - 'tests/state-persistence-v1*'
       - 'research-v1/physiology.mjs'
       - 'research-v1/app.mjs'
       - 'research-v1/pulse-ui.mjs'
@@ -100,7 +101,7 @@ jobs:
       - run: node --check standalone-pulse-v1.mjs
       - run: node --check standalone-catalog-v1.js
       - run: node --check standalone-activity-v1.js
-      - run: node --test tests/research-management-v1.test.mjs
+      - run: node --test tests/research-management-v1.test.mjs tests/state-persistence-v1.test.mjs
       - run: node --test tests/standalone-pulse-v1.test.mjs
       - run: node --check standalone-sheets-v1.js
       - run: node --check standalone-core-v34.js

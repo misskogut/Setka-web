@@ -7,8 +7,8 @@
   const SESSION_KEY="setka-v40:cabinet-session";
   const STATUS_KEY="setka-v40:private-corpus-status";
   const FAVORITES_KEY="setka-web:favorites:v1";
-  const BUILD="v40.private-cloud.2";
-  let busy=false,timer=0,physioTimer=0,lastSignature="",hydrated=false,authoritative=false,hydrationPromise=null,lastStatus=null;
+  const BUILD="v40.private-cloud.3-states";
+  let pendingWrite=Promise.resolve(),busy=false,timer=0,physioTimer=0,lastSignature="",hydrated=false,authoritative=false,hydrationPromise=null,lastStatus=null;
 
   const clone=v=>v==null?v:JSON.parse(JSON.stringify(v));
   function session(){
@@ -18,7 +18,8 @@
     return null;
   }
   function did(){return C.sandbox?.deviceId||null}
-  function status(){if(lastStatus)return lastStatus;try{return JSON.parse(localStorage.getItem(STATUS_KEY)||"null")}catch(_){return null}}
+  function stateFingerprint(d={}){return digest([(d.symptoms||[]).map(x=>[x.id,x.name,x.active,x.lastIntensity,x.updatedAt,x.createdAt]).sort((a,b)=>String(a[0]).localeCompare(String(b[0]))),(d.checkins||[]).map(x=>[x.id,x.symptomId,x.intensity,x.phase,x.observedAt,x.sessionId]).sort((a,b)=>String(a[0]).localeCompare(String(b[0])))]);}
+  function status(){let value=lastStatus;try{value=value||JSON.parse(localStorage.getItem(STATUS_KEY)||"null")}catch(_){}return value?{...value,statesPending:!value.stateFingerprint||value.stateFingerprint!==stateFingerprint(C.getData?.()||{})}:null}
   function saveStatus(v){lastStatus=v;try{localStorage.setItem(STATUS_KEY,JSON.stringify(v))}catch(_){}window.dispatchEvent(new CustomEvent("setka:v40-private-corpus",{detail:v}))}
   function archive(){
     const d=clone(C.getData?.()||{});
@@ -98,13 +99,13 @@
     const out=await pull(),a=out?.archive;
     if(!a){
       hydrated=true;authoritative=true;lastSignature="";
-      saveStatus({enabled:true,ok:true,restored:false,build:BUILD,updatedAt:null,counts:null,sourceDevices:0,privacy:"private-account-only",publicExposure:false});
+      saveStatus({enabled:true,ok:true,restored:false,stateFingerprint:stateFingerprint({}),statesVerified:false,build:BUILD,updatedAt:null,counts:null,sourceDevices:0,privacy:"private-account-only",publicExposure:false});
       window.dispatchEvent(new CustomEvent("setka:v40-private-corpus-restored",{detail:{counts:null,sourceDevices:0,emptyRemote:true}}));
       return true;
     }
     const counts=mergeCloud(a.payload||{},a.favorites||[]);
     hydrated=true;authoritative=true;lastSignature="";
-    saveStatus({enabled:true,ok:true,restored:true,build:BUILD,updatedAt:a.updatedAt||null,counts,sourceDevices:Number(a.sourceDevices)||1,privacy:"private-account-only",publicExposure:false});
+    saveStatus({enabled:true,ok:true,restored:true,stateFingerprint:stateFingerprint(a.payload||{}),statesVerified:true,build:BUILD,updatedAt:a.updatedAt||null,counts,sourceDevices:Number(a.sourceDevices)||1,privacy:"private-account-only",publicExposure:false});
     window.dispatchEvent(new CustomEvent("setka:v40-private-corpus-restored",{detail:{counts,sourceDevices:Number(a.sourceDevices)||1}}));
     return true;
   }
@@ -125,10 +126,13 @@
       saveStatus({enabled:true,ok:false,build:BUILD,stage:"restore",error:"archive_restore_required_before_sync",privacy:"private-account-only",publicExposure:false});
       return false;
     }
+    C.save?.();
     const sig=signature();if(!force&&sig===lastSignature)return true;if(busy)return false;busy=true;
     try{
-      const out=await post({action:"sync",sessionToken:s.token,deviceId,capturedAt:new Date().toISOString(),archive:archive(),favorites:favorites()},keepalive);
-      lastSignature=sig;const st={enabled:true,ok:true,build:BUILD,updatedAt:out.updatedAt,counts:out.counts||{},privacy:"private-account-only",publicExposure:false};saveStatus(st);return true;
+      const sent=archive();pendingWrite=post({action:"sync",sessionToken:s.token,deviceId,capturedAt:new Date().toISOString(),archive:sent,favorites:favorites()},keepalive);const out=await pendingWrite;
+      const receipt=out.stateHistory||{symptoms:sent.symptoms,checkins:sent.checkins};
+      if(out.stateHistory){const d=C.getData(),before=stateFingerprint(d);d.symptoms=mergeRecords(d.symptoms,receipt.symptoms,"symptoms",10000);d.checkins=mergeRecords(d.checkins,receipt.checkins,"checkins",10000);C.save?.();if(before!==stateFingerprint(d))window.dispatchEvent(new CustomEvent("setka:states-restored"));}
+      lastSignature=sig;const st={enabled:true,ok:true,build:BUILD,updatedAt:out.updatedAt,counts:out.counts||{},stateFingerprint:stateFingerprint(receipt),statesVerified:!!out.stateHistory,privacy:"private-account-only",publicExposure:false};saveStatus(st);return true;
     }catch(e){const st={enabled:true,ok:false,build:BUILD,error:String(e?.message||e),stage:"sync",privacy:"private-account-only",publicExposure:false};saveStatus(st);return false}finally{busy=false}
   }
   async function remoteStatus(){const s=session();if(!s?.token)return null;return post({action:"status",sessionToken:s.token,deviceId:did()})}
@@ -146,5 +150,5 @@
   window.addEventListener("pagehide",()=>sync(true,true));
   setInterval(()=>sync(false),45000);
   setTimeout(()=>sync(true),2200);
-  window.__SETKA_PRIVATE_CORPUS_V40__={sync:()=>sync(true),pull,restore:restoreFromCloud,remoteStatus,status,authoritative:()=>!!(hydrated&&authoritative&&session()?.token),build:BUILD};
+  window.__SETKA_PRIVATE_CORPUS_V40__={sync:async()=>{if(busy)await pendingWrite.catch(()=>false);return sync(true)},pull,restore:restoreFromCloud,remoteStatus,status,authoritative:()=>!!(hydrated&&authoritative&&session()?.token),build:BUILD};
 })();

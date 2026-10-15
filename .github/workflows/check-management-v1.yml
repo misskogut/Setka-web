@@ -1,7 +1,7 @@
 name: Verify SETKA names, referrals and activity
 on:
   pull_request:
-    paths: ['research-v1/**', 'standalone-catalog-v1.js', 'standalone-activity-v1.js', 'standalone-tester-cabinet-v40.js', 'supabase/functions/setka-tester-account-v40/**', 'supabase/functions/setka-research-admin-v1/**', 'tests/research-management-v1*', '.github/workflows/check-management-v1.yml']
+    paths: ['research-v1/**', 'standalone-catalog-v1.js', 'standalone-activity-v1.js', 'standalone-tester-cabinet-v40.js', 'supabase/functions/setka-tester-account-v40/**', 'supabase/functions/setka-research-admin-v1/**', 'tests/research-management-v1*', 'tests/state-persistence-v1*', 'supabase/functions/setka-tester-archive-v37/**', '.github/workflows/check-management-v1.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -23,3 +23,19 @@ jobs:
       - run: node --test tests/research-management-v1.test.mjs
       - run: psql -h 127.0.0.1 -U postgres -d setka_isolated -f tests/research-management-v1-db.sql
         env: {PGPASSWORD: isolated-ci-only}
+      - run: psql -h 127.0.0.1 -U postgres -d setka_isolated -f tests/state-persistence-v1-db.sql
+        env: {PGPASSWORD: isolated-ci-only}
+      - name: Verify simultaneous state writes
+        env: {PGPASSWORD: isolated-ci-only}
+        run: |
+          python3 - <<'PYTHON'
+          import subprocess, concurrent.futures
+          def write(state):
+              sql = "select public.setka_private_archive_write_v1('isolated-device','isolated-A',jsonb_build_object('symptoms',jsonb_build_array(jsonb_build_object('id','parallel-" + state + "','active',true,'updatedAt','2026-10-15T13:03:00Z')),'checkins','[]'::jsonb),'[]',now());"
+              subprocess.run(['psql','-h','127.0.0.1','-U','postgres','-d','setka_isolated','-v','ON_ERROR_STOP=1','-c',sql],check=True,capture_output=True)
+          with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+              list(pool.map(write,['A','B']))
+          result=subprocess.check_output(['psql','-h','127.0.0.1','-U','postgres','-d','setka_isolated','-At','-c',"select jsonb_array_length(payload->'symptoms') from public.prototype_v37_tester_private_archives where device_id='isolated-device'"],text=True).strip()
+          assert result=='3',result
+          print('CONCURRENT STATE WRITES PRESERVE BOTH STATES PASS')
+          PYTHON
