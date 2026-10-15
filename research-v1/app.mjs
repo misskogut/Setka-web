@@ -261,7 +261,8 @@ function createInvites(){
  };
 }
 
-$('login-form').addEventListener('submit',login);$('logout').onclick=logout;$('refresh').onclick=()=>refresh();$('diagnostics-button').onclick=openDiagnostics;$('close-dialog').onclick=()=>dialog.close();dialog.addEventListener('close',()=>{player?.stop();player=null;detail.replaceChildren();startPreviews();});
+$('login-form').addEventListener('submit',login);$('logout').onclick=logout;$('refresh').onclick=()=>refresh();$('diagnostics-button').onclick=openDiagnostics;$('close-dialog').onclick=()=>dialog.close();// A queued close event may arrive after a fast save has opened the next card.
+dialog.addEventListener('close',()=>{if(dialog.open)return;player?.stop();player=null;detail.replaceChildren();startPreviews();});
 document.querySelectorAll('.nav').forEach(b=>b.onclick=()=>navigate(b.dataset.page));$('period').onchange=setPeriod;$('from-date').onchange=setPeriod;$('to-date').onchange=setPeriod;$('scope').onchange=()=>{filters.scope=$('scope').value;render();};
 document.addEventListener('visibilitychange',()=>{if(document.hidden){player?.stop();stopPreviews();}else{startPreviews();if(data&&Date.now()-time(data.updatedAt)>60000)refresh();}});
 setInterval(()=>{if(adminKey&&!document.hidden&&!dialog.open)refresh();},60000);
