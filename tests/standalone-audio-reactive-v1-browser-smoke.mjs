@@ -81,8 +81,8 @@ try{
     const patterns=window.SetkaApp.getPatterns(),details=[];
     for(const p of patterns){
       window.SetkaApp.openConfig(p.defaults,{type:"base",id:p.id,patternId:p.id});
-      audio.nextFrame(60,t);t+=20;
-      const changed=audio.nextFrame(61.2,t);t+=20;
+      audio.nextFrame(60,t,p.id);t+=20;
+      const changed=audio.nextFrame(61.2,t,p.id);t+=20;
       details.push({id:p.id,changed});
     }
     return details;
