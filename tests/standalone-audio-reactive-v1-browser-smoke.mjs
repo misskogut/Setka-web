@@ -97,6 +97,14 @@ try{
   await toggle.click();
   await page.waitForFunction(()=>window.SetkaAudioReactiveV1?.isActive());
   assert.equal(await toggle.getAttribute("aria-pressed"),"true");
+  assert.equal(await page.locator("#st34AudioFeedback").count(),0,
+    "no EQ mode popups");
+  const silentButtons=await page.evaluate(()=>({
+    title:document.getElementById("st34AudioButton").getAttribute("title"),
+    toastDisplay:getComputedStyle(document.querySelector("#gameScreen .toast")).display
+  }));
+  assert.equal(silentButtons.title,null,"no hover captions");
+  assert.equal(silentButtons.toastDisplay,"none","no gameplay button toast labels");
   await page.waitForFunction(()=>Number(getComputedStyle(document.getElementById("st34AudioButton")).opacity)>.90);
   const onStyle=await toggle.evaluate(el=>Number(getComputedStyle(el).opacity));
   assert.ok(onStyle>.90,"ON note must be bright without a dot: "+onStyle);
@@ -145,7 +153,7 @@ try{
   });
   assert.equal(geometry.futureSafe,true,"new pattern recipes must remain untouched");
   const dnaKeys=geometry.cases.find(x=>x.id==="stereo-dna").changed;
-  for(const key of ["eyeSeparation","amplitude","spacing","zoom","stereoAngle","pointSize","glowStrength"])
+  for(const key of ["eyeSeparation","amplitude","spacing","timeSpeed","stereoAngle","pointSize","glowStrength"])
     assert.ok(dnaKeys.includes(key),"DNA must use real manual control "+key);
   const offsets=await page.evaluate(()=>{
     const a=window.SetkaAudioReactiveV1;
@@ -172,7 +180,7 @@ try{
     assert.ok(Math.max(...values)-Math.min(...values)>.05,
       "DNA must move on "+axis+" across a musical cycle: "+JSON.stringify(movement));
   }
-  assert.ok(geometry.viewport>1&&geometry.viewport<=1.05,"future renderers need universal viewport modulation");
+  assert.equal(geometry.viewport,1,"no global viewport pulse: use each pattern's native controls");
   for(const name of ["low","mid","high"])
     assert.ok(geometry.bands[name]>.1,"independent "+name+" music channel must be measured");
   console.log("MULTIBAND GEOMETRY IN ALL 7 PATTERNS",JSON.stringify(geometry));
@@ -192,7 +200,7 @@ try{
   console.log("INDEPENDENT BASS AND TREBLE RESPONSE PASS",JSON.stringify(frequencyTest));
   // The same note cycles five real equalizer variants, THEN OFF. Switching
   // styles must NOT reopen the microphone or change canonical presets.
-  const names=["Баланс","Пульс","Волна","Пространство","Детали"];
+  const names=["Баланс","Ритм","Волна","Пространство","Детали"];
   const profiles=[];
   for(let index=0;index<names.length;index++){
     if(index>0)await toggle.click();
@@ -253,8 +261,14 @@ try{
   assert.equal(new Set(dnaSignatures).size,5,
     "EQ modes must produce five actually different DNA configurations: "+JSON.stringify(dnaSignatures));
   assert.ok(profiles[1].shapes.find(p=>p.id==="stereo-dna").changes.every(([key])=>
-    ["amplitude","eyeSeparation","zoom"].includes(key)),
-    "Pulse should favor bass-driven swelling, not every control");
+    ["eyeSeparation","stereoAngle","timeSpeed","pointSize"].includes(key)),
+    "Rhythm DNA must use spiral controls, not old whole-shape zoom");
+  for(const p of profiles[1].shapes)
+    assert.ok(!p.changes.some(([key])=>key==="zoom"),
+      "Rhythm mode must not cause generic zoom pumping: "+p.id);
+  const rhythmSet=new Set(profiles[1].shapes.flatMap(p=>p.changes.map(([key])=>key)));
+  for(const key of ["waveSpeed","glitchOffset","movementSpeed","levelSpeedRatio","timeSpeed"])
+    assert.ok(rhythmSet.has(key),"Rhythm must control native motors: "+key);
   assert.ok(profiles[4].shapes.find(p=>p.id==="stereo-dna").changes.some(([key])=>key==="pointSize"),
     "Detail should activate high-frequency dots");
   console.log("FIVE EQUALIZER MODES / DOTS / ONE STREAM / 7 PATTERNS PASS",
@@ -289,7 +303,9 @@ try{
   assert.equal(await page.evaluate(()=>window.__setkaMicFixture.stopped),1,"OFF must stop microphone stream");
   await page.evaluate(()=>{window.__setkaMicFixture.denied=true});
   await toggle.click();
-  await page.waitForFunction(()=>document.querySelector("#st34AudioFeedback")?.textContent.includes("Разреши микрофон"));
+  await page.waitForFunction(()=>document.getElementById("st34AudioButton")?.dataset.error==="permission");
+  assert.equal(await page.locator("#st34AudioFeedback").count(),0,
+    "microphone errors must be silent: no on-screen banners");
   assert.equal(await toggle.getAttribute("aria-pressed"),"false","denied permission must stay off");
   await page.evaluate(()=>{window.__setkaMicFixture.denied=false});
   await toggle.click();
