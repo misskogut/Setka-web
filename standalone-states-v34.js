@@ -53,11 +53,11 @@
     const a=window.__SETKA_TESTER_CABINET_V40__?.state?.();
     if(!a?.authenticated)return "Отметки хранятся в этом браузере. Для сохранения в аккаунте требуется вход.";
     const status=window.__SETKA_PRIVATE_CORPUS_V40__?.status?.();
+    if(!activeStates().length)return "Выбранных состояний пока нет. Добавь состояние ниже.";
     if(status?.ok&&status.statesVerified&&!status.statesPending&&status.updatedAt){
       const at=new Date(status.updatedAt),date=Number.isFinite(at.getTime())?at.toLocaleString("ru-RU",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"—";
       return "Состояния и отметки сохранены в аккаунте · "+date;
     }
-    if(!activeStates().length)return "Выбранных состояний пока нет. Добавь состояние ниже.";
     if(status?.ok===false)return "Облачное сохранение не подтверждено. Изменения остаются в этом браузере.";
     return "Изменения сохранены в этом браузере. Ожидаем подтверждение аккаунта…";
   }

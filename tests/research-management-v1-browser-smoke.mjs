@@ -69,7 +69,7 @@ try{
  const stale=await front.context().newPage();stale.on('pageerror',e=>errors.push({page:'older-tab',message:e.message}));await stale.addInitScript(localApiTransport);await stale.goto(base+'/standalone-v34.html');await stale.waitForFunction(()=>!!window.SetkaStandaloneV34);
  await front.locator('#st34Nav [data-p="symptoms"]').click();await front.locator('.st34-add-state').click();await front.getByRole('button',{name:'Усталость',exact:true}).tap();await front.locator('.st34-state-card').waitFor();
  await front.locator('.st34-mark-btn').click();await front.locator('.st34-mark-editor.open input').fill('6');await front.getByRole('button',{name:'Сохранить отметку',exact:true}).tap();
- await front.getByRole('button',{name:'Проверить сохранение',exact:true}).click();await front.getByText('Состояния и отметки сохранены в аккаунте SETKA.',{exact:true}).waitFor();
+ await front.getByRole('button',{name:'Проверить сохранение',exact:true}).click();await front.getByText(/Состояния и отметки сохранены в аккаунте/).waitFor();
  const paused=await front.locator('.base-tile .thumb-canvas').first().evaluate(c=>c.toDataURL());await new Promise(r=>setTimeout(r,180));assert.equal(await front.locator('.base-tile .thumb-canvas').first().evaluate(c=>c.toDataURL()),paused,'previews pause behind a sheet');
  await stale.locator('#st34Nav [data-p="today"]').click();assert.ok(await stale.evaluate(()=>JSON.parse(localStorage.getItem('setka-standalone:v34')).symptoms.some(x=>x.name==='Усталость')));
  await front.reload();await front.locator('#st34Nav [data-p="symptoms"]').click();await front.getByText('Усталость',{exact:true}).waitFor();assert.match(await front.locator('.st34-state-now').innerText(),/6\/10/);

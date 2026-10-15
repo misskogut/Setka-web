@@ -121,7 +121,7 @@
     // Unload cannot restore the remote archive first. Keep local changes for the
     // next foreground sync instead of starting an unsafe pull in a closing page.
     if(keepalive&&!hydrated)return false;
-    const loaded=await ensureHydrated();
+    const loaded=hydrated||await ensureHydrated();
     if(!loaded){
       saveStatus({enabled:true,ok:false,build:BUILD,stage:"restore",error:"archive_restore_required_before_sync",privacy:"private-account-only",publicExposure:false});
       return false;
