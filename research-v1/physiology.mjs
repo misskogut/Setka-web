@@ -37,6 +37,8 @@ export function relatePhysio(samples,exposures){
     const at=Date.parse(sample.observedAt),key=sample.exposureId||sample.payload?.exposureId;
     const matches=(exposures||[]).filter(e=>{
       if(e.participantId!==sample.participantId)return false;
+      if(sample.deviceId&&e.deviceId&&sample.deviceId!==e.deviceId)return false;
+      if(sample.patternId&&e.patternId!==sample.patternId)return false;
       if(sample.sessionId&&e.sessionId!==sample.sessionId)return false;
       if(sample.visitId&&e.visitId&&sample.visitId!==e.visitId)return false;
       if(key&&![e.id,e.exposureId,e.originalId].includes(key))return false;

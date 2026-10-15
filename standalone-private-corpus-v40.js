@@ -30,6 +30,8 @@
       checkins:Array.isArray(d.checkins)?d.checkins:[],
       events:(Array.isArray(d.events)?d.events:[]).filter(e=>!(["ui_snapshot"].includes(e.type)||e.payload?.replayCapture)||window.__SETKA_TESTER_CABINET_V40__?.state?.()?.consented===true),
       patternExposures:Array.isArray(d.patternExposures)?d.patternExposures:[],
+      activityIntervals:Array.isArray(d.activityIntervals)?d.activityIntervals:[],
+      openedPatterns:Array.isArray(d.openedPatterns)?d.openedPatterns:[],
       physio:d.physio||{samples:[],sources:[]},
       invites:Array.isArray(d.invites)?d.invites:[],
       settings:d.settings||{}
@@ -58,6 +60,8 @@
     d.checkins=mergeRecords(d.checkins,payload.checkins,"checkins",10000);
     d.events=mergeRecords(d.events,payload.events,"events",30000);
     d.patternExposures=mergeRecords(d.patternExposures,payload.patternExposures,"patternExposures",30000);
+    d.activityIntervals=mergeRecords(d.activityIntervals,payload.activityIntervals,"activityIntervals",10000);
+    const opened=new Map();for(const x of [...(d.openedPatterns||[]),...(payload.openedPatterns||[])])if(x.patternId&&(!opened.has(x.patternId)||Date.parse(x.firstOpenedAt)<Date.parse(opened.get(x.patternId).firstOpenedAt)))opened.set(x.patternId,x);d.openedPatterns=[...opened.values()];
     d.invites=mergeRecords(d.invites,payload.invites,"invites",5000);
     const lp=d.physio||{samples:[],sources:[]},rp=payload.physio||{};
     d.physio={...rp,...lp,samples:mergeRecords(lp.samples,rp.samples,"physioSamples",10000),sources:mergeRecords(lp.sources,rp.sources,"physioSources",2000)};
@@ -85,7 +89,7 @@
     return [d.version||34,s.length,sessionsDigest,n.length,notesDigest,
       (d.symptoms||[]).length,symptomsDigest,(d.checkins||[]).length,checkinsDigest,
       e.length,last(e).id||"",x.length,last(x).exposureId||"",last(x).durationMs||0,
-      p.length,last(p).id||"",f.length,digest(f),digest(d.settings)].join("|");
+      p.length,last(p).id||"",f.length,digest(f),digest(d.settings),digest(d.openedPatterns),digest(d.activityIntervals)].join("|");
   }
   async function post(payload,keepalive=false){const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json",apikey:KEY},body:JSON.stringify(payload),keepalive});const out=await r.json().catch(()=>({}));if(!r.ok){const e=new Error(out.error||`http_${r.status}`);e.status=r.status;throw e}return out}
   async function pull(){const s=session();if(!s?.token)throw new Error("auth_required");return post({action:"pull",sessionToken:s.token,deviceId:did()})}
@@ -113,6 +117,9 @@
   }
   async function sync(force=false,keepalive=false){
     const s=session(),deviceId=did();if(!s?.token||!deviceId){saveStatus({enabled:false,reason:"not_authenticated",build:BUILD,privacy:"private-account-only"});return false}
+    // Unload cannot restore the remote archive first. Keep local changes for the
+    // next foreground sync instead of starting an unsafe pull in a closing page.
+    if(keepalive&&!hydrated)return false;
     const loaded=await ensureHydrated();
     if(!loaded){
       saveStatus({enabled:true,ok:false,build:BUILD,stage:"restore",error:"archive_restore_required_before_sync",privacy:"private-account-only",publicExposure:false});
@@ -128,6 +135,8 @@
   function schedule(ms=1200){clearTimeout(timer);timer=setTimeout(()=>sync(false),ms)}
   window.addEventListener("setka:standalone-event",()=>schedule(1000));
   window.addEventListener("setka:pattern-exposure",()=>schedule(800));
+  window.addEventListener('setka:pattern-first-open',()=>schedule(800));
+  window.addEventListener('setka:activity-interval',()=>schedule(800));
   window.addEventListener("setka:physio-sample",()=>{if(!physioTimer)physioTimer=setTimeout(()=>{physioTimer=0;sync(false)},10000)});
   window.addEventListener("setka:v34-sync-request",()=>schedule(900));
   window.addEventListener("setka:favorite-saved",()=>schedule(700));

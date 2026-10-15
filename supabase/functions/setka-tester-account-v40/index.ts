@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {issueInvites} from './invites.mjs';
 const db=createClient(Deno.env.get("SUPABASE_URL")!,Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,{auth:{persistSession:false,autoRefreshToken:false}});
 const H={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type","Access-Control-Allow-Methods":"POST, OPTIONS","Content-Type":"application/json; charset=utf-8"};
 const J=(d:any,s=200)=>new Response(JSON.stringify(d),{status:s,headers:H});
@@ -55,6 +56,13 @@ async function consent(tid:string){const a=await account(tid);return{consented:!
 async function recordConsent(tid:string){const now=new Date().toISOString(),textHash=await sha(CONSENT_TEXT),iq=await db.from("prototype_v40_tester_consents").insert({tester_id:tid,consent_version:CONSENT_VERSION,accepted:true,accepted_at:now,text_hash:textHash});if(iq.error)throw iq.error;const uq=await db.from("prototype_v40_tester_accounts").update({consent_version:CONSENT_VERSION,consent_at:now,updated_at:now}).eq("tester_id",tid);if(uq.error)throw uq.error;return{version:CONSENT_VERSION,at:now}}
 async function statusFor(tid:string,authenticated=false,expiresAt:any=null){const a=await ensureAccount(tid),c=await consent(tid);return{testerId:tid,authenticated,hasPassword:!!a.password_hash,passwordSetAt:a.password_set_at||null,consented:c.consented,consentVersion:c.version,consentAt:c.at,requiredConsentVersion:CONSENT_VERSION,sessionExpiresAt:expiresAt||null,privacyMode:"private-account-corpus",personalizationCorpus:authenticated?"available":"locked",researchBridge:c.consented?"eligible":"off"}}
 Deno.serve(async req=>{if(req.method==="OPTIONS")return new Response("ok",{headers:H});if(req.method!=="POST")return J({error:"method_not_allowed"},405);try{const b=await req.json().catch(()=>({})),action=T(b.action,60),deviceId=T(b.deviceId,180),token=T(b.sessionToken,200);
+ if(action==='issue-invites'||action==='my-invites'){
+  const s=await session(token);if(!s)return J({error:'auth_required'},401);
+  const a=await account(s.tester_id);if(!a?.active)return J({error:'active_account_required'},403);
+  if(action==='my-invites'){const q=await db.from('setka_research_v1_invites').select('tester_id,batch_id,issued_by_tester_id,invite_label,active,created_at,claimed_at,consumed_at,password_set_at').eq('issued_by_tester_id',s.tester_id).order('created_at',{ascending:false}).limit(10000);if(q.error)throw q.error;return J({ok:true,items:q.data||[],truncated:(q.data||[]).length===10000});}
+  try{return J(await issueInvites(b,{testerId:s.tester_id},async(name,args)=>{const q=await db.rpc(name,args);if(q.error)throw new Error(q.error.message);return q.data}));}
+  catch(e){return J({error:e.message},/invalid_|request_already_issued|batch_complete|batch_not_owned/.test(e.message)?409:503);}
+ }
  if(action==="consent-copy")return J({ok:true,version:CONSENT_VERSION,text:CONSENT_TEXT});
  if(action==="claim"){
   const code=T(b.testerCode,120).toUpperCase();if(!deviceId||!code)return J({error:"missing_identity"},400);const rr=await rate(`claim|${deviceId}`,"claim",8,15);if(rr.blocked)return J({error:"too_many_attempts"},429);const hash=await sha(code),q=await db.from("prototype_v34_tester_codes").select("tester_id,active,claimed_device_id,claimed_at,consumed_at").eq("claim_hash",hash).maybeSingle();if(q.error)throw q.error;if(!q.data||!q.data.active||q.data.consumed_at){await attempt(rr.scopeHash,"claim",false);return J({error:"invalid_tester_code"},404)}
