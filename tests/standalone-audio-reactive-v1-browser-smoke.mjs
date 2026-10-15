@@ -88,7 +88,11 @@ try{
     return details;
   });
   assert.equal(frame.length,7);
-  frame.forEach(x=>assert.ok(x.changed>61.9,"audible music must produce visibly stronger motion in "+x.id+": "+JSON.stringify(x)));
+  // Musical expressivity must come from GEOMETRY, not 7x animation speed.
+  frame.forEach(x=>assert.ok(x.changed>60&&x.changed<61.2,
+    "music clock should slow and remain continuous in "+x.id+": "+JSON.stringify(x)));
+  const dandelion=frame.find(x=>x.id==="dandelion");
+  assert.ok(dandelion.changed<60.60,"Dandelion must not spin at audio-driven high speed: "+JSON.stringify(dandelion));
   const geometry=await page.evaluate(()=>{
     const audio=window.SetkaAudioReactiveV1;
     const patterns=window.SetkaApp.getPatterns();
@@ -108,9 +112,31 @@ try{
   assert.equal(geometry.cases.length,7);
   geometry.cases.forEach(x=>{
     assert.equal(x.untouched,true,"canonical configuration was mutated: "+x.id);
-    assert.ok(x.changed.length>=3,"music should modulate three parameters in "+x.id+": "+JSON.stringify(x));
+    assert.ok(x.changed.length>=4,"music should modulate multiple geometric controls in "+x.id+": "+JSON.stringify(x));
   });
   assert.equal(geometry.futureSafe,true,"new pattern recipes must remain untouched");
+  const dnaKeys=geometry.cases.find(x=>x.id==="stereo-dna").changed;
+  for(const key of ["eyeSeparation","amplitude","spacing","zoom","stereoAngle","pointSize","glowStrength"])
+    assert.ok(dnaKeys.includes(key),"DNA must use real manual control "+key);
+  const offsets=await page.evaluate(()=>{
+    const a=window.SetkaAudioReactiveV1;
+    return {dna:a.offsets("stereo-dna",390,844),dandelion:a.offsets("dandelion",390,844)};
+  });
+  for(const p of Object.values(offsets)){
+    assert.ok(Number.isFinite(p.x)&&Number.isFinite(p.y));
+    assert.ok(Math.abs(p.x)<=44&&Math.abs(p.y)<=42);
+  }
+  // Both canvas axes are driven by independent music bands; results cannot
+  // be merely the original image moving faster.
+  const movement=await page.evaluate(()=>{
+    const a=window.SetkaAudioReactiveV1,old=a.offsets("stereo-dna",390,844);
+    return new Promise(resolve=>setTimeout(()=>{
+      const updated=a.offsets("stereo-dna",390,844);
+      resolve({before:old,after:updated});
+    },180));
+  });
+  assert.ok(Math.abs(movement.after.x-movement.before.x)>.05,"DNA must move horizontally");
+  assert.ok(Math.abs(movement.after.y-movement.before.y)>.05,"DNA must move vertically");
   assert.ok(geometry.viewport>1&&geometry.viewport<=1.05,"future renderers need universal viewport modulation");
   for(const name of ["low","mid","high"])
     assert.ok(geometry.bands[name]>.1,"independent "+name+" music channel must be measured");
