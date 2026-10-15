@@ -53,13 +53,15 @@
     const a=window.__SETKA_TESTER_CABINET_V40__?.state?.();
     if(!a?.authenticated)return "Отметки хранятся в этом браузере. Для сохранения в аккаунте требуется вход.";
     const status=window.__SETKA_PRIVATE_CORPUS_V40__?.status?.();
-    if(status?.ok&&status.updatedAt){
-      const at=new Date(status.updatedAt);
-      const date=Number.isFinite(at.getTime())?at.toLocaleString("ru-RU",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"—";
-      return "Последняя подтверждённая облачная синхронизация: "+date;
+    if(!activeStates().length)return "Выбранных состояний пока нет. Добавь состояние ниже.";
+    if(status?.ok&&status.statesVerified&&!status.statesPending&&status.updatedAt){
+      const at=new Date(status.updatedAt),date=Number.isFinite(at.getTime())?at.toLocaleString("ru-RU",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"—";
+      return "Состояния и отметки сохранены в аккаунте · "+date;
     }
-    return "Облачное сохранение пока не подтверждено. Не очищай данные браузера.";
+    if(status?.ok===false)return "Облачное сохранение не подтверждено. Изменения остаются в этом браузере.";
+    return "Изменения сохранены в этом браузере. Ожидаем подтверждение аккаунта…";
   }
+
   function renderCloudStatus(parent){
     const wrap=document.createElement("div");
     wrap.className="st34-states-sync";
@@ -74,7 +76,7 @@
           const ok=await window.__SETKA_PRIVATE_CORPUS_V40__?.sync?.();
           const cloud=window.__SETKA_PRIVATE_CORPUS_V40__?.status?.();
           const local=data();
-          if(ok&&cloud?.ok&&Number(cloud.counts?.symptoms)>=local.symptoms.length&&Number(cloud.counts?.checkins)>=local.checkins.length)
+          if(ok&&cloud?.ok&&cloud.statesVerified&&!cloud.statesPending)
             caption.textContent="Состояния и отметки сохранены в аккаунте SETKA.";
           else caption.textContent="Не удалось подтвердить сохранение. Данные пока остаются в этом браузере.";
         }catch(_){caption.textContent="Нет подтверждения облачного сохранения. Локальные данные не удалены."}
@@ -89,10 +91,10 @@
   function addState(name){
     name=String(name||"").trim();if(!name)return false;
     if(activeStates().some(x=>x.name.toLowerCase()===name.toLowerCase()))return false;
-    data().symptoms.push({id:C.id("sym"),name,active:true,lastIntensity:0,createdAt:new Date().toISOString()});
+    data().symptoms.push({id:C.id("sym"),name,active:true,lastIntensity:0,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});
     C.save();
     if(!storedLocally(data().symptoms.at(-1).id))alert("Состояние пока не удалось сохранить на устройстве. Не закрывай приложение.");
-    C.recordEvent?.("symptom_added",{name},false);
+    C.recordEvent?.("symptom_added",{symptomId:data().symptoms.at(-1).id,name},false);
     requestStateSync();
     return true;
   }
@@ -147,7 +149,7 @@
     const editor=document.createElement("div");editor.className="st34-mark-editor";
     const value=document.createElement("div");value.className="st34-mark-value";value.textContent=`${latest}/10`;editor.appendChild(value);
     const slider=document.createElement("input");slider.type="range";slider.min=0;slider.max=10;slider.step=1;slider.value=latest;slider.oninput=()=>value.textContent=`${slider.value}/10`;editor.appendChild(slider);
-    const save=document.createElement("button");save.className="st34-mark-save";save.textContent="Сохранить отметку";save.onclick=()=>{const v=Number(slider.value),now=new Date().toISOString();s.lastIntensity=v;data().checkins.push({id:C.id("check"),symptomId:s.id,sessionId:null,phase:"standalone",intensity:v,observedAt:now,localOffsetMinutes:C.localOffset()});C.save();C.recordEvent?.("symptom_checkin",{symptomId:s.id,intensity:v},false);requestStateSync();showStates(range)};editor.appendChild(save);card.appendChild(editor);return editor;
+    const save=document.createElement("button");save.className="st34-mark-save";save.textContent="Сохранить отметку";save.onclick=()=>{const v=Number(slider.value),now=new Date().toISOString();s.lastIntensity=v;s.updatedAt=now;data().checkins.push({id:C.id("check"),symptomId:s.id,sessionId:null,phase:"standalone",intensity:v,observedAt:now,localOffsetMinutes:C.localOffset()});C.save();C.recordEvent?.("symptom_checkin",{symptomId:s.id,intensity:v},false);requestStateSync();showStates(range)};editor.appendChild(save);card.appendChild(editor);return editor;
   }
 
   function renderStateCard(parent,s,range){
@@ -207,7 +209,7 @@
 
   // Archive restoration is asynchronous. If this screen was already open,
   // repaint it with restored states rather than leaving the initial empty UI.
-  window.addEventListener("setka:v40-private-corpus-restored",()=>{
+  for(const event of ["setka:v40-private-corpus-restored","setka:states-restored"])window.addEventListener(event,()=>{
     const layer=document.getElementById("st34Layer");
     if(layer&&!layer.classList.contains("hidden")&&layer.querySelector(".st-title")?.textContent?.trim()==="Состояния")
       showStates(currentRange);

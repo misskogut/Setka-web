@@ -46,7 +46,7 @@ async function ensureLegacyArchive(testerId:string){
   const favorites=(fav.data||[]).map((x:any)=>({id:x.favorite_id||`saved-${x.config_key}`,baseId:x.pattern_id,patternId:x.pattern_id,configKey:x.config_key,config:x.config||{},createdAt:x.saved_at,savedAt:x.saved_at,sourceType:x.source_type,updatedAt:x.updated_at}));
   if(!payload.sessions.length&&!payload.notes.length&&!payload.events.length&&!payload.patternExposures.length&&!favorites.length)return;
   const now=new Date().toISOString(),captured=snap.data?.[0]?.captured_at||now;
-  const iq=await db.from("prototype_v37_tester_private_archives").upsert({device_id:deviceId,tester_id:testerId,schema_version:41,payload,favorites:stripHeavy(favorites),captured_at:captured,updated_at:now},{onConflict:"device_id"});if(iq.error)throw iq.error;
+  const iq=await db.from("prototype_v37_tester_private_archives").upsert({device_id:deviceId,tester_id:testerId,schema_version:41,payload,favorites:stripHeavy(favorites),captured_at:captured,updated_at:now},{onConflict:"device_id",ignoreDuplicates:true});if(iq.error)throw iq.error;
 }
 Deno.serve(async req=>{
  if(req.method==="OPTIONS")return new Response("ok",{headers:H});
@@ -65,8 +65,9 @@ Deno.serve(async req=>{
   if(action==="sync"){
     if(!deviceId)return J({error:"missing_device_id"},400);
     const payload=cleanArchive(b.archive),favorites=arr(stripHeavy(b.favorites),10000),capturedAt=b.capturedAt?new Date(b.capturedAt).toISOString():new Date().toISOString(),now=new Date().toISOString();
-    const q=await db.from("prototype_v37_tester_private_archives").upsert({device_id:deviceId,tester_id:s.tester_id,schema_version:41,payload,favorites,captured_at:capturedAt,updated_at:now},{onConflict:"device_id"}).select("device_id,tester_id,captured_at,updated_at").single();if(q.error)throw q.error;
-    return J({ok:true,testerId:s.tester_id,updatedAt:q.data.updated_at,privacy:"private-account-only",visuals:"recipe-only",counts:counts(payload,favorites)})
+    const q=await db.rpc("setka_private_archive_write_v1",{p_device_id:deviceId,p_tester_id:s.tester_id,p_payload:payload,p_favorites:favorites,p_captured_at:capturedAt});if(q.error)throw q.error;
+    const receipt=q.data.stateHistory,confirmed={...payload,symptoms:receipt.symptoms,checkins:receipt.checkins};
+    return J({ok:true,testerId:s.tester_id,updatedAt:q.data.updatedAt,stateHistory:receipt,privacy:"private-account-only",visuals:"recipe-only",counts:counts(confirmed,favorites)})
   }
   if(action==="pull"){
     await ensureLegacyArchive(s.tester_id);
