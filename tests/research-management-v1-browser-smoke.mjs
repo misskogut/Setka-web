@@ -9,7 +9,7 @@ try{
  const catalog=patterns.map(x=>({pattern_id:x.id,title:x.id==='dandelion'?'Одуванчик':x.title,revision:1})),front=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true}),errors=[];
  front.on('pageerror',e=>errors.push(e.message));
  let ownIssued=[];
- await front.route('**/functions/v1/**',async r=>{const b=r.request().postDataJSON()||{},url=r.request().url();let out={ok:true,items:[],notes:[],metrics:{},profile:{}};
+ await front.context().route('**/functions/v1/**',async r=>{const b=r.request().postDataJSON()||{},url=r.request().url();let out={ok:true,items:[],notes:[],metrics:{},profile:{}};
   if(url.endsWith('setka-research-admin-v1'))out={ok:true,items:catalog};
   if(url.endsWith('setka-tester-account-v40')){
    if(b.action==='status')out={ok:true,claimed:true,authenticated:true,hasPassword:true,consented:true,testerId:'T-OWNERAAA'};
@@ -17,7 +17,7 @@ try{
    if(b.action==='issue-invites'){const items=Array.from({length:b.count},(_,i)=>({testerId:`T-FIXTURE${i}`,code:`SETKA-ISOLATED-${i}`}));ownIssued.push(...items.map(x=>({tester_id:x.testerId,invite_label:b.label,active:true,issued_by_tester_id:'T-OWNERAAA',created_at:new Date().toISOString()})));out={ok:true,batchId:'00000000-0000-4000-8000-000000000021',items};}
   }
   if(url.endsWith('setka-tester-archive-v37'))out={ok:true,archive:{payload:{openedPatterns:[]},favorites:[],sourceDevices:1}};
-  await r.fulfill({status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*'},body:JSON.stringify(out)});
+  await r.fulfill({status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*','access-control-allow-headers':'content-type,apikey,authorization','access-control-allow-methods':'POST,OPTIONS'},body:JSON.stringify(out)});
  });
  await front.addInitScript(()=>localStorage.setItem('setka-v40:cabinet-session',JSON.stringify({token:'isolated-fixture-only'})));
  await front.goto(base+'/standalone-v34.html',{waitUntil:'domcontentloaded'});await front.waitForFunction(()=>!!window.__SETKA_PATTERN_CATALOG_V1__&&!!window.SetkaStandaloneV34.activity);
@@ -41,12 +41,12 @@ try{
  const start='2026-10-14T17:00:00Z',cfg=patterns.find(x=>x.id==='dandelion').defaults,key=configKey(cfg,'dandelion'),issuer='T-OWNERAAA';
  const raw={accounts:[{tester_id:issuer,created_at:start}],devices:[{device_id:'fixture-device',subject_key:issuer}],patternCatalog:catalog,patternNameHistory:[{pattern_id:'dandelion',revision:1,title:'Одуванчик',created_at:start}],issuedInvites:[],inviteBatches:[],archives:[{device_id:'fixture-device',tester_id:issuer,payload:{sessions:[{id:'s',startedAt:start,endedAt:'2026-10-14T17:00:20Z',measuredActiveMs:20000}],patternExposures:[{exposureId:'e',sessionId:'s',patternId:'dandelion',patternVersion:1,configKey:key,config:cfg,startedAt:start,endedAt:'2026-10-14T17:00:20Z',durationMs:20000}],activityIntervals:[{id:'a',exposureId:'e',sessionId:'s',patternId:'dandelion',configKey:key,startedAt:start,endedAt:'2026-10-14T17:00:15Z',durationMs:15000,touches:3,moves:10,configChanges:2,coverage:'observed'}],physio:{samples:[{id:'p',sessionId:'s',exposureId:'e',patternId:'dandelion',configKey:key,value:82,metric:'heart_rate',unit:'bpm',observedAt:'2026-10-14T17:00:05Z',sourceType:'ble_heart_rate',quality:'ok',payload:{patternVisible:true,config:cfg}}]}}}]};
  const sources=['accounts','accountSessions','accountExposures','accountFavorites','issuedInvites','patternCatalog'].map(key=>({key,ok:true,truncated:false,label:key,count:0}));let chunks=[];
- await admin.route('**/functions/v1/**',async r=>{const b=r.request().postDataJSON();let out={ok:true};
+ await admin.context().route('**/functions/v1/**',async r=>{const b=r.request().postDataJSON();let out={ok:true};
   if(b.action==='overview')out={ok:true,data:buildData(raw,sources)};
   if(b.action==='rename-pattern'){const x=catalog.find(x=>x.pattern_id===b.patternId);assert.equal(b.expectedRevision,x.revision);x.title=b.title;x.revision++;raw.patternNameHistory.push({...x,created_at:start});out={ok:true,item:x};}
   if(b.action==='issue-invites'){chunks.push(b.count);const items=Array.from({length:b.count},(_,i)=>({testerId:`T-CI-${raw.issuedInvites.length+i}`,code:`SETKA-CI-${raw.issuedInvites.length+i}`})),batchId=b.batchId||'00000000-0000-4000-8000-000000000022';raw.issuedInvites.push(...items.map(x=>({tester_id:x.testerId,invite_label:b.label,batch_id:batchId,active:true,created_at:start,admin_key_id:'isolated'})));if(!raw.inviteBatches.length)raw.inviteBatches.push({id:batchId,label:b.label,requested_count:b.requestedCount,created_at:start});out={ok:true,items,batchId};}
   if(b.action==='replay')out={ok:true,coverage:'partial',session:{started_at:start},durationMs:20000,events:[{id:'one',type:'gesture_start',tMs:7000,payload:{}}],states:[{tMs:0,state:{view:'game',patternId:'dandelion',patternVersion:1,config:cfg,configKey:key,frame:44}}]};
-  await r.fulfill({status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*'},body:JSON.stringify(out)});
+  await r.fulfill({status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*','access-control-allow-headers':'content-type,apikey,authorization','access-control-allow-methods':'POST,OPTIONS'},body:JSON.stringify(out)});
  });
  await admin.goto(base+'/standalone-research-admin-v1.html');await admin.locator('#key').fill('isolated-admin-fixture-only');await admin.locator('#login-button').click();await admin.locator('#workspace').waitFor();assert.equal(await admin.locator('.nav').count(),6);
  await admin.locator('.nav[data-page="patterns"]').click();await admin.locator('.pattern-card[data-id="dandelion"]').click();await admin.getByRole('button',{name:'Изменить название',exact:true}).click();await admin.locator('#pattern-title').fill('Изменено в изолированной админке');await admin.getByRole('button',{name:'Сохранить для всех',exact:true}).click();await admin.locator('#detail-content').getByRole('heading',{name:'Изменено в изолированной админке',exact:true}).waitFor();
