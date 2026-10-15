@@ -161,7 +161,7 @@
       if(ticket===seq){pending=false;renderButton()}
     }
   }
-  function nextFrame(baseFrame,now){
+  function nextFrame(baseFrame,now,patternId=null){
     if(!active||!analyser||context?.state!=="running"||!frequencies||!waveform)return baseFrame;
     analyser.getByteFrequencyData(frequencies);
     analyser.getByteTimeDomainData(waveform);
@@ -194,8 +194,14 @@
     // Attack/release on each band keeps geometry continuous and prevents
     // rapid frequency noise from turning into violent pattern jumps.
     // Waveform RMS supplements low frequencies on bass-poor phone mics.
-    const targetLow=clamp(Math.max(low*.76,energy*.38));
-    const targets={low:targetLow,mid:clamp(Math.max(mid,energy*.24)),high:clamp(Math.max(high,energy*.16))};
+    // Keep musical bands distinct. Previous shared energy leakage made bass,
+    // vocals and treble move nearly everything together.
+    const targetLow=clamp(Math.max(low*.94,energy*.08));
+    const targets={
+      low:targetLow,
+      mid:clamp(Math.max(mid*.96,energy*.045)),
+      high:clamp(Math.max(high*.96,energy*.035))
+    };
     for(const key of ["low","mid","high"]){
       const goal=targets[key];
       bands[key]+=((goal>bands[key])?.19:.09)*(goal-bands[key]);
@@ -218,55 +224,111 @@
       lastSilentHintAt=now;
       announce("Микрофон не слышит музыку · включи звук рядом");
     }
-    // One shared animation clock drives existing AND future renderers. A
-    // bounded 1x..7x speed with attack/release is perceivable but continuous.
-    // Runtime configuration, color, stored frames and favorites stay intact.
-    return baseFrame+(deltaMs/16.6667)*smoothed*6;
+    // Old 1x..7x speed obscured every geometric response, especially
+    // Dandelion's native 0.01 rad/frame rotation. In music mode the geometry
+    // performs; animation advances CALMLY. This is phase-continuous on toggle.
+    const audioRate=patternId==="dandelion"
+      ?.19+smoothed*.16
+      :.60+smoothed*.25;
+    return baseFrame+(deltaMs/16.6667)*(audioRate-1);
   }
-  // Small, safe mappings to actual parameters of the seven existing
-  // renderers.  Do not touch discrete topology counts, colour modes, stereo
-  // angle or user-chosen values: render overrides exist for ONE frame only.
+  // Auditory energy changes actual geometry rather than just clock speed.
+  // Discrete topology (point/branch count) and palette stay user-controlled.
+  // Each entry: [auditory band, maximum proportional change, minimum,
+  // maximum, behaviour]. "swing" moves both ways; "grow" emphasizes peaks.
   const mappings={
-    "tentacle-orbit":{baseRadius:["low",.40,0,120],circleSize:["high",.50,.1,10],lineWeight:["mid",.35,.1,8]},
-    "dandelion":{zoom:["low",.16,.2,5],pointSize:["high",.40,.3,16],lineWeight:["mid",.32,.1,6]},
-    "fish-wave":{waveAmplitude:["low",.85,0,120],ringSpacing:["mid",.09,1,30],strokeW:["high",.42,.2,7]},
-    "breathing-fractal":{pulseAmp:["low",.75,0,2],baseLen:["mid",.18,10,150],strokeW:["high",.35,.2,7]},
-    "breathing-fractal-growth":{zoom:["low",.13,.2,5],baseLen:["mid",.20,10,150],strokeW:["high",.38,.2,7]},
-    "rgb-glitch-rings":{waveAmplitude:["low",.90,0,130],glitchOffset:["high",.85,0,12],strokeW:["mid",.36,.2,7]},
-    "stereo-dna":{amplitude:["low",.38,5,150],spacing:["mid",.11,3,40],pointSize:["high",.45,.5,9]}
+    "tentacle-orbit":{
+      baseRadius:["low",.48,0,100,"swing"],tentacleLength:["low",.14,10,800,"swing"],
+      movementSpeed:["mid",.18,.05,10,"swing"],lineWeight:["mid",.42,.1,10,"grow"],
+      circleSize:["high",.65,.2,20,"grow"],colorSpeed:["high",.18,.05,10,"swing"]
+    },
+    "dandelion":{
+      zoom:["low",.30,.2,5,"swing"],tSpeed:["low",.25,.001,.02,"swing"],
+      angleSpeed:["mid",.20,.001,.05,"swing"],lineWeight:["mid",.55,.1,10,"grow"],
+      pointSize:["high",.65,.2,20,"grow"]
+    },
+    "fish-wave":{
+      waveAmplitude:["low",.95,0,200,"swing"],ringSpacing:["mid",.20,1,80,"swing"],
+      strokeW:["high",.58,.3,8,"grow"],glitchOffset:["high",.85,0,20,"swing"],
+      ringAlpha:["high",.20,0,255,"grow"]
+    },
+    "breathing-fractal":{
+      pulseAmp:["low",.80,.05,2,"swing"],baseLen:["mid",.33,10,180,"swing"],
+      pulseSpd:["mid",.23,.001,.3,"swing"],strokeW:["high",.55,.1,8,"grow"]
+    },
+    "breathing-fractal-growth":{
+      zoom:["low",.28,.3,3,"swing"],baseLen:["mid",.30,10,180,"swing"],
+      levelSpeedRatio:["high",.20,.2,3,"swing"],
+      pulseSpeed:["mid",.20,.001,.1,"swing"],strokeW:["high",.55,.1,8,"grow"]
+    },
+    "rgb-glitch-rings":{
+      waveAmplitude:["low",.98,0,200,"swing"],baseSpacing:["mid",.25,1,80,"swing"],
+      strokeW:["mid",.42,.3,8,"grow"],glitchOffset:["high",.95,0,20,"swing"],
+      ringAlpha:["high",.18,0,255,"grow"]
+    },
+    "stereo-dna":{
+      // Original DNA gesture controls: vertical=spacing, horizontal=amplitude,
+      // pinch=zoom, two-finger horizontal=stereo angle. Music additionally
+      // opens/closes the two spirals (eye separation) and animates glow.
+      amplitude:["low",.55,10,100,"swing"],
+      eyeSeparation:["low",.45,20,320,"swing"],
+      zoom:["low",.22,.3,5,"swing"],
+      spacing:["mid",.28,4,30,"swing"],
+      stereoAngle:["mid",.25,.01,.6,"swing"],
+      pointSize:["high",.55,1,8,"grow"],
+      glowStrength:["high",.32,20,255,"grow"]
+    }
   };
   function visualBands(){
     if(active)return bands;
-    const k=clamp(1-(performance.now()-releaseAt)/380);
+    const k=clamp(1-(performance.now()-releaseAt)/500);
     if(!releaseAt||k<=0)return null;
     return Object.fromEntries(Object.entries(releaseBands).map(([name,v])=>[name,v*k]));
   }
+  const wave=(time,kind)=>{
+    if(kind==="low")return Math.sin(time*1.45);
+    if(kind==="mid")return Math.sin(time*2.05+.7);
+    return Math.sin(time*2.8+1.4);
+  };
   function renderConfig(original,patternId){
     const live=visualBands();
     if(!live||!original||typeof original!=="object")return original;
     const recipe=mappings[patternId];
-    if(!recipe)return original; // Future renderers still get shared zoom/clock
-    const out={...original};
-    for(const [key,[bandName,strength,lo,hi]] of Object.entries(recipe)){
+    if(!recipe)return original;
+    const out={...original},time=performance.now()/1000;
+    for(const [key,[channel,strength,min,max,mode]] of Object.entries(recipe)){
       if(!Number.isFinite(original[key]))continue;
-      const level=clamp(live[bandName]+live.beat*(bandName==="low"?.20:.06));
-      out[key]=clamp(original[key]*(1+strength*level),lo,hi);
+      const level=clamp(live[channel]);
+      const signal=mode==="grow"?level:level*wave(time,channel);
+      out[key]=clamp(original[key]*(1+strength*signal),min,max);
     }
     return out;
   }
-  // All pattern renderers, including ones added later, respond subtly to the
-  // overall musical envelope through their shared viewport. Always >1 scale:
-  // black background stays fully covered and there are no edge artefacts.
+  // Motion is applied INSIDE the DNA/Dandelion draw, after the renderer
+  // clears its background. Moving the whole canvas would smear/crop trails.
+  // Frequency envelopes control how far the figure travels in X and Y.
+  function offsets(patternId,w,h){
+    const live=visualBands();
+    if(!live||!["stereo-dna","dandelion"].includes(patternId))return{x:0,y:0};
+    const time=performance.now()/1000;
+    const mult=patternId==="stereo-dna"?1:.62;
+    return{
+      x:Math.sin(time*1.18+0.4)*clamp(live.low*mult,0,1)*Math.min(44,w*.11),
+      y:Math.sin(time*.82+1.1)*clamp(live.mid*mult,0,1)*Math.min(42,h*.055)
+    };
+  }
+  // Fall back for newly added renderers; their own geometry controls can be
+  // registered later, but shared animation and breathing keep working.
   function viewportScale(){
     const live=visualBands();
-    return live?1+clamp(live.low*.030+live.beat*.012,0,.05):1;
+    return live?1+clamp(live.low*.026+live.beat*.008,0,.038):1;
   }
   button.addEventListener("click",()=>{if(active||pending)stop(false);else start()});
   window.addEventListener("setka:view",e=>{if(e.detail?.view!=="game"&&(active||pending))stop()});
   document.addEventListener("visibilitychange",()=>{if(document.hidden&&(active||pending))stop()});
   window.addEventListener("pagehide",()=>{if(active||pending)stop()});
   window.SetkaAudioReactiveV1={
-    isActive:()=>active, nextFrame, renderConfig, viewportScale, stop,
+    isActive:()=>active, nextFrame, renderConfig, offsets, viewportScale, stop,
     status:()=>({active,pending,source:active?"microphone":"none",level:active?smoothed:0,heard:active&&wasAudible,
       bands:active?{...bands}:{low:0,mid:0,high:0,beat:0}})
   };
