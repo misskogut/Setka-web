@@ -163,7 +163,7 @@ Deno.serve(async(req:Request)=>{
     if(b.action==='save-experiment')return await saveExperiment(b,adminId);
     if(b.action==='overview')return await overview();
     if(b.action==='replay')return await replay(b);
-    if(b.action==='check')return reply({ok:true,projectId:'gfchgaphzhxufwdhrcis',version:'SETKA-RESEARCH-1.1.0'});
+    if(b.action==='check')return reply({ok:true,projectId:'gfchgaphzhxufwdhrcis',version:'SETKA-RESEARCH-1.4.0'});
     return reply({error:'unknown_action'},400);
   }catch(e){console.error('Research read failed',e instanceof Error?e.message:'unknown');return reply({error:'data_unavailable'},503);}
 });

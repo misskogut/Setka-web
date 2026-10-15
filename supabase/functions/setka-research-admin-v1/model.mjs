@@ -36,7 +36,7 @@ function exposureRow(x, participantId, source, deviceId=null) {
   if (!xid || !pid) return null;
   const sid=x.session_id || x.sessionId;
   return { id:`${participantId}::${xid}`, originalId:String(xid), participantId,deviceId,source,visitId:x.visit_id||x.visitId||null,patternVersion:x.pattern_version??x.patternVersion??null,
-    current:source==='account',sessionId:sid ? `${participantId}::${sid}` : null, patternId:pid,
+    current:source==='account'||source==='account-archive',sessionId:sid ? `${participantId}::${sid}` : null, patternId:pid,
     configKey:x.config_key || x.configKey || null,config:x.config || null,
     startedAt:x.started_at || x.startedAt || null,endedAt:x.ended_at || x.endedAt || null,
     durationMs:num(x.duration_ms ?? x.durationMs),phase:x.context || x.phase || null,

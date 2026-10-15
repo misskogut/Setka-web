@@ -31,3 +31,7 @@ test('community contribution uses measurements in exact usage interval, with no 
  const pulse=vm.runInNewContext(source.slice(start,end)+'\npulse',{C:{getData:()=>({physio:{samples}}),pulse:{realHeartRates}},Date,Number,Math});
  const out=pulse('s',{patternId:'dandelion',configKey:'cfg',startedMs:5000,endedMs:10000},{startedAt:'2026-10-14T17:00:00Z'});assert.equal(out.avg,82);assert.equal(out.samples,1);assert.equal(pulse('s',{patternId:'dandelion',configKey:'missing',startedMs:0,endedMs:15000},{startedAt:'2026-10-14T17:00:00Z'}),null);
 });
+test('a verified account archive remains current before the canonical projection arrives',()=>{
+ const d=buildData({accounts:[{tester_id:'A'}],archives:[{tester_id:'A',device_id:'isolated-contract',payload:{patternExposures:[{exposureId:'e',patternId:'dandelion',startedAt:interval.startedAt,endedAt:interval.endedAt,durationMs:15000}]}}]});
+ const view=sliceData(d,{scope:'current'});assert.equal(view.exposures.length,1);assert.equal(view.metrics.durationMs,15000);assert.equal(view.exposures[0].participantId,'account:A');
+});
