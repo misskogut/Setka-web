@@ -43,7 +43,7 @@
     if(!stored||stored.createdAt!==data.createdAt)return;
     const before=JSON.stringify([data.symptoms,data.checkins]);data.symptoms=mergeStateRecords(data.symptoms,stored.symptoms);data.checkins=mergeStateRecords(data.checkins,stored.checkins);return before!==JSON.stringify([data.symptoms,data.checkins]);
   }
-  function save(){try{mergeStoredStates(JSON.parse(localStorage.getItem(KEY)||"null"));localStorage.setItem(KEY,JSON.stringify(data));return true}catch(_){return false}}
+  function save(){try{let stored=null;try{stored=JSON.parse(localStorage.getItem(KEY)||"null")}catch(_){}mergeStoredStates(stored);localStorage.setItem(KEY,JSON.stringify(data));return true}catch(_){return false}}
 
   function saveActive(){try{activeSession?localStorage.setItem(ACTIVE_KEY,JSON.stringify(activeSession)):localStorage.removeItem(ACTIVE_KEY)}catch(_){}}
   function sessionRow(){return activeSession?data.sessions.find(x=>x.id===activeSession.id)||null:null}

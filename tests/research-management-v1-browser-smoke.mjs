@@ -40,7 +40,7 @@ const localApiTransport=()=>{const nativeFetch=window.fetch.bind(window);window.
 try{
  await new Promise((ok,fail)=>{server.once('error',fail);server.listen(port,'127.0.0.1',ok)});
  browser=await (process.env.SETKA_BROWSER==='webkit'?webkit:chromium).launch({headless:true,args:process.env.SETKA_BROWSER==='webkit'?[]:['--no-sandbox']});
- const front=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true}),errors=[];
+ const frontContext=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true}),front=await frontContext.newPage(),errors=[];
  front.on('pageerror',e=>errors.push({page:'front',message:e.message,stack:e.stack}));
  await front.addInitScript(localApiTransport);
  await front.addInitScript(()=>localStorage.setItem('setka-v40:cabinet-session',JSON.stringify({token:'isolated-fixture-only'})));

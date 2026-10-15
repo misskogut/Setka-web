@@ -21,3 +21,7 @@ test('an in-flight archive receipt never confirms a state added after that reque
  assert.equal(context.__SETKA_PRIVATE_CORPUS_V40__.status().statesPending,true);assert.equal(data.symptoms.length,1);
  await context.__SETKA_PRIVATE_CORPUS_V40__.sync();assert.equal(context.__SETKA_PRIVATE_CORPUS_V40__.status().statesPending,false);
 });
+test('a malformed old browser value does not block saving a new registered state',()=>{
+ const source=read('standalone-core-v34.js'),a=source.indexOf('  function mergeStateRecords('),b=source.indexOf('  function saveActive()',a),rows=new Map([['key','{broken']]),data={createdAt:'new',symptoms:[{id:'s',name:'Усталость'}],checkins:[]},localStorage={getItem:k=>rows.get(k)||null,setItem:(k,v)=>rows.set(k,v)};
+ const result=vm.runInNewContext(source.slice(a,b)+'\nsave();',{data,localStorage,KEY:'key',JSON,Date,Array,Map});assert.equal(result,true);assert.equal(JSON.parse(rows.get('key')).symptoms[0].id,'s');
+});
