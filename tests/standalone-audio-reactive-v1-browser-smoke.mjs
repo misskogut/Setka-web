@@ -65,6 +65,7 @@ try{
   await toggle.click();
   await page.waitForFunction(()=>window.SetkaAudioReactiveV1?.isActive());
   assert.equal(await toggle.getAttribute("aria-pressed"),"true");
+  await page.waitForFunction(()=>Number(getComputedStyle(document.getElementById("st34AudioButton")).opacity)>.90);
   const onStyle=await toggle.evaluate(el=>Number(getComputedStyle(el).opacity));
   assert.ok(onStyle>.90,"ON note must be bright without a dot: "+onStyle);
   const frame=await page.evaluate(()=>{
