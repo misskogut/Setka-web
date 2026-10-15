@@ -9,7 +9,8 @@ const server=createServer(async(req,res)=>{
  try{
   const path=new URL(req.url,base).pathname;
   if(path.startsWith('/functions/v1/')){
-   res.setHeader('Access-Control-Allow-Origin','*');res.setHeader('Access-Control-Allow-Headers','content-type,apikey,authorization');res.setHeader('Access-Control-Allow-Methods','POST,OPTIONS');
+   res.setHeader('Access-Control-Allow-Origin','*');res.setHeader('Access-Control-Allow-Headers','content-type,apikey,authorization,x-client-info');
+   res.setHeader('Access-Control-Allow-Private-Network','true');res.setHeader('Access-Control-Allow-Methods','POST,OPTIONS');
    if(req.method==='OPTIONS'){res.writeHead(204).end();return}
    let body='';for await(const chunk of req)body+=chunk;const b=body?JSON.parse(body):{};
    let out={ok:true,items:[],notes:[],metrics:{},profile:{}};
