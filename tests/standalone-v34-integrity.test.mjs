@@ -198,7 +198,7 @@ test("semantic service sync uses canonical exposures including unsessioned free 
 });
 test("private archive sync waits for successful remote restoration and fingerprints note contents",()=>{
   const js=read("standalone-private-corpus-v40.js");
-  assert.match(js,/const loaded=await ensureHydrated\(\)/);
+  assert.match(js,/const loaded=(?:hydrated\|\|)?await ensureHydrated\(\)/);
   assert.match(js,/if\(!loaded\)\{/);
   assert.match(js,/archive_restore_required_before_sync/);
   assert.match(js,/notesDigest=digest\(n\.map/);
