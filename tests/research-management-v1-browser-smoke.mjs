@@ -1,5 +1,5 @@
-// Isolated browser/API fixtures only. API transport stays on localhost, then is
-// intercepted: even unload/keepalive requests cannot reach the real Supabase.
+// Isolated browser/API fixtures only. Front unload/keepalive transport stays on
+// localhost; admin requests are intercepted at context level without changing CSP.
 import assert from 'node:assert/strict';import {spawn} from 'node:child_process';import {mkdirSync} from 'node:fs';import {chromium,webkit} from 'playwright';
 import {buildData} from '../research-v1/model.mjs';import {patterns,configKey} from '../research-v1/renderer.mjs';
 const port=49319,base=`http://127.0.0.1:${port}`,server=spawn('python3',['-m','http.server',String(port),'--bind','127.0.0.1'],{stdio:'ignore'});
@@ -43,7 +43,7 @@ try{
  await front.getByLabel('Название или назначение приглашений').fill('Изолированные приглашения');await front.getByLabel('Сколько новых ID').fill('2');await front.getByRole('button',{name:'Создать пригласительные ID',exact:true}).click();
  await front.getByText('Мои приглашения · 2',{exact:true}).waitFor();assert.equal(ownIssued.length,2);assert.equal(await front.locator('#st40InvitePanel').count(),1);
 
- const admin=await browser.newPage({viewport:{width:1200,height:900}});admin.on('pageerror',e=>errors.push(e.message));await admin.addInitScript(localApiTransport);
+ const admin=await browser.newPage({viewport:{width:1200,height:900}});admin.on('pageerror',e=>errors.push(e.message));
  const start='2026-10-14T17:00:00Z',cfg=patterns.find(x=>x.id==='dandelion').defaults,key=configKey(cfg,'dandelion'),issuer='T-OWNERAAA';
  const raw={accounts:[{tester_id:issuer,created_at:start}],devices:[{device_id:'fixture-device',subject_key:issuer}],patternCatalog:catalog,patternNameHistory:[{pattern_id:'dandelion',revision:1,title:'Одуванчик',created_at:start}],issuedInvites:[],inviteBatches:[],archives:[{device_id:'fixture-device',tester_id:issuer,payload:{sessions:[{id:'s',startedAt:start,endedAt:'2026-10-14T17:00:20Z',measuredActiveMs:20000}],patternExposures:[{exposureId:'e',sessionId:'s',patternId:'dandelion',patternVersion:1,configKey:key,config:cfg,startedAt:start,endedAt:'2026-10-14T17:00:20Z',durationMs:20000}],activityIntervals:[{id:'a',exposureId:'e',sessionId:'s',patternId:'dandelion',configKey:key,startedAt:start,endedAt:'2026-10-14T17:00:15Z',durationMs:15000,touches:3,moves:10,configChanges:2,coverage:'observed'}],physio:{samples:[{id:'p',sessionId:'s',exposureId:'e',patternId:'dandelion',configKey:key,value:82,metric:'heart_rate',unit:'bpm',observedAt:'2026-10-14T17:00:05Z',sourceType:'ble_heart_rate',quality:'ok',payload:{patternVisible:true,config:cfg}}]}}}]};
  const sources=['accounts','accountSessions','accountExposures','accountFavorites','issuedInvites','patternCatalog'].map(key=>({key,ok:true,truncated:false,label:key,count:0}));let chunks=[];
