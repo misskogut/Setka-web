@@ -159,7 +159,8 @@
       const audioScale=sound?.viewportScale?.()||1;
       if(audioScale>1.0001){
         ctx.save();
-        ctx.fillStyle="#000";ctx.fillRect(0,0,r.width,r.height);
+        // The renderer owns backgroundAlpha and trail persistence.  Scaling
+        // outward covers the viewport without an extra full-screen clear.
         ctx.translate(r.width/2,r.height/2);
         ctx.scale(audioScale,audioScale);
         ctx.translate(-r.width/2,-r.height/2);
