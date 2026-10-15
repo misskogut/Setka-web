@@ -27,8 +27,13 @@ try{
       createMediaStreamSource(){return{connect(){},disconnect(){}}}
       createGain(){const sink={gain:{value:1},connect(destination){meter.sinkValue=this.gain.value;meter.sinkConnected=destination?.speaker===true},disconnect(){}};return sink}
       createAnalyser(){return {fftSize:1024,smoothingTimeConstant:0,frequencyBinCount:512,connect(target){meter.analyserConnected=!!target},disconnect(){},
-        getByteFrequencyData(out){out.fill(meter.signal==="music"?210:0)},
-        getByteTimeDomainData(out){for(let i=0;i<out.length;i++)out[i]=meter.signal==="music"?Math.round(128+48*Math.sin(i*.17)):128}
+        getByteFrequencyData(out){
+          if(meter.signal==="music"){out.fill(210);return}
+          out.fill(0);
+          const range=meter.signal==="bass"?[70,320]:meter.signal==="middle"?[400,1500]:meter.signal==="treble"?[2300,6500]:null;
+          if(range)for(let i=0;i<out.length;i++){const hz=i*44100/1024;if(hz>=range[0]&&hz<range[1])out[i]=230}
+        },
+        getByteTimeDomainData(out){for(let i=0;i<out.length;i++)out[i]=meter.signal!=="silent"?Math.round(128+48*Math.sin(i*.17)):128}
       }}
       async resume(){this.state="running"}
       async close(){this.state="closed"}
@@ -84,6 +89,46 @@ try{
   });
   assert.equal(frame.length,7);
   frame.forEach(x=>assert.ok(x.changed>61.9,"audible music must produce visibly stronger motion in "+x.id+": "+JSON.stringify(x)));
+  const geometry=await page.evaluate(()=>{
+    const audio=window.SetkaAudioReactiveV1;
+    const patterns=window.SetkaApp.getPatterns();
+    const cases=patterns.map(p=>{
+      const canonical=JSON.parse(JSON.stringify(p.defaults));
+      const original=JSON.parse(JSON.stringify(p.defaults));
+      const live=audio.renderConfig(p.defaults,p.id);
+      const changed=Object.keys(live).filter(key=>typeof canonical[key]==="number"&&Math.abs(live[key]-canonical[key])>1e-6);
+      const untouched=JSON.stringify(p.defaults)===JSON.stringify(original);
+      return{id:p.id,changed,untouched};
+    });
+    const future={patternId:"future-renderer",zoom:1};
+    const futureSafe=audio.renderConfig(future,"future-renderer")===future;
+    const viewport=audio.viewportScale();
+    return{cases,futureSafe,viewport,bands:audio.status().bands};
+  });
+  assert.equal(geometry.cases.length,7);
+  geometry.cases.forEach(x=>{
+    assert.equal(x.untouched,true,"canonical configuration was mutated: "+x.id);
+    assert.ok(x.changed.length>=3,"music should modulate three parameters in "+x.id+": "+JSON.stringify(x));
+  });
+  assert.equal(geometry.futureSafe,true,"new pattern recipes must remain untouched");
+  assert.ok(geometry.viewport>1&&geometry.viewport<=1.05,"future renderers need universal viewport modulation");
+  for(const name of ["low","mid","high"])
+    assert.ok(geometry.bands[name]>.1,"independent "+name+" music channel must be measured");
+  console.log("MULTIBAND GEOMETRY IN ALL 7 PATTERNS",JSON.stringify(geometry));
+  // Frequency-specific fixture: switching the same synthetic microphone from
+  // bass to treble must move different independent channels, not just speed.
+  const frequencyTest=await page.evaluate(()=>{
+    const audio=window.SetkaAudioReactiveV1;
+    let now=5000;const step=(signal)=>{
+      window.__setkaMicFixture.signal=signal;
+      for(let i=0;i<48;i++){now+=17;audio.nextFrame(now/16.67,now)}
+      return {...audio.status().bands};
+    };
+    return{bass:step("bass"),treble:step("treble")};
+  });
+  assert.ok(frequencyTest.bass.low>frequencyTest.bass.high+.15,"bass needs a distinct low-frequency response: "+JSON.stringify(frequencyTest));
+  assert.ok(frequencyTest.treble.high>frequencyTest.treble.low+.15,"treble needs a distinct high-frequency response: "+JSON.stringify(frequencyTest));
+  console.log("INDEPENDENT BASS AND TREBLE RESPONSE PASS",JSON.stringify(frequencyTest));
   assert.equal(await toggle.getAttribute("aria-pressed"),"true","pattern navigation must not disable audio");
   const after=await page.evaluate(()=>({config:window.SetkaApp.getConfig(),favorites:window.SetkaApp.getFavorites(),meter:window.__setkaMicFixture,source:window.SetkaAudioReactiveV1.status().source}));
   assert.deepEqual(after.favorites,initial.favorites,"favorited recipes must not change");
@@ -100,6 +145,12 @@ try{
     return {offset:measure-200,level:audio.status().level};
   });
   assert.ok(silent.level<.03,"silence must not invent music: "+JSON.stringify(silent));
+  const silenceGeometry=await page.evaluate(()=>{
+    const p=window.SetkaApp.getPatterns()[0];
+    const out=window.SetkaAudioReactiveV1.renderConfig(p.defaults,p.id);
+    return Object.keys(p.defaults).every(k=>typeof p.defaults[k]!=="number"||Math.abs(out[k]-p.defaults[k])<.005);
+  });
+  assert.equal(silenceGeometry,true,"silence must return to original pattern parameters");
   await toggle.click();
   assert.equal(await toggle.getAttribute("aria-pressed"),"false");
   assert.equal(await page.evaluate(()=>window.__setkaMicFixture.stopped),1,"OFF must stop microphone stream");

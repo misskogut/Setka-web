@@ -154,7 +154,20 @@
       // Preserve the exact displayed frame when music is turned off, instead
       // of snapping back to the unmodulated wall-clock animation position.
       if(sound?.isActive?.())animationStart=now-currentFrame*16.6667;
-      const r=app.getBoundingClientRect();renderPattern(ctx,r.width,r.height,runtimeConfig,currentFrame,false,runtimePatternId);animationFrame=requestAnimationFrame(tick)};animationFrame=requestAnimationFrame(tick)}
+      const r=app.getBoundingClientRect();
+      const liveConfig=sound?.renderConfig?.(runtimeConfig,runtimePatternId)||runtimeConfig;
+      const audioScale=sound?.viewportScale?.()||1;
+      if(audioScale>1.0001){
+        ctx.save();
+        // The renderer owns backgroundAlpha and trail persistence.  Scaling
+        // outward covers the viewport without an extra full-screen clear.
+        ctx.translate(r.width/2,r.height/2);
+        ctx.scale(audioScale,audioScale);
+        ctx.translate(-r.width/2,-r.height/2);
+      }
+      renderPattern(ctx,r.width,r.height,liveConfig,currentFrame,false,runtimePatternId);
+      if(audioScale>1.0001)ctx.restore();
+      animationFrame=requestAnimationFrame(tick)};animationFrame=requestAnimationFrame(tick)}
   function stopAnimation(){if(animationFrame)cancelAnimationFrame(animationFrame);animationFrame=0}
 
   function renderPattern(t,w,h,c,f,thumb,id=null){const pid=inferPatternId(c,id);if(pid===DANDELION_ID)return renderDandelion(t,w,h,cloneConfig(c,pid),f,thumb);if(pid===FISH_ID)return renderFish(t,w,h,cloneConfig(c,pid),f,thumb);if(pid===BREATH_ID)return renderBreath(t,w,h,cloneConfig(c,pid),f,thumb);if(pid===GROWTH_ID)return renderGrowth(t,w,h,cloneConfig(c,pid),f,thumb);if(pid===RGB_ID)return renderRgb(t,w,h,cloneConfig(c,pid),f,thumb);if(pid===DNA_ID)return renderDna(t,w,h,cloneConfig(c,pid),f,thumb);return renderTentacle(t,w,h,cloneConfig(c,pid),f,thumb)}
