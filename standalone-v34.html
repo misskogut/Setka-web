@@ -5,6 +5,51 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
   <meta name="theme-color" content="#000000" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <!-- GitHub Pages deploy replaces this marker and publishes matching JSON.
+       The public SETKA link remains /Setka-web/standalone-v34.html forever. -->
+  <meta name="setka-release-build" content="development" />
+  <script>
+  (function(){
+    "use strict";
+    // A GitHub Pages edge or iPhone Safari may have cached an older HTML file.
+    // After load, check a cache-busted release manifest and refresh ONCE to
+    // the same path when it is stale, without interrupting a user interaction.
+    const revisionParam="__setka_refresh";
+    const canonical=new URL(location.href);
+    if(canonical.searchParams.has(revisionParam)){
+      // Keep shared links stable: remove ONLY our internal cache-buster.
+      canonical.searchParams.delete(revisionParam);
+      try{history.replaceState(history.state,"",canonical.pathname+canonical.search+canonical.hash)}catch(_){}
+      return;
+    }
+    let userInteracted=false;
+    for(const type of ["pointerdown","touchstart","keydown"]){
+      document.addEventListener(type,()=>{userInteracted=true},{capture:true,once:true,passive:true});
+    }
+    async function checkRelease(){
+      if(userInteracted||document.visibilityState!=="visible")return;
+      const build=document.querySelector('meta[name="setka-release-build"]')?.content||"";
+      if(!/^[0-9a-f]{40}$/.test(build))return;
+      try{
+        const endpoint=new URL("./standalone-release.json",location.href);
+        endpoint.searchParams.set("cb",String(Date.now()));
+        const response=await fetch(endpoint.toString(),{cache:"no-store",credentials:"same-origin"});
+        if(!response.ok)return;
+        const release=await response.json();
+        if(!/^[0-9a-f]{40}$/.test(release.build)||release.build===build
+          ||release.entry!=="standalone-v34.html")return;
+        // Never drop a note, a live pattern, microphone capture or a session.
+        if(userInteracted||document.visibilityState!=="visible"
+          ||document.querySelector("#gameScreen.active")
+          ||window.SetkaStandaloneV34?.getActiveSession?.())return;
+        const next=new URL(location.href);
+        next.searchParams.set(revisionParam,release.build.slice(0,12));
+        location.replace(next.toString());
+      }catch(_){/* Offline or an unavailable release manifest: keep this UI. */}
+    }
+    window.addEventListener("load",()=>setTimeout(checkRelease,250),{once:true});
+  })();
+  </script>
   <title>SETKA Standalone v34</title>
   <link rel="stylesheet" href="styles.css?v=34-standalone" />
   <link rel="stylesheet" href="experience-v2.css?v=39-library-scroll-2" />
