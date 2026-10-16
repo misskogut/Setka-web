@@ -14,7 +14,7 @@ try{
   const errors=[];page.on("pageerror",e=>errors.push(e.message));
   await page.route("**/functions/v1/**",r=>r.fulfill({status:200,contentType:"application/json",headers:{"access-control-allow-origin":"*"},body:JSON.stringify({ok:true,items:[],notes:[],metrics:{},profile:{}})}));
   await page.addInitScript(()=>{
-    const meter={started:0,stopped:0,denied:false,signal:"music"};
+    const meter={started:0,stopped:0,denied:false,signal:"music",volume:1};
     window.__setkaMicFixture=meter;
     const track={kind:"audio",stop(){meter.stopped++},addEventListener(){}};
     Object.defineProperty(navigator,"mediaDevices",{configurable:true,value:{getUserMedia:async args=>{
@@ -28,12 +28,12 @@ try{
       createGain(){const sink={gain:{value:1},connect(destination){meter.sinkValue=this.gain.value;meter.sinkConnected=destination?.speaker===true},disconnect(){}};return sink}
       createAnalyser(){return {fftSize:1024,smoothingTimeConstant:0,frequencyBinCount:512,connect(target){meter.analyserConnected=!!target},disconnect(){},
         getByteFrequencyData(out){
-          if(meter.signal==="music"){out.fill(210);return}
+          if(meter.signal==="music"){out.fill(Math.round(210*meter.volume));return}
           out.fill(0);
           const range=meter.signal==="bass"?[70,320]:meter.signal==="middle"?[400,1500]:meter.signal==="treble"?[2300,6500]:null;
-          if(range)for(let i=0;i<out.length;i++){const hz=i*44100/1024;if(hz>=range[0]&&hz<range[1])out[i]=230}
+          if(range)for(let i=0;i<out.length;i++){const hz=i*44100/1024;if(hz>=range[0]&&hz<range[1])out[i]=Math.round(230*meter.volume)}
         },
-        getByteTimeDomainData(out){for(let i=0;i<out.length;i++)out[i]=meter.signal!=="silent"?Math.round(128+48*Math.sin(i*.17)):128}
+        getByteTimeDomainData(out){for(let i=0;i<out.length;i++)out[i]=meter.signal!=="silent"?Math.round(128+48*meter.volume*Math.sin(i*.17)):128}
       }}
       async resume(){this.state="running"}
       async close(){this.state="closed"}
@@ -257,6 +257,46 @@ try{
     if(n===5)assert.ok(measurement.scale<1.01,"Detail mode should emphasize small elements instead of zoom");
     profiles.push(measurement);
   }
+  // Guardrail regression for the real complaint: under full-volume synthetic
+  // music none of the 35 shape+mode combinations may radically jump geometry,
+  // and audio must never rebuild branch/point/ring counts.
+  const safety=await page.evaluate(()=>{
+    const a=window.SetkaAudioReactiveV1,patterns=window.SetkaApp.getPatterns();
+    const staticKeys=new Set(["branches","layers","maxDepth","numShapes","numLayers","numRings","numPoints","segmentStep"]);
+    return patterns.map(p=>{
+      const changed=a.renderConfig(p.defaults,p.id);
+      const numeric=Object.keys(p.defaults).filter(k=>Number.isFinite(p.defaults[k]));
+      return{id:p.id,topology:[...staticKeys].filter(k=>p.defaults[k]!==changed[k]),
+        largestRatio:Math.max(0,...numeric.map(k=>Math.abs((changed[k]-p.defaults[k])/(p.defaults[k]||1)))),
+        safe:Object.keys(changed).every(k=>!Number.isFinite(changed[k])||Number.isFinite(changed[k]))};
+    });
+  });
+  for(const p of safety){
+    assert.deepEqual(p.topology,[],"audio MUST NOT change structural counts: "+JSON.stringify(p));
+    assert.ok(p.largestRatio<=.2001,
+      "music may not violently mutate native settings (>20%): "+JSON.stringify(p));
+  }
+  assert.equal(await page.evaluate(()=>window.SetkaAudioReactiveV1.status().topologyStable),true);
+  assert.equal(await page.evaluate(()=>window.SetkaAudioReactiveV1.status().sensitivity),"soft");
+  const loudness=await page.evaluate(()=>{
+    const a=window.SetkaAudioReactiveV1,m=window.__setkaMicFixture;
+    let t=performance.now();
+    const sample=volume=>{
+      m.volume=volume;m.signal="music";
+      for(let i=0;i<130;i++){t+=17;a.nextFrame(t/16.67,t,"fish-wave")}
+      return {level:a.status().level,bands:{...a.status().bands}};
+    };
+    const quiet=sample(.08),medium=sample(.30),loud=sample(1);
+    m.volume=1;
+    return{quiet,medium,loud};
+  });
+  assert.ok(loudness.quiet.level<loudness.medium.level-.04,
+    "quiet music should barely disturb the pattern: "+JSON.stringify(loudness));
+  assert.ok(loudness.medium.level<loudness.loud.level-.05,
+    "loud music should be stronger, without saturating at medium volume: "+JSON.stringify(loudness));
+  assert.ok(loudness.loud.level<.80,
+    "microphone normalization must not saturate to full intensity even at high volume: "+JSON.stringify(loudness));
+  console.log("SAFE SENSITIVITY / QUIET-MEDIUM-LOUD / NO TOPOLOGY JUMPS PASS",loudness,safety);
   const dnaSignatures=profiles.map(m=>JSON.stringify(m.shapes.find(p=>p.id==="stereo-dna").changes));
   assert.equal(new Set(dnaSignatures).size,5,
     "EQ modes must produce five actually different DNA configurations: "+JSON.stringify(dnaSignatures));
