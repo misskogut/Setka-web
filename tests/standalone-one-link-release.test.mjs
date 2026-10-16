@@ -24,7 +24,7 @@ test("one permanent public SETKA URL gets atomic HTML and manifest revisions",()
     assert.match(built,new RegExp('<meta name="setka-release-build" content="'+sha+'"'));
     const release=JSON.parse(readFileSync(join(temp,"standalone-release.json"),"utf8"));
     assert.deepEqual(release,{build:sha,entry:"standalone-v34.html"});
-    assert.match(built,/standalone-audio-reactive-v3\.js/,"keep the latest five equalizers");
+    assert.match(built,/standalone-audio-reactive-v4\.js/,"keep latest softened five-mode equalizer");
     assert.doesNotMatch(built,/href="standalone-v34-eq-v[23]\.html"/,"no alternate public entrypoint");
   }finally{rmSync(temp,{recursive:true,force:true})}
 });
