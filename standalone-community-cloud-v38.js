@@ -9,7 +9,10 @@
 
   const style=document.createElement("style");
   style.textContent=`
-    #st34CommunityModes{gap:5px!important;margin:15px auto 14px!important;flex-wrap:nowrap!important}
+    /* The pager above has margin-bottom:30px. Adjacent block margins collapse,
+       so a small positive margin-top does not move this row. 42px creates
+       a real 12px additional title-to-tabs gap on iPhone Safari. */
+    #st34CommunityModes{gap:5px!important;margin:42px auto 14px!important;flex-wrap:nowrap!important}
     #st34CommunityModes button{height:31px!important;padding:0 9px!important;font-size:9px!important;white-space:nowrap!important}
     #communityPanel .st40-community-meta,#st40CommunityMetrics,#st40CommunityTabs{display:none!important}
     #st40CommunityNotes{grid-column:1/-1;display:block;width:100%;padding:0 2px calc(env(safe-area-inset-bottom,0px) + 130px)}
