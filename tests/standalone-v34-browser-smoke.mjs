@@ -36,6 +36,39 @@ async function go(){
   await page.goto(root+"/standalone-v34.html?browser-smoke=41",{waitUntil:"domcontentloaded"});
   await page.waitForFunction(()=>document.querySelectorAll("#allPatternsPanel .pattern-tile").length===7,{timeout:20000});
   await page.waitForFunction(()=>!!window.SetkaStandaloneV34?.cloudCommunity?.status?.().lastOkAt,{timeout:20000});
+  // Library navigation polish: one common icon baseline, no hint text and a
+  // visual gap beneath the community heading (including mobile WebKit).
+  assert.equal(await page.locator(".swipe-hint").count(),0,
+    "permanent swipe helper text must be deleted from the library");
+  const navGeometry=await page.evaluate(()=>{
+    const ids=["libraryPagerButton","communityPagerButton","favoritesPagerButton"];
+    return ids.map(id=>{
+      const e=document.getElementById(id),r=e.getBoundingClientRect(),
+        mark=e.firstElementChild,icon=mark.getBoundingClientRect();
+      return{id,width:r.width,height:r.height,cx:r.left+r.width/2,cy:r.top+r.height/2,
+        iconWidth:icon.width,iconHeight:icon.height,fontSize:parseFloat(getComputedStyle(mark).fontSize)};
+    });
+  });
+  assert.ok(navGeometry.every(v=>v.width===48&&v.height===48),
+    "all three pager hit targets must be 48px: "+JSON.stringify(navGeometry));
+  assert.ok(navGeometry.every(v=>Math.abs(v.cy-navGeometry[0].cy)<.6),
+    "pager icons must be vertically aligned");
+  assert.ok(navGeometry[2].fontSize<=25,"favorite heart must remain visually smaller");
+  assert.ok(navGeometry[0].iconWidth>=18,"dot should not appear tiny next to other symbols");
+  await page.locator("#communityPagerButton").click();
+  await page.waitForFunction(()=>getComputedStyle(document.getElementById("st34CommunityModes")).display!=="none");
+  const headingGap=await page.evaluate(()=>{
+    const title=document.getElementById("libraryTitle").getBoundingClientRect();
+    const tabs=document.getElementById("st34CommunityModes").getBoundingClientRect();
+    const btns=[...document.querySelectorAll("#st34CommunityModes button")];
+    return{gap:tabs.top-title.bottom,buttons:btns.length,tabWidth:tabs.width,
+      lastRight:btns.at(-1)?.getBoundingClientRect().right||0};
+  });
+  assert.ok(headingGap.gap>=9,
+    "community filters must sit BELOW title with a readable gap: "+JSON.stringify(headingGap));
+  assert.equal(headingGap.buttons,4,"all community filters must remain available");
+  await page.locator("#libraryPagerButton").click();
+  console.log("LIBRARY ICON ALIGNMENT / NO SWIPE HINT / COMMUNITY TAB GAP PASS",navGeometry,headingGap);
   const tiles=page.locator("#allPatternsPanel .pattern-tile");
   const result=[];
   mkdirSync("tests/visual-smoke",{recursive:true});
