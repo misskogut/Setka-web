@@ -1,5 +1,13 @@
 .mode-label{display:none!important}
 .library-pager{gap:18px!important}
+/* All three library destinations share one 48px tap target and 30px icon slot.
+   The heart is intentionally subtler than the community mark; no active zoom. */
+.library-pager .pager-button{width:48px;height:48px;min-width:48px;min-height:48px;flex:0 0 48px}
+.library-pager .pager-button.active{transform:none}
+.library-pager .pager-dot-mark{width:19px;height:19px}
+.library-pager .community-mark{width:30px;height:30px}
+.library-pager .pager-heart{width:30px;height:30px;display:grid;place-items:center;font-size:25px;line-height:1}
+
 .community-mark{width:30px;height:30px;display:grid;place-items:center;position:relative}
 .community-mark::before,.community-mark::after,.community-mark span{content:"";position:absolute;width:7px;height:7px;border:1.4px solid #fff;border-radius:50%}
 .community-mark::before{left:3px;top:11px}.community-mark::after{right:3px;top:11px}.community-mark span{left:11px;top:3px}
