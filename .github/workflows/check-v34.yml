@@ -7,6 +7,7 @@ on:
       - 'standalone-audio-reactive-v1.js'
       - 'standalone-audio-reactive-v2.js'
       - 'standalone-audio-reactive-v3.js'
+      - 'standalone-audio-reactive-v4.js'
       - 'standalone-live-previews-v1.js'
       - 'tests/standalone-live-previews-v1-browser-smoke.mjs'
       - 'tests/standalone-audio-reactive-v1-browser-smoke.mjs'
@@ -113,6 +114,7 @@ jobs:
       - run: node --check standalone-audio-reactive-v1.js
       - run: node --check standalone-audio-reactive-v2.js
       - run: node --check standalone-audio-reactive-v3.js
+      - run: node --check standalone-audio-reactive-v4.js
       - run: node --check standalone-live-previews-v1.js
       - run: node --check scripts/build-standalone-release.mjs
       - run: node --test tests/standalone-one-link-release.test.mjs
