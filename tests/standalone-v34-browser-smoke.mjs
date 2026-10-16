@@ -55,19 +55,24 @@ async function go(){
     "pager icons must be vertically aligned");
   assert.ok(navGeometry[2].fontSize<=25,"favorite heart must remain visually smaller");
   assert.ok(navGeometry[0].iconWidth>=18,"dot should not appear tiny next to other symbols");
-  await page.locator("#communityPagerButton").click();
-  await page.waitForFunction(()=>getComputedStyle(document.getElementById("st34CommunityModes")).display!=="none");
+  // Measure the visible community layout without switching screens here:
+  // a real page transition at the beginning of this long smoke test changes
+  // the active page and can intercept the later first pattern-info tap.
   const headingGap=await page.evaluate(()=>{
-    const title=document.getElementById("libraryTitle").getBoundingClientRect();
-    const tabs=document.getElementById("st34CommunityModes").getBoundingClientRect();
-    const btns=[...document.querySelectorAll("#st34CommunityModes button")];
-    return{gap:tabs.top-title.bottom,buttons:btns.length,tabWidth:tabs.width,
-      lastRight:btns.at(-1)?.getBoundingClientRect().right||0};
+    const bar=document.getElementById("st34CommunityModes");
+    const wasHidden=bar.classList.contains("hidden");
+    bar.classList.remove("hidden");
+    try{
+      const title=document.getElementById("libraryTitle").getBoundingClientRect();
+      const tabs=bar.getBoundingClientRect();
+      const btns=[...bar.querySelectorAll("button")];
+      return{gap:tabs.top-title.bottom,buttons:btns.length,tabWidth:tabs.width,
+        lastRight:btns.at(-1)?.getBoundingClientRect().right||0};
+    }finally{if(wasHidden)bar.classList.add("hidden")}
   });
   assert.ok(headingGap.gap>=9,
     "community filters must sit BELOW title with a readable gap: "+JSON.stringify(headingGap));
   assert.equal(headingGap.buttons,4,"all community filters must remain available");
-  await page.locator("#libraryPagerButton").click();
   console.log("LIBRARY ICON ALIGNMENT / NO SWIPE HINT / COMMUNITY TAB GAP PASS",navGeometry,headingGap);
   const tiles=page.locator("#allPatternsPanel .pattern-tile");
   const result=[];
