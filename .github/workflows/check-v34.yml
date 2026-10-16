@@ -190,9 +190,12 @@ jobs:
           node-version: '22'
       - run: npm install --no-save --ignore-scripts playwright esbuild
       - run: npx playwright install --with-deps chromium webkit
+      # Audio has an independent safety regression; run it before the full UI
+      # suite so a flaky unrelated preview does not obscure mic test results.
+      - run: node tests/standalone-audio-reactive-v1-browser-smoke.mjs
+      - run: SETKA_BROWSER=webkit node tests/standalone-audio-reactive-v1-browser-smoke.mjs
       - run: node tests/standalone-v34-browser-smoke.mjs
       - run: node tests/standalone-sheets-v1-browser-smoke.mjs
-      - run: node tests/standalone-audio-reactive-v1-browser-smoke.mjs
       - run: node tests/standalone-live-previews-v1-browser-smoke.mjs
       - run: node tests/standalone-invites-autosync-browser-smoke.mjs
       - run: node tests/standalone-pulse-v1-browser-smoke.mjs
@@ -202,7 +205,6 @@ jobs:
       - run: node tests/standalone-v34-open-admin-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/standalone-v34-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/standalone-sheets-v1-browser-smoke.mjs
-      - run: SETKA_BROWSER=webkit node tests/standalone-audio-reactive-v1-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/standalone-live-previews-v1-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/standalone-invites-autosync-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/standalone-pulse-v1-browser-smoke.mjs
