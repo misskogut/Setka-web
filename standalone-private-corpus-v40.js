@@ -228,5 +228,5 @@
   setInterval(()=>sync(false),45000);
   // C.ready gates archive hydration; do not add an extra multi-second delay after page open.
   setTimeout(()=>sync(true),100);
-  window.__SETKA_PRIVATE_CORPUS_V40__={sync:async()=>{if(busy)await pendingWrite.catch(()=>false);return sync(true)},pull,restore:ensureHydrated,ensureHydrated,remoteStatus,status,authoritative:()=>!!(hydrated&&authoritative&&hydratedToken===session()?.token),build:BUILD};
+  window.__SETKA_PRIVATE_CORPUS_V40__={sync:async()=>{if(busy)await pendingWrite.catch(()=>false);return sync(true)},pull,restore:restoreFromCloud,ensureHydrated,remoteStatus,status,authoritative:()=>!!(hydrated&&authoritative&&hydratedToken===session()?.token),build:BUILD};
 })();
