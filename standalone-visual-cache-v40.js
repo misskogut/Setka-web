@@ -11,7 +11,7 @@
   const RENDERER_VERSION = "app-v8-breathing-grid-bw";
   const POLICY_API = "https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-visual-assets-v40";
   const API_KEY = "sb_publishable_1jL-x9_kp6rpfGghpSp_OA_OiXDnvsv";
-  const MOTHER_IDS = new Set(["tentacle-orbit","dandelion","fish-wave","breathing-fractal","breathing-fractal-growth","rgb-glitch-rings","stereo-dna","breathing-grid"]);
+  const MOTHER_IDS = new Set(window.SetkaPatternRegistryV1?.ids?.()||window.SetkaApp?.getPatterns?.().map(p=>p.id)||[]);
 
   let dbPromise = null;
   let policyPromise = null;
