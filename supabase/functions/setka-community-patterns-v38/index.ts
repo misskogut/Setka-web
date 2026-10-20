@@ -11,7 +11,7 @@ function versionFor(id:string){if(id==="fish-wave")return 35;if(id==="rgb-glitch
 function day(){return new Date().toISOString().slice(0,10)}
 
 const INTENTS=new Set(["sleep","relax","tension","focus","energy","switch","explore"]);
-const KNOWN_PATTERNS=new Set(["tentacle-orbit","dandelion","fish-wave","breathing-fractal","breathing-fractal-growth","rgb-glitch-rings","stereo-dna"]);
+const KNOWN_PATTERNS=new Set(["tentacle-orbit","dandelion","fish-wave","breathing-fractal","breathing-fractal-growth","rgb-glitch-rings","stereo-dna","breathing-grid"]);
 const MIN_GROUP_ACCOUNTS=3,MIN_GROUP_SESSIONS=5;
 // Only coarse aggregate groups leave this function. No notes, state ratings,
 // tester identifiers or individual goal histories are included in the feed.
