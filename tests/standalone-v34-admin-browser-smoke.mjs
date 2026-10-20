@@ -28,9 +28,9 @@ try{
   });
   await page.addScriptTag({url:root+"/standalone-admin-pattern-knowledge-v40.js"});
   await page.locator(".tab[data-tab='pattern-knowledge']").click();
-  await page.waitForFunction(()=>document.querySelectorAll("#pk40Patterns button").length===7,{timeout:10000});
+  await page.waitForFunction(()=>document.querySelectorAll("#pk40Patterns button").length===8,{timeout:10000});
   const patterns=await page.locator("#pk40Patterns button").allInnerTexts();
-  assert.equal(patterns.length,7);
+  assert.equal(patterns.length,8);
   assert.ok(patterns.some(t=>t.includes("Одуванчик")));
   assert.ok(patterns.some(t=>t.includes("Stereo DNA")));
   assert.equal(await page.locator("#pk40Observed .card").count(),2);
@@ -38,7 +38,7 @@ try{
   await page.locator("#pk40Patterns button").filter({hasText:"Одуванчик"}).click();
   assert.equal(await page.locator("#pk40Observed .card").count(),1);
   assert.match(await page.locator("#pk40Observed").innerText(),/12 просмотров/);
-  console.log("ADMIN 7 CATALOG + UNSAVED CONFIG VIEWS PASS");
+  console.log("ADMIN 8 CATALOG + UNSAVED CONFIG VIEWS PASS");
 
   // Admin preview must prefer frozen recipe identity to the structural shape.
   const fresh=await (await fetch(root+"/standalone-admin-note-snapshot-fix-v34.js")).text();
