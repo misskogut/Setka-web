@@ -20,8 +20,6 @@
 
   function patternIdFromConfig(config) {
     const c = config || {};
-    const registered=window.SetkaPatternRegistryV1?.inference?.(c);
-    if(registered)return registered;
     if (c.eyeSeparation != null || c.stereoAngle != null || (c.angleStep != null && c.numPoints != null)) return "stereo-dna";
     if (c.numRings != null || c.baseSpacing != null || c.invertDirection != null) return "rgb-glitch-rings";
     if (c.numLayers != null || c.ringSpacing != null) return "fish-wave";
@@ -29,7 +27,7 @@
     if (c.pulseSpd != null || c.pulseAmp != null || (c.layers != null && c.branches != null)) return "breathing-fractal";
     if (c.v1 != null || c.numShapes != null || c.angleSpeed != null || c.tSpeed != null || c.backgroundAlpha != null) return "dandelion";
     if (c.numTentacles != null || c.tentacleLength != null || c.circleSize != null || c.segmentStep != null) return "tentacle-orbit";
-    return null;
+    return window.SetkaPatternRegistryV1?.inference?.(c)||null;
   }
 
   function patternIdFromHash(note) {
