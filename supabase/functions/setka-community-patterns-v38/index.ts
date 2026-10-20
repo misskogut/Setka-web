@@ -7,11 +7,52 @@ const T=(v:any,m=500)=>String(v??"").trim().slice(0,m);
 const N=(v:any,d=0)=>Number.isFinite(Number(v))?Number(v):d;
 async function sha(v:string){const d=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(v));return[...new Uint8Array(d)].map(b=>b.toString(16).padStart(2,"0")).join("")}
 async function shortHash(v:string){return(await sha(v)).slice(0,24)}
-function versionFor(id:string){if(id==="fish-wave")return 35;if(id==="rgb-glitch-rings")return 36;return 1}
+function versionFor(id:string){return VERSIONS.get(id)||1}
 function day(){return new Date().toISOString().slice(0,10)}
 
 const INTENTS=new Set(["sleep","relax","tension","focus","energy","switch","explore"]);
-const KNOWN_PATTERNS=new Set(["tentacle-orbit","dandelion","fish-wave","breathing-fractal","breathing-fractal-growth","rgb-glitch-rings","stereo-dna","breathing-grid"]);
+// Catalog is published from the same registry as the browser at every Pages
+// build. Only trusted, well-formed IDs are admitted. Keep admin-renamed titles.
+const KNOWN_PATTERNS=new Set<string>();
+const VERSIONS=new Map<string,number>();
+let catalogLast=0,catalogPending:Promise<void>|null=null;
+async function syncPatternCatalog(){
+  if(catalogPending)return catalogPending;
+  if(Date.now()-catalogLast<300000&&KNOWN_PATTERNS.size)return;
+  catalogPending=(async()=>{
+    let rows:any[]=[];
+    try{
+      const response=await fetch("https://misskogut.github.io/Setka-web/setka-pattern-manifest-v1.json",
+        {signal:AbortSignal.timeout(3500),headers:{"accept":"application/json"}});
+      if(!response.ok)throw Error("catalog_unavailable");
+      const manifest=await response.json();
+      if(manifest?.schema!==1||!Array.isArray(manifest.patterns))throw Error("invalid_catalog");
+      rows=manifest.patterns.filter((p:any)=>
+        /^[a-z][a-z0-9-]{2,79}$/.test(String(p.id||""))&&
+        typeof p.title==="string"&&p.title.length<=80&&
+        Number.isInteger(p.version)&&p.version>0&&p.version<=999)
+        .map((p:any)=>({pattern_id:p.id,title:p.title,revision:p.version}));
+      if(rows.length<8||rows.length>200)throw Error("unexpected_catalog_size");
+      // Existing titles may have been changed by the admin: don't overwrite.
+      const ins=await db.from("setka_research_v1_pattern_catalog")
+        .upsert(rows,{onConflict:"pattern_id",ignoreDuplicates:true});
+      if(ins.error)throw ins.error;
+    }catch(e){console.warn("SETKA registry manifest unavailable; reading stored catalog",e)}
+    const q=await db.from("setka_research_v1_pattern_catalog")
+      .select("pattern_id,revision").limit(250);
+    if(q.error)throw q.error;
+    KNOWN_PATTERNS.clear();VERSIONS.clear();
+    for(const p of q.data||[]){
+      if(/^[a-z][a-z0-9-]{2,79}$/.test(p.pattern_id)){
+        KNOWN_PATTERNS.add(p.pattern_id);
+        VERSIONS.set(p.pattern_id,Math.max(1,Number(p.revision)||1));
+      }
+    }
+    catalogLast=Date.now();
+  })().finally(()=>{catalogPending=null});
+  return catalogPending;
+}
+
 const MIN_GROUP_ACCOUNTS=3,MIN_GROUP_SESSIONS=5;
 // Only coarse aggregate groups leave this function. No notes, state ratings,
 // tester identifiers or individual goal histories are included in the feed.
@@ -74,6 +115,7 @@ Deno.serve(async req=>{
   try{
     const b=await req.json().catch(()=>({})),action=T(b.action,40)||"feed";
     if(action!=="feed")return J({error:"unknown_action"},400);
+    await syncPatternCatalog();
     const limit=Math.max(1,Math.min(500,Math.round(N(b.limit,300))));
     const [svcQ,patQ,cfgQ]=await Promise.all([
       db.from("prototype_v41_service_metrics_current").select("*").maybeSingle(),
