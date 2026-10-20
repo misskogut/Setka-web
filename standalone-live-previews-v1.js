@@ -1,7 +1,7 @@
 (() => {
   "use strict";
   // Real-time Canvas 2D renderings. Never screen recordings, GIFs or video.
-  // One bounded scheduler for non-library previews; the seven library tiles
+  // One bounded scheduler for non-library previews; all native library tiles
   // already have their own shared preview clock in app-v7-multipattern.js.
   if (window.SetkaLivePreviewsV1) return;
   const S = window.SetkaApp;
