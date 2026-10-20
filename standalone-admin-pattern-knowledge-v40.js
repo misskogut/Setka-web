@@ -5,8 +5,8 @@
   const root=document.getElementById("tab-pattern-knowledge");if(!root)return;
   const esc=v=>String(v??"").replace(/[&<>\"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));
   const fmtMs=ms=>{ms=Math.max(0,Number(ms)||0);const m=Math.round(ms/60000);if(m<1)return`${Math.round(ms/1000)} сек`;if(m<60)return`${m} мин`;return`${(m/60).toFixed(1)} ч`};
-  const CANONICAL_IDS=["tentacle-orbit","dandelion","fish-wave","breathing-fractal","breathing-fractal-growth","rgb-glitch-rings","stereo-dna"];
-  const titleMap={"tentacle-orbit":"Tentacle Orbit","dandelion":"Одуванчик","fish-wave":"Fish Wave","breathing-fractal":"Дыхательный фрактал","breathing-fractal-growth":"Растущий фрактал","rgb-glitch-rings":"RGB Glitch Rings","stereo-dna":"Stereo DNA"};
+  const CANONICAL_IDS=["tentacle-orbit","dandelion","fish-wave","breathing-fractal","breathing-fractal-growth","rgb-glitch-rings","stereo-dna","breathing-grid"];
+  const titleMap={"tentacle-orbit":"Tentacle Orbit","dandelion":"Одуванчик","fish-wave":"Fish Wave","breathing-fractal":"Дыхательный фрактал","breathing-fractal-growth":"Растущий фрактал","rgb-glitch-rings":"RGB Glitch Rings","stereo-dna":"Stereo DNA","breathing-grid":"Breathing Grid"};
   let data=null,busy=false,timer=0,filter=null;
   const style=document.createElement("style");style.textContent=`
     .pk40-banner{border:1px solid rgba(255,255,255,.14);border-radius:18px;padding:14px;background:#080808;margin-bottom:12px}.pk40-banner b{font-size:14px}.pk40-banner p{font-size:11px;line-height:1.55;color:rgba(255,255,255,.5);margin:6px 0 0}
