@@ -54,8 +54,6 @@
       if(known.has(v))return v;
     }
     // Structural inference is for legacy notes without an explicit identity only.
-    const registered=window.SetkaPatternRegistryV1?.inference?.(c);
-    if(registered)return registered;
     if (c.eyeSeparation != null || c.stereoAngle != null || (c.angleStep != null && c.numPoints != null)) return "stereo-dna";
     if (c.numRings != null || c.baseSpacing != null || c.invertDirection != null) return "rgb-glitch-rings";
     if (c.numLayers != null || c.ringSpacing != null) return "fish-wave";
@@ -63,6 +61,8 @@
     if (c.pulseSpd != null || c.pulseAmp != null || (c.layers != null && c.branches != null)) return "breathing-fractal";
     if (c.v1 != null || c.numShapes != null || c.angleSpeed != null || c.tSpeed != null || c.backgroundAlpha != null) return "dandelion";
     if (c.numTentacles != null || c.tentacleLength != null || c.circleSize != null || c.segmentStep != null) return "tentacle-orbit";
+    const dynamic=window.SetkaPatternRegistryV1?.inference?.(c);
+    if(dynamic)return dynamic;
     return item?.visualRecipe?.patternId || item?.visual_snapshot?.patternId || item?.visualSnapshot?.patternId || item?.pattern_id || item?.patternId || c.patternId || null;
   }
 
