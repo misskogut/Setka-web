@@ -2,10 +2,15 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 const read=n=>readFileSync(new URL("../"+n,import.meta.url),"utf8");
-test("all seven canonical base patterns always appear in admin catalog",()=>{
+test("admin catalog is driven by the same shared pattern registry as front",()=>{
   const ui=read("standalone-admin-pattern-knowledge-v40.js");
-  for(const id of ["tentacle-orbit","dandelion","fish-wave","breathing-fractal","breathing-fractal-growth","rgb-glitch-rings","stereo-dna"])assert.ok(ui.includes('"'+id+'"'));
+  const page=read("standalone-admin-v34.html");
+  const source=read("standalone-pattern-registry-v1.js");
+  for(const id of ["tentacle-orbit","dandelion","fish-wave","breathing-fractal","breathing-fractal-growth","rgb-glitch-rings","stereo-dna","breathing-grid"])
+    assert.ok(source.includes('"'+id+'"'),"canonical registry missing "+id);
+  assert.match(ui,/window\.SetkaPatternRegistryV1\?\.ids/);
   assert.match(ui,/\.\.\.CANONICAL_IDS/);
+  assert.match(page,/standalone-pattern-registry-v1\.js/);
   assert.match(ui,/const viewed=\(Array\.isArray\(data\.observedConfigs\)/);
 });
 test("admin fail-closed for unimplemented mutations and unknown actions",()=>{
