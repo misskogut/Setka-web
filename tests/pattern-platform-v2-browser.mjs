@@ -15,7 +15,7 @@ const fixture=(id,second=false)=>({id,title:id,version:1,colorModes:3,module:'st
 const fixtures=[fixture('fixture-shapes'),fixture('fixture-fields',true)];
 for(const p of fixtures)R.register(p);
 const names=new Map(),defaults=new Map();
-let browser,apiFailure=false,outdated=false;
+let browser,apiFailure=false,outdated=false,observed=null;
 try{
  for(let n=0;n<45;n++){try{if((await fetch(base+'/standalone-v34.html')).ok)break}catch{}await sleep(100)}
  browser=await (process.env.SETKA_BROWSER==='webkit'?webkit:chromium).launch({headless:true});
@@ -32,7 +32,7 @@ try{
   if(apiFailure&&body.action==='catalog')return route.fulfill({status:503,contentType:'application/json',headers:{'access-control-allow-origin':'*'},body:JSON.stringify({error:'isolated_unavailable'})});
   let out={ok:true,items:[],metrics:{},patternMetrics:[],notes:[],profile:{}};
   if(body.action==='catalog')out={ok:true,registryRevision:outdated?'future-isolated-registry':R.revision(),items:R.list().map(p=>({pattern_id:p.id,title:names.get(p.id)?.title||p.title,revision:names.get(p.id)?.revision||1})),defaults:[...defaults.values()]};
-  if(body.action==='overview')out={ok:true,data:buildData({patternCatalog:R.list().map(p=>({pattern_id:p.id,title:names.get(p.id)?.title||p.title,revision:names.get(p.id)?.revision||1}))})};
+  if(body.action==='overview')out={ok:true,data:buildData({accounts:observed?[{tester_id:'T-ISOLATED',created_at:observed.createdAt}]:[],archives:observed?[{tester_id:'T-ISOLATED',device_id:'fixture-browser',payload:observed}]:[],patternCatalog:R.list().map(p=>({pattern_id:p.id,title:names.get(p.id)?.title||p.title,revision:names.get(p.id)?.revision||1}))})};
   if(body.action==='rename-pattern'){
    const old=names.get(body.patternId)||{revision:1};assert.equal(body.expectedRevision,old.revision);
    const item={pattern_id:body.patternId,title:body.title,revision:old.revision+1};names.set(body.patternId,item);out={ok:true,item};
@@ -53,17 +53,22 @@ try{
   await page.waitForFunction(({id,image})=>document.querySelector(`.base-tile[data-pattern-id="${id}"] canvas`)?.toDataURL()!==image,{id,image});
   await page.evaluate(id=>{const S=window.SetkaApp;S.openConfig(S.getPatternDefaults(id),{type:'exact',id,patternId:id})},id);
   await page.locator('#gameScreen.active').waitFor();
+  if(id==='fixture-shapes')await page.evaluate(()=>window.SetkaStandaloneV34.startSession({requestKey:'focus',preState:3,plannedSeconds:600}));
   await page.locator('#instructionsButton').click();
   assert.equal(await page.locator('#st34KeySheet.open .sk-setting').count(),2);
   await page.locator('#st34KeySheet input').first().evaluate((e,value)=>{e.value=value;e.dispatchEvent(new Event('input',{bubbles:true}))},id==='fixture-shapes'?'27':'11');
   await page.locator('#st34KeySheet [data-action="close"]').click();
+  await page.waitForFunction(()=>{const x=window.SetkaStandaloneV34.patternExposure.current();return x&&Date.now()-x.startedMs>=200});
   await page.locator('#favoriteButton').click();
   await page.locator('#st34Note').click();
   await page.locator('#st34Layer textarea').last().fill('saved-'+id);
   await page.locator('#st34Layer .st-primary').filter({hasText:'Сохранить'}).click();
   await page.locator('#libraryButton').click();
  }
+ await page.evaluate(()=>window.SetkaStandaloneV34.finishSession());
  const saved=await page.evaluate(()=>window.SetkaStandaloneV34.getData().notes.map(n=>n.replaySnapshot));
+ observed=await page.evaluate(()=>JSON.parse(JSON.stringify(window.SetkaStandaloneV34.getData())));
+ for(const id of fixtures.map(p=>p.id)){assert.ok(observed.patternExposures.some(x=>x.patternId===id&&x.durationMs>0&&x.patternVersion===1),'recorded usage and stable algorithm version '+id);assert.ok(observed.sessions.some(s=>s.usage.some(x=>x.patternId===id)),'new algorithm inherits session history '+id);}
  assert.equal(saved.length,2);assert.deepEqual(saved.map(x=>x.patternId),fixtures.map(p=>p.id));assert.equal(saved[0].config.radius,27);assert.equal(saved[1].config.cells,11);
  assert.equal(await page.evaluate(()=>window.SetkaApp.getFavorites().filter(f=>f.patternId.startsWith('fixture-')).length),2);
  await page.reload();await page.waitForFunction(()=>window.SetkaPatternRegistryV1.ready('fixture-fields'));
@@ -81,7 +86,14 @@ try{
  await admin.getByLabel('Действующий ключ администратора SETKA').fill('isolated-ci-only');
  await admin.getByRole('button',{name:'Открыть исследования'}).click();
  await admin.locator('#workspace:not([hidden])').waitFor();
+ for(const p of R.list()){
+  const image=await admin.evaluate(async id=>{const {draw}=await import('/research-v1/renderer.mjs?v=ci-parity');const c=document.createElement('canvas');c.width=220;c.height=260;draw(c,window.SetkaPatternRegistryV1.defaults(id),77,id,true);return c.toDataURL()},p.id);
+  assert.equal(image,await render(page,p.id),'actual research renderer equals frontend '+p.id);
+ }
+
+ assert.match(await admin.locator('.pattern-card[data-id="fixture-shapes"]').innerText(),/1\s+Аккаунтов/,'research statistics derive from browser-recorded exposure');
  await admin.locator('.pattern-card[data-id="fixture-shapes"]').click();
+ await admin.locator('#detail-content').getByText('saved-fixture-shapes',{exact:true}).waitFor();
  await admin.locator('#pattern-settings input').first().waitFor();
  await admin.getByRole('button',{name:'Изменить название',exact:true}).click();
  await admin.locator('#pattern-title').fill('Исследовательский новый паттерн');
