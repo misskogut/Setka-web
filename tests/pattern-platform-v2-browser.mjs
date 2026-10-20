@@ -25,7 +25,7 @@ try{
   fs.readFileSync('standalone-pattern-registry-v1.js','utf8')+'\n'+fixtures.map(p=>'window.SetkaPatternRegistryV1.register('+JSON.stringify(p)+');').join('\n')}));
  await context.route('**/standalone-pattern-fixture-*.js*',route=>{
   const id=new URL(route.request().url()).pathname.match(/standalone-pattern-(fixture-[a-z-]+)\.js/)[1];
-  return route.fulfill({contentType:'text/javascript',body:`window.SetkaPatternRegistryV1.bindRenderer(${JSON.stringify(id)},function(ctx,w,h,c,f){ctx.save();ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);ctx.fillStyle=c.colorModeIndex?'cyan':'white';const size=c.radius||c.cells*3;ctx.fillRect(w/2-size/2+Math.sin(f*(c.tempo||.1))*15,h/2-size/2,size,size);ctx.restore()});`});
+  return route.fulfill({contentType:'text/javascript',body:`window.SetkaPatternRegistryV1.bindRenderer(document.currentScript.dataset.patternId,function(ctx,w,h,c,f){ctx.save();ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);ctx.fillStyle=c.colorModeIndex?'cyan':'white';const size=c.radius||c.cells*3;ctx.fillRect(w/2-size/2+Math.sin(f*(c.tempo||.1))*15,h/2-size/2,size,size);ctx.restore()});`});
  });
  await context.route('**/functions/v1/**',async route=>{
   let body={};try{body=route.request().postDataJSON()||{}}catch{}
@@ -126,5 +126,9 @@ try{
  assert.equal(await page.locator('.base-tile').count(),71);
  assert.deepEqual(errors,[]);
  fs.mkdirSync('tests/visual-smoke',{recursive:true});await page.screenshot({path:'tests/visual-smoke/platform-'+(process.env.SETKA_BROWSER||'chromium')+'.png'});
+ await admin.screenshot({path:'tests/visual-smoke/platform-admin-'+(process.env.SETKA_BROWSER||'chromium')+'.png'});
+ await page.evaluate(()=>{const S=window.SetkaApp;S.registerPattern({id:'fixture-readonly',title:'Isolated capabilities',version:1,colorModes:1,defaults:{colorModeIndex:0},controls:[],capabilities:{settings:false,favorites:false,notes:false,audio:false},render(ctx,w,h){ctx.fillStyle='#000';ctx.fillRect(0,0,w,h)}});S.openConfig(S.getPatternDefaults('fixture-readonly'),{type:'exact',patternId:'fixture-readonly'})});
+ for(const selector of ['#favoriteButton','#instructionsButton','#st34AudioButton','#st34Note'])assert.equal(await page.locator(selector).isVisible(),false,'declared capability '+selector);
+ assert.deepEqual(errors,[]);
  console.log('PLATFORM A/B/C/D/G/H/I PASS: two initial plugins, saved snapshots, admin name/defaults, identical renderer, third plugin, bounded previews');
 }finally{await browser?.close();server.kill('SIGTERM')}

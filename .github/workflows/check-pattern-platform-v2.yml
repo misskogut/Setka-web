@@ -27,6 +27,12 @@ jobs:
       - run: node tests/pattern-platform-v2-browser.mjs
         env:
           SETKA_BROWSER: ${{ matrix.browser }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pattern-platform-${{ matrix.browser }}
+          path: tests/visual-smoke/platform*.png
+          if-no-files-found: ignore
       - run: ./node_modules/.bin/esbuild supabase/functions/setka-research-admin-v1/index.ts --bundle --platform=neutral --format=esm --outfile=/tmp/research-admin-v2.mjs
   migration:
     runs-on: ubuntu-latest

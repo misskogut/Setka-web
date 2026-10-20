@@ -19,15 +19,7 @@
   }
 
   function patternIdFromConfig(config) {
-    const c = config || {};
-    if (c.eyeSeparation != null || c.stereoAngle != null || (c.angleStep != null && c.numPoints != null)) return "stereo-dna";
-    if (c.numRings != null || c.baseSpacing != null || c.invertDirection != null) return "rgb-glitch-rings";
-    if (c.numLayers != null || c.ringSpacing != null) return "fish-wave";
-    if (c.maxDepth != null || c.levelSpeedRatio != null || c.firstLevelFactor != null || (c.pulseSpeed != null && c.branches != null)) return "breathing-fractal-growth";
-    if (c.pulseSpd != null || c.pulseAmp != null || (c.layers != null && c.branches != null)) return "breathing-fractal";
-    if (c.v1 != null || c.numShapes != null || c.angleSpeed != null || c.tSpeed != null || c.backgroundAlpha != null) return "dandelion";
-    if (c.numTentacles != null || c.tentacleLength != null || c.circleSize != null || c.segmentStep != null) return "tentacle-orbit";
-    return window.SetkaPatternRegistryV1?.inference?.(c)||null;
+    return window.SetkaPatternRegistryV1?.inference?.(config)||null;
   }
 
   function patternIdFromHash(note) {
@@ -39,7 +31,7 @@
   function patternIdOf(note) {
     const cfg = configOf(note);
     if(note?.replaySnapshot?.patternId)return note.replaySnapshot.patternId;
-    const explicit = [note?.patternId,note?.state?.patternId,cfg?.patternId,note?.visualRecipe?.patternId,note?.visualSnapshot?.patternId];
+    const explicit = [cfg?.patternId,note?.patternId,note?.state?.patternId,note?.visualRecipe?.patternId,note?.visualSnapshot?.patternId];
     return explicit.find(id=>KNOWN_PATTERN_IDS.includes(id))
       || patternIdFromHash(note)
       || patternIdFromConfig(cfg)

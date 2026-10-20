@@ -90,8 +90,8 @@
   }
   function renderLibrary(){
     stopLibraryPreviews();
-    const available=PATTERNS.filter(p=>registry.ready(p.id));
-    reconcilePanel(allPatternsPanel,JSON.stringify([available.map(p=>[p.id,p.version,p.defaults]),[...recommendedPatterns]]),()=>{
+    const available=PATTERNS;
+    reconcilePanel(allPatternsPanel,JSON.stringify([available.map(p=>[p.id,p.version,p.defaults,registry.ready(p.id)]),[...recommendedPatterns]]),()=>{
       for(const p of available){const tile=makePatternTile({kind:"base",id:p.id,baseId:p.id,patternId:p.id,config:p.defaults,previewFrame:BASE_PREVIEW_FRAME,title:p.title,patternVersion:p.version});if(recommendedPatterns.has(p.id))tile.classList.add("recommended");allPatternsPanel.appendChild(tile)}
     });
     reconcilePanel(communityPanel,JSON.stringify([communityItems,[...recommendedCommunity],registry.ids().filter(id=>registry.ready(id))]),()=>{

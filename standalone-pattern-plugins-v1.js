@@ -16,6 +16,8 @@ function loadModules(){
     const address=new URL(url,document.currentScript?.src||location.href);
     const build=document.querySelector('meta[name="setka-release-build"]')?.content;
     if(build&&build!=="development")address.searchParams.set("build",build);
+    script.dataset.patternId=p.id;
+    script.dataset.patternVersion=String(p.version);
     script.src=address.href;
     script.async=false;
     const pending=new Promise(resolve=>{

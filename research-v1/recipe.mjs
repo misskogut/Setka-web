@@ -44,6 +44,7 @@ export function resolveRecipe(state={}){
  // These constants were renderer law, never mutable settings in these versions.
  if(renderId==='stereo-dna'&&config.colorModeIndex==null&&oldDna)config.colorModeIndex=0;
  if(renderId==='breathing-fractal-growth')config.firstLevelFactor=2;
+ if(!registry.validate(config,renderId).ok)return fail('invalid_configuration');
  return {ok:true,recordedId,renderId,recordedVersion:version,renderVersion:VERSIONS[renderId],config,
   compatibility:alias?'historical-alias':'current',configurationSource:fields.every(k=>k in original)?'snapshot':'configuration-code'};
 }
