@@ -129,15 +129,20 @@ async function replay(b:any){
     provenance:{raw:'prototype_v34_raw_events_all_v2',containsArchivedRaw:true,initialStateKnown:states.some(x=>x.tMs===0),screenPixelsStored:false}});
 }
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const PATTERN_IDS=new Set(['tentacle-orbit','dandelion','fish-wave','breathing-fractal','breathing-fractal-growth','rgb-glitch-rings','stereo-dna','breathing-grid']);
+async function isRegisteredPattern(id:any){
+  const pid=String(id||'');if(!/^[a-z][a-z0-9-]{2,79}$/.test(pid))return false;
+  const catalog=await read('setka_research_v1_pattern_catalog','pattern_id',{pattern_id:pid},1);
+  return catalog.rows.some(x=>x.pattern_id===pid);
+}
 async function saveExperiment(b:any,adminId:string){
   const title=String(b.title||'').trim(),hypothesis=String(b.hypothesis||'').trim();
-  if(title.length<3||title.length>160||hypothesis.length<10||hypothesis.length>4000||!PATTERN_IDS.has(b.patternId)||
+  if(title.length<3||title.length>160||hypothesis.length<10||hypothesis.length>4000||!/^[a-z][a-z0-9-]{2,79}$/.test(String(b.patternId||''))||
     !['view_duration','completion','state_delta'].includes(b.metric)||!['draft','prepared','paused','closed'].includes(b.status)||
     !Number.isInteger(b.minimumParticipants)||b.minimumParticipants<2||b.minimumParticipants>100000||
     !Number.isInteger(b.expectedRevision)||b.expectedRevision<0||b.id&&!UUID.test(b.id)||
     !b.groupA||!b.groupB||Array.isArray(b.groupA)||Array.isArray(b.groupB)||JSON.stringify(b.groupA).length>3000||JSON.stringify(b.groupB).length>3000)
     return reply({error:'invalid_plan'},400);
+  if(!await isRegisteredPattern(b.patternId))return reply({error:'unknown_pattern'},400);
   const res=await fetch(`${URL_BASE}/rest/v1/rpc/setka_research_v1_save_experiment`,{method:'POST',
     headers:{apikey:SERVICE,Authorization:`Bearer ${SERVICE}`,'Content-Type':'application/json'},
     body:JSON.stringify({p_id:b.id||null,p_expected_revision:b.expectedRevision,p_title:title,p_hypothesis:hypothesis,
