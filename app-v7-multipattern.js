@@ -80,10 +80,10 @@
     if(candidate===RGB_ID&&looksLegacyFish(c))return FISH_ID;
     if(candidate&&IDS.has(candidate))return candidate;
     if(looksDna(c))return DNA_ID;
-    const registered=registry?.inference?.(c);
-    if(registered&&IDS.has(registered))return registered;
     if(looksLegacyFish(c))return FISH_ID;
     if(looksRgb(c))return RGB_ID;
+    const registered=registry?.inference?.(c);
+    if(registered&&IDS.has(registered))return registered;
     return TENTACLE_ID;
   }
   function readJSON(k,d){try{const raw=localStorage.getItem(k);return raw?JSON.parse(raw):d}catch(_){return d}}
