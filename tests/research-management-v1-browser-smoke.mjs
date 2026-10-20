@@ -55,7 +55,7 @@ try{
  await front.addInitScript(localApiTransport);
  await front.addInitScript(()=>localStorage.setItem('setka-v40:cabinet-session',JSON.stringify({token:'isolated-fixture-only'})));
  await front.goto(base+'/standalone-v34.html',{waitUntil:'domcontentloaded'});await front.waitForFunction(()=>!!window.__SETKA_PATTERN_CATALOG_V1__&&!!window.SetkaStandaloneV34.activity);
- assert.equal(await front.locator('.base-tile .setka-new-pattern').count(),7);
+ assert.equal(await front.locator('.base-tile .setka-new-pattern').count(),8);
  assert.equal(await front.locator('.base-tile .setka-new-pattern').first().innerText(),'new');
  const firstPreview=await front.locator('.base-tile .thumb-canvas').first().evaluate(c=>c.toDataURL());
  await front.waitForFunction(before=>document.querySelector('.base-tile .thumb-canvas').toDataURL()!==before,firstPreview);
