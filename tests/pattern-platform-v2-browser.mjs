@@ -89,6 +89,7 @@ try{
  await admin.getByRole('button',{name:'Сохранить стартовые настройки'}).click();
  await admin.getByText('Настройки сохранены. Фронт получит их при обновлении каталога.').waitFor();
  await page.evaluate(()=>window.__SETKA_PATTERN_CATALOG_V1__.refresh());
+ assert.equal(await page.evaluate(()=>window.__SETKA_PATTERN_CATALOG_V1__.status()?.ok),true,'catalog request confirmed');
  assert.equal(await page.evaluate(()=>window.SetkaApp.getPatternTitle('fixture-shapes')),'Исследовательский новый паттерн');
  assert.equal(await page.evaluate(()=>window.SetkaApp.getPatternDefaults('fixture-shapes').radius),31);
  assert.equal(await page.evaluate(()=>window.SetkaStandaloneV34.getData().notes[0].replaySnapshot.config.radius),27,'old note is immutable after administrative edit');

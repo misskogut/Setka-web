@@ -2,9 +2,9 @@ name: Verify unified pattern platform v2
 on:
   push:
     branches: ['audit/unified-patterns-20261020', 'main']
-    paths: ['standalone-*.js','standalone-*.html','app-v7-multipattern.js','research-v1/**','scripts/**','supabase/functions/_shared/pattern-catalog.mjs','supabase/functions/setka-research-admin-v1/**','tests/pattern-*','.github/workflows/check-pattern-platform-v2.yml']
+    paths: ['standalone-*.js','standalone-*.html','app-v7-multipattern.js','research-v1/**','scripts/**','supabase/migrations/**','supabase/functions/_shared/pattern-catalog.mjs','supabase/functions/setka-research-admin-v1/**','tests/pattern-*','.github/workflows/check-pattern-platform-v2.yml']
   pull_request:
-    paths: ['standalone-*.js','standalone-*.html','app-v7-multipattern.js','research-v1/**','scripts/**','supabase/functions/_shared/pattern-catalog.mjs','supabase/functions/setka-research-admin-v1/**','tests/pattern-*','.github/workflows/check-pattern-platform-v2.yml']
+    paths: ['standalone-*.js','standalone-*.html','app-v7-multipattern.js','research-v1/**','scripts/**','supabase/migrations/**','supabase/functions/_shared/pattern-catalog.mjs','supabase/functions/setka-research-admin-v1/**','tests/pattern-*','.github/workflows/check-pattern-platform-v2.yml']
 permissions:
   contents: read
 jobs:

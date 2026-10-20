@@ -97,6 +97,14 @@
       const out=await post({action:"status",deviceId:did(),sessionToken:startedToken});
       const now=session();
       if(startedEpoch!==sessionEpoch||(now?.token||null)!==startedToken)return cached();
+      if(startedToken&&out?.authenticated&&out.testerId&&s?.testerId!==out.testerId){
+        // Bind legacy tokens to the verified server identity before any archive
+        // upload. Unowned guest history is retained in its existing scope.
+        if(C.ready)await C.ready;C.save?.();if(C.whenSaved&&!await C.whenSaved())return cached();
+        const switched=window.SetkaDataScopeV1?.activate?.(out.testerId);
+        setSession(startedToken,s?.expiresAt,out.testerId);
+        if(switched){cache(out);location.reload();return out}
+      }
       if(startedToken&&out?.sessionInvalid===true){
         clearSession();
         cache({...out,authenticated:false});

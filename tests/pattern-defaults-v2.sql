@@ -5,7 +5,7 @@ create role authenticated;
 create role service_role;
 create table public.admin_keys(id uuid primary key,active boolean not null);
 create table public.setka_research_v1_pattern_catalog(pattern_id text primary key,title text,revision integer);
-\ir ../research-v1/sql/pattern-defaults-v2.sql
+\ir ../supabase/migrations/20261020183932_pattern_defaults_v2.sql
 begin;
 insert into public.admin_keys values('00000000-0000-4000-8000-000000000001',true);
 insert into public.setka_research_v1_pattern_catalog values('fixture-only','Original title',7);

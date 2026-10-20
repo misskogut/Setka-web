@@ -17,7 +17,7 @@
     }
     return null;
   }
-  function scopeMatches(s){const owner=window.SetkaDataScopeV1?.id;return !owner||!s?.testerId||owner==="tester:"+String(s.testerId)}
+  function scopeMatches(s){const owner=window.SetkaDataScopeV1?.id;return !owner||!!s?.testerId&&owner==="tester:"+String(s.testerId)}
   function sameSession(token){return !pageClosing&&session()?.token===token}
   function did(){return C.sandbox?.deviceId||null}
   function stateFingerprint(d={}){return digest([(d.symptoms||[]).map(x=>[x.id,x.name,x.active,x.lastIntensity,x.updatedAt,x.createdAt]).sort((a,b)=>String(a[0]).localeCompare(String(b[0]))),(d.checkins||[]).map(x=>[x.id,x.symptomId,x.intensity,x.phase,x.observedAt,x.sessionId]).sort((a,b)=>String(a[0]).localeCompare(String(b[0])))]);}
@@ -69,6 +69,7 @@
     const lp=d.physio||{samples:[],sources:[]},rp=payload.physio||{};
     d.physio={...rp,...lp,samples:mergeRecords(lp.samples,rp.samples,"physioSamples",10000),sources:mergeRecords(lp.sources,rp.sources,"physioSources",2000)};
     d.settings={...(payload.settings||{}),...(d.settings||{})};
+    if(Setka.restorePersonalConfigs)d.settings.patternConfigs=Setka.restorePersonalConfigs(payload.settings?.patternConfigs||{});
     C.save?.();
     const favoriteCount=mergeFavorites(remoteFavorites);
     return {sessions:d.sessions.length,notes:d.notes.length,symptoms:d.symptoms.length,checkins:d.checkins.length,events:d.events.length,exposures:d.patternExposures.length,physio:d.physio.samples.length,favorites:favoriteCount};

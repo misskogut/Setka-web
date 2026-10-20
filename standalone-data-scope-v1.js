@@ -12,7 +12,7 @@
   const id=account?'tester:'+String(account):'guest';
   const key=base=>base+'::scope:'+encodeURIComponent(id);
   const personalKeys=['setka-standalone:v34','setka-standalone:active:v34','setka-standalone:v33','setka-standalone:active:v33',
-    'setka-web:favorites:v1','setka-web:favorites:fish-wave:v35','setka-web:favorites:breathing-fractal:v1',
+    'setka-web:favorites:v1','setka-standalone:favorite-snapshots:v34','setka-web:favorites:fish-wave:v35','setka-web:favorites:breathing-fractal:v1',
     'setka-web:favorites:breathing-fractal-growth:v1','setka-patterns:last-config:v1'];
   let legacyOwner=read(MIGRATION);
   if(!legacyOwner){

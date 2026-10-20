@@ -82,3 +82,17 @@ test('local archives are isolated between accounts and a guest while original hi
  assert.equal(load('A').storage.getItem('setka-standalone:v34'),'{"notes":["A"]}');assert.ok(load(null).storage.getItem('setka-standalone:v34').includes('legacy'));
  assert.ok(values.get('setka-standalone:v34').includes('legacy'),'pre-migration rollback copy retained');
 });
+test('a cloud response from an earlier account cannot hydrate the current page or confirm its states',async()=>{
+ const rows=new Map([['setka-v40:cabinet-session',JSON.stringify({token:'isolated-A',testerId:'A'})]]),data={notes:[{id:'local-A'}],symptoms:[],checkins:[],sessions:[],events:[],settings:{}};
+ let release;const waiting=new Promise(ok=>release=ok),actions=[];
+ const storage={getItem:k=>rows.get(k)||null,setItem:(k,v)=>rows.set(k,v)};
+ const context={JSON,Blob,Date,Number,Error,String,CustomEvent:class{},localStorage:storage,sessionStorage:storage,
+  setTimeout:()=>0,setInterval:()=>0,clearTimeout(){},addEventListener(){},dispatchEvent(){},document:{addEventListener(){}},
+  SetkaDataScopeV1:{id:'tester:A',key:k=>k},SetkaStandaloneV34:{sandbox:{deviceId:'isolated-device'},getData:()=>data,save(){}},SetkaApp:{getFavorites:()=>[]},
+  fetch:async(_url,init)=>{actions.push(JSON.parse(init.body).action);await waiting;return {ok:true,json:async()=>({ok:true,archive:{payload:{notes:[{id:'remote-after-switch'}],symptoms:[{id:'wrong-owner'}]}}})}}};context.window=context;
+ vm.runInNewContext(fs.readFileSync('standalone-private-corpus-v40.js','utf8'),context);
+ const sending=context.__SETKA_PRIVATE_CORPUS_V40__.sync();
+ rows.set('setka-v40:cabinet-session',JSON.stringify({token:'isolated-B',testerId:'B'}));release();
+ assert.equal(await sending,false);assert.deepEqual(data.notes,[{id:'local-A'}]);assert.deepEqual(data.symptoms,[]);assert.deepEqual(actions,['pull']);
+ assert.equal(await context.__SETKA_PRIVATE_CORPUS_V40__.sync(),false,'new token cannot upload the old page scope');
+});
