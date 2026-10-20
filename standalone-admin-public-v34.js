@@ -9,7 +9,8 @@
     ["breathing-fractal","Дыхательный фрактал"],
     ["breathing-fractal-growth","Растущий фрактал"],
     ["rgb-glitch-rings","Цветовые кольца"],
-    ["stereo-dna","Stereo DNA"]
+    ["stereo-dna","Stereo DNA"],
+    ["breathing-grid","Breathing Grid"]
   ];
   const $=id=>document.getElementById(id);
   const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
