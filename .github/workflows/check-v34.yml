@@ -9,6 +9,9 @@ on:
       - 'standalone-audio-reactive-v3.js'
       - 'standalone-audio-reactive-v4.js'
       - 'standalone-pattern-key-v1.js'
+      - 'standalone-pattern-registry-v1.js'
+      - 'standalone-pattern-plugins-v1.js'
+      - 'scripts/build-pattern-manifest.mjs'
       - 'tests/standalone-breathing-grid-browser-smoke.mjs'
       - 'standalone-live-previews-v1.js'
       - 'tests/standalone-live-previews-v1-browser-smoke.mjs'
@@ -118,6 +121,9 @@ jobs:
       - run: node --check standalone-audio-reactive-v3.js
       - run: node --check standalone-audio-reactive-v4.js
       - run: node --check standalone-pattern-key-v1.js
+      - run: node --check standalone-pattern-registry-v1.js
+      - run: node --check standalone-pattern-plugins-v1.js
+      - run: node scripts/build-pattern-manifest.mjs
       - run: node --check standalone-live-previews-v1.js
       - run: node --check scripts/build-standalone-release.mjs
       - run: node --test tests/standalone-one-link-release.test.mjs
