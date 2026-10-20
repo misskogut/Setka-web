@@ -410,8 +410,27 @@
     const v=original+clamp(proposed-original,-cap,cap);
     return clamp(v,Math.min(original,lo),Math.max(original,hi));
   }
+  function autoRecipe(patternId,modeNumber){
+    // New plug-in patterns receive a subtle microphone response without
+    // manually adding 5 more choreography tables. Only continuous numeric
+    // controls are eligible; integer topology/counts remain untouched.
+    const pattern=window.SetkaPatternRegistryV1?.get?.(patternId);
+    if(!pattern||!pattern.controls?.length)return null;
+    const out={},mix=["low","mid","high"];
+    let count=0;
+    for(const row of pattern.controls){
+      const [,key,min,max,step]=row;
+      if(typeof key!=="string"||!Number.isFinite(min)||!Number.isFinite(max)||
+        !Number.isFinite(step)||step>=1||staticTopology.has(key)||
+        /(?:count|number|depth|layers|branches|num|points|rings|cols|rows)/i.test(key))continue;
+      const channel=mix[(count+modeNumber-1)%3];
+      out[key]=[channel,.10,modeNumber%2===0?"swing":"grow",min,max];
+      if(++count>=3)break;
+    }
+    return count?out:null;
+  }
   function configForMode(original,patternId,live,n,time){
-    const p=profile(n),recipe=choreography[n]?.[patternId];
+    const p=profile(n),recipe=choreography[n]?.[patternId]||autoRecipe(patternId,n);
     if(!p||!recipe)return original;
     const out={...original},sensitivity=sensitivityByPattern[patternId]??.28;
     let index=0;
