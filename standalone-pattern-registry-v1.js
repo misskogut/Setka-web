@@ -26,7 +26,7 @@ const api={
  has:id=>records.has(id),
  ids:()=>[...records.keys()],
  list:()=>[...records.values()].map(p=>({id:p.id,title:p.title,version:p.version,
-   controls:copy(p.controls),colorModes:p.colorModes,defaults:copy(p.defaults||{})})),
+   controls:copy(p.controls),colorModes:p.colorModes,defaults:copy(p.defaults||{}),module:p.module||null})),
  controls:id=>copy(records.get(id)?.controls||[]),
  attachEngine:S=>{
    for(const p of S?.getPatterns?.()||[]){
