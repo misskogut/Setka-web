@@ -456,6 +456,7 @@
     return out;
   }
   function renderConfig(original,patternId){
+    if(window.SetkaPatternRegistryV1?.get?.(patternId)?.capabilities?.audio===false)return original;
     const live=visualBands();
     if(!live||!original||typeof original!=="object")return original;
     const next=active?mode:releaseMode,old=active?previousMode:releaseMode;

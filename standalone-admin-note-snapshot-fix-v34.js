@@ -25,12 +25,16 @@
     frame.setAttribute("aria-hidden", "true");
     frame.tabIndex = -1;
     frame.style.cssText = "position:fixed;width:1px;height:1px;left:-9999px;top:-9999px;border:0;opacity:0;pointer-events:none";
-    frame.srcdoc = `<!doctype html><html><body style="margin:0;background:#000"><script>window.SetkaPatternRegistryV1=parent.SetkaPatternRegistryV1;<\/script><main id="app"><section id="libraryScreen" class="screen active"><button id="libraryPagerButton"></button><button id="communityPagerButton"></button><button id="favoritesPagerButton"></button><div id="libraryTitle"></div><div id="librarySwipeArea"></div><div id="allPatternsPanel"></div><div id="communityPanel"></div><div id="favoritesPanel"></div></section><section id="gameScreen" class="screen"><canvas id="patternCanvas" width="320" height="320"></canvas><button id="favoriteButton"></button><button id="libraryButton"></button><button id="prevButton"></button><button id="nextButton"></button><button id="colorButton"></button><div id="colorDots"></div><button id="instructionsButton"></button><div id="instructionsModal"><div class="instructions"></div></div><div id="toast"></div></section></main><script src="app-v7-multipattern.js?v=1.6-registry-dna-admin-20261020"><\/script><script src="standalone-pattern-plugins-v1.js?v=1.0-auto-registry"><\/script></body></html>`;
+    const address=new URL("standalone-renderer-v40.html",location.href);
+    const build=document.querySelector('meta[name="setka-release-build"]')?.content;
+    if(build)address.searchParams.set("build",build);
+    frame.src=address.href;
     frame.onload = () => {
       let tries = 0;
       const wait = () => {
         previewApp = frame.contentWindow?.SetkaApp || null;
         if (previewApp?.renderPreview) {
+          frame.contentWindow.SetkaPatternPluginsV1?.ready?.().then(()=>window.dispatchEvent(new CustomEvent("setka:admin-preview-ready")));
           scheduleRepair();
           window.dispatchEvent(new CustomEvent("setka:admin-preview-ready"));
         } else if (tries++ < 60) setTimeout(wait, 50);
@@ -120,13 +124,14 @@
   function registerLive(canvas,recipe){
     if(!recipe?.patternId||!recipe?.config||!canvas)return;
     liveEntries.set(canvas,{config:JSON.parse(JSON.stringify(recipe.config)),
-      patternId:recipe.patternId,frame:Number(recipe.frame)||44});
+      patternId:recipe.patternId,frame:Number.isFinite(Number(recipe.frame))?Number(recipe.frame):44});
     if(!liveTickHandle)liveTickHandle=requestAnimationFrame(tickLive);
   }
   function tickLive(now){
     liveTickHandle=0;
     for(const canvas of liveEntries.keys())if(!canvas.isConnected)liveEntries.delete(canvas);
     if(!liveEntries.size)return;
+    if(document.hidden||window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches){lastLive=0;return}
     if(!lastLive||now-lastLive>=50){
       if(lastLive)livePhase+=Math.min(80,now-lastLive)/16.6667*.85;
       lastLive=now;
@@ -140,6 +145,7 @@
     }
     liveTickHandle=requestAnimationFrame(tickLive);
   }
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden&&liveEntries.size&&!liveTickHandle)liveTickHandle=requestAnimationFrame(tickLive)});
   function renderCanvas(canvas, item) {
     if (!canvas || !item) return false;
     sizeCanvas(canvas);
@@ -180,5 +186,5 @@
 
   makePreviewEngine();
   window.addEventListener("resize", scheduleRepair);
-  window.__SETKA_ADMIN_NOTE_SNAPSHOT_FIX_V34__ = {version:7,repair:scheduleRepair,renderCanvas,registerLive,getPatternTitle:id=>previewApp?.getPatternTitle?.(id)||id||"Паттерн",get ready(){return !!previewApp?.renderPreview}};
+  window.__SETKA_ADMIN_NOTE_SNAPSHOT_FIX_V34__ = {version:7,repair:scheduleRepair,renderCanvas,registerLive,getPatternTitle:id=>window.SetkaPatternRegistryV1?.title?.(id)||previewApp?.getPatternTitle?.(id)||id||"Паттерн",get ready(){return !!previewApp?.renderPreview}};
 })();

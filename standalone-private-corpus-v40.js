@@ -5,7 +5,7 @@
   const API="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-tester-archive-v37";
   const KEY="sb_publishable_1jL-x9_kp6rpfGghpSp_OA_OiXDnvsv";
   const SESSION_KEY="setka-v40:cabinet-session";
-  const STATUS_KEY="setka-v40:private-corpus-status";
+  const STATUS_KEY=window.SetkaDataScopeV1?.key?.("setka-v40:private-corpus-status")||"setka-v40:private-corpus-status";
   const FAVORITES_KEY="setka-web:favorites:v1";
   const BUILD="v40.private-cloud.3-states";
   let pageClosing=false,pendingWrite=Promise.resolve(),busy=false,timer=0,physioTimer=0,lastSignature="",hydrated=false,authoritative=false,hydrationPromise=null,lastStatus=null;
@@ -17,6 +17,8 @@
     }
     return null;
   }
+  function scopeMatches(s){const owner=window.SetkaDataScopeV1?.id;return !owner||!s?.testerId||owner==="tester:"+String(s.testerId)}
+  function sameSession(token){return !pageClosing&&session()?.token===token}
   function did(){return C.sandbox?.deviceId||null}
   function stateFingerprint(d={}){return digest([(d.symptoms||[]).map(x=>[x.id,x.name,x.active,x.lastIntensity,x.updatedAt,x.createdAt]).sort((a,b)=>String(a[0]).localeCompare(String(b[0]))),(d.checkins||[]).map(x=>[x.id,x.symptomId,x.intensity,x.phase,x.observedAt,x.sessionId]).sort((a,b)=>String(a[0]).localeCompare(String(b[0])))]);}
   function status(){let value=lastStatus;try{value=value||JSON.parse(localStorage.getItem(STATUS_KEY)||"null")}catch(_){}return value?{...value,statesPending:!value.stateFingerprint||value.stateFingerprint!==stateFingerprint(C.getData?.()||{})}:null}
@@ -48,7 +50,7 @@
     const local=favorites(),m=new Map(),put=(f,i)=>{const k=favKey(f,i),old=m.get(k);if(!old||stamp(f)>=stamp(old))m.set(k,clone(f))};
     (Array.isArray(remote)?remote:[]).forEach(put);local.forEach((f,i)=>put(f,100000+i));
     const merged=[...m.values()].slice(-10000);
-    try{localStorage.setItem(FAVORITES_KEY,JSON.stringify(merged));Setka.refreshFavorites?.()}catch(_){}
+    try{(window.SetkaDataScopeV1?.storage||localStorage).setItem(FAVORITES_KEY,JSON.stringify(merged));Setka.refreshFavorites?.()}catch(_){}
     return merged.length;
   }
   function mergeCloud(payload={},remoteFavorites=[]){
@@ -123,12 +125,12 @@
       return post(payload,false);
     }
   }
-  async function pull(){const s=session();if(!s?.token)throw new Error("auth_required");return post({action:"pull",sessionToken:s.token,deviceId:did()})}
+  async function pull(){const s=session();if(!s?.token||!scopeMatches(s))throw new Error("auth_required");return post({action:"pull",sessionToken:s.token,deviceId:did()})}
   async function restoreFromCloud(){
     if(C.ready)await C.ready;
     if(pageClosing)return false;
-    const s=session();if(!s?.token){hydrated=false;authoritative=false;return false}
-    const out=await pull();if(pageClosing)return false;const a=out?.archive;
+    const s=session();if(!s?.token||!scopeMatches(s)){hydrated=false;authoritative=false;return false}
+    const out=await pull();if(!sameSession(s.token))return false;const a=out?.archive;
     if(!a){
       hydrated=true;authoritative=true;lastSignature="";
       saveStatus({enabled:true,ok:true,restored:false,stateFingerprint:stateFingerprint({}),statesVerified:false,build:BUILD,updatedAt:null,counts:null,sourceDevices:0,privacy:"private-account-only",publicExposure:false});
@@ -152,12 +154,13 @@
     if(C.storageStatus?.().resetting)return false;
     if(pageClosing&&!closingWrite)return false;
     if(!keepalive&&C.ready)await C.ready;
-    const s=session(),deviceId=did();if(!s?.token||!deviceId){saveStatus({enabled:false,reason:"not_authenticated",build:BUILD,privacy:"private-account-only"});return false}
+    const s=session(),deviceId=did();if(!s?.token||!deviceId||!scopeMatches(s)){saveStatus({enabled:false,reason:"not_authenticated",build:BUILD,privacy:"private-account-only"});return false}
     // Unload cannot restore the remote archive first. Keep local changes for the
     // next foreground sync instead of starting an unsafe pull in a closing page.
     if(keepalive&&!hydrated)return false;
     const loaded=hydrated||await ensureHydrated();
     if(pageClosing&&!closingWrite)return false;
+    if(!sameSession(s.token)&&!closingWrite)return false;
     if(!loaded){
       saveStatus({enabled:true,ok:false,build:BUILD,stage:"restore",error:"archive_restore_required_before_sync",privacy:"private-account-only",publicExposure:false});
       return false;
@@ -174,6 +177,7 @@
       // upload into a failed cloud receipt or send a destructive partial archive.
       if(keepalive&&new Blob([JSON.stringify(payload)]).size>60000)return false;
       pendingWrite=autoRetryPost(payload,keepalive);const out=await pendingWrite;
+      if(session()?.token!==s.token||pageClosing&&!closingWrite)return false;
       const receipt=out.stateHistory||{symptoms:sent.symptoms,checkins:sent.checkins};
       if(out.stateHistory){const d=C.getData(),before=stateFingerprint(d);d.symptoms=mergeRecords(d.symptoms,receipt.symptoms,"symptoms",10000);d.checkins=mergeRecords(d.checkins,receipt.checkins,"checkins",10000);C.save?.();if(before!==stateFingerprint(d))window.dispatchEvent(new CustomEvent("setka:states-restored"));}
       lastSignature=sig;const st={enabled:true,ok:true,build:BUILD,updatedAt:out.updatedAt,counts:out.counts||{},stateFingerprint:stateFingerprint(receipt),statesVerified:!!out.stateHistory,privacy:"private-account-only",publicExposure:false};saveStatus(st);return true;
@@ -197,6 +201,7 @@
   window.addEventListener("setka:v34-sync-request",()=>schedule(900));
   window.addEventListener("setka:favorite-saved",()=>schedule(700));
   window.addEventListener("setka:favorite-removed",()=>schedule(700));
+  window.addEventListener("setka:account-switch-start",()=>{pageClosing=true;hydrated=false;authoritative=false;clearTimeout(timer);clearTimeout(physioTimer)});
   window.addEventListener("setka:v40-account",()=>{hydrated=false;authoritative=false;hydrationPromise=null;setTimeout(()=>sync(true),120)});
   document.addEventListener("visibilitychange",()=>{if(document.hidden)sync(true,true);else schedule(500)});
   window.addEventListener("pagehide",()=>{pageClosing=true;clearTimeout(timer);clearTimeout(physioTimer);return sync(true,true,true)});

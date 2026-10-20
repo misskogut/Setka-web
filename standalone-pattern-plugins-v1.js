@@ -3,22 +3,30 @@
 // Future SETKA pattern: add ONE descriptor (including module:"your-pattern.js")
 // to the registry and write that renderer. The front and admin iframe load it
 // automatically; no changes to favorite/note/slider/preview/admin modules.
+if(typeof document==='undefined')return;
 const registry=window.SetkaPatternRegistryV1;
 if(!registry)return;
-const loaded=new Set();
+const loaded=new Map();
 function loadModules(){
   for(const p of registry.list()){
     const url=p.module;
     if(!url||loaded.has(url)||typeof url!=="string"||
        !/^standalone-pattern-[a-z0-9-]+\.js(?:\?v=[a-z0-9._-]+)?$/.test(url))continue;
-    loaded.add(url);
     const script=document.createElement("script");
-    script.src=url;
+    const address=new URL(url,document.currentScript?.src||location.href);
+    const build=document.querySelector('meta[name="setka-release-build"]')?.content;
+    if(build&&build!=="development")address.searchParams.set("build",build);
+    script.src=address.href;
     script.async=false;
-    script.addEventListener("error",()=>console.warn("SETKA renderer module unavailable:",url));
+    const pending=new Promise(resolve=>{
+      script.addEventListener("load",()=>resolve({id:p.id,ok:registry.ready(p.id)}),{once:true});
+      script.addEventListener("error",()=>{console.warn("SETKA renderer module unavailable:",url);window.dispatchEvent(new CustomEvent("setka:renderer-error",{detail:{patternId:p.id}}));resolve({id:p.id,ok:false})},{once:true});
+    });
+    loaded.set(url,pending);
     document.head.appendChild(script);
   }
 }
 loadModules();
-window.SetkaPatternPluginsV1={loadModules};
+window.addEventListener("setka:registry-changed",loadModules);
+window.SetkaPatternPluginsV1={loadModules,ready:()=>Promise.all([...loaded.values()])};
 })();

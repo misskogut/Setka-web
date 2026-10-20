@@ -14,16 +14,25 @@
     });
     opening.catch(()=>{opening=null});return opening;
   }
-  async function read(){const db=await open();return new Promise((resolve,reject)=>{const tx=db.transaction('archives','readonly'),r=tx.objectStore('archives').get('current');r.onsuccess=()=>resolve(r.result||null);r.onerror=()=>reject(r.error);tx.onabort=()=>reject(tx.error)})}
+  const scope=window.SetkaDataScopeV1,archiveKey=scope?'owner:'+scope.id:'current';
+  async function read(){const db=await open();return new Promise((resolve,reject)=>{
+    const tx=db.transaction('archives','readwrite'),store=tx.objectStore('archives'),r=store.get(archiveKey);let result=null;
+    r.onsuccess=()=>{result=r.result||null;if(result||!scope?.takeLegacy)return;
+      const imported=store.get('legacy-imported');imported.onsuccess=()=>{if(imported.result)return;
+        const old=store.get('current');old.onsuccess=()=>{result=old.result||null;if(result)store.put(result,archiveKey);store.put(scope.id,'legacy-imported')};
+      };
+    };
+    tx.oncomplete=()=>resolve(result);tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);
+  })}
   function write(row,merge){
     const next=queue.catch(()=>{}).then(async()=>{
       const db=await open();return new Promise((resolve,reject)=>{
-        const tx=db.transaction('archives','readwrite'),store=tx.objectStore('archives'),get=store.get('current');let saved;
-        get.onsuccess=()=>{try{saved=merge(get.result,row);store.put(saved,'current')}catch(e){tx.abort();reject(e)}};
+        const tx=db.transaction('archives','readwrite'),store=tx.objectStore('archives'),get=store.get(archiveKey);let saved;
+        get.onsuccess=()=>{try{saved=merge(get.result,row);store.put(saved,archiveKey)}catch(e){tx.abort();reject(e)}};
         tx.oncomplete=()=>resolve(saved);tx.onabort=()=>reject(tx.error||new Error('storage_write_failed'));tx.onerror=()=>reject(tx.error);
       });
     });queue=next;return next;
   }
-  function clear(){const next=queue.catch(()=>{}).then(async()=>{const db=await open();return new Promise((resolve,reject)=>{const tx=db.transaction('archives','readwrite');tx.objectStore('archives').delete('current');tx.oncomplete=()=>resolve(true);tx.onabort=()=>reject(tx.error);tx.onerror=()=>reject(tx.error)})});queue=next;return next}
+  function clear(){const next=queue.catch(()=>{}).then(async()=>{const db=await open();return new Promise((resolve,reject)=>{const tx=db.transaction('archives','readwrite');tx.objectStore('archives').delete(archiveKey);tx.oncomplete=()=>resolve(true);tx.onabort=()=>reject(tx.error);tx.onerror=()=>reject(tx.error)})});queue=next;return next}
   window.SetkaPersonalStorageV1={read,write,clear};
 })();

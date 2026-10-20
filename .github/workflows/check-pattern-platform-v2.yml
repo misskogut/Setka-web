@@ -1,0 +1,44 @@
+name: Verify unified pattern platform v2
+on:
+  push:
+    branches: ['audit/unified-patterns-20261020', 'main']
+    paths: ['standalone-*.js','standalone-*.html','app-v7-multipattern.js','research-v1/**','scripts/**','supabase/functions/_shared/pattern-catalog.mjs','supabase/functions/setka-research-admin-v1/**','tests/pattern-*','.github/workflows/check-pattern-platform-v2.yml']
+  pull_request:
+    paths: ['standalone-*.js','standalone-*.html','app-v7-multipattern.js','research-v1/**','scripts/**','supabase/functions/_shared/pattern-catalog.mjs','supabase/functions/setka-research-admin-v1/**','tests/pattern-*','.github/workflows/check-pattern-platform-v2.yml']
+permissions:
+  contents: read
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts playwright@1.62.1 esbuild@0.25.12
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - run: node scripts/build-pattern-manifest.mjs
+      - run: node --test tests/pattern-platform-v2.test.mjs tests/research-replay-integrity-v1.test.mjs tests/standalone-*.test.mjs tests/state-persistence-v1.test.mjs tests/front-cloud-integrity-v1.test.mjs tests/setka-tester-account-ownership.test.mjs
+      - run: node tests/pattern-platform-v2-browser.mjs
+        env:
+          SETKA_BROWSER: ${{ matrix.browser }}
+      - run: ./node_modules/.bin/esbuild supabase/functions/setka-research-admin-v1/index.ts --bundle --platform=neutral --format=esm --outfile=/tmp/research-admin-v2.mjs
+  migration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: isolated-ci-only
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: psql -h 127.0.0.1 -U postgres -d postgres -f tests/pattern-defaults-v2.sql
+        env:
+          PGPASSWORD: isolated-ci-only

@@ -38,7 +38,8 @@
 
   function patternIdOf(note) {
     const cfg = configOf(note);
-    const explicit = [note?.replaySnapshot?.patternId,note?.patternId,note?.state?.patternId,cfg?.patternId,note?.visualRecipe?.patternId,note?.visualSnapshot?.patternId];
+    if(note?.replaySnapshot?.patternId)return note.replaySnapshot.patternId;
+    const explicit = [note?.patternId,note?.state?.patternId,cfg?.patternId,note?.visualRecipe?.patternId,note?.visualSnapshot?.patternId];
     return explicit.find(id=>KNOWN_PATTERN_IDS.includes(id))
       || patternIdFromHash(note)
       || patternIdFromConfig(cfg)
@@ -58,7 +59,7 @@
     const r = replay || replayOf(noteLike);
     const base = {
       patternId:r.pid,
-      patternVersion:noteLike?.patternVersion || noteLike?.visualRecipe?.patternVersion || noteLike?.state?.patternVersion || 1,
+      patternVersion:noteLike?.replaySnapshot?.patternVersion || noteLike?.patternVersion || noteLike?.visualRecipe?.patternVersion || noteLike?.state?.patternVersion || 1,
       configHash:noteLike?.configHash || noteLike?.visualRecipe?.configHash || noteLike?.state?.configKey || null,
       frame:r.frame,
       seed:noteLike?.visualRecipe?.seed ?? null,
@@ -123,7 +124,7 @@
         saveBtn.onclick = function(saveEvent) {
           const saved = originalSave.call(this,saveEvent);
           const created = [...(C.getData?.()?.notes || [])].reverse().find(n => !before.has(n.id));
-          if (created && moment) bindMomentToNote(created,moment);
+          if (created && moment && !created.replaySnapshot) bindMomentToNote(created,moment);
           return saved;
         };
         saveBtn.dataset.liveSnapshotSaveBound = "2";
@@ -194,7 +195,7 @@
         drawNoteSnapshot(canvas,note,replay).catch(e=>console.warn("SETKA note snapshot failed",e));
     }
     const open=card.querySelector(".st34-note-preview-button");
-    if (open) open.onclick=e=>{e?.preventDefault?.();e?.stopPropagation?.();C.hideLayer?.();Setka.openConfig?.(clone(replay.config),{type:"memory",id:note.id,patternId:replay.pid,baseId:replay.pid,communityId:note.communityId||null,noteId:note.id,frame:replay.frame});};
+    if (open) open.onclick=e=>{e?.preventDefault?.();e?.stopPropagation?.();C.hideLayer?.();Setka.openConfig?.(clone(replay.config),{type:"memory",id:note.id,patternId:replay.pid,patternVersion:note.replaySnapshot?.patternVersion||note.patternVersion,schemaVersion:note.replaySnapshot?.schemaVersion,baseId:replay.pid,communityId:note.communityId||null,noteId:note.id,frame:replay.frame});};
     const label=card.querySelector(".st34-note-preview-label");
     if (label) { const title=replay.pid&&Setka.getPatternTitle?.(replay.pid); label.textContent=title?`${note.replaySnapshot?.config?"ПАТТЕРН В МОМЕНТ ЗАМЕТКИ":"ВОССТАНОВЛЕНО ПО НАСТРОЙКАМ"} · ${String(title).toUpperCase()}`:"ПАТТЕРН БЕЗ ПОДТВЕРЖДЁННОГО СЛЕПКА"; }
     card.dataset.noteSnapshotFixed="5";
