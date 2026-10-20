@@ -20,7 +20,13 @@ function register(raw){
  return p;
 }
 const initial=[{"id":"tentacle-orbit","title":"Tentacle Orbit","version":1,"controls":[["Количество щупалец","numTentacles",3,72,1,"Слева ↑↓",1],["Размер кругов","circleSize",0.2,20,0.1,"Справа ↑↓",1],["Толщина линий","lineWeight",0.1,10,0.1,"Сверху ←→",1],["Скорость движения","movementSpeed",0.05,10,0.01,"Снизу ←→",1],["Длина щупалец","tentacleLength",10,800,1,"Слева ↑↓",2],["Плотность кругов","segmentStep",1,20,1,"Справа ↑↓",2],["Скорость цвета","colorSpeed",0.05,10,0.01,"Снизу ←→",2]]},{"id":"dandelion","title":"Одуванчик","version":1,"controls":[["Скорость развития формы","tSpeed",0.001,0.02,0.001,"←→",1],["Количество линий","numShapes",50,1000,1,"↑↓",1],["Скорость вращения","angleSpeed",0.001,0.05,0.001,"←→",2],["Толщина линий","lineWeight",0.1,10,0.1,"↑↓",2],["Масштаб","zoom",0.2,5,0.01,"Пинч",2],["Размер точек","pointSize",0.2,20,0.1,"Ползунок",0]]},{"id":"fish-wave","title":"Носовая волна","version":35,"controls":[["Количество слоёв","numLayers",5,100,1,"Слева ↑↓",1],["Амплитуда волны","waveAmplitude",0,200,0.5,"Справа ↑↓",1],["Толщина линий","strokeW",0.3,8,0.1,"Сверху ←→",1],["Скорость волны","waveSpeed",0.001,0.2,0.001,"Снизу ←→",1],["Расстояние между кольцами","ringSpacing",1,80,0.5,"Ползунок",0]]},{"id":"breathing-fractal","title":"Breathing Fractal","version":1,"controls":[["Количество ветвей","branches",2,60,1,"Слева ↑↓",1],["Глубина ветвления","layers",1,10,1,"Справа ↑↓",1],["Толщина линий","strokeW",0.1,8,0.1,"Сверху ←→",1],["Скорость дыхания","pulseSpd",0.001,0.3,0.001,"Снизу ←→",1],["Сила дыхания","pulseAmp",0.05,2,0.01,"Снизу ←→",2],["Длина ветвей","baseLen",10,180,0.5,"Ползунок",0]]},{"id":"breathing-fractal-growth","title":"Breathing Fractal · Growth","version":1,"controls":[["Количество ветвей","branches",2,60,1,"Слева ↑↓",1],["Глубина роста","maxDepth",1,10,1,"Справа ↑↓",1],["Толщина линий","strokeW",0.1,8,0.1,"Сверху ←→",1],["Скорость полного цикла","pulseSpeed",0.001,0.1,0.001,"Снизу ←→",1],["Масштаб","zoom",0.3,3,0.01,"Пинч",2],["Скорость раскрытия уровней","levelSpeedRatio",0.2,3,0.01,"Снизу ←→",2]]},{"id":"rgb-glitch-rings","title":"RGB Glitch Rings","version":36,"controls":[["Количество колец","numRings",5,100,1,"Слева ↑↓",1],["Амплитуда волны","waveAmplitude",0,200,0.5,"Справа ↑↓",1],["Толщина RGB-линий","strokeW",0.3,8,0.1,"Сверху ←→",1],["Скорость волны","waveSpeed",0.001,0.2,0.001,"Снизу ←→",1],["Расстояние между кольцами","baseSpacing",1,80,0.5,"Ползунок",0]]},{"id":"stereo-dna","title":"Stereo DNA","version":1,"controls":[["Плотность ДНК","spacing",4,30,0.1,"↑↓",1],["Амплитуда спирали","amplitude",10,100,0.5,"←→",1],["Масштаб","zoom",0.3,5,0.01,"Пинч",2],["Стереоугол","stereoAngle",0.01,0.6,0.001,"Вместе ←→",2],["Скорость движения","timeSpeed",0.001,0.1,0.001,"Ползунок",0],["Размер точек","pointSize",1,8,0.1,"Ползунок",0]]},{"id":"breathing-grid","title":"Breathing Grid","version":1,"controls":[["Колонки","cols",6,36,1,"Слева ↑↓",1],["Сила дыхания","amp",0,0.45,0.01,"Справа ↑↓",1],["Толщина линий","lineWidth",0.3,3,0.1,"Сверху ←→",1],["Скорость","speed",0.005,0.08,0.001,"Снизу ←→",1],["Ряды","rows",4,24,1,"Слева ↑↓",2],["Размер прямоугольников","scale",0.3,1.1,0.01,"Справа ↑↓",2],["Волна по горизонтали","phaseX",0,1.2,0.01,"Сверху ←→",2],["Скорость цвета","hueSpeed",0,60,1,"Снизу ←→",2],["Волна по вертикали","phaseY",0,1.2,0.01,"Ползунок",0],["Прозрачность","alpha",0.15,1,0.01,"Ползунок",0]]}];
-for(const descriptor of initial)register(descriptor);
+// Legacy native renderers with three discrete palettes (all start B&W).
+// Future renderers declare colorModes in their one descriptor.
+const legacyThreeModes=new Set(["fish-wave","breathing-fractal","breathing-fractal-growth","rgb-glitch-rings"]);
+for(const descriptor of initial){
+  descriptor.colorModes=legacyThreeModes.has(descriptor.id)?3:9;
+  register(descriptor);
+}
 const api={
  register,get:id=>records.get(id)||null,
  has:id=>records.has(id),
@@ -31,7 +37,7 @@ const api={
  attachEngine:S=>{
    for(const p of S?.getPatterns?.()||[]){
      const previous=records.get(p.id)||{};
-     register({...previous,...p,controls:previous.controls||[],colorModes:previous.colorModes||9});
+     register({...previous,...p,controls:previous.controls||[],colorModes:p.colorModes||previous.colorModes||9});
    }
  },
  inference:c=>{
