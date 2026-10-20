@@ -284,26 +284,30 @@
     publicationBusy = true;
     button.disabled = true;
     const card=button.closest('.st34-note-card')||button.parentElement;
+    // Fetching moderation status can rebuild the note list. Confirmations
+    // must attach to the CURRENT connected card, never a detached old node.
+    const currentCard=()=>card?.isConnected?card:[...document.querySelectorAll('.st34-note-card')]
+      .find(el=>String(el.dataset.noteId)===String(note.id))||null;
     try {
       await refreshPub(true);
       const current = pub.get(String(note.id));
       const status = current?.status || statusOf(note);
       if (status === "published") {
-        if (!await C.inlineConfirm(card,{title:"Снять заметку с публикации?",body:"Личная заметка останется у тебя.",accept:"Снять публикацию"})) return;
+        if (!await C.inlineConfirm(currentCard(),{title:"Снять заметку с публикации?",body:"Личная заметка останется у тебя.",accept:"Снять публикацию"})) return;
         await noteApi("unpublish", {sourceNoteKey:note.id});
         const next = {...current, id:current?.id || note.publicNoteId || null, sourceNoteKey:note.id, status:"unpublished", isPublic:false};
         pub.set(String(note.id), next);
         setLocalStatus(note, "unpublished", next.id);
         C.recordEvent?.("public_note_unpublish", {noteId:note.id}, false);
       } else if (status === "pending") {
-        if (!await C.inlineConfirm(card,{title:"Отозвать запрос?",body:"Заметка останется у тебя и исчезнет из очереди модерации.",accept:"Отозвать запрос"})) return;
+        if (!await C.inlineConfirm(currentCard(),{title:"Отозвать запрос?",body:"Заметка останется у тебя и исчезнет из очереди модерации.",accept:"Отозвать запрос"})) return;
         await noteApi("cancel-submission", {sourceNoteKey:note.id});
         const next = {...current, id:current?.id || note.publicNoteId || null, sourceNoteKey:note.id, status:"private", isPublic:false};
         pub.set(String(note.id), next);
         setLocalStatus(note, "private", next.id);
         C.recordEvent?.("public_note_moderation_withdraw", {noteId:note.id}, false);
       } else {
-        if (!await C.inlineConfirm(card,{title:"Предложить заметку сообществу?",body:"После одобрения будут видны текст и паттерн, если он прикреплён. Аккаунт и личная история публично не показываются.",accept:"Отправить на модерацию"})) return;
+        if (!await C.inlineConfirm(currentCard(),{title:"Предложить заметку сообществу?",body:"После одобрения будут видны текст и паттерн, если он прикреплён. Аккаунт и личная история публично не показываются.",accept:"Отправить на модерацию"})) return;
         await C.sandbox?.sync?.();
         const out = await noteApi("submit", {note:clone(note)});
         const next = {id:out.id, sourceNoteKey:note.id, status:out.status || "pending", isPublic:false, submittedAt:out.submittedAt || new Date().toISOString()};
@@ -314,7 +318,7 @@
       schedulePrivateArchive(500);
     } catch (e) {
       console.warn("SETKA note moderation action failed", e);
-      C.inlineStatus(card,"Не удалось изменить запрос на публикацию. Попробуй ещё раз.","error");
+      C.inlineStatus(currentCard(),"Не удалось изменить запрос на публикацию. Попробуй ещё раз.","error");
     } finally {
       publicationBusy = false;
       button.disabled = false;
