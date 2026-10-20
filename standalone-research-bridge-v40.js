@@ -36,12 +36,12 @@
       for(const u of usage){const p=["measured","after_feedback","exploration"].includes(u.phase)?u.phase:(s.requestKey==="explore"?"exploration":"measured");totals[p]+=Number(u.durationMs)||0}
       const group=await shaText(`outcome|${s.id}`);
       for(let i=0;i<usage.length;i++){
-        const u=usage[i],patternId=u.patternId||u.config?.patternId||"tentacle-orbit",config=u.config||{},configKey=u.configKey||Setka.configKey?.(config,patternId)||`${patternId}|${JSON.stringify(config)}`,phase=["measured","after_feedback","exploration"].includes(u.phase)?u.phase:(s.requestKey==="explore"?"exploration":"measured"),total=Math.max(1,totals[phase]||0),weight=Math.max(0,Math.min(1,(Number(u.durationMs)||0)/total)),isOutcome=phase==="measured"&&s.requestKey!=="explore",key=await shaText(`contribution|${s.id}|${phase}|${i}|${configKey}`);
+        const u=usage[i],config=u.config||{};let patternId;try{patternId=window.SetkaPatternRegistryV1.resolve(config,u.patternId||config.patternId)}catch(_){continue}if(!window.SetkaPatternRegistryV1.supports(patternId,"statistics"))continue;const configKey=u.configKey||Setka.configKey?.(config,patternId)||`${patternId}|${JSON.stringify(config)}`,phase=["measured","after_feedback","exploration"].includes(u.phase)?u.phase:(s.requestKey==="explore"?"exploration":"measured"),total=Math.max(1,totals[phase]||0),weight=Math.max(0,Math.min(1,(Number(u.durationMs)||0)/total)),isOutcome=phase==="measured"&&s.requestKey!=="explore",key=await shaText(`contribution|${s.id}|${phase}|${i}|${configKey}`);
         const hr=pulse(s.id,u,s);
         out.push({
           contributionKey:key,outcomeGroup:group,participationWeight:isOutcome?weight:null,
           sessionStartedAt:s.startedAt||null,
-          patternId,patternVersion:Number(u.patternVersion)||1,configKey,config,phase,requestKey:s.requestKey||null,
+          patternId,patternVersion:Number(u.patternVersion)||window.SetkaPatternRegistryV1.get(patternId).version,configKey,config,phase,requestKey:s.requestKey||null,
           durationMs:Math.max(0,Number(u.durationMs)||0),saved:!!u.saved,
           preState:isOutcome?s.preState??null:null,postState:isOutcome?s.postState??null:null,helped:isOutcome?s.helped??null:null,completed:!!s.completed,
           daypart:daypart(s.startedAt),

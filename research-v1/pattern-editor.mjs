@@ -3,6 +3,7 @@ const registry=globalThis.SetkaPatternRegistryV1;
 // Mounted inside the existing research pattern card; it reuses its scheduler.
 export async function mountPatternEditor(root,{id,api,onChange=()=>{}}){
  const p=registry.get(id);if(!root||!p)return;
+ if(p.capabilities.settings===false){root.textContent="У этого паттерна нет изменяемых настроек.";return}
  root.innerHTML='<h2>Стартовые настройки паттерна</h2><p class="muted small">Изменения применяются к следующим открытиям. Личные настройки и прежние снимки заметок сохраняются.</p>';
  let saved=null;
  try{const out=await api('catalog');saved=(out.defaults||[]).find(x=>x.pattern_id===id);registry.applyDefaults(out.defaults||[])}catch(_){/* Editing remains a draft until the server confirms saving. */}

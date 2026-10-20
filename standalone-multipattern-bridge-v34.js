@@ -25,7 +25,7 @@
     if(kind==="community"){
       const it=(C.publicCommunity||[]).find(x=>String(x.id)===String(itemId));
       if(!it)return null;
-      const patternId=it.patternId||it.pattern_id||it.baseId||it.config?.patternId||pid||"tentacle-orbit";
+      const patternId=it.patternId||it.pattern_id||it.baseId||it.config?.patternId||pid||window.SetkaPatternRegistryV1?.inference?.(it.config)||null;
       return{kind,itemId:String(itemId),patternId,config:clone(it.config),communityId:String(itemId)};
     }
     return null;

@@ -13,6 +13,7 @@
     "canvas.st34-note-preview",
     "canvas.st37-community-preview",
     "canvas.st34-stable-preview",
+    ".st34-state-combo canvas",
     "canvas.st34-preview",
     "canvas.st34-user-preview"
   ].join(",");

@@ -34,6 +34,7 @@
 
   const style=document.createElement("style");
   style.textContent=`
+    #gameScreen #st34AudioButton[hidden]{display:none!important}
     #gameScreen #st34AudioButton {
       left: 24px; top: calc(var(--safe-top) + 30px);
       width: 54px; height: 54px; z-index: 141;

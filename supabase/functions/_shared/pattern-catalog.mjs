@@ -31,3 +31,17 @@ export function catalogRows(manifest,rows){
   return manifest.patterns.map(p=>({...names.get(p.id),pattern_id:p.id,title:names.get(p.id)?.title||p.title,
     revision:names.get(p.id)?.revision||1,pattern_version:p.version,config_schema_version:p.schemaVersion||1}));
 }
+
+// Bounded transport for recorded research recipes, including historical data.
+// New scalar/array parameters need no separate server-side key registration.
+export function researchConfig(raw){
+ const source=raw&&typeof raw==='object'&&!Array.isArray(raw)?raw:{},out={};
+ const id=source.patternId||source.baseId;if(typeof id==='string'&&/^[a-z][a-z0-9-]{2,79}$/.test(id))out.patternId=id;
+ for(const [key,value] of Object.entries(source).slice(0,128)){
+  if(key==='patternId'||key==='baseId'||!/^[_a-zA-Z][_a-zA-Z0-9]{0,63}$/.test(key)||['__proto__','prototype','constructor'].includes(key))continue;
+  if(typeof value==='boolean'||typeof value==='number'&&Number.isFinite(value)&&Math.abs(value)<1e8)out[key]=value;
+  else if(typeof value==='string'&&value.length<=200)out[key]=value;
+  else if(Array.isArray(value))out[key]=value.filter(x=>typeof x==='number'&&Number.isFinite(x)&&Math.abs(x)<1e8).slice(-64);
+ }
+ return out;
+}

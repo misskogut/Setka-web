@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import fs from 'node:fs';
-import {parseManifest,assertConfiguration,catalogRows} from '../supabase/functions/_shared/pattern-catalog.mjs';
+import {parseManifest,assertConfiguration,catalogRows,researchConfig} from '../supabase/functions/_shared/pattern-catalog.mjs';
 const source=fs.readFileSync('standalone-pattern-registry-v1.js','utf8');
 function registry(){const context={window:{dispatchEvent(){}},CustomEvent:class{}};vm.runInNewContext(source,context);return context.window.SetkaPatternRegistryV1}
 const plain=x=>JSON.parse(JSON.stringify(x));
@@ -98,4 +98,10 @@ test('a cloud response from an earlier account cannot hydrate the current page o
  rows.set('setka-v40:cabinet-session',JSON.stringify({token:'isolated-B',testerId:'B'}));release();
  assert.equal(await sending,false);assert.deepEqual(data.notes,[{id:'local-A'}]);assert.deepEqual(data.symptoms,[]);assert.deepEqual(actions,['pull']);
  assert.equal(await context.__SETKA_PRIVATE_CORPUS_V40__.sync(),false,'new token cannot upload the old page scope');
+});
+
+test('research transport retains new scalar and array parameters without a renderer-specific list',()=>{
+ const input={patternId:'fixture-future',seed:'repeatable-seed',curve:[0,.5,1],flag:false,offset:0,broken:Infinity};
+ assert.deepEqual(researchConfig(input),{patternId:'fixture-future',seed:'repeatable-seed',curve:[0,.5,1],flag:false,offset:0});
+ assert.equal(researchConfig({patternId:'fixture-future',curve:Array(100).fill(1)}).curve.length,64);
 });

@@ -14,8 +14,8 @@ const fixture=(id,second=false)=>({id,title:id,version:1,colorModes:3,module:'st
  [['Радиус','radius',3,40,1,'Слева ↑↓',1],['Темп','tempo',.05,2,.05,'Снизу ←→',1]]});
 const fixtures=[fixture('fixture-shapes'),fixture('fixture-fields',true)];
 for(const p of fixtures)R.register(p);
-const names=new Map(),defaults=new Map(),catalogTrace=[];
-let browser;
+const names=new Map(),defaults=new Map();
+let browser,apiFailure=false,outdated=false;
 try{
  for(let n=0;n<45;n++){try{if((await fetch(base+'/standalone-v34.html')).ok)break}catch{}await sleep(100)}
  browser=await (process.env.SETKA_BROWSER==='webkit'?webkit:chromium).launch({headless:true});
@@ -29,9 +29,9 @@ try{
  });
  await context.route('**/functions/v1/**',async route=>{
   let body={};try{body=route.request().postDataJSON()||{}}catch{}
+  if(apiFailure&&body.action==='catalog')return route.fulfill({status:503,contentType:'application/json',headers:{'access-control-allow-origin':'*'},body:JSON.stringify({error:'isolated_unavailable'})});
   let out={ok:true,items:[],metrics:{},patternMetrics:[],notes:[],profile:{}};
-  if(body.action==='catalog')catalogTrace.push({url:route.request().frame().url(),names:[...names.values()]});
-  if(body.action==='catalog')out={ok:true,registryRevision:R.revision(),items:R.list().map(p=>({pattern_id:p.id,title:names.get(p.id)?.title||p.title,revision:names.get(p.id)?.revision||1})),defaults:[...defaults.values()]};
+  if(body.action==='catalog')out={ok:true,registryRevision:outdated?'future-isolated-registry':R.revision(),items:R.list().map(p=>({pattern_id:p.id,title:names.get(p.id)?.title||p.title,revision:names.get(p.id)?.revision||1})),defaults:[...defaults.values()]};
   if(body.action==='overview')out={ok:true,data:buildData({patternCatalog:R.list().map(p=>({pattern_id:p.id,title:names.get(p.id)?.title||p.title,revision:names.get(p.id)?.revision||1}))})};
   if(body.action==='rename-pattern'){
    const old=names.get(body.patternId)||{revision:1};assert.equal(body.expectedRevision,old.revision);
@@ -92,7 +92,7 @@ try{
  await admin.getByText('Настройки сохранены. Фронт получит их при обновлении каталога.').waitFor();
  assert.equal(names.get('fixture-shapes')?.title,'Исследовательский новый паттерн','rename reached the authoritative contract');
  await page.evaluate(()=>window.__SETKA_PATTERN_CATALOG_V1__.refresh());
- console.log('CATALOG DIAGNOSTICS',JSON.stringify({trace:catalogTrace,errors,front:await page.evaluate(()=>({title:window.SetkaPatternRegistryV1.title('fixture-shapes'),setter:typeof window.SetkaApp.setPatternTitles,status:window.__SETKA_PATTERN_CATALOG_V1__.status()}))}));
+
  assert.equal(await page.evaluate(()=>window.__SETKA_PATTERN_CATALOG_V1__.status()?.ok),true,'catalog request confirmed');
  assert.equal(await page.evaluate(()=>window.SetkaApp.getPatternTitle('fixture-shapes')),'Исследовательский новый паттерн');
  assert.equal(await page.evaluate(()=>window.SetkaApp.getPatternDefaults('fixture-shapes').radius),31);
@@ -101,6 +101,17 @@ try{
  const before=await page.evaluate(()=>window.SetkaApp.getState().patternId);
  assert.equal(await page.evaluate(()=>window.SetkaApp.openConfig({patternId:'unavailable-future'},{patternId:'unavailable-future'})),false);
  assert.equal(await page.evaluate(()=>window.SetkaApp.getState().patternId),before);
+ apiFailure=true;await page.evaluate(()=>window.__SETKA_PATTERN_CATALOG_V1__.refresh());
+ assert.equal(await page.evaluate(()=>window.__SETKA_PATTERN_CATALOG_V1__.status().ok),false);
+ assert.equal(await page.evaluate(()=>window.SetkaApp.getPatternTitle('fixture-shapes')),'Исследовательский новый паттерн','failed API cannot overwrite confirmed names');
+ apiFailure=false;outdated=true;await page.evaluate(()=>window.__SETKA_PATTERN_CATALOG_V1__.refresh());
+ await page.locator('#libraryButton').click();await page.locator('#setkaCatalogUpdate').waitFor();outdated=false;
+ await page.evaluate(()=>window.__SETKA_PATTERN_CATALOG_V1__.refresh());assert.equal(await page.locator('#setkaCatalogUpdate').count(),0);
+ await context.setOffline(true);
+ await page.locator('#st34Nav [data-p="symptoms"]').click();await page.locator('.st34-add-state').click();await page.getByRole('button',{name:'Усталость',exact:true}).tap();
+ await page.locator('.st34-state-card').waitFor();await page.locator('.st34-mark-btn').click();await page.locator('.st34-mark-editor.open input').fill('6');await page.getByRole('button',{name:'Сохранить отметку',exact:true}).tap();
+ assert.equal(await page.evaluate(async()=>{const C=window.SetkaStandaloneV34;C.save();return C.whenSaved()}),true);
+ await context.setOffline(false);await page.reload();await page.locator('#st34Nav [data-p="symptoms"]').click();await page.getByText('Усталость',{exact:true}).waitFor();assert.match(await page.locator('.st34-state-now').innerText(),/6\/10/);
  // I: later addition changes only the descriptor/module fixture source.
  const third=fixture('fixture-later');fixtures.push(third);R.register(third);
  await page.reload();await page.waitForFunction(()=>window.SetkaPatternRegistryV1.ready('fixture-later'));
@@ -108,6 +119,7 @@ try{
  await admin.reload();await admin.waitForFunction(()=>window.SetkaPatternRegistryV1.ready('fixture-later'));
  await admin.locator('#workspace:not([hidden])').waitFor();
  assert.equal(await admin.locator('.pattern-card').count(),11);
+ await page.evaluate(()=>window.SetkaStandaloneV34.showPatterns());
  // H: bounded scheduling with many algorithms; no edits to library/notes/admin.
  await page.evaluate(()=>{const R=window.SetkaPatternRegistryV1;for(let i=0;i<60;i++)window.SetkaApp.registerPattern({id:'load-fixture-'+i,title:'Load '+i,version:1,defaults:{radius:5,tempo:.1,colorModeIndex:0},controls:[['Радиус','radius',1,10,1,'↑↓',1]],render(ctx,w,h,c,f){ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);ctx.fillStyle='white';ctx.fillRect(f%30,10,c.radius,c.radius)}})});
  assert.equal(await page.evaluate(()=>window.SetkaApp.previewStatus().maxPerPaint),8);
