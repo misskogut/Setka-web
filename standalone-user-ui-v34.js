@@ -283,6 +283,11 @@
 
   C.showToday=showToday;
   C.showMe=showMe;
+  // An archive may finish loading after Notes is already open. Repaint that view without losing data.
+  window.addEventListener("setka:v40-private-corpus-restored",()=>{
+    const layer=document.getElementById("st34Layer");
+    if(layer&&!layer.classList.contains("hidden")&&layer.querySelector(".st-title")?.textContent?.trim()==="Заметки")showNotes();
+  });
   C.showNotes=showNotes;
   C.showSessions=showSessions;
   C.showSessionDetail=showSessionDetail;
