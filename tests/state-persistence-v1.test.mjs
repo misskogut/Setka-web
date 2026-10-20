@@ -27,7 +27,10 @@ test('private archive transport avoids OPTIONS preflight without changing sessio
   ;
   context.window=context;
   vm.runInNewContext(read('standalone-private-corpus-v40.js'),context);
+  assert.equal(context.__SETKA_PRIVATE_CORPUS_V40__.status().loadState,'loading','an authenticated account must never initially display a false zero');
   assert.equal(await context.__SETKA_PRIVATE_CORPUS_V40__.sync(),true);
+  assert.equal(context.__SETKA_PRIVATE_CORPUS_V40__.status().loadState,'ready');
+  assert.equal(context.__SETKA_PRIVATE_CORPUS_V40__.status().archiveReady,true);
   assert.equal(data.notes.length,1);assert.equal(data.symptoms.length,1);
   assert.ok(calls.length>=2);
   for(const call of calls){assert.equal(call.headers['Content-Type'].startsWith('text/plain'),true);assert.equal(call.headers.apikey,undefined);assert.equal(JSON.parse(call.body).deviceId,'isolated-device');assert.equal(JSON.parse(call.body).sessionToken,'isolated-only')}
