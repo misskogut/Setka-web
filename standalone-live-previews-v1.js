@@ -20,7 +20,7 @@
   const INTERVAL = 1000 / 20, MAX_STEP = 80, SPEED = .72, MAX_CANVASES = 8;
   let handle = 0, lastPaint = 0, phase = 0, painted = 0, cursor = 0;
   const counters = {registered:0,frames:0};
-  const known = new Set((S.getPatterns?.() || []).map(p=>p.id));
+  const known = patternId => window.SetkaPatternRegistryV1?.has?.(patternId) || (S.getPatterns?.()||[]).some(p=>p.id===patternId);
   const finiteFrame = n => n == null ? 44 : Number.isFinite(Number(n)) ? Number(n) : 44;
 
   function visible(canvas) {
@@ -33,7 +33,7 @@
       r.top < innerHeight && r.right > 0 && r.left < innerWidth;
   }
   function valid(config, patternId) {
-    return !!config && typeof config === "object" && known.has(patternId);
+    return !!config && typeof config === "object" && known(patternId);
   }
   function signature(config, pid) {
     try { return S.configKey?.(config, pid) || JSON.stringify(config); }
