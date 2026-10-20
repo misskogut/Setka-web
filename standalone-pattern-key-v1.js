@@ -1,0 +1,65 @@
+(()=>{
+"use strict";
+const App=window.SetkaApp,game=document.getElementById("gameScreen"),key=document.getElementById("instructionsButton");
+if(!App||!game||!key||!App.setConfigPatch)return;
+const maps={"breathing-grid":[["Колонки","cols",6,36,1,"Слева ↑↓",1],["Сила дыхания","amp",0,0.45,0.01,"Справа ↑↓",1],["Толщина линий","lineWidth",0.3,3,0.1,"Сверху ←→",1],["Скорость","speed",0.005,0.08,0.001,"Снизу ←→",1],["Ряды","rows",4,24,1,"Слева ↑↓",2],["Размер прямоугольников","scale",0.3,1.1,0.01,"Справа ↑↓",2],["Волна по горизонтали","phaseX",0,1.2,0.01,"Сверху ←→",2],["Скорость цвета","hueSpeed",0,60,1,"Снизу ←→",2],["Волна по вертикали","phaseY",0,1.2,0.01,"Ползунок",0],["Прозрачность","alpha",0.15,1,0.01,"Ползунок",0]],"tentacle-orbit":[["Количество щупалец","numTentacles",3,72,1,"Слева ↑↓",1],["Размер кругов","circleSize",0.2,20,0.1,"Справа ↑↓",1],["Толщина линий","lineWeight",0.1,10,0.1,"Сверху ←→",1],["Скорость движения","movementSpeed",0.05,10,0.01,"Снизу ←→",1],["Длина щупалец","tentacleLength",10,800,1,"Слева ↑↓",2],["Плотность кругов","segmentStep",1,20,1,"Справа ↑↓",2],["Скорость цвета","colorSpeed",0.05,10,0.01,"Снизу ←→",2]],"dandelion":[["Скорость развития формы","tSpeed",0.001,0.02,0.001,"←→",1],["Количество линий","numShapes",50,1000,1,"↑↓",1],["Скорость вращения","angleSpeed",0.001,0.05,0.001,"←→",2],["Толщина линий","lineWeight",0.1,10,0.1,"↑↓",2],["Масштаб","zoom",0.2,5,0.01,"Пинч",2],["Размер точек","pointSize",0.2,20,0.1,"Ползунок",0]],"fish-wave":[["Количество слоёв","numLayers",5,100,1,"Слева ↑↓",1],["Амплитуда волны","waveAmplitude",0,200,0.5,"Справа ↑↓",1],["Толщина линий","strokeW",0.3,8,0.1,"Сверху ←→",1],["Скорость волны","waveSpeed",0.001,0.2,0.001,"Снизу ←→",1],["Расстояние между кольцами","ringSpacing",1,80,0.5,"Ползунок",0]],"breathing-fractal":[["Количество ветвей","branches",2,60,1,"Слева ↑↓",1],["Глубина ветвления","layers",1,10,1,"Справа ↑↓",1],["Толщина линий","strokeW",0.1,8,0.1,"Сверху ←→",1],["Скорость дыхания","pulseSpd",0.001,0.3,0.001,"Снизу ←→",1],["Сила дыхания","pulseAmp",0.05,2,0.01,"Снизу ←→",2],["Длина ветвей","baseLen",10,180,0.5,"Ползунок",0]],"breathing-fractal-growth":[["Количество ветвей","branches",2,60,1,"Слева ↑↓",1],["Глубина роста","maxDepth",1,10,1,"Справа ↑↓",1],["Толщина линий","strokeW",0.1,8,0.1,"Сверху ←→",1],["Скорость полного цикла","pulseSpeed",0.001,0.1,0.001,"Снизу ←→",1],["Масштаб","zoom",0.3,3,0.01,"Пинч",2],["Скорость раскрытия уровней","levelSpeedRatio",0.2,3,0.01,"Снизу ←→",2]],"rgb-glitch-rings":[["Количество колец","numRings",5,100,1,"Слева ↑↓",1],["Амплитуда волны","waveAmplitude",0,200,0.5,"Справа ↑↓",1],["Толщина RGB-линий","strokeW",0.3,8,0.1,"Сверху ←→",1],["Скорость волны","waveSpeed",0.001,0.2,0.001,"Снизу ←→",1],["Расстояние между кольцами","baseSpacing",1,80,0.5,"Ползунок",0]],"stereo-dna":[["Плотность ДНК","spacing",4,30,0.1,"↑↓",1],["Амплитуда спирали","amplitude",10,100,0.5,"←→",1],["Масштаб","zoom",0.3,5,0.01,"Пинч",2],["Стереоугол","stereoAngle",0.01,0.6,0.001,"Вместе ←→",2],["Скорость движения","timeSpeed",0.001,0.1,0.001,"Ползунок",0],["Размер точек","pointSize",1,8,0.1,"Ползунок",0]]};
+const style=document.createElement("style");
+style.textContent="\n#st34KeyBackdrop{position:absolute;inset:0;background:rgba(0,0,0,.48);display:none;z-index:950;pointer-events:auto}\n#st34KeyBackdrop.open{display:block}\n#st34KeySheet{position:absolute;left:0;right:0;bottom:0;z-index:951;height:min(82%,720px);background:#101010;border:1px solid #424242;border-bottom:none;border-radius:25px 25px 0 0;display:none;flex-direction:column;pointer-events:auto;color:#fff;font-family:-apple-system,BlinkMacSystemFont,\"SF Pro Display\",Arial,sans-serif;box-shadow:0 -12px 45px #0008}\n#st34KeySheet.open{display:flex}\n#st34KeySheet *{box-sizing:border-box}\n#st34KeySheet button,#st34KeySheet input{font:inherit}\n#st34KeySheet .sk-head{padding:12px 19px 15px;border-bottom:1px solid #2a2a2a;flex:0 0 auto}\n#st34KeySheet .sk-grip{width:37px;height:4px;background:#555;border-radius:3px;margin:0 auto 16px}\n#st34KeySheet .sk-row{display:flex;align-items:center;gap:12px;justify-content:space-between}\n#st34KeySheet .sk-kicker{font-size:9px;letter-spacing:1.8px;color:#888;margin-bottom:6px}\n#st34KeySheet .sk-title{font-size:21px;font-weight:650;line-height:1.2}\n#st34KeySheet .sk-description{font-size:12px;line-height:1.5;color:#aaa;margin:10px 0 0}\n#st34KeySheet .sk-close{width:35px;height:35px;border:1px solid #444;border-radius:50%;background:transparent;color:#fff;font-size:20px;display:grid;place-items:center;padding:0;flex-shrink:0}\n#st34KeySheet .sk-scroll{overflow-y:auto;overscroll-behavior:contain;flex:1;min-height:0;padding:10px 19px 20px}\n#st34KeySheet .sk-section{font-size:10px;font-weight:650;letter-spacing:1.2px;color:#ccc;margin:17px 0 9px}\n#st34KeySheet .sk-setting{border-bottom:1px solid #2b2b2b;padding:10px 0}\n#st34KeySheet .sk-setting-row{display:flex;align-items:center;gap:9px}\n#st34KeySheet .sk-gesture{min-width:79px;flex:0 0 79px;border:1px solid #333;background:#242424;border-radius:8px;text-align:center;padding:7px 5px;font-size:10px;white-space:nowrap;color:#ddd}\n#st34KeySheet .sk-label{flex:1;min-width:0;font-size:12px;color:#e5e5e5}\n#st34KeySheet .sk-value{font-size:11px;color:#c8c8c8;min-width:36px;text-align:right;font-variant-numeric:tabular-nums}\n#st34KeySheet .sk-range{width:100%;margin:12px 0 3px;accent-color:#fff;touch-action:auto}\n#st34KeySheet .sk-actions{display:flex;gap:10px;border-top:1px solid #292929;padding:12px 18px max(18px,env(safe-area-inset-bottom,18px))}\n#st34KeySheet .sk-action{flex:1;border:1px solid #555;border-radius:14px;min-height:44px;background:transparent;color:#fff;font-size:12px;font-weight:600}\n#st34KeySheet .sk-action.primary{background:#fff;color:#000;border-color:#fff}\n#st34KeySheet .sk-close:focus-visible,#st34KeySheet button:focus-visible{outline:2px solid #fff;outline-offset:3px}\n";
+document.head.appendChild(style);
+const backdrop=document.createElement("div");backdrop.id="st34KeyBackdrop";
+const sheet=document.createElement("section");sheet.id="st34KeySheet";
+sheet.setAttribute("aria-label","Управление паттерном");
+sheet.innerHTML='<div class="sk-head"><div class="sk-grip"></div><div class="sk-row"><div><div class="sk-kicker">SETKA · КЛЮЧ УПРАВЛЕНИЯ</div><div class="sk-title">Управление паттерном</div></div><button class="sk-close" type="button" aria-label="Закрыть настройки">×</button></div><p class="sk-description">Свайпы и ползунки изменяют одни и те же параметры. Выбирай, как удобнее: жестами на паттерне или точной настройкой здесь.</p></div><div class="sk-scroll"></div><div class="sk-actions"><button class="sk-action" type="button" data-action="reset">Сбросить</button><button class="sk-action primary" type="button" data-action="close">Готово</button></div>';
+game.querySelector(".game-ui")?.append(backdrop,sheet);
+const close=()=>{sheet.classList.remove("open");backdrop.classList.remove("open");key.setAttribute("aria-expanded","false")};
+const open=()=>{if(sheet.classList.contains("open"))return close();rebuild();sheet.classList.add("open");backdrop.classList.add("open");key.setAttribute("aria-expanded","true")};
+let currentPattern=null,entries=[];
+const format=(n,s)=>Number.isInteger(n)?String(n):Number(n).toFixed(s<.01?3:s<.1?2:1);
+function rebuild(){
+ const state=App.getState?.()||{},id=state.patternId;
+ currentPattern=id;
+ const list=sheet.querySelector(".sk-scroll");list.replaceChildren();entries=[];
+ let group=-1;
+ for(const [label,k,min,max,step,gesture,section] of maps[id]||[]){
+   if(section!==group){
+     const head=document.createElement("div");head.className="sk-section";
+     head.textContent=section===1?"ОДИН ПАЛЕЦ":section===2?"ДВА ПАЛЬЦА":"ТОЧНАЯ НАСТРОЙКА";
+     list.append(head);group=section;
+   }
+   const box=document.createElement("div");box.className="sk-setting";
+   const line=document.createElement("div");line.className="sk-setting-row";
+   const badge=document.createElement("span");badge.className="sk-gesture";badge.textContent=gesture;
+   const title=document.createElement("label");title.className="sk-label";title.textContent=label;
+   const val=document.createElement("output");val.className="sk-value";
+   const input=document.createElement("input");input.type="range";input.className="sk-range";
+   input.min=min;input.max=max;input.step=step;input.value=state.config?.[k]??min;
+   input.id="sk-live-"+k;title.htmlFor=input.id;input.setAttribute("aria-label",label);
+   input.addEventListener("input",()=>{const result=App.setConfigPatch({[k]:Number(input.value)});val.textContent=format(result[k],step)});
+   line.append(badge,title,val);box.append(line,input);list.append(box);
+   entries.push({k,step,input,val});
+ }
+ sync();
+}
+function sync(){
+ const state=App.getState?.()||{},c=state.config||{};
+ if(currentPattern!==state.patternId){if(sheet.classList.contains("open"))rebuild();return}
+ for(const {k,step,input,val} of entries){
+   if(Number.isFinite(c[k])){if(document.activeElement!==input)input.value=c[k];val.textContent=format(c[k],step)}
+ }
+}
+key.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();e.stopPropagation();open()},{capture:true});
+backdrop.addEventListener("click",close);
+sheet.querySelector(".sk-close").addEventListener("click",close);
+sheet.querySelector('[data-action="close"]').addEventListener("click",close);
+sheet.querySelector('[data-action="reset"]').addEventListener("click",()=>{
+ const id=App.getState?.()?.patternId,initial=App.getPatternDefaults?.(id);
+ if(initial)App.setConfigPatch(initial);
+ sync();
+});
+window.addEventListener("setka:view",e=>{if(e.detail?.view!=="game")close()});
+window.addEventListener("setka:gesture-move",sync);
+window.addEventListener("setka:color",sync);
+window.addEventListener("setka:pattern-open",()=>{if(sheet.classList.contains("open"))rebuild()});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&sheet.classList.contains("open")){e.preventDefault();close()}});
+window.SetkaPatternKeyV1={open,close,status:()=>({open:sheet.classList.contains("open"),patternId:currentPattern,controls:entries.length})};
+})();
