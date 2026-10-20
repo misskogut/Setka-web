@@ -506,6 +506,7 @@
     return{x:0,y:0};
   }
   function offsets(patternId,w,h){
+    if(window.SetkaPatternRegistryV1?.get?.(patternId)?.capabilities?.audio===false)return{x:0,y:0};
     const live=visualBands();
     if(!live)return{x:0,y:0};
     const next=active?mode:releaseMode,old=active?previousMode:releaseMode;

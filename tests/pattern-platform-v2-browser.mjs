@@ -14,7 +14,7 @@ const fixture=(id,second=false)=>({id,title:id,version:1,colorModes:3,module:'st
  [['Радиус','radius',3,40,1,'Слева ↑↓',1],['Темп','tempo',.05,2,.05,'Снизу ←→',1]]});
 const fixtures=[fixture('fixture-shapes'),fixture('fixture-fields',true)];
 for(const p of fixtures)R.register(p);
-const names=new Map(),defaults=new Map();
+const names=new Map(),defaults=new Map(),catalogTrace=[];
 let browser;
 try{
  for(let n=0;n<45;n++){try{if((await fetch(base+'/standalone-v34.html')).ok)break}catch{}await sleep(100)}
@@ -30,6 +30,7 @@ try{
  await context.route('**/functions/v1/**',async route=>{
   let body={};try{body=route.request().postDataJSON()||{}}catch{}
   let out={ok:true,items:[],metrics:{},patternMetrics:[],notes:[],profile:{}};
+  if(body.action==='catalog')catalogTrace.push({url:route.request().frame().url(),names:[...names.values()]});
   if(body.action==='catalog')out={ok:true,registryRevision:R.revision(),items:R.list().map(p=>({pattern_id:p.id,title:names.get(p.id)?.title||p.title,revision:names.get(p.id)?.revision||1})),defaults:[...defaults.values()]};
   if(body.action==='overview')out={ok:true,data:buildData({patternCatalog:R.list().map(p=>({pattern_id:p.id,title:names.get(p.id)?.title||p.title,revision:names.get(p.id)?.revision||1}))})};
   if(body.action==='rename-pattern'){
@@ -88,7 +89,9 @@ try{
  await admin.getByLabel('Радиус',{exact:true}).evaluate(e=>{e.value='31';e.dispatchEvent(new Event('input',{bubbles:true}))});
  await admin.getByRole('button',{name:'Сохранить стартовые настройки'}).click();
  await admin.getByText('Настройки сохранены. Фронт получит их при обновлении каталога.').waitFor();
+ assert.equal(names.get('fixture-shapes')?.title,'Исследовательский новый паттерн','rename reached the authoritative contract');
  await page.evaluate(()=>window.__SETKA_PATTERN_CATALOG_V1__.refresh());
+ console.log('CATALOG DIAGNOSTICS',JSON.stringify({trace:catalogTrace,front:await page.evaluate(()=>({title:window.SetkaPatternRegistryV1.title('fixture-shapes'),setter:typeof window.SetkaApp.setPatternTitles,status:window.__SETKA_PATTERN_CATALOG_V1__.status()}))}));
  assert.equal(await page.evaluate(()=>window.__SETKA_PATTERN_CATALOG_V1__.status()?.ok),true,'catalog request confirmed');
  assert.equal(await page.evaluate(()=>window.SetkaApp.getPatternTitle('fixture-shapes')),'Исследовательский новый паттерн');
  assert.equal(await page.evaluate(()=>window.SetkaApp.getPatternDefaults('fixture-shapes').radius),31);

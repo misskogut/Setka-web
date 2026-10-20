@@ -59,6 +59,7 @@
     return hits.length&&(!hits[1]||hits[0].n>hits[1].n)?hits[0].id:null;
   }
   function resolve(c={},hint=null){
+    if(hint&&c?.patternId&&hint!==c.patternId&&!(c.patternId==="rgb-glitch-rings"&&hint==="fish-wave"&&c.numLayers!=null))throw error("pattern_identity_conflict",hint);
     const id=hint||c?.patternId||c?.baseId||inference(c);
     // Documented RGB v35 compatibility: the old name used the Fish algorithm.
     if(id==="rgb-glitch-rings"&&(c.numLayers!=null||c.ringSpacing!=null)&&c.numRings==null&&c.baseSpacing==null)return "fish-wave";
