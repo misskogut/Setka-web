@@ -6,7 +6,15 @@ const read=n=>readFileSync(new URL("../"+n,import.meta.url),"utf8");
 const source=read("supabase/functions/setka-community-patterns-v38/index.ts");
 const from=source.indexOf("const INTENTS=new Set("),to=source.indexOf("async function historicalRows(){",from);
 assert.ok(from>=0&&to>from);
-const code=source.slice(from,to)
+// The Edge function resolves its allowlist from the published registry.
+const registryContext={window:{dispatchEvent(){}},CustomEvent:class{}};
+vm.runInNewContext(read("standalone-pattern-registry-v1.js"),registryContext);
+const known=registryContext.window.SetkaPatternRegistryV1.ids();
+const startAggregation=source.indexOf("const MIN_GROUP_ACCOUNTS=",from);
+assert.ok(startAggregation>from);
+const code=(source.slice(from,source.indexOf("const KNOWN_PATTERNS=",from))+
+  "const KNOWN_PATTERNS=new Set("+JSON.stringify(known)+");\n"+
+  source.slice(startAggregation,to))
   .replaceAll("new Map<string,any>()","new Map()")
   .replaceAll("new Set<string>()","new Set()")
   .replace("function communityIntentSummary(accounts:any[],archives:any[])","function communityIntentSummary(accounts,archives)")
