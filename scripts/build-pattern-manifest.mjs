@@ -11,8 +11,8 @@ const seen=new Set();
 const rows=raw.map(p=>{
  if(!/^[a-z][a-z0-9-]{2,79}$/.test(p.id)||seen.has(p.id))throw Error("Invalid/duplicate pattern ID");
  seen.add(p.id);
- return{id:p.id,title:String(p.title||p.id).slice(0,80),version:p.version,controls:p.controls,colorModes:p.colorModes};
+ return p;
 });
 if(rows.length<8)throw Error("Missing canonical SETKA patterns");
-fs.writeFileSync("setka-pattern-manifest-v1.json",JSON.stringify({schema:1,patterns:rows},null,2)+"\n");
+fs.writeFileSync("setka-pattern-manifest-v1.json",JSON.stringify({schema:1,configSchemaVersion:2,registryRevision:context.window.SetkaPatternRegistryV1.revision(),patterns:rows},null,2)+"\n");
 console.log("Generated pattern manifest for",rows.map(p=>p.id).join(", "));

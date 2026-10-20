@@ -3,8 +3,8 @@
   const C=window.SetkaStandaloneV34,Setka=window.SetkaApp;
   if(!C||!Setka)return;
 
-  const FAVORITES_KEY="setka-web:favorites:v1";
-  const VAULT_KEY="setka-standalone:favorite-snapshots:v34";
+  const FAVORITES_KEY=window.SetkaDataScopeV1?.key?.("setka-web:favorites:v1")||"setka-web:favorites:v1";
+  const VAULT_KEY=window.SetkaDataScopeV1?.key?.("setka-standalone:favorite-snapshots:v34")||"setka-standalone:favorite-snapshots:v34";
   const clone=v=>JSON.parse(JSON.stringify(v));
   const cfgKey=c=>{try{return Setka.configKey?.(c)||null}catch(_){return null}};
   const defaultKey=cfgKey(Setka.DEFAULT_CONFIG);

@@ -6,8 +6,9 @@
   const clone=v=>v==null?v:JSON.parse(JSON.stringify(v));
   const esc=C.esc;
   const intentLabel=k=>C.INTENTS.find(x=>x[0]===k)?.[1]||"Сессия";
-  const patternIdOf=u=>u?.patternId||u?.config?.patternId||"tentacle-orbit";
-  const patternTitle=pid=>Setka.getPatternTitle?.(pid)||(pid==="dandelion"?"Одуванчик":"Tentacle Orbit");
+  const patternIdOf=u=>u?.patternId||u?.config?.patternId||window.SetkaPatternRegistryV1?.inference?.(u?.config)||null;
+  const keyOf=u=>{if(u.configKey)return u.configKey;try{return Setka.configKey?.(u.config,patternIdOf(u))||null}catch(_){return null}};
+  const patternTitle=pid=>(pid?Setka.getPatternTitle?.(pid):null)||"Паттерн не записан";
   const isExploration=s=>!!(s?.isExploration||s?.sessionType==="exploration"||s?.requestKey==="explore");
 
   const style=document.createElement("style");
@@ -39,7 +40,7 @@
         index,
         patternId:patternIdOf(u),
         config:clone(u.config),
-        configKey:u.configKey||Setka.configKey?.(u.config,patternIdOf(u))||null,
+        configKey:keyOf(u),
         durationMs:Math.max(0,Number(u.durationMs)||0),
         startedMs:Math.max(0,Number(u.startedMs)||0),
         endedMs:Math.max(0,Number(u.endedMs)||0),

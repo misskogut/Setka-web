@@ -1,4 +1,5 @@
 // @ts-nocheck
+import {loadManifest} from "../_shared/pattern-catalog.mjs";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const db=createClient(Deno.env.get("SUPABASE_URL")!,Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,{auth:{persistSession:false,autoRefreshToken:false}});
 const H={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type","Access-Control-Allow-Methods":"POST, OPTIONS","Content-Type":"application/json; charset=utf-8"};
@@ -20,34 +21,13 @@ async function syncPatternCatalog(){
   if(catalogPending)return catalogPending;
   if(Date.now()-catalogLast<300000&&KNOWN_PATTERNS.size)return;
   catalogPending=(async()=>{
-    let rows:any[]=[];
-    try{
-      const response=await fetch("https://misskogut.github.io/Setka-web/setka-pattern-manifest-v1.json",
-        {signal:AbortSignal.timeout(3500),headers:{"accept":"application/json"}});
-      if(!response.ok)throw Error("catalog_unavailable");
-      const manifest=await response.json();
-      if(manifest?.schema!==1||!Array.isArray(manifest.patterns))throw Error("invalid_catalog");
-      rows=manifest.patterns.filter((p:any)=>
-        /^[a-z][a-z0-9-]{2,79}$/.test(String(p.id||""))&&
-        typeof p.title==="string"&&p.title.length<=80&&
-        Number.isInteger(p.version)&&p.version>0&&p.version<=999)
-        .map((p:any)=>({pattern_id:p.id,title:p.title,revision:p.version}));
-      if(rows.length<8||rows.length>200)throw Error("unexpected_catalog_size");
-      // Existing titles may have been changed by the admin: don't overwrite.
-      const ins=await db.from("setka_research_v1_pattern_catalog")
-        .upsert(rows,{onConflict:"pattern_id",ignoreDuplicates:true});
-      if(ins.error)throw ins.error;
-    }catch(e){console.warn("SETKA registry manifest unavailable; reading stored catalog",e)}
-    const q=await db.from("setka_research_v1_pattern_catalog")
-      .select("pattern_id,revision").limit(250);
-    if(q.error)throw q.error;
+    const manifest=await loadManifest();
+    const rows=manifest.patterns.map((p:any)=>({pattern_id:p.id,title:p.title,revision:1}));
+    // A name revision never substitutes for the immutable algorithm version.
+    const ins=await db.from("setka_research_v1_pattern_catalog").upsert(rows,{onConflict:"pattern_id",ignoreDuplicates:true});
+    if(ins.error)throw ins.error;
     KNOWN_PATTERNS.clear();VERSIONS.clear();
-    for(const p of q.data||[]){
-      if(/^[a-z][a-z0-9-]{2,79}$/.test(p.pattern_id)){
-        KNOWN_PATTERNS.add(p.pattern_id);
-        VERSIONS.set(p.pattern_id,Math.max(1,Number(p.revision)||1));
-      }
-    }
+    for(const p of manifest.patterns){KNOWN_PATTERNS.add(p.id);VERSIONS.set(p.id,p.version)}
     catalogLast=Date.now();
   })().finally(()=>{catalogPending=null});
   return catalogPending;

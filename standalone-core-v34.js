@@ -4,7 +4,8 @@
   const app=document.getElementById("app"),library=document.getElementById("libraryScreen"),game=document.getElementById("gameScreen"),Setka=window.SetkaApp;
   if(!app||!library||!game||!Setka)return;
 
-  const KEY="setka-standalone:v34",ACTIVE_KEY="setka-standalone:active:v34",OLD_KEY="setka-standalone:v33",OLD_ACTIVE="setka-standalone:active:v33";
+  const scopeKey=k=>window.SetkaDataScopeV1?.key?.(k)||k;
+  const KEY=scopeKey("setka-standalone:v34"),ACTIVE_KEY=scopeKey("setka-standalone:active:v34"),OLD_KEY=scopeKey("setka-standalone:v33"),OLD_ACTIVE=scopeKey("setka-standalone:active:v33");
   const INTENTS=[["sleep","Уснуть"],["relax","Расслабиться"],["tension","Снизить напряжение"],["focus","Сконцентрироваться"],["energy","Взбодриться"],["switch","Переключиться"],["explore","Просто исследую"]];
   const FACES=[[1,"😣"],[2,"😕"],[3,"😐"],[4,"🙂"],[5,"😄"]];
   const DURATIONS=[[300,"5 мин"],[600,"10 мин"],[900,"15 мин"],[1200,"20 мин"]];
@@ -24,7 +25,7 @@
     return d;
   }
   function load(){
-    try{const v=JSON.parse(localStorage.getItem(KEY)||"null");if(v&&Number(v.version)>=34&&Array.isArray(v.sessions)&&Array.isArray(v.notes)){v.patternExposures=Array.isArray(v.patternExposures)?v.patternExposures:[];for(const k of ["sessions","notes","symptoms","checkins","events","invites"])v[k]=Array.isArray(v[k])?v[k]:[];v.settings=v.settings&&typeof v.settings==="object"?v.settings:{};return v}}catch(_){}
+    try{const v=JSON.parse((localStorage.getItem(KEY)||window.SetkaDataScopeV1?.storage?.getItem("setka-standalone:v34"))||"null");if(v&&Number(v.version)>=34&&Array.isArray(v.sessions)&&Array.isArray(v.notes)){v.patternExposures=Array.isArray(v.patternExposures)?v.patternExposures:[];for(const k of ["sessions","notes","symptoms","checkins","events","invites"])v[k]=Array.isArray(v[k])?v[k]:[];v.settings=v.settings&&typeof v.settings==="object"?v.settings:{};return v}}catch(_){}
     try{const old=JSON.parse(localStorage.getItem(OLD_KEY)||"null");if(old&&old.version===33){const d=migrate33(old);localStorage.setItem(KEY,JSON.stringify(d));return d}}catch(_){}
     return blank();
   }
@@ -94,7 +95,7 @@
   function sessionRow(){return activeSession?data.sessions.find(x=>x.id===activeSession.id)||null:null}
   function currentPhase(){return activeSession?.phase||"free"}
   function elapsed(){return activeSession?Math.max(0,Date.now()-Date.parse(activeSession.startedAt)):0}
-  function stateSnapshot(){try{const s=Setka.getState?.(),rect=app.getBoundingClientRect();return s?{view:s.view,libraryPage:s.libraryPage,patternId:s.patternId,patternVersion:s.patternVersion||1,sourceType:s.sourceType,sourceId:s.sourceId,communityId:s.communityId||null,config:s.config?clone(s.config):null,configKey:s.configKey||null,frame:s.frame!=null&&Number.isFinite(Number(s.frame))?Number(s.frame):null,favoriteId:s.favoriteId||null,viewport:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio||1},rendererVersion:"app-v7-3aa42b2",canvasRect:{left:rect.left,top:rect.top,width:rect.width,height:rect.height}}:null}catch(_){return null}}
+  function stateSnapshot(){try{const s=Setka.getState?.(),rect=app.getBoundingClientRect();return s?{view:s.view,libraryPage:s.libraryPage,patternId:s.patternId,patternVersion:s.patternVersion||1,sourceType:s.sourceType,sourceId:s.sourceId,communityId:s.communityId||null,config:s.config?clone(s.config):null,configKey:s.configKey||null,frame:s.frame!=null&&Number.isFinite(Number(s.frame))?Number(s.frame):null,favoriteId:s.favoriteId||null,viewport:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio||1},registryRevision:window.SetkaPatternRegistryV1?.revision?.()||null,configSchemaVersion:2,rendererVersion:"setka-pattern-contract-2",canvasRect:{left:rect.left,top:rect.top,width:rect.width,height:rect.height}}:null}catch(_){return null}}
   function recordEvent(type,payload={},sessionScoped=true){
     const now=Date.now(),sid=sessionScoped?activeSession?.id||null:null;
     const e={id:id("evt"),type,wallAt:new Date(now).toISOString(),sessionId:sid,phase:currentPhase(),tMs:sid?Math.max(0,now-Date.parse(activeSession.startedAt)):null,payload};
@@ -150,7 +151,7 @@
   let ticker=0,lastTick=Date.now(),lastInteraction=Date.now();
   ["pointerdown","touchstart","keydown"].forEach(ev=>document.addEventListener(ev,()=>lastInteraction=Date.now(),{passive:true}));
   function startTicker(){clearInterval(ticker);ticker=setInterval(()=>{if(!activeSession)return;const now=Date.now(),dtm=Math.max(0,now-lastTick);lastTick=now;if(!document.hidden&&game.classList.contains("active")&&layer.classList.contains("hidden")){if(activeSession.phase==="measured")activeSession.measuredActiveMs+=dtm;if(activeSession.phase==="after_feedback")activeSession.afterFeedbackActiveMs+=dtm}if(activeSession.phase==="measured"){const left=Math.max(0,activeSession.plannedSeconds*1000-(activeSession.measuredActiveMs||0));timer.textContent=`${(INTENTS.find(x=>x[0]===activeSession.requestKey)?.[1]||"СЕССИЯ").toUpperCase()} · ${fmt(left)}`;if(left<=0)postSurvey("timer")}else if(activeSession.phase==="after_feedback")timer.textContent=`СВОБОДНО · +${fmt(now-Date.parse(activeSession.continuationStartedAt||new Date().toISOString()))}`;updateSession();updateGameControls()},500)}
-  function updateGameControls(){const inGame=game.classList.contains("active"),live=!!activeSession&&["measured","after_feedback"].includes(activeSession.phase);noteBtn.classList.toggle("show",inGame);timer.classList.toggle("show",inGame&&live);nav.classList.toggle("hidden",inGame&&layer.classList.contains("hidden")&&(!window.__SETKA_SHEET_LAYOUT_V1__||game.classList.contains("st34-hidden-ui")))}
+  function updateGameControls(){const inGame=game.classList.contains("active"),live=!!activeSession&&["measured","after_feedback"].includes(activeSession.phase);noteBtn.classList.toggle("show",inGame&&window.SetkaPatternRegistryV1?.get?.(Setka.getState?.()?.patternId)?.capabilities?.notes!==false);timer.classList.toggle("show",inGame&&live);nav.classList.toggle("hidden",inGame&&layer.classList.contains("hidden")&&(!window.__SETKA_SHEET_LAYOUT_V1__||game.classList.contains("st34-hidden-ui")))}
   timer.onclick=()=>{if(activeSession?.phase==="measured")postSurvey("early");else if(activeSession?.phase==="after_feedback")finishSession()};
 
   function postSurvey(reason="timer"){
@@ -166,7 +167,26 @@
   }
   function finishSession(){if(!activeSession){(window.SetkaStandaloneV34?.showToday||showToday)();return}const now=new Date().toISOString();if(activeSession.phase==="after_feedback")activeSession.continuationEndedAt=now;activeSession.endedAt=now;recordEvent("session_end",{completed:activeSession.completed,measuredActiveMs:Math.round(activeSession.measuredActiveMs||0),afterFeedbackActiveMs:Math.round(activeSession.afterFeedbackActiveMs||0),state:stateSnapshot()});updateSession();activeSession=null;saveActive();clearInterval(ticker);ticker=0;updateGameControls();(window.SetkaStandaloneV34?.showToday||showToday)()}
 
-  function noteComposer(){const st=stateSnapshot(),phase=currentPhase(),req=activeSession?.requestKey||null,elapsedMs=elapsed();const b=screen("Записать мысль","Снимок текущей конфигурации уже зафиксирован.","ЗАМЕТКА",()=>{hideLayer();updateGameControls()});const ta=document.createElement("textarea");ta.className="st-textarea";ta.placeholder="Что пришло сейчас?";b.appendChild(ta);const sb=document.createElement("button");sb.className="st-primary";sb.textContent="Сохранить";sb.onclick=()=>{const text=ta.value.trim();if(!text)return;const n={id:id("note"),text,observedAt:new Date().toISOString(),localOffsetMinutes:localOffset(),phase,sessionId:activeSession?.id||null,sessionElapsedMs:elapsedMs,requestKey:req,patternId:st?.patternId||null,patternVersion:st?.patternVersion||1,sourceType:st?.sourceType||null,sourceId:st?.sourceId||null,communityId:st?.communityId||null,configHash:st?.configKey||null,config:st?.config?clone(st.config):null,frame:st?.frame??null,state:st};data.notes.push(n);save();recordEvent("note_create",{noteId:n.id,state:st});hideLayer();updateGameControls()};b.appendChild(sb)}
+  function noteComposer(){
+    const st=stateSnapshot(),replaySnapshot=st?.view==="game"?window.SetkaPatternRegistryV1?.snapshot?.(st):null,
+      phase=currentPhase(),req=activeSession?.requestKey||null,elapsedMs=elapsed();
+    const b=screen("Записать мысль","Снимок текущей конфигурации уже зафиксирован.","ЗАМЕТКА",()=>{hideLayer();updateGameControls()});
+    const ta=document.createElement("textarea");ta.className="st-textarea";ta.placeholder="Что пришло сейчас?";b.appendChild(ta);
+    const sb=document.createElement("button");sb.className="st-primary";sb.textContent="Сохранить";
+    const status=document.createElement("p");status.className="st-muted";status.setAttribute("role","status");let note=null;
+    sb.onclick=async()=>{
+      const text=ta.value.trim();if(!text)return;sb.disabled=true;
+      if(!note){note={id:id("note"),text,observedAt:new Date().toISOString(),localOffsetMinutes:localOffset(),phase,
+        sessionId:activeSession?.id||null,sessionElapsedMs:elapsedMs,requestKey:req,patternId:st?.patternId||null,patternVersion:st?.patternVersion||1,
+        sourceType:st?.sourceType||null,sourceId:st?.sourceId||null,communityId:st?.communityId||null,configHash:st?.configKey||null,
+        config:st?.config?clone(st.config):null,frame:st?.frame??null,state:st,replaySnapshot};data.notes.push(note)}
+      else{note.text=text;note.updatedAt=new Date().toISOString()}
+      const immediate=save(),durable=immediate||await persisting;
+      if(!durable){status.textContent="Не удалось сохранить на устройстве. Текст остаётся здесь — попробуй ещё раз.";sb.disabled=false;return}
+      recordEvent("note_create",{noteId:note.id,state:st});hideLayer();updateGameControls();
+    };
+    b.append(sb,status);
+  }
   noteBtn.onclick=noteComposer;
 
   function addSymptom(name){name=String(name||"").trim();if(!name)return;if(data.symptoms.some(x=>x.active!==false&&x.name.toLowerCase()===name.toLowerCase()))return;data.symptoms.push({id:id("sym"),name,active:true,lastIntensity:0,createdAt:new Date().toISOString()});save()}

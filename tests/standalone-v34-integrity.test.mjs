@@ -69,7 +69,8 @@ test("personal note cards and repair/moderation use immutable note IDs", () => {
   const ui=read("standalone-user-ui-v34.js"), repair=read("standalone-note-snapshot-fix-v34.js");
   const moderation=read("standalone-tester-community-v34.js");
   assert.match(ui,/card\.dataset\.noteId=String\(n\.id\)/);
-  assert.match(ui,/Setka\.renderPreview\?\.\(canvas,clone\(n\.config\),n\.frame\?\?44,n\.patternId/);
+  assert.match(ui,/Setka\.renderPreview\?\.\(canvas,clone\(replay\.config\),replay\.frame,replay\.pid/);
+  assert.match(ui,/replay\?\.config&&!replay\.unavailable/);
   assert.match(repair,/const id=card\.dataset\.noteId/);
   assert.match(moderation,/const id=card\.dataset\.noteId/);
   assert.doesNotMatch(repair,/same\.find\(n => \{ try \{ return meta/);
@@ -95,10 +96,10 @@ test("community Notes tab survives a pattern library re-render", () => {
 });
 
 test("Stereo DNA preview gets visible center-cropped points, not 300 compressed into a dot", () => {
-  const js=read("app-v7-multipattern.js");
+  const js=read("standalone-pattern-renderers-v1.js");
   assert.match(js,/const previewPoints=thumb\?Math\.min\(72,c\.numPoints\)/);
   assert.match(js,/drawDnaSpiral\(t,-c\.eyeSeparation\/2,-c\.stereoAngle,previewConfig,phase,previewPoints\)/);
-  assert.match(js,/getPatternTitle:id=>IDS\.has\(id\)\?/);
+  assert.match(read("app-v7-multipattern.js"),/getPatternTitle:id=>registry\.title/);
 });
 
 test("one pattern counts a scenario once per session even if dozens of configuration changes", () => {
@@ -133,10 +134,12 @@ test("pattern info is strictly community-scoped, with no local fallback for metr
   assert.match(rendered,/Личная статистика здесь не подставляется/);
 });
 
-test("zero-valued pattern parameters survive config normalization", () => {
-  const js=read("app-v7-multipattern.js");
-  assert.match(js,/backgroundAlpha:clamp\(Math\.round\(Number\(c\.backgroundAlpha\?\?d\.backgroundAlpha\)\),0,255\)/);
-  assert.match(js,/baseRadius:clamp\(Number\(c\.baseRadius\?\?d\.baseRadius\),0,100\)/);
+test("zero-valued pattern parameters survive shared config normalization", () => {
+  const context={window:{dispatchEvent(){}},CustomEvent:class{}};
+  vm.runInNewContext(read("standalone-pattern-registry-v1.js"),context);
+  const registry=context.window.SetkaPatternRegistryV1;
+  assert.equal(registry.normalize({patternId:"dandelion",backgroundAlpha:0}).backgroundAlpha,0);
+  assert.equal(registry.normalize({patternId:"tentacle-orbit",baseRadius:0}).baseRadius,0);
 });
 
 test("passive on-screen watch time continues without touches and excludes overlays", () => {

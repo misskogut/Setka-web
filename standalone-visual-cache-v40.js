@@ -44,7 +44,7 @@
   }
 
   function recipe(input = {}) {
-    const patternId = String(input.patternId || input.config?.patternId || "tentacle-orbit");
+    const patternId = String(input.patternId || input.config?.patternId || window.SetkaPatternRegistryV1?.inference?.(input.config) || "");
     return {
       recipeVersion: 1,
       rendererVersion: String(input.rendererVersion || RENDERER_VERSION),
@@ -59,7 +59,7 @@
 
   function cacheKey(input = {}) {
     const r = recipe(input);
-    const frame = Math.round((finite(r.frame, 44) || 44) * 1000) / 1000;
+    const frame = Math.round(finite(r.frame, 44) * 1000) / 1000;
     const hash = r.configHash || JSON.stringify(r.config || {});
     return `rv${r.recipeVersion}|${r.rendererVersion}|${r.patternId}|pv${r.patternVersion}|f${frame}|${hash}`;
   }
@@ -274,7 +274,7 @@
     if (!S?.renderPreview || S.renderPreview.__setkaVisualCacheWrapped) return;
     const raw = S.renderPreview.bind(S);
     const wrapped = function(canvas, config, frame = 44, patternId = null) {
-      const pid = patternId || config?.patternId || "tentacle-orbit";
+      const pid = patternId || config?.patternId || window.SetkaPatternRegistryV1?.inference?.(config) || null;
       let version = 1;
       try { version = S.getPatterns?.().find(x => x.id === pid)?.version || 1; } catch (_) {}
       let configHash = null;

@@ -9,7 +9,7 @@ test("admin catalog is driven by the same shared pattern registry as front",()=>
   for(const id of ["tentacle-orbit","dandelion","fish-wave","breathing-fractal","breathing-fractal-growth","rgb-glitch-rings","stereo-dna","breathing-grid"])
     assert.ok(source.includes('"'+id+'"'),"canonical registry missing "+id);
   assert.match(ui,/window\.SetkaPatternRegistryV1\?\.ids/);
-  assert.match(ui,/\.\.\.CANONICAL_IDS/);
+  assert.match(ui,/\.\.\.canonicalIds\(\)/);
   assert.match(page,/standalone-pattern-registry-v1\.js/);
   assert.match(ui,/const viewed=\(Array\.isArray\(data\.observedConfigs\)/);
 });

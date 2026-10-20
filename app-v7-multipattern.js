@@ -21,48 +21,26 @@
   const rad=d=>d*Math.PI/180;
   const round5=n=>Math.round(Number(n)*100000)/100000;
 
-  const TENTACLE_DEFAULT=Object.freeze({patternId:TENTACLE_ID,numTentacles:24,tentacleLength:100,baseRadius:10,movementSpeed:1,colorSpeed:1,circleSize:1,lineWeight:1,segmentStep:2,colorModeIndex:0});
-  const DANDELION_DEFAULT=Object.freeze({patternId:DANDELION_ID,v1:.473,numShapes:380,angleSpeed:.01,tSpeed:.005,backgroundAlpha:255,lineWeight:1.2,pointSize:4,zoom:1,colorModeIndex:0,v1History:[]});
-  const FISH_DEFAULT=Object.freeze({patternId:FISH_ID,numLayers:40,baseRadius:10,ringSpacing:9,waveSpeed:.08,waveAmplitude:5,glitchEnabled:true,glitchOffset:.5,ringAlpha:180,strokeW:1,colorModeIndex:0});
-  const BREATH_DEFAULT=Object.freeze({patternId:BREATH_ID,baseLen:70,pulseSpd:.02,pulseAmp:.3,strokeW:1.5,branches:8,layers:4,colorModeIndex:0,hueRate:.004});
-  const GROWTH_DEFAULT=Object.freeze({patternId:GROWTH_ID,baseLen:70,pulseSpeed:.02,strokeW:1.5,branches:8,maxDepth:4,colorModeIndex:0,hueRate:.004,zoom:1,levelSpeedRatio:1,firstLevelFactor:FIRST_LEVEL_FACTOR});
-  const RGB_DEFAULT=Object.freeze({patternId:RGB_ID,numRings:20,baseSpacing:20,waveSpeed:.03,waveAmplitude:38,glitchEnabled:true,glitchOffset:1,ringAlpha:180,invertDirection:true,strokeW:1,colorModeIndex:0});
-  const DNA_DEFAULT=Object.freeze({patternId:DNA_ID,angleStep:.25,spacing:10,numPoints:300,amplitude:55,eyeSeparation:150,stereoAngle:.42,zoom:1,glowStrength:150,timeSpeed:.02,pointSize:3,colorModeIndex:0});
-
-  // 8th standalone SETKA renderer. The 90° canvas rotation is permanent;
-  // original 20x12 sine breathing and hue phases are preserved.
-  const GRID_DEFAULT=Object.freeze({patternId:GRID_ID,cols:20,rows:12,amp:.20,speed:.030,scale:.80,lineWidth:1.2,hueSpeed:20,phaseX:.20,phaseY:.30,alpha:.70,colorModeIndex:0});
-  const PATTERNS=[
-    {id:TENTACLE_ID,title:"Tentacle Orbit",defaults:TENTACLE_DEFAULT,version:1},
-    {id:DANDELION_ID,title:"Одуванчик",defaults:DANDELION_DEFAULT,version:1},
-    {id:FISH_ID,title:"Носовая волна",defaults:FISH_DEFAULT,version:35},
-    {id:BREATH_ID,title:"Breathing Fractal",defaults:BREATH_DEFAULT,version:1},
-    {id:GROWTH_ID,title:"Breathing Fractal · Growth",defaults:GROWTH_DEFAULT,version:1},
-    {id:RGB_ID,title:"RGB Glitch Rings",defaults:RGB_DEFAULT,version:36},
-    {id:DNA_ID,title:"Stereo DNA",defaults:DNA_DEFAULT,version:1},
-    {id:GRID_ID,title:"Breathing Grid",defaults:GRID_DEFAULT,version:1}
-  ];
-  const registry=window.SetkaPatternRegistryV1||null;
-  // Built-in 8 renderers remain stable. New renderers register through
-  // SetkaApp.registerPattern and inherit library/favorites/notes/analytics.
-  const customRenderers=new Map();
+  const registry=window.SetkaPatternRegistryV1;
+  if(!registry)throw new Error("pattern_registry_required");
+  const [TENTACLE_DEFAULT,DANDELION_DEFAULT,FISH_DEFAULT,BREATH_DEFAULT,GROWTH_DEFAULT,RGB_DEFAULT,DNA_DEFAULT,GRID_DEFAULT]=
+    [TENTACLE_ID,DANDELION_ID,FISH_ID,BREATH_ID,GROWTH_ID,RGB_ID,DNA_ID,GRID_ID].map(id=>registry.get(id).defaults);
+  const PATTERNS=registry.list().map(p=>({...p,defaults:registry.defaults(p.id),title:registry.title(p.id)}));
+  const customRenderers=new Map(registry.list().filter(p=>p.module).map(p=>[p.id,true])); // Compatibility for generic plugin gesture handling.
   const IDS=new Set(PATTERNS.map(p=>p.id));
-  for(const pattern of PATTERNS){
-    const meta=registry?.get?.(pattern.id);
-    if(meta?.title)pattern.title=meta.title;
-    if(meta?.version)pattern.version=meta.version;
-  }
   const PAGE_ORDER=["all","community","favorites"];
   const $=id=>document.getElementById(id);
   const app=$("app"),libraryScreen=$("libraryScreen"),gameScreen=$("gameScreen"),allPatternsPanel=$("allPatternsPanel"),communityPanel=$("communityPanel"),favoritesPanel=$("favoritesPanel"),libraryPagerButton=$("libraryPagerButton"),communityPagerButton=$("communityPagerButton"),favoritesPagerButton=$("favoritesPagerButton"),libraryTitle=$("libraryTitle"),librarySwipeArea=$("librarySwipeArea"),canvas=$("patternCanvas"),ctx=canvas?.getContext("2d",{alpha:false}),colorButton=$("colorButton"),colorDots=$("colorDots"),favoriteButton=$("favoriteButton"),libraryButton=$("libraryButton"),prevButton=$("prevButton"),nextButton=$("nextButton"),instructionsButton=$("instructionsButton"),instructionsModal=$("instructionsModal"),toast=$("toast");
   if(!app||!canvas||!ctx||!communityPanel)return;
 
+  let favoriteDisplayLimit=240;
   let activeLibraryPage="all",runtimePatternId=TENTACLE_ID,runtimeConfig=null,activeSource={type:"base",id:TENTACLE_ID,patternId:TENTACLE_ID,communityId:null};
   let communityItems=[],recommendedCommunity=new Set(),recommendedPatterns=new Set(),animationFrame=0,animationStart=performance.now(),currentFrame=0,toastTimer=0,tapTimes=[];
   const previewTiles=new Map(),reducedPreviewMotion=window.matchMedia("(prefers-reduced-motion: reduce)");
   // A shared, resumable library clock prevents previews from skipping to a
   // distant absolute frame after card rebuilds, tab switches or Safari pauses.
   const PREVIEW_INTERVAL_MS=1000/30,PREVIEW_MAX_STEP_MS=40,PREVIEW_SPEED=.75;
+  let previewCursor=0;const previewStats={frames:0,maxPerPaint:8};
   let previewAnimation=0,previewLastPaint=0,previewLastTick=0,previewPhase=0,previewPaintPhase=0;
   const previewFrame=base=>base+previewPhase;
   // Recreated tiles must begin at the last *displayed* phase; the logical
@@ -71,58 +49,29 @@
   const touch={fingers:0,primaryId:null,x:0,y:0,startX:0,startY:0,secondX:0,secondY:0,lastDist:null,lastStereoX:null};
   const mouse={down:false,fingers:1,x:0,y:0,startX:0,startY:0};
 
-  function patternById(id){return PATTERNS.find(p=>p.id===id)||PATTERNS[0]}
-  function looksLegacyFish(c){return !!c&&(c.numLayers!=null||c.ringSpacing!=null)&&c.numRings==null&&c.baseSpacing==null}
-  function looksRgb(c){return !!c&&(c.numRings!=null||c.baseSpacing!=null||c.invertDirection!=null)}
-  function looksDna(c){return !!c&&(c.eyeSeparation!=null||c.stereoAngle!=null||c.angleStep!=null)&&c.numPoints!=null}
-  function inferPatternId(c,hint=null){
-    const candidate=hint||c?.patternId||c?.baseId;
-    if(candidate===RGB_ID&&looksLegacyFish(c))return FISH_ID;
-    if(candidate&&IDS.has(candidate))return candidate;
-    if(looksDna(c))return DNA_ID;
-    if(looksLegacyFish(c))return FISH_ID;
-    if(looksRgb(c))return RGB_ID;
-    const registered=registry?.inference?.(c);
-    if(registered&&IDS.has(registered))return registered;
-    return TENTACLE_ID;
-  }
-  function readJSON(k,d){try{const raw=localStorage.getItem(k);return raw?JSON.parse(raw):d}catch(_){return d}}
-  function writeJSON(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(_){}}
+  function patternById(id){return PATTERNS.find(p=>p.id===id)||null}
+  function inferPatternId(c,hint=null){return registry.resolve(c,hint)}
+  function readJSON(k,d){if(window.__SETKA_RENDER_ONLY__)return d;try{const raw=(window.SetkaDataScopeV1?.storage||localStorage).getItem(k);return raw?JSON.parse(raw):d}catch(_){return d}}
+  function writeJSON(k,v){if(window.__SETKA_RENDER_ONLY__)return;try{(window.SetkaDataScopeV1?.storage||localStorage).setItem(k,JSON.stringify(v))}catch(_){}}
 
-  function cloneConfig(c={},hint=null){
-    const id=inferPatternId(c,hint);
-    if(customRenderers.has(id)){
-      const defaults=patternById(id).defaults,values={patternId:id};
-      for(const [k,v] of Object.entries(defaults)){
-        if(k==="patternId")continue;
-        if(typeof v==="number"){
-          const limit=(registry?.controls?.(id)||[]).find(row=>row[1]===k);
-          const low=limit?.[2]??-100000,high=limit?.[3]??100000;
-          values[k]=clamp(Number.isFinite(Number(c?.[k]))?Number(c[k]):v,low,high);
-        }else if(typeof v==="boolean")values[k]=c?.[k]===undefined?v:!!c[k];
-        else values[k]=c?.[k]??v;
-      }
-      values.colorModeIndex=clamp(Math.round(Number(c?.colorModeIndex??0)),0,colorModeCount(id)-1);
-      return values;
+  function cloneConfig(c={},hint=null){return registry.normalize(c,hint)}
+  function configKey(c,hint=null){return registry.configKey(c,hint)}
+
+  const LAST_KEY="setka-patterns:last-config:v1",lastConfigs=readJSON(LAST_KEY,{})||{};
+  function remember(){if(window.__SETKA_RENDER_ONLY__)return;lastConfigs[runtimePatternId]={version:registry.get(runtimePatternId).version,config:cloneConfig(runtimeConfig,runtimePatternId),updatedAt:new Date().toISOString()};writeJSON(LAST_KEY,lastConfigs);const core=window.SetkaStandaloneV34;if(core){const d=core.getData();d.settings=d.settings||{};d.settings.patternConfigs=JSON.parse(JSON.stringify(lastConfigs));core.save?.()}}
+  for(const event of ["setka:gesture-move","setka:gesture-end","setka:color","setka:pattern-open"])window.addEventListener(event,remember);
+  function restorePersonalConfigs(rows={}){
+    for(const [id,row] of Object.entries(rows)){
+      if(!registry.has(id)||row?.version!==registry.get(id).version||!row.config)continue;
+      const old=lastConfigs[id];if(!old||(Date.parse(row.updatedAt)||0)>=(Date.parse(old.updatedAt)||0))lastConfigs[id]=JSON.parse(JSON.stringify(row));
     }
-    if(id===DANDELION_ID){const d=DANDELION_DEFAULT,h=Array.isArray(c.v1History)?c.v1History:[];return{patternId:id,v1:clamp(Number(c.v1)||d.v1,.02,2),numShapes:clamp(Math.round(Number(c.numShapes??c.NUM_SHAPES)||d.numShapes),50,1000),angleSpeed:clamp(Number(c.angleSpeed)||d.angleSpeed,.001,.05),tSpeed:clamp(Number(c.tSpeed)||d.tSpeed,.001,.02),backgroundAlpha:clamp(Math.round(Number(c.backgroundAlpha??d.backgroundAlpha)),0,255),lineWeight:clamp(Number(c.lineWeight)||d.lineWeight,.1,10),pointSize:clamp(Number(c.pointSize)||d.pointSize,.2,20),zoom:clamp(Number(c.zoom)||d.zoom,.2,5),colorModeIndex:clamp(Math.round(Number(c.colorModeIndex)||0),0,8),v1History:h.map(Number).filter(Number.isFinite).slice(-64)}}
-    if(id===FISH_ID){const d=FISH_DEFAULT;return{patternId:id,numLayers:clamp(Number(c.numLayers??d.numLayers),5,100),baseRadius:clamp(Number(c.baseRadius??d.baseRadius),1,100),ringSpacing:clamp(Number(c.ringSpacing??d.ringSpacing),1,80),waveSpeed:clamp(Number(c.waveSpeed??d.waveSpeed),.001,.2),waveAmplitude:clamp(Number(c.waveAmplitude??d.waveAmplitude),0,200),glitchEnabled:c.glitchEnabled!==false,glitchOffset:clamp(Number(c.glitchOffset??d.glitchOffset),0,20),ringAlpha:clamp(Number(c.ringAlpha??d.ringAlpha),0,255),strokeW:clamp(Number(c.strokeW??d.strokeW),.3,8),colorModeIndex:clamp(Math.round(Number(c.colorModeIndex??d.colorModeIndex)),0,2)}}
-    if(id===BREATH_ID){const d=BREATH_DEFAULT;return{patternId:id,baseLen:clamp(Number(c.baseLen??d.baseLen),10,180),pulseSpd:clamp(Number(c.pulseSpd??d.pulseSpd),.001,.3),pulseAmp:clamp(Number(c.pulseAmp??d.pulseAmp),.05,2),strokeW:clamp(Number(c.strokeW??d.strokeW),.1,8),branches:clamp(Math.round(Number(c.branches??d.branches)),2,60),layers:clamp(Math.round(Number(c.layers??d.layers)),1,10),colorModeIndex:clamp(Math.round(Number(c.colorModeIndex??c.clrMode??d.colorModeIndex)),0,2),hueRate:clamp(Number(c.hueRate??d.hueRate),.0001,.05)}}
-    if(id===GROWTH_ID){const d=GROWTH_DEFAULT;return{patternId:id,baseLen:clamp(Number(c.baseLen??d.baseLen),10,180),pulseSpeed:clamp(Number(c.pulseSpeed??c.pulseSpd??d.pulseSpeed),.001,.1),strokeW:clamp(Number(c.strokeW??d.strokeW),.1,8),branches:clamp(Math.round(Number(c.branches??d.branches)),2,60),maxDepth:clamp(Math.round(Number(c.maxDepth??c.layers??d.maxDepth)),1,10),colorModeIndex:clamp(Math.round(Number(c.colorModeIndex??c.clrMode??d.colorModeIndex)),0,2),hueRate:clamp(Number(c.hueRate??d.hueRate),.0001,.05),zoom:clamp(Number(c.zoom??d.zoom),.3,3),levelSpeedRatio:clamp(Number(c.levelSpeedRatio??d.levelSpeedRatio),.2,3),firstLevelFactor:FIRST_LEVEL_FACTOR}}
-    if(id===RGB_ID){const d=RGB_DEFAULT;return{patternId:id,numRings:clamp(Number(c.numRings??d.numRings),5,100),baseSpacing:clamp(Number(c.baseSpacing??d.baseSpacing),1,80),waveSpeed:clamp(Number(c.waveSpeed??d.waveSpeed),.001,.2),waveAmplitude:clamp(Number(c.waveAmplitude??d.waveAmplitude),0,200),glitchEnabled:c.glitchEnabled!==false,glitchOffset:clamp(Number(c.glitchOffset??d.glitchOffset),0,20),ringAlpha:clamp(Number(c.ringAlpha??d.ringAlpha),0,255),invertDirection:c.invertDirection!==false,strokeW:clamp(Number(c.strokeW??d.strokeW),.3,8),colorModeIndex:clamp(Math.round(Number(c.colorModeIndex??d.colorModeIndex)),0,2)}}
-    if(id===GRID_ID){const d=GRID_DEFAULT;return{patternId:id,cols:clamp(Math.round(Number(c.cols??d.cols)),6,36),rows:clamp(Math.round(Number(c.rows??d.rows)),4,24),amp:clamp(Number(c.amp??d.amp),0,.45),speed:clamp(Number(c.speed??d.speed),.005,.08),scale:clamp(Number(c.scale??d.scale),.3,1.1),lineWidth:clamp(Number(c.lineWidth??d.lineWidth),.3,3),hueSpeed:clamp(Number(c.hueSpeed??d.hueSpeed),0,60),phaseX:clamp(Number(c.phaseX??d.phaseX),0,1.2),phaseY:clamp(Number(c.phaseY??d.phaseY),0,1.2),alpha:clamp(Number(c.alpha??d.alpha),.15,1),colorModeIndex:clamp(Math.round(Number(c.colorModeIndex??0)),0,8)}}
-    if(id===DNA_ID){const d=DNA_DEFAULT;return{patternId:id,angleStep:clamp(Number(c.angleStep??d.angleStep),.02,1.2),spacing:clamp(Number(c.spacing??d.spacing),4,30),numPoints:clamp(Math.round(Number(c.numPoints??d.numPoints)),40,600),amplitude:clamp(Number(c.amplitude??d.amplitude),10,100),eyeSeparation:clamp(Number(c.eyeSeparation??d.eyeSeparation),20,320),stereoAngle:clamp(Number(c.stereoAngle??d.stereoAngle),.01,.6),zoom:clamp(Number(c.zoom??d.zoom),.3,5),glowStrength:clamp(Number(c.glowStrength??d.glowStrength),20,255),timeSpeed:clamp(Number(c.timeSpeed??d.timeSpeed),.001,.1),pointSize:clamp(Number(c.pointSize??d.pointSize),1,8),colorModeIndex:clamp(Math.round(Number(c.colorModeIndex??d.colorModeIndex)),0,8)}}
-    const d=TENTACLE_DEFAULT;return{patternId:TENTACLE_ID,numTentacles:clamp(Math.round(Number(c.numTentacles)||d.numTentacles),3,72),tentacleLength:clamp(Number(c.tentacleLength)||d.tentacleLength,10,800),baseRadius:clamp(Number(c.baseRadius??d.baseRadius),0,100),movementSpeed:clamp(Number(c.movementSpeed)||d.movementSpeed,.05,10),colorSpeed:clamp(Number(c.colorSpeed)||d.colorSpeed,.05,10),circleSize:clamp(Number(c.circleSize)||d.circleSize,.2,20),lineWeight:clamp(Number(c.lineWeight)||d.lineWeight,.1,10),segmentStep:clamp(Math.round(Number(c.segmentStep)||d.segmentStep),1,20),colorModeIndex:clamp(Math.round(Number(c.colorModeIndex)||0),0,8)};
+    writeJSON(LAST_KEY,lastConfigs);return JSON.parse(JSON.stringify(lastConfigs));
   }
-
-  function configKey(c,hint=null){const x=cloneConfig(c,hint),id=x.patternId;if(customRenderers.has(id))return id+"|"+Object.keys(x).sort().map(k=>k+":"+JSON.stringify(x[k])).join("|");
-    if(id===DANDELION_ID)return[id,round5(x.v1),x.numShapes,round5(x.angleSpeed),round5(x.tSpeed),x.backgroundAlpha,round5(x.lineWeight),round5(x.pointSize),round5(x.zoom),x.colorModeIndex].join("|");if(id===FISH_ID)return[id,round5(x.numLayers),round5(x.baseRadius),round5(x.ringSpacing),round5(x.waveSpeed),round5(x.waveAmplitude),x.glitchEnabled?1:0,round5(x.glitchOffset),round5(x.ringAlpha),round5(x.strokeW),x.colorModeIndex].join("|");if(id===BREATH_ID)return[id,round5(x.baseLen),round5(x.pulseSpd),round5(x.pulseAmp),round5(x.strokeW),x.branches,x.layers,x.colorModeIndex,round5(x.hueRate)].join("|");if(id===GROWTH_ID)return[id,round5(x.baseLen),round5(x.pulseSpeed),round5(x.strokeW),x.branches,x.maxDepth,x.colorModeIndex,round5(x.hueRate),round5(x.zoom),round5(x.levelSpeedRatio)].join("|");if(id===RGB_ID)return[id,round5(x.numRings),round5(x.baseSpacing),round5(x.waveSpeed),round5(x.waveAmplitude),x.glitchEnabled?1:0,round5(x.glitchOffset),round5(x.ringAlpha),x.invertDirection?1:0,round5(x.strokeW),x.colorModeIndex].join("|");if(id===GRID_ID)return[id,x.cols,x.rows,round5(x.amp),round5(x.speed),round5(x.scale),round5(x.lineWidth),round5(x.hueSpeed),round5(x.phaseX),round5(x.phaseY),round5(x.alpha),x.colorModeIndex].join("|");if(id===DNA_ID)return[id,round5(x.angleStep),round5(x.spacing),x.numPoints,round5(x.amplitude),round5(x.eyeSeparation),round5(x.stereoAngle),round5(x.zoom),round5(x.glowStrength),round5(x.timeSpeed),round5(x.pointSize),x.colorModeIndex].join("|");return[TENTACLE_ID,x.numTentacles,round5(x.tentacleLength),round5(x.baseRadius),round5(x.movementSpeed),round5(x.colorSpeed),round5(x.circleSize),round5(x.lineWeight),x.segmentStep,x.colorModeIndex].join("|")}
-
-  function normalizeFavorite(item,index,forcedId=null){const baseId=forcedId||inferPatternId(item?.config,item?.baseId||item?.patternId);const raw={...(item?.config||{}),patternId:baseId};return{id:String(item?.id||`favorite-${Date.now()}-${index}`),baseId,patternId:baseId,config:cloneConfig(raw,baseId),previewFrame:Number.isFinite(Number(item?.previewFrame))?Number(item.previewFrame):BASE_PREVIEW_FRAME,createdAt:Number(item?.createdAt)||Date.now(),communityId:item?.communityId?String(item.communityId):null,parentCommunityId:item?.parentCommunityId?String(item.parentCommunityId):null,patternVersion:Math.max(1,Math.round(Number(item?.patternVersion)||patternById(baseId).version))}}
-  function loadFavorites(){const out=[],seen=new Set(),push=f=>{const sig=`${f.id}|${configKey(f.config,f.baseId)}`;if(!seen.has(sig)){seen.add(sig);out.push(f)}};const main=readJSON(STORAGE_FAVORITES,[]);if(Array.isArray(main))main.forEach((x,i)=>push(normalizeFavorite(x,i)));const fish=readJSON(LEGACY_FISH_KEY,[]);if(Array.isArray(fish))fish.forEach((x,i)=>push(normalizeFavorite(x,1000+i,FISH_ID)));const breath=readJSON(LEGACY_BREATH_KEY,[]);if(Array.isArray(breath))breath.forEach((x,i)=>push(normalizeFavorite(x,2000+i,BREATH_ID)));const growth=readJSON(LEGACY_GROWTH_KEY,[]);if(Array.isArray(growth))growth.forEach((x,i)=>push(normalizeFavorite(x,3000+i,GROWTH_ID)));return out.slice(0,240)}
+  function normalizeFavorite(item,index,forcedId=null){let baseId;try{baseId=forcedId||inferPatternId(item?.config,item?.baseId||item?.patternId)}catch(_){return {...item,unavailable:true,baseId:item?.baseId||item?.patternId||item?.config?.patternId||null}};const raw={...(item?.config||{}),patternId:baseId};return{id:String(item?.id||`favorite-${Date.now()}-${index}`),baseId,patternId:baseId,config:cloneConfig(raw,baseId),previewFrame:Number.isFinite(Number(item?.previewFrame))?Number(item.previewFrame):BASE_PREVIEW_FRAME,createdAt:Number(item?.createdAt)||Date.now(),communityId:item?.communityId?String(item.communityId):null,parentCommunityId:item?.parentCommunityId?String(item.parentCommunityId):null,patternVersion:Math.max(1,Math.round(Number(item?.patternVersion)||patternById(baseId).version))}}
+  function loadFavorites(){const out=[],seen=new Set(),push=f=>{const sig=f.unavailable?JSON.stringify(f):`${f.id}|${configKey(f.config,f.baseId)}`;if(!seen.has(sig)){seen.add(sig);out.push(f)}};const main=readJSON(STORAGE_FAVORITES,[]);if(Array.isArray(main))main.forEach((x,i)=>push(normalizeFavorite(x,i)));const fish=readJSON(LEGACY_FISH_KEY,[]);if(Array.isArray(fish))fish.forEach((x,i)=>push(normalizeFavorite(x,1000+i,FISH_ID)));const breath=readJSON(LEGACY_BREATH_KEY,[]);if(Array.isArray(breath))breath.forEach((x,i)=>push(normalizeFavorite(x,2000+i,BREATH_ID)));const growth=readJSON(LEGACY_GROWTH_KEY,[]);if(Array.isArray(growth))growth.forEach((x,i)=>push(normalizeFavorite(x,3000+i,GROWTH_ID)));return out}
   let favorites=loadFavorites();
   function persistFavorites(){writeJSON(STORAGE_FAVORITES,favorites)}
-  function matchingFavorite(c=runtimeConfig,id=runtimePatternId){const k=configKey(c,id);return favorites.find(f=>configKey(f.config,f.baseId)===k)||null}
+  function matchingFavorite(c=runtimeConfig,id=runtimePatternId){const k=configKey(c,id);return favorites.find(f=>!f.unavailable&&configKey(f.config,f.baseId)===k)||null}
   runtimeConfig=cloneConfig(TENTACLE_DEFAULT,TENTACLE_ID);
 
   function statePayload(extra={}){const m=matchingFavorite();return{view:gameScreen.classList.contains("active")?"game":"library",libraryPage:activeLibraryPage,patternId:runtimePatternId,patternVersion:patternById(runtimePatternId).version,sourceType:activeSource.type,sourceId:activeSource.id,communityId:activeSource.communityId||null,config:cloneConfig(runtimeConfig,runtimePatternId),configKey:configKey(runtimeConfig,runtimePatternId),frame:currentFrame,favoriteId:m?.id||null,favoriteCommunityId:m?.communityId||null,favoriteCount:favorites.length,...extra}}
@@ -130,12 +79,49 @@
   function setScreen(name,initialFrame=0){const game=name==="game";libraryScreen.classList.toggle("active",!game);gameScreen.classList.toggle("active",game);if(game){clearTimeout(toastTimer);toast.classList.remove("show");toast.textContent="";const f=Number.isFinite(Number(initialFrame))?Math.max(0,Number(initialFrame)):0;resizeMainCanvas();animationStart=performance.now()-f*16.6667;currentFrame=f;startAnimation();updateColorIndicator();updateFavoriteButtonState()}else{stopAnimation();renderLibrary()}emit("view",{view:game?"game":"library"})}
   function setLibraryPage(page,silent=false){activeLibraryPage=PAGE_ORDER.includes(page)?page:"all";const i=PAGE_ORDER.indexOf(activeLibraryPage);[allPatternsPanel,communityPanel,favoritesPanel].forEach((p,n)=>{p.classList.toggle("hidden-left",n<i);p.classList.toggle("hidden-right",n>i)});libraryPagerButton.classList.toggle("active",activeLibraryPage==="all");communityPagerButton.classList.toggle("active",activeLibraryPage==="community");favoritesPagerButton.classList.toggle("active",activeLibraryPage==="favorites");libraryTitle.textContent=activeLibraryPage==="community"?"Сообщество":activeLibraryPage==="favorites"?"Сохраненные":"Паттерны";if(!silent)emit("library-page",{page:activeLibraryPage});syncLibraryPreviews()}
   function emptyPanel(p,icon,text){const e=document.createElement("div");e.className="empty-favorites";e.innerHTML=`<span class="big-heart">${icon}</span>${text}`;p.appendChild(e)}
-  function normalizeCommunityItem(item){const baseId=inferPatternId(item?.config,item?.pattern_id||item?.patternId||item?.baseId);return{...item,baseId,patternId:baseId,config:cloneConfig(item?.config||patternById(baseId).defaults,baseId)}}
-  function renderLibrary(){stopLibraryPreviews();previewTiles.clear();allPatternsPanel.replaceChildren();communityPanel.replaceChildren();favoritesPanel.replaceChildren();PATTERNS.forEach(p=>{const t=makePatternTile({kind:"base",id:p.id,baseId:p.id,patternId:p.id,config:p.defaults,previewFrame:BASE_PREVIEW_FRAME,title:p.title,patternVersion:p.version});if(recommendedPatterns.has(p.id))t.classList.add("recommended");allPatternsPanel.appendChild(t)});if(!communityItems.length)emptyPanel(communityPanel,"◎","Здесь появятся конфигурации,<br>которые сохраняют участники");else communityItems.forEach(raw=>{const item=normalizeCommunityItem(raw),t=makePatternTile({kind:"community",id:String(item.id),baseId:item.baseId,patternId:item.baseId,config:item.config,previewFrame:Number(item.preview_frame??item.previewFrame??BASE_PREVIEW_FRAME),saveCount:Number(item.saveCount)||0,communityId:String(item.id),parentCommunityId:item.parent_config_id||null,patternVersion:Number(item.pattern_version)||patternById(item.baseId).version});if(recommendedCommunity.has(String(item.id)))t.classList.add("recommended");communityPanel.appendChild(t)});if(!favorites.length)emptyPanel(favoritesPanel,"♥","Здесь появятся конфигурации,<br>которые ты сохранишь сердцем");else favorites.forEach(f=>favoritesPanel.appendChild(makePatternTile({kind:"favorite",id:f.id,patternId:f.baseId,...f})));setLibraryPage(activeLibraryPage,true)}
-  function makePatternTile(item){const patternId=inferPatternId(item.config,item.patternId||item.baseId||(item.kind==="base"?item.id:null)),b=document.createElement("button");b.type="button";b.className=`pattern-tile ${item.kind}-tile`;b.dataset.kind=item.kind;b.dataset.itemId=item.id;b.dataset.patternId=patternId;b.setAttribute("aria-label",item.kind==="favorite"?"Открыть сохраненную конфигурацию. Удерживай, чтобы удалить":item.kind==="community"?"Открыть конфигурацию сообщества. Удерживай, чтобы сохранить себе":`Открыть паттерн ${patternById(patternId).title}. Удерживай, чтобы сохранить`);const thumb=document.createElement("canvas");thumb.width=180;thumb.height=180;thumb.className="thumb-canvas";b.appendChild(thumb);drawThumbnail(thumb,item.config||patternById(patternId).defaults,previewRenderedFrame(Number.isFinite(Number(item.previewFrame))?Number(item.previewFrame):BASE_PREVIEW_FRAME),patternId);previewTiles.set(thumb,{patternId,config:cloneConfig(item.config||patternById(patternId).defaults,patternId),frame:Number.isFinite(Number(item.previewFrame))?Number(item.previewFrame):BASE_PREVIEW_FRAME});if(item.kind==="favorite"){const h=document.createElement("span");h.className="mini-heart";h.textContent="♥";b.appendChild(h)}if(item.kind==="community"){const badge=document.createElement("span");badge.className="community-count";badge.textContent=`♥ ${Math.max(0,Number(item.saveCount)||0)}`;b.appendChild(badge)}const rec=document.createElement("span");rec.className="recommendation-mark";rec.textContent="●";b.appendChild(rec);let timer=0,held=false,sx=0,sy=0;const cancel=()=>{if(timer)clearTimeout(timer);timer=0};b.addEventListener("pointerdown",e=>{if(e.target.closest?.(".st34-info"))return;held=false;sx=e.clientX;sy=e.clientY;b.setPointerCapture?.(e.pointerId);timer=setTimeout(()=>{held=true;if(item.kind==="favorite"){const f=favorites.find(x=>x.id===item.id);if(f)removeFavorite(f,"tile_hold")}else{const cfg=item.kind==="base"?patternById(patternId).defaults:item.config,old=matchingFavorite(cfg,patternId);if(old)removeFavorite(old,"tile_hold");else saveFavorite(cfg,item.previewFrame,{origin:"tile_hold",baseId:patternId,communityId:item.kind==="community"?item.communityId:null,parentCommunityId:item.kind==="community"?item.communityId:null,patternVersion:item.patternVersion||patternById(patternId).version})}navigator.vibrate?.(18)},620)});b.addEventListener("pointermove",e=>{if(!held&&Math.hypot(e.clientX-sx,e.clientY-sy)>18)cancel()});b.addEventListener("pointercancel",cancel);b.addEventListener("pointerup",e=>{cancel();if(e.target.closest?.(".st34-info"))return;if(held){e.preventDefault();return}if(item.kind==="base")openConfig(patternById(patternId).defaults,{type:"base",id:patternId,patternId,communityId:null});if(item.kind==="favorite"){const f=favorites.find(x=>x.id===item.id);if(f)openConfig(f.config,{type:"favorite",id:f.id,patternId:f.baseId,communityId:f.communityId||null})}if(item.kind==="community")openConfig(item.config,{type:"community",id:item.communityId,patternId,communityId:item.communityId})});b.addEventListener("contextmenu",e=>e.preventDefault());return b}
+  function normalizeCommunityItem(item){try{const baseId=inferPatternId(item?.config,item?.pattern_id||item?.patternId||item?.baseId);return{...item,baseId,patternId:baseId,config:cloneConfig(item?.config||patternById(baseId).defaults,baseId)}}catch(_){return {...item,unavailable:true}}}
+  // Reconcile each collection independently. Background community/favorite
+  // hydration must not detach the base card a user is scrolling or pressing.
+  const panelSignatures=new WeakMap();
+  function reconcilePanel(panel,signature,build){
+    if(panelSignatures.get(panel)===signature)return;
+    for(const canvas of panel.querySelectorAll("canvas"))previewTiles.delete(canvas);
+    panel.replaceChildren();build();panelSignatures.set(panel,signature);
+  }
+  function renderLibrary(){
+    stopLibraryPreviews();
+    const available=PATTERNS;
+    reconcilePanel(allPatternsPanel,JSON.stringify([available.map(p=>[p.id,p.version,p.defaults,registry.ready(p.id)]),[...recommendedPatterns]]),()=>{
+      for(const p of available){const tile=makePatternTile({kind:"base",id:p.id,baseId:p.id,patternId:p.id,config:p.defaults,previewFrame:BASE_PREVIEW_FRAME,title:p.title,patternVersion:p.version});if(recommendedPatterns.has(p.id))tile.classList.add("recommended");allPatternsPanel.appendChild(tile)}
+    });
+    reconcilePanel(communityPanel,JSON.stringify([communityItems,[...recommendedCommunity],registry.ids().filter(id=>registry.ready(id))]),()=>{
+      if(!communityItems.length){emptyPanel(communityPanel,"◎","Здесь появятся конфигурации,<br>которые сохраняют участники");return}
+      for(const raw of communityItems){const item=normalizeCommunityItem(raw),tile=makePatternTile({kind:"community",id:String(item.id),baseId:item.baseId,patternId:item.baseId,config:item.config,previewFrame:Number(item.preview_frame??item.previewFrame??BASE_PREVIEW_FRAME),saveCount:Number(item.saveCount)||0,communityId:String(item.id),parentCommunityId:item.parent_config_id||null,unavailable:item.unavailable,patternVersion:Number(item.pattern_version)||patternById(item.baseId)?.version||1});if(recommendedCommunity.has(String(item.id)))tile.classList.add("recommended");communityPanel.appendChild(tile)}
+    });
+    reconcilePanel(favoritesPanel,JSON.stringify([favorites,favoriteDisplayLimit,registry.ids().filter(id=>registry.ready(id))]),()=>{
+      if(!favorites.length){emptyPanel(favoritesPanel,"♥","Здесь появятся конфигурации,<br>которые ты сохранишь сердцем");return}
+      for(const favorite of favorites.slice(0,favoriteDisplayLimit))favoritesPanel.appendChild(makePatternTile({kind:"favorite",id:favorite.id,patternId:favorite.baseId,...favorite}));
+      if(favorites.length>favoriteDisplayLimit){const more=document.createElement("button");more.textContent="Показать ещё сохранённые конфигурации";more.onclick=()=>{favoriteDisplayLimit+=240;renderLibrary()};favoritesPanel.appendChild(more)}
+    });
+    setLibraryPage(activeLibraryPage,true);
+  }
+  function makePatternTile(item){const itemPattern=item.patternId||item.baseId||(item.kind==="base"?item.id:null);if(item.unavailable||itemPattern&&!registry.ready(itemPattern)){const unavailable=document.createElement("div");unavailable.className="pattern-tile unavailable-pattern";unavailable.textContent="Паттерн временно недоступен · запись сохранена";unavailable.dataset.patternId=item.patternId||item.baseId||"";return unavailable}const patternId=inferPatternId(item.config,item.patternId||item.baseId||(item.kind==="base"?item.id:null)),b=document.createElement("button");b.type="button";b.className=`pattern-tile ${item.kind}-tile`;b.dataset.kind=item.kind;b.dataset.itemId=item.id;b.dataset.patternId=patternId;b.setAttribute("aria-label",item.kind==="favorite"?"Открыть сохраненную конфигурацию. Удерживай, чтобы удалить":item.kind==="community"?"Открыть конфигурацию сообщества. Удерживай, чтобы сохранить себе":`Открыть паттерн ${patternById(patternId).title}. Удерживай, чтобы сохранить`);const thumb=document.createElement("canvas");thumb.width=180;thumb.height=180;thumb.className="thumb-canvas";b.appendChild(thumb);drawThumbnail(thumb,item.config||patternById(patternId).defaults,previewRenderedFrame(Number.isFinite(Number(item.previewFrame))?Number(item.previewFrame):BASE_PREVIEW_FRAME),patternId);previewTiles.set(thumb,{patternId,config:cloneConfig(item.config||patternById(patternId).defaults,patternId),frame:Number.isFinite(Number(item.previewFrame))?Number(item.previewFrame):BASE_PREVIEW_FRAME});if(item.kind==="favorite"){const h=document.createElement("span");h.className="mini-heart";h.textContent="♥";b.appendChild(h)}if(item.kind==="community"){const badge=document.createElement("span");badge.className="community-count";badge.textContent=`♥ ${Math.max(0,Number(item.saveCount)||0)}`;b.appendChild(badge)}const rec=document.createElement("span");rec.className="recommendation-mark";rec.textContent="●";b.appendChild(rec);let timer=0,held=false,sx=0,sy=0;const cancel=()=>{if(timer)clearTimeout(timer);timer=0};b.addEventListener("pointerdown",e=>{if(e.target.closest?.(".st34-info"))return;held=false;sx=e.clientX;sy=e.clientY;b.setPointerCapture?.(e.pointerId);timer=setTimeout(()=>{held=true;if(item.kind==="favorite"){const f=favorites.find(x=>x.id===item.id);if(f)removeFavorite(f,"tile_hold")}else{const cfg=item.kind==="base"?patternById(patternId).defaults:item.config,old=matchingFavorite(cfg,patternId);if(old)removeFavorite(old,"tile_hold");else saveFavorite(cfg,item.previewFrame,{origin:"tile_hold",baseId:patternId,communityId:item.kind==="community"?item.communityId:null,parentCommunityId:item.kind==="community"?item.communityId:null,patternVersion:item.patternVersion||patternById(patternId).version})}navigator.vibrate?.(18)},620)});b.addEventListener("pointermove",e=>{if(!held&&Math.hypot(e.clientX-sx,e.clientY-sy)>18)cancel()});b.addEventListener("pointercancel",cancel);b.addEventListener("pointerup",e=>{cancel();if(e.target.closest?.(".st34-info"))return;if(held){e.preventDefault();return}if(item.kind==="base")openConfig(patternById(patternId).defaults,{type:"base",id:patternId,patternId,communityId:null});if(item.kind==="favorite"){const f=favorites.find(x=>x.id===item.id);if(f)openConfig(f.config,{type:"favorite",id:f.id,patternId:f.baseId,communityId:f.communityId||null})}if(item.kind==="community")openConfig(item.config,{type:"community",id:item.communityId,patternId,communityId:item.communityId})});b.addEventListener("contextmenu",e=>e.preventDefault());return b}
 
-  function openConfig(config,source={}){const sourcePattern=source.patternId||source.baseId||(source.type==="base"&&IDS.has(source.id)?source.id:null);runtimePatternId=inferPatternId(config,sourcePattern);runtimeConfig=cloneConfig(config||patternById(runtimePatternId).defaults,runtimePatternId);activeSource={type:source.type||"working",id:source.id||runtimePatternId,patternId:runtimePatternId,communityId:source.communityId||null};tapTimes=[];const initialFrame=Number.isFinite(Number(source.frame))?Math.max(0,Number(source.frame)):0;setScreen("game",initialFrame);emit("pattern-open",{patternId:runtimePatternId,sourceType:activeSource.type,sourceId:activeSource.id,communityId:activeSource.communityId,frame:initialFrame})}
-  function canAnimateLibrary(){const overlay=document.getElementById("st34Layer");return !document.hidden&&!reducedPreviewMotion.matches&&libraryScreen.classList.contains("active")&&(!overlay||overlay.classList.contains("hidden"));}
+  function openConfig(config,source={}){
+    try{
+      const sourcePattern=source.patternId||source.baseId||(source.type==="base"?source.id:null);
+      const nextId=inferPatternId(config,sourcePattern);
+      if(!registry.ready(nextId))throw new Error("renderer_unavailable");
+      if(source.patternVersion!=null&&!registry.restore({patternId:nextId,patternVersion:source.patternVersion,config:config||{},schemaVersion:source.schemaVersion}).ok)throw new Error("unsupported_version");
+      const remembered=source.type==="base"?lastConfigs[nextId]:null;
+      const next=cloneConfig(remembered?.version===registry.get(nextId).version?remembered.config:(config||patternById(nextId).defaults),nextId);
+      runtimePatternId=nextId;runtimeConfig=next;
+      activeSource={type:source.type||"working",id:source.id||runtimePatternId,patternId:runtimePatternId,communityId:source.communityId||null};tapTimes=[];
+      const initialFrame=source.frame!=null&&Number.isFinite(Number(source.frame))?Math.max(0,Number(source.frame)):0;
+      setScreen("game",initialFrame);emit("pattern-open",{patternId:runtimePatternId,sourceType:activeSource.type,sourceId:activeSource.id,communityId:activeSource.communityId,frame:initialFrame});return true;
+    }catch(error){showToast("Не удалось открыть этот паттерн. Сохранённая запись остаётся доступна.");window.dispatchEvent(new CustomEvent("setka:pattern-error",{detail:{patternId:source.patternId||config?.patternId||null,reason:error.code||error.message}}));return false}
+  }
+  function canAnimateLibrary(){const overlay=document.getElementById("st34Layer");return !window.__SETKA_RENDER_ONLY__&&!document.hidden&&!reducedPreviewMotion.matches&&libraryScreen.classList.contains("active")&&(!overlay||overlay.classList.contains("hidden"));}
   function stopLibraryPreviews(){
     if(previewAnimation)cancelAnimationFrame(previewAnimation);
     previewAnimation=0;previewLastPaint=0;previewLastTick=0;
@@ -159,15 +145,18 @@
         previewLastTick=now;
         previewLastPaint=now;
         previewPaintPhase=previewPhase;
-        for(const [canvas,item] of previewTiles){
+        let paintedCount=0;const candidates=[...previewTiles];
+        for(let i=0;i<candidates.length&&paintedCount<8;i++){
+          const [canvas,item]=candidates[(previewCursor+i)%candidates.length];
           if(!canvas.isConnected){previewTiles.delete(canvas);continue}
           const panel=canvas.closest('.pattern-panel');
           if(panel?.classList.contains('hidden-left')||panel?.classList.contains('hidden-right'))continue;
           const rect=canvas.getBoundingClientRect();
           if(rect.bottom<0||rect.top>innerHeight||rect.right<0||rect.left>innerWidth)continue;
-          drawThumbnail(canvas,item.config,previewFrame(item.frame),item.patternId);
+          drawThumbnail(canvas,item.config,previewFrame(item.frame),item.patternId);paintedCount++;previewStats.frames++;
         }
       }
+      previewCursor=(previewCursor+8)%Math.max(1,previewTiles.size);
       previewAnimation=requestAnimationFrame(tick);
     };
     previewAnimation=requestAnimationFrame(tick);
@@ -180,7 +169,7 @@
   function startAnimation(){if(animationFrame)return;const tick=now=>{if(!gameScreen.classList.contains("active")){animationFrame=0;return}const baseFrame=(now-animationStart)/16.6667;
       // Universal audio modulation is applied to the ONE shared animation
       // clock. Pattern implementations, saved configs and thumbnails are intact.
-      const sound=window.SetkaAudioReactiveV1;
+      const sound=registry.supports(runtimePatternId,"audio")?window.SetkaAudioReactiveV1:null;
       const reactiveFrame=sound?.nextFrame?.(baseFrame,now,runtimePatternId);
       currentFrame=Number.isFinite(reactiveFrame)?Math.max(0,reactiveFrame):baseFrame;
       // Preserve the exact displayed frame when music is turned off, instead
@@ -202,126 +191,12 @@
       animationFrame=requestAnimationFrame(tick)};animationFrame=requestAnimationFrame(tick)}
   function stopAnimation(){if(animationFrame)cancelAnimationFrame(animationFrame);animationFrame=0}
 
-  function renderPattern(t,w,h,c,f,thumb,id=null){const pid=inferPatternId(c,id);if(customRenderers.has(pid))return customRenderers.get(pid)(t,w,h,cloneConfig(c,pid),f,thumb);if(pid===DANDELION_ID)return renderDandelion(t,w,h,cloneConfig(c,pid),f,thumb);if(pid===FISH_ID)return renderFish(t,w,h,cloneConfig(c,pid),f,thumb);if(pid===BREATH_ID)return renderBreath(t,w,h,cloneConfig(c,pid),f,thumb);if(pid===GROWTH_ID)return renderGrowth(t,w,h,cloneConfig(c,pid),f,thumb);if(pid===RGB_ID)return renderRgb(t,w,h,cloneConfig(c,pid),f,thumb);if(pid===DNA_ID)return renderDna(t,w,h,cloneConfig(c,pid),f,thumb);if(pid===GRID_ID)return renderGrid(t,w,h,cloneConfig(c,pid),f,thumb);return renderTentacle(t,w,h,cloneConfig(c,pid),f,thumb)}
-  function circle(t,x,d){if(!(d>0))return;t.beginPath();t.arc(x,0,d/2,0,Math.PI*2);t.stroke()}
-  function renderTentacle(t,w,h,c,f,thumb){t.save();t.fillStyle="#000";t.fillRect(0,0,w,h);const audioOffset=!thumb?window.SetkaAudioReactiveV1?.offsets?.("tentacle-orbit",w,h):null;t.translate(w/2+(audioOffset?.x||0),h/2+(audioOffset?.y||0));if(thumb){const ext=Math.max(40,c.tentacleLength*3+c.baseRadius+c.tentacleLength*c.circleSize/20),s=Math.min(.95,(Math.min(w,h)/2-5)/ext);t.scale(s,s)}const shift=f*c.colorSpeed*.5;for(let i=0;i<360;i+=360/c.numTentacles){const x0=Math.sin(rad(i))*c.baseRadius,y0=Math.cos(rad(i))*c.baseRadius;for(let q=0;q<c.tentacleLength;q+=c.segmentStep){const a=Math.cos(rad(c.tentacleLength-q+f*c.movementSpeed))*q,x=Math.sin(rad(i-a))*(q*3),y=Math.cos(rad(i-a))*(q*3),d=(c.tentacleLength-q)*c.circleSize/10;t.strokeStyle=tentacleColor(c.colorModeIndex,i,q,x,y,shift,f);t.lineWidth=c.lineWeight;t.beginPath();t.arc(x0+x,y0+y,Math.max(.075,d/2),0,Math.PI*2);t.stroke()}}t.restore()}
-  function tentacleColor(m,i,q,x,y,s,f){switch(m){case 0:return"#fff";case 1:return`hsl(${mod(i+q*2+s,360)} 100% 50%)`;case 2:return`hsl(${mod(f+q*2,360)} 100% 50%)`;case 3:return"hsl(200 100% 50%)";case 4:return"hsl(330 100% 50%)";case 5:return`hsl(${mod(Math.atan2(y,x)*180/Math.PI+180+s,360)} 100% 50%)`;case 6:return`hsl(${mod(i+s,360)} 100% 50%)`;case 7:return`hsl(${mod(q*5+s,360)} 100% 50%)`;case 8:return`hsl(${mod(x+y+s,360)} 100% 50%)`;default:return"#fff"}}
-  const dx1=(z,v)=>Math.sin(z/10)*100+Math.cos(z/v)*100,dy1=(z,v)=>Math.cos(z/10)*100+Math.sin(z/v)*100,dx2=(z,v)=>Math.sin(z/10)*10+Math.cos(z/v)*100,dy2=(z,v)=>Math.cos(z/10)*10+Math.sin(z/v)*100;
-  function renderDandelion(t,w,h,c,f,thumb){t.save();t.fillStyle=thumb||c.backgroundAlpha>=254?"#000":`rgba(0,0,0,${clamp(c.backgroundAlpha/255,0,1)})`; t.fillRect(0,0,w,h);const audioOffset=!thumb?window.SetkaAudioReactiveV1?.offsets?.("dandelion",w,h):null;t.translate(w/2+(audioOffset?.x||0),h/2+(audioOffset?.y||0));if(thumb){const ext=Math.max(220,220*c.zoom),s=Math.min(.95,(Math.min(w,h)/2-6)/ext);t.scale(s,s)}t.scale(c.zoom,c.zoom);t.rotate(Math.sin(f*c.angleSpeed));const tv=f*c.tSpeed,shift=f*.5;for(let i=1;i<c.numShapes;i++){const z=tv+i,x1=dx1(z,c.v1),y1=dy1(z,c.v1),x2=dx2(z,c.v1),y2=dy2(z,c.v1),coord=mod(((Math.atan2(y1,x1)+Math.PI)*180/Math.PI)*2+shift,360),idx=mod(i*.8+shift,360);t.strokeStyle=[1,3,4].includes(c.colorModeIndex)?`hsl(${coord} 100% 50%)`:[5,6,8].includes(c.colorModeIndex)?`hsl(${idx} 100% 50%)`:"#fff";t.lineWidth=c.lineWeight;t.beginPath();t.moveTo(x1,y1);t.lineTo(x2,y2);t.stroke();t.fillStyle=[1,2].includes(c.colorModeIndex)?`hsl(${coord} 100% 50%)`:[5,7].includes(c.colorModeIndex)?`hsl(${idx} 100% 50%)`:[4,8].includes(c.colorModeIndex)?"#000":"#fff";const r=Math.max(.25,c.pointSize/2);t.beginPath();t.arc(x1,y1,r,0,Math.PI*2);t.fill();t.beginPath();t.arc(x2,y2,r,0,Math.PI*2);t.fill()}t.restore()}
-  function renderFish(t,w,h,c,f,thumb){t.save();t.fillStyle="#000";t.fillRect(0,0,w,h);const audioOffset=!thumb?window.SetkaAudioReactiveV1?.offsets?.("fish-wave",w,h):null;t.translate(w/2+(audioOffset?.x||0),h/2+(audioOffset?.y||0));if(thumb){const md=c.baseRadius+Math.max(0,c.numLayers-1)*c.ringSpacing,ext=md/2+c.waveAmplitude+c.glitchOffset*2+4,s=Math.min(1,(Math.min(w,h)/2-5)/Math.max(1,ext));t.scale(s,s)}const tt=f*c.waveSpeed,a=c.ringAlpha/255;t.lineWidth=c.strokeW;for(let i=0;i<c.numLayers;i++){const side=Math.sin(tt-i*.2)*c.waveAmplitude,d=c.baseRadius+i*c.ringSpacing;if(c.glitchEnabled&&c.colorModeIndex!==0){t.strokeStyle=`rgba(255,0,0,${a})`;circle(t,side,d);t.strokeStyle=`rgba(0,255,0,${a})`;circle(t,c.glitchOffset+side,d);t.strokeStyle=`rgba(0,100,255,${a})`;circle(t,c.glitchOffset*2+side,d)}t.strokeStyle=c.colorModeIndex===1?`rgba(255,255,255,${a})`:c.colorModeIndex===2?`hsla(${mod(tt*100+i*5,360)},100%,50%,${a})`:`rgba(255,255,255,${a})`;circle(t,side,d)}t.restore()}
-  function branchBreath(t,len,d,c,f){if(!d)return;t.strokeStyle=c.colorModeIndex===1?"rgb(170,190,255)":c.colorModeIndex===2?`hsl(${mod(f*c.hueRate*100+len*.4,360)} 80% 55%)`:"#fff";t.lineWidth=c.strokeW;t.beginPath();t.moveTo(0,0);t.lineTo(len,0);t.stroke();t.save();t.translate(len,0);t.save();t.rotate(Math.PI/6);branchBreath(t,len*.6,d-1,c,f);t.restore();t.save();t.rotate(-Math.PI/6);branchBreath(t,len*.6,d-1,c,f);t.restore();t.restore()}
-  function renderBreath(t,w,h,c,f,thumb){t.save();t.fillStyle="#000";t.fillRect(0,0,w,h);const audioOffset=!thumb?window.SetkaAudioReactiveV1?.offsets?.("breathing-fractal",w,h):null;t.translate(w/2+(audioOffset?.x||0),h/2+(audioOffset?.y||0));const sm=1+Math.sin(f*c.pulseSpd)*c.pulseAmp;if(thumb){const ext=Math.max(50,c.baseLen*(1+Math.abs(c.pulseAmp))*2.5),s=Math.min(.96,(Math.min(w,h)/2-5)/ext);t.scale(s,s)}for(let i=0;i<c.branches;i++){t.save();t.rotate(Math.PI*2/c.branches*i);branchBreath(t,c.baseLen*sm,c.layers,c,f);t.restore()}t.restore()}
-  const growthAt=(f,s)=>{const p=mod(f*s,2);return p<=1?p:2-p},levelWeight=(d,c)=>d===1?c.firstLevelFactor:Math.pow(c.levelSpeedRatio,d-1);
-  function totalWeight(c){let s=c.firstLevelFactor;for(let i=2;i<=c.maxDepth;i++)s+=Math.pow(c.levelSpeedRatio,i-1);return Math.max(.00001,s)}
-  function levelStart(d,c){if(d===1)return 0;let s=c.firstLevelFactor;for(let i=2;i<d;i++)s+=Math.pow(c.levelSpeedRatio,i-1);return s}
-  function branchGrowth(t,len,d,g,c,f,sum){if(d>c.maxDepth)return;const w=levelWeight(d,c),from=levelStart(d,c)/sum,to=(levelStart(d,c)+w)/sum;if(g<from)return;const p=clamp((g-from)/Math.max(.00001,to-from),0,1),x2=len*p;t.strokeStyle=c.colorModeIndex===1?"rgb(170,190,255)":c.colorModeIndex===2?`hsl(${mod(f*c.hueRate*100+x2*.4,360)} 80% 55%)`:"#fff";t.lineWidth=c.strokeW;t.beginPath();t.moveTo(0,0);t.lineTo(x2,0);t.stroke();if(p>=1&&d<c.maxDepth){t.save();t.translate(len,0);t.save();t.rotate(Math.PI/6);branchGrowth(t,len*.6,d+1,g,c,f,sum);t.restore();t.save();t.rotate(-Math.PI/6);branchGrowth(t,len*.6,d+1,g,c,f,sum);t.restore();t.restore()}}
-  function renderGrowth(t,w,h,c,f,thumb){t.save();t.fillStyle="#000";t.fillRect(0,0,w,h);const audioOffset=!thumb?window.SetkaAudioReactiveV1?.offsets?.("breathing-fractal-growth",w,h):null;t.translate(w/2+(audioOffset?.x||0),h/2+(audioOffset?.y||0));const g=growthAt(f,c.pulseSpeed);if(thumb){const ext=Math.max(60,c.baseLen*2.6),s=Math.min(.95,(Math.min(w,h)/2-5)/ext);t.scale(s*c.zoom,s*c.zoom)}else t.scale(c.zoom,c.zoom);const sum=totalWeight(c);for(let i=0;i<c.branches;i++){t.save();t.rotate(Math.PI*2/c.branches*i);branchGrowth(t,c.baseLen,1,g,c,f,sum);t.restore()}t.restore()}
-  function renderRgb(t,w,h,c,f,thumb){t.save();t.fillStyle="#000";t.fillRect(0,0,w,h);const audioOffset=!thumb?window.SetkaAudioReactiveV1?.offsets?.("rgb-glitch-rings",w,h):null;t.translate(w/2+(audioOffset?.x||0),h/2+(audioOffset?.y||0));const tt=f*c.waveSpeed;if(thumb){const maxD=c.numRings*c.baseSpacing+Math.abs(c.waveAmplitude),ext=maxD/2+c.glitchOffset+4,s=Math.min(1,(Math.min(w,h)/2-5)/Math.max(1,ext));t.scale(s,s)}const a=c.ringAlpha/255;for(let i=1;i<=c.numRings;i++){const phase=c.invertDirection?-i:i,off=Math.sin(tt+phase*.3)*c.waveAmplitude,d=i*c.baseSpacing+off;if(c.glitchEnabled&&c.colorModeIndex!==0){t.lineWidth=c.strokeW;t.strokeStyle=`rgba(255,0,0,${a})`;circle(t,-c.glitchOffset,d);t.strokeStyle=`rgba(0,255,0,${a})`;circle(t,0,d);t.strokeStyle=`rgba(0,100,255,${a})`;circle(t,c.glitchOffset,d)}if(c.colorModeIndex===0){t.lineWidth=c.strokeW;t.strokeStyle=`rgba(255,255,255,${a})`;circle(t,0,d)}else if(c.colorModeIndex===1){t.lineWidth=.6;t.strokeStyle=`rgba(255,100,180,${a})`;circle(t,0,d)}else if(c.colorModeIndex===2){t.lineWidth=.6;t.strokeStyle=`hsla(${mod(tt*100+i*5,360)},100%,50%,${a})`;circle(t,0,d)}}t.restore()}
-
-  function dnaPoint(t,x,y,size,color){t.fillStyle=color;t.beginPath();t.arc(x,y,Math.max(.5,size/2),0,Math.PI*2);t.fill()}
-  function drawDnaSpiral(t,xOffset,angleShift,c,phase,pointLimit=c.numPoints){
-    t.save();t.translate(xOffset,0);
-    const alpha=clamp(c.glowStrength/255,0,1);
-    const start=Math.max(0,Math.floor((c.numPoints-pointLimit)/2));
-    const end=Math.min(c.numPoints,start+pointLimit);
-    for(let i=start;i<end;i++){
-      const angle=i*c.angleStep+phase;
-      const y=(i-c.numPoints/2)*c.spacing;
-      const x1=Math.cos(angle+angleShift)*c.amplitude;
-      const x2=Math.cos(angle+Math.PI+angleShift)*c.amplitude;
-      const r1=clamp(100+80*Math.sin(i*.1+phase),0,255);
-      const g2=clamp(100+100*Math.sin(i*.15+phase),0,255);
-      // Zero = black/white, one = the ORIGINAL cyan/magenta pair. The
-      // other seven modes are actual palettes, never forced back to zero.
-      const mode=c.colorModeIndex;
-      let left,right;
-      if(mode===0){left=right=`rgba(255,255,255,${alpha})`;}
-      else if(mode===1){left=`rgba(${r1},200,255,${alpha})`;right=`rgba(255,${g2},255,${alpha})`;}
-      else{
-        const hues=[0,0,176,277,322,124,225,38,mod(i*3+phase*48,360)];
-        const h=hues[mode]??176,drift=mode===8?i*2.3+phase*65:Math.sin(i*.06+phase)*8;
-        left=`hsla(${mod(h+drift,360)},86%,72%,${alpha})`;
-        right=`hsla(${mod(h+55+drift,360)},85%,74%,${alpha})`;
-      }
-      dnaPoint(t,x1,y,c.pointSize,left);
-      dnaPoint(t,x2,y,c.pointSize,right);
-    }
-    t.restore();
-  }
-  function renderDna(t,w,h,c,f,thumb){
-    t.save();
-    if(thumb||f<2){t.fillStyle="#000";t.fillRect(0,0,w,h)}else{t.fillStyle=window.SetkaAudioReactiveV1?.isActive?.()?"rgba(0,0,0,0.36)":"rgba(0,0,0,0.1176470588)";t.fillRect(0,0,w,h)}
-    const audioOffset=!thumb?window.SetkaAudioReactiveV1?.offsets?.("stereo-dna",w,h):null;
-    t.translate(w/2+(audioOffset?.x||0),h/2+(audioOffset?.y||0));
-    const previewPoints=thumb?Math.min(72,c.numPoints):c.numPoints;
-    let scale=c.zoom;
-    if(thumb){const vertical=(previewPoints/2)*c.spacing,horizontal=c.eyeSeparation/2+c.amplitude+8,ext=Math.max(vertical,horizontal);scale=Math.min(.96,(Math.min(w,h)/2-5)/Math.max(1,ext))*c.zoom}
-    t.scale(scale,scale);
-    // A normal-size DNA dot becomes subpixel at 180px; never let thumbnails disappear.
-    const previewConfig=thumb?{...c,pointSize:Math.max(c.pointSize,3.4/Math.max(.01,scale))}:c;
-    const phase=f*c.timeSpeed;
-    drawDnaSpiral(t,-c.eyeSeparation/2,-c.stereoAngle,previewConfig,phase,previewPoints);
-    drawDnaSpiral(t,c.eyeSeparation/2,c.stereoAngle,previewConfig,phase,previewPoints);
-    t.restore();
-  }
-
-  // 90° clockwise portrait adaptation of the original p5 sketch.
-  // Both gameplay and mini previews use the same native Canvas2D algorithm.
-  function gridRgba(h,s,v,a){
-    const sector=mod(h,360)/60, chroma=v*s, x=chroma*(1-Math.abs(sector%2-1)),m=v-chroma;
-    let r=0,g=0,b=0;
-    if(sector<1){r=chroma;g=x}else if(sector<2){r=x;g=chroma}
-    else if(sector<3){g=chroma;b=x}else if(sector<4){g=x;b=chroma}
-    else if(sector<5){r=x;b=chroma}else{r=chroma;b=x}
-    return "rgba("+Math.round((r+m)*255)+","+Math.round((g+m)*255)+","+Math.round((b+m)*255)+","+a+")";
-  }
-  const GRID_PALETTES=[
-    [0,0,0],      // 0: canonical first mode is strictly white on black
-    [178,.80,.1], // turquoise
-    [275,.54,.12],
-    [323,.64,.12],
-    [125,.72,.11],
-    [222,.80,.14],
-    [35,.75,.1],
-    [0,.40,1],    // original moving HSB gradient from the supplied sketch
-    [70,.92,1.55]
-  ];
-  function renderGrid(t,w,h,c,f,thumb){
-    t.save();t.fillStyle="#000";t.fillRect(0,0,w,h);
-    // Orient ONLY the geometry. All UI, gesture zones and saved snapshots
-    // remain portrait; this is exactly a clockwise phone rotation.
-    t.translate(w,0);t.rotate(Math.PI/2);
-    const vw=h,vh=w,sx=vw/c.cols,sy=vh/c.rows;
-    const time=f*c.speed*2.25;
-    const palette=GRID_PALETTES[c.colorModeIndex]||GRID_PALETTES[0];
-    const white=c.colorModeIndex===0;
-    const saturation=palette[1],hueBase=palette[0],spread=palette[2];
-    const a=clamp(c.alpha*180/255,0,1);
-    const offset=!thumb?window.SetkaAudioReactiveV1?.offsets?.(GRID_ID,w,h):null;
-    if(offset)t.translate(offset.y,-offset.x);
-    t.lineJoin="miter";t.lineWidth=c.lineWidth;
-    if(white)t.strokeStyle="rgba(255,255,255,"+a+")";
-    for(let i=0;i<c.cols;i++){
-      const cx=(i+.5)*sx;
-      for(let j=0;j<c.rows;j++){
-        const cy=(j+.5)*sy;
-        const breath=1+c.amp*Math.sin(time+i*c.phaseX+j*c.phaseY);
-        const rw=sx*c.scale*breath,rh=sy*c.scale*breath;
-        if(!white){
-          const hue=(time*c.hueSpeed+i*8+j*4)*spread+hueBase;
-          t.strokeStyle=gridRgba(hue,saturation,.90,a);
-        }
-        t.strokeRect(cx-rw/2,cy-rh/2,rw,rh);
-      }
-    }
-    t.restore();
-  }
-
-  function colorModeCount(id=runtimePatternId){if(customRenderers.has(id))return registry?.get?.(id)?.colorModes||9;return [FISH_ID,BREATH_ID,GROWTH_ID,RGB_ID].includes(id)?3:9}
+  function renderPattern(t,w,h,c,f,thumb,id=null){return registry.render(t,w,h,c,f,thumb,id)}
+  function colorModeCount(id=runtimePatternId){return registry.get(id)?.colorModes||1}
   function buildColorDots(){colorDots.replaceChildren();const r=42;for(let i=0;i<9;i++){const d=document.createElement("span");d.className="color-dot";const a=-90+i*40;d.style.transform=`translate(${Math.cos(rad(a))*r}px,${Math.sin(rad(a))*r}px)`;colorDots.appendChild(d)}}
-  function updateColorIndicator(){const n=(runtimeConfig.colorModeIndex||0)+1;[...colorDots.children].forEach((d,i)=>d.classList.toggle("visible",i<n&&i<colorModeCount()))}
-  function updateFavoriteButtonState(){const m=matchingFavorite();favoriteButton.textContent=m?"♥":"♡";favoriteButton.classList.toggle("saved",!!m);favoriteButton.setAttribute("aria-label",m?"Снять лайк с этой конфигурации":"Сохранить текущую конфигурацию")}
-  function saveFavorite(c,f=currentFrame,meta={}){const pid=inferPatternId(c,meta.baseId||runtimePatternId),old=matchingFavorite(c,pid);if(old){updateFavoriteButtonState();showToast("♥ Уже сохранено");return old}const x={id:`favorite-${Date.now()}-${Math.random().toString(36).slice(2,8)}`,baseId:pid,patternId:pid,config:cloneConfig(c,pid),previewFrame:Number.isFinite(Number(f))?Number(f):BASE_PREVIEW_FRAME,createdAt:Date.now(),communityId:meta.communityId||null,parentCommunityId:meta.parentCommunityId||activeSource.communityId||null,patternVersion:meta.patternVersion||patternById(pid).version};favorites.unshift(x);favorites=favorites.slice(0,240);persistFavorites();updateFavoriteButtonState();renderLibrary();showToast("♥ Конфигурация сохранена");emit("favorite-saved",{favorite:{...x},origin:meta.origin||"game"});return x}
+  function updateColorIndicator(){instructionsButton.style.display=registry.supports(runtimePatternId,"settings")?"":"none";const n=(runtimeConfig.colorModeIndex||0)+1;[...colorDots.children].forEach((d,i)=>d.classList.toggle("visible",i<n&&i<colorModeCount()))}
+  function updateFavoriteButtonState(){favoriteButton.style.display=registry.supports(runtimePatternId,"favorites")?"":"none";favoriteButton.hidden=!registry.supports(runtimePatternId,"favorites");const m=matchingFavorite();favoriteButton.textContent=m?"♥":"♡";favoriteButton.classList.toggle("saved",!!m);favoriteButton.setAttribute("aria-label",m?"Снять лайк с этой конфигурации":"Сохранить текущую конфигурацию")}
+  function saveFavorite(c,f=currentFrame,meta={}){const pid=inferPatternId(c,meta.baseId||runtimePatternId);if(!registry.supports(pid,"favorites"))return null;const old=matchingFavorite(c,pid);if(old){updateFavoriteButtonState();showToast("♥ Уже сохранено");return old}const x={id:`favorite-${Date.now()}-${Math.random().toString(36).slice(2,8)}`,baseId:pid,patternId:pid,config:cloneConfig(c,pid),previewFrame:Number.isFinite(Number(f))?Number(f):BASE_PREVIEW_FRAME,createdAt:Date.now(),communityId:meta.communityId||null,parentCommunityId:meta.parentCommunityId||activeSource.communityId||null,patternVersion:meta.patternVersion||patternById(pid).version};favorites.unshift(x);persistFavorites();updateFavoriteButtonState();renderLibrary();showToast("♥ Конфигурация сохранена");emit("favorite-saved",{favorite:{...x},origin:meta.origin||"game"});return x}
   function removeFavorite(f,origin="game"){const i=favorites.findIndex(x=>x.id===f.id);if(i<0)return false;const r=favorites.splice(i,1)[0];persistFavorites();updateFavoriteButtonState();renderLibrary();showToast("♡ Лайк снят");emit("favorite-removed",{favorite:{...r},origin});return true}
   function updateFavoriteMeta(id,patch={}){const f=favorites.find(x=>x.id===id);if(!f)return null;Object.assign(f,patch);persistFavorites();renderLibrary();updateFavoriteButtonState();return{...f}}
   function showToast(m){toast.textContent=m;toast.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.remove("show"),1400)}
@@ -377,7 +252,7 @@
       break;
     }
   }
-  function applyPatternGesture(x,y,dx,dy,fingers,pinch=null,pointerType="touch",currentDist=null,currentStereoX=null){const before=configKey(runtimeConfig,runtimePatternId);if(runtimePatternId===DANDELION_ID)applyDandelion(dx,dy,fingers,pinch);else if(runtimePatternId===FISH_ID)applyFish(x,y,dx,dy);else if(runtimePatternId===BREATH_ID)applyBreath(x,y,dx,dy,fingers);else if(runtimePatternId===GROWTH_ID)applyGrowth(x,y,dx,dy,fingers,pinch);else if(runtimePatternId===RGB_ID)applyRgb(x,y,pointerType);else if(runtimePatternId===DNA_ID)applyDna(dx,dy,fingers,currentDist,currentStereoX);else if(runtimePatternId===GRID_ID)applyGridGesture(x,y,dx,dy,fingers);else if(customRenderers.has(runtimePatternId))applyCustomGesture(x,y,dx,dy,fingers,pinch);else applyTentacle(x,y,dx,dy,fingers);const changed=before!==configKey(runtimeConfig,runtimePatternId);if(changed)updateFavoriteButtonState();return changed}
+  function applyPatternGesture(x,y,dx,dy,fingers,pinch=null,pointerType="touch",currentDist=null,currentStereoX=null){const before=configKey(runtimeConfig,runtimePatternId);if(runtimePatternId===DANDELION_ID)applyDandelion(dx,dy,fingers,pinch);else if(runtimePatternId===FISH_ID)applyFish(x,y,dx,dy);else if(runtimePatternId===BREATH_ID)applyBreath(x,y,dx,dy,fingers);else if(runtimePatternId===GROWTH_ID)applyGrowth(x,y,dx,dy,fingers,pinch);else if(runtimePatternId===RGB_ID)applyRgb(x,y,pointerType);else if(runtimePatternId===DNA_ID)applyDna(dx,dy,fingers,currentDist,currentStereoX);else if(runtimePatternId===GRID_ID)applyGridGesture(x,y,dx,dy,fingers);else if(customRenderers.has(runtimePatternId))applyCustomGesture(x,y,dx,dy,fingers,pinch);else applyTentacle(x,y,dx,dy,fingers);const changed=before!==configKey(runtimeConfig,runtimePatternId);runtimeConfig=cloneConfig(runtimeConfig,runtimePatternId);if(changed)updateFavoriteButtonState();return changed}
   function cycleColor(origin="button"){const count=colorModeCount();if(count<=1)return;const from=runtimeConfig.colorModeIndex||0;runtimeConfig.colorModeIndex=(from+1)%count;updateColorIndicator();updateFavoriteButtonState();emit("color",{from,to:runtimeConfig.colorModeIndex,origin})}
   function patternTap(x,y){const now=performance.now(),limit=runtimePatternId===RGB_ID?600:runtimePatternId===DANDELION_ID?300:450;tapTimes=tapTimes.filter(t=>now-t<limit);tapTimes.push(now);if(runtimePatternId===DANDELION_ID&&tapTimes.length===1){const r=canvas.getBoundingClientRect();if(Math.hypot(x-r.width/2,y-r.height/2)<100){runtimeConfig.v1History=[...(runtimeConfig.v1History||[]),runtimeConfig.v1].slice(-64);runtimeConfig.v1=Math.random()*.4+.2;updateFavoriteButtonState();emit("pattern-special",{action:"new-v1",v1:runtimeConfig.v1})}else if(y>r.height*.85&&runtimeConfig.v1History?.length){const h=[...runtimeConfig.v1History];runtimeConfig.v1=h.pop();runtimeConfig.v1History=h;updateFavoriteButtonState();emit("pattern-special",{action:"undo-v1",v1:runtimeConfig.v1})}}if(runtimePatternId!==DNA_ID&&tapTimes.length>=3&&tapTimes.at(-1)-tapTimes.at(-3)<limit){cycleColor("triple-tap");tapTimes=[]}}
   function localTouch(t){const r=canvas.getBoundingClientRect();return{x:t.clientX-r.left,y:t.clientY-r.top}}
@@ -397,24 +272,29 @@
 
   colorButton.addEventListener("click",()=>cycleColor("button"));favoriteButton.addEventListener("click",()=>{const m=matchingFavorite();if(m)removeFavorite(m,"game");else saveFavorite(runtimeConfig,currentFrame,{origin:"game",baseId:runtimePatternId,parentCommunityId:activeSource.communityId||null})});libraryButton.addEventListener("click",()=>{activeLibraryPage="all";setScreen("library")});instructionsButton.addEventListener("click",()=>{const p=instructionsModal.querySelector(".instructions");if(p){p.innerHTML=instructionsHTML();const heading=p.querySelector("h2");if(heading)heading.textContent=`Управление · ${patternById(runtimePatternId).title}`}instructionsModal.classList.add("open");emit("instructions-open")});instructionsModal.addEventListener("click",e=>{if(e.target===instructionsModal||e.target.closest?.(".close-modal")){instructionsModal.classList.remove("open");emit("instructions-close")}});
   function cyclePattern(dir){let i=PATTERNS.findIndex(p=>p.id===runtimePatternId);if(i<0)i=0;i=(i+dir+PATTERNS.length)%PATTERNS.length;const p=PATTERNS[i];openConfig(p.defaults,{type:"base",id:p.id,patternId:p.id,communityId:null})}
-  prevButton.addEventListener("click",()=>cyclePattern(-1));nextButton.addEventListener("click",()=>cyclePattern(1));libraryPagerButton.addEventListener("click",()=>setLibraryPage("all"));communityPagerButton.addEventListener("click",()=>setLibraryPage("community"));favoritesPagerButton.addEventListener("click",()=>setLibraryPage("favorites"));let swipe=null;librarySwipeArea.addEventListener("pointerdown",e=>{if(e.target.closest("button"))return;swipe={x:e.clientX,y:e.clientY}});librarySwipeArea.addEventListener("pointerup",e=>{if(!swipe)return;const dx=e.clientX-swipe.x,dy=e.clientY-swipe.y;swipe=null;if(Math.abs(dx)<55||Math.abs(dx)<Math.abs(dy)*1.2)return;let i=PAGE_ORDER.indexOf(activeLibraryPage);i+=dx<0?1:-1;setLibraryPage(PAGE_ORDER[clamp(i,0,PAGE_ORDER.length-1)])});librarySwipeArea.addEventListener("pointercancel",()=>swipe=null);window.addEventListener("resize",()=>{if(gameScreen.classList.contains("active"))resizeMainCanvas();renderLibrary()});document.addEventListener("visibilitychange",()=>{if(document.hidden)stopAnimation();else if(gameScreen.classList.contains("active"))startAnimation()});
+  prevButton.addEventListener("click",()=>cyclePattern(-1));nextButton.addEventListener("click",()=>cyclePattern(1));libraryPagerButton.addEventListener("click",()=>setLibraryPage("all"));communityPagerButton.addEventListener("click",()=>setLibraryPage("community"));favoritesPagerButton.addEventListener("click",()=>setLibraryPage("favorites"));let swipe=null;librarySwipeArea.addEventListener("pointerdown",e=>{if(e.target.closest("button"))return;swipe={x:e.clientX,y:e.clientY}});librarySwipeArea.addEventListener("pointerup",e=>{if(!swipe)return;const dx=e.clientX-swipe.x,dy=e.clientY-swipe.y;swipe=null;if(Math.abs(dx)<55||Math.abs(dx)<Math.abs(dy)*1.2)return;let i=PAGE_ORDER.indexOf(activeLibraryPage);i+=dx<0?1:-1;setLibraryPage(PAGE_ORDER[clamp(i,0,PAGE_ORDER.length-1)])});librarySwipeArea.addEventListener("pointercancel",()=>swipe=null);window.addEventListener("resize",()=>{if(gameScreen.classList.contains("active"))resizeMainCanvas();syncLibraryPreviews()});document.addEventListener("visibilitychange",()=>{if(document.hidden)stopAnimation();else if(gameScreen.classList.contains("active"))startAnimation()});
 
   function registerPattern(def){
-    if(!def||typeof def.id!=="string"||!/^([a-z][a-z0-9-]{2,79})$/.test(def.id)||
-       IDS.has(def.id)||typeof def.render!=="function"||!def.defaults||
-       !Array.isArray(def.controls))throw new Error("invalid_or_duplicate_pattern_registration");
-    registry?.register?.(def);
-    const d={...def.defaults,patternId:def.id,colorModeIndex:0};
-    const p={id:def.id,title:String(def.title||def.id).slice(0,80),
-      version:Math.max(1,Math.round(Number(def.version)||1)),defaults:Object.freeze(d)};
-    PATTERNS.push(p);IDS.add(def.id);customRenderers.set(def.id,def.render);
-    renderLibrary();
-    emit("registry-changed",{patternId:def.id});
-    return {id:def.id,title:p.title,version:p.version};
+    if(!def||typeof def.render!=="function")throw new Error("renderer_required");
+    if(!registry.has(def.id))registry.register(def);
+    registry.bindRenderer(def.id,def.render);
+    syncRegistry();
+    return {id:def.id,title:registry.title(def.id),version:registry.get(def.id).version};
   }
-  window.SetkaApp={registerPattern,getState:()=>statePayload(),getConfig:()=>cloneConfig(runtimeConfig,runtimePatternId),getFavorites:()=>favorites.map(f=>({...f,config:cloneConfig(f.config,f.baseId)})),setConfigPatch:(patch={})=>{if(!patch||typeof patch!=="object")return cloneConfig(runtimeConfig,runtimePatternId);const before=configKey(runtimeConfig,runtimePatternId);runtimeConfig=cloneConfig({...runtimeConfig,...patch,patternId:runtimePatternId},runtimePatternId);if(before!==configKey(runtimeConfig,runtimePatternId)){updateFavoriteButtonState();updateColorIndicator();emit("gesture-move",{origin:"slider"})}return cloneConfig(runtimeConfig,runtimePatternId)},getPatterns:()=>PATTERNS.map(p=>({id:p.id,title:p.title,version:p.version,defaults:cloneConfig(p.defaults,p.id)})),getPatternDefaults:id=>IDS.has(id)?cloneConfig(patternById(id).defaults,id):null,getPatternTitle:id=>IDS.has(id)?patternById(id).title:(id||"Неизвестный паттерн"),cloneConfig,configKey,openConfig,renderPreview,setCommunity(items){communityItems=Array.isArray(items)?items.map(normalizeCommunityItem):[];renderLibrary()},setRecommendations(data={}){recommendedCommunity=new Set((data.community||[]).map(String));recommendedPatterns=new Set((data.patterns||[]).map(String));renderLibrary()},updateFavoriteMeta,refreshFavorites(){favorites=loadFavorites();renderLibrary();updateFavoriteButtonState()},renderLibrary,setLibraryPage,finishCurrentUsageHint(){return statePayload()},DEFAULT_CONFIG:cloneConfig(TENTACLE_DEFAULT,TENTACLE_ID),DANDELION_DEFAULT:cloneConfig(DANDELION_DEFAULT,DANDELION_ID),FISH_DEFAULT:cloneConfig(FISH_DEFAULT,FISH_ID),BREATHING_FRACTAL_DEFAULT:cloneConfig(BREATH_DEFAULT,BREATH_ID),BREATHING_GROWTH_DEFAULT:cloneConfig(GROWTH_DEFAULT,GROWTH_ID),RGB_RINGS_DEFAULT:cloneConfig(RGB_DEFAULT,RGB_ID),STEREO_DNA_DEFAULT:cloneConfig(DNA_DEFAULT,DNA_ID),BREATHING_GRID_DEFAULT:cloneConfig(GRID_DEFAULT,GRID_ID)};
+  function syncRegistry(){
+    for(const p of registry.list())if(!IDS.has(p.id)){PATTERNS.push({...p,title:registry.title(p.id)});IDS.add(p.id);customRenderers.set(p.id,true)}
+    renderLibrary();
+  }
+  window.addEventListener("setka:renderer-ready",()=>{if(window.SetkaApp)syncRegistry()});
+  // Display metadata is applied to the registry; UI subscribers update labels.
+  function refreshPatternTitles(){
+    for(const p of PATTERNS)p.title=registry.title(p.id);
+    document.querySelectorAll('.pattern-tile[data-kind="base"]').forEach(tile=>tile.setAttribute("aria-label",`Открыть паттерн ${registry.title(tile.dataset.patternId)}. Удерживай, чтобы сохранить`));
+  }
+  window.addEventListener("setka:pattern-names",refreshPatternTitles);
+  window.SetkaApp={setPatternTitles:rows=>registry.setTitles(rows),restorePersonalConfigs,exportPersonalConfigs:()=>JSON.parse(JSON.stringify(lastConfigs)),previewStatus:()=>({...previewStats,registered:previewTiles.size}),registerPattern,getState:()=>statePayload(),getConfig:()=>cloneConfig(runtimeConfig,runtimePatternId),getFavorites:()=>favorites.map(f=>f.unavailable?JSON.parse(JSON.stringify(f)):({...f,config:cloneConfig(f.config,f.baseId)})),setConfigPatch:(patch={})=>{if(!patch||typeof patch!=="object")return cloneConfig(runtimeConfig,runtimePatternId);const before=configKey(runtimeConfig,runtimePatternId);runtimeConfig=cloneConfig({...runtimeConfig,...patch,patternId:runtimePatternId},runtimePatternId);if(before!==configKey(runtimeConfig,runtimePatternId)){updateFavoriteButtonState();updateColorIndicator();emit("gesture-move",{origin:"slider"})}return cloneConfig(runtimeConfig,runtimePatternId)},getPatterns:()=>PATTERNS.map(p=>({id:p.id,title:p.title,version:p.version,defaults:cloneConfig(p.defaults,p.id)})),getPatternDefaults:id=>IDS.has(id)?registry.defaults(id):null,getPatternTitle:id=>registry.title(id),cloneConfig,configKey,openConfig,renderPreview,setCommunity(items){communityItems=Array.isArray(items)?items.map(normalizeCommunityItem):[];renderLibrary()},setRecommendations(data={}){recommendedCommunity=new Set((data.community||[]).map(String));recommendedPatterns=new Set((data.patterns||[]).map(String));renderLibrary()},updateFavoriteMeta,refreshFavorites(){favorites=loadFavorites();renderLibrary();updateFavoriteButtonState()},renderLibrary,setLibraryPage,finishCurrentUsageHint(){return statePayload()},DEFAULT_CONFIG:cloneConfig(TENTACLE_DEFAULT,TENTACLE_ID),DANDELION_DEFAULT:cloneConfig(DANDELION_DEFAULT,DANDELION_ID),FISH_DEFAULT:cloneConfig(FISH_DEFAULT,FISH_ID),BREATHING_FRACTAL_DEFAULT:cloneConfig(BREATH_DEFAULT,BREATH_ID),BREATHING_GROWTH_DEFAULT:cloneConfig(GROWTH_DEFAULT,GROWTH_ID),RGB_RINGS_DEFAULT:cloneConfig(RGB_DEFAULT,RGB_ID),STEREO_DNA_DEFAULT:cloneConfig(DNA_DEFAULT,DNA_ID),BREATHING_GRID_DEFAULT:cloneConfig(GRID_DEFAULT,GRID_ID)};
+  window.addEventListener("setka:catalog-updated",()=>{for(const p of PATTERNS)p.defaults=registry.defaults(p.id);renderLibrary()});
   registry?.attachEngine?.(window.SetkaApp);
   persistFavorites();buildColorDots();updateColorIndicator();updateFavoriteButtonState();renderLibrary();emit("ready",{});
-  // Display metadata can change without changing renderer identity, recipes or history.
-  window.SetkaApp.setPatternTitles=rows=>{let changed=false;for(const row of rows||[]){const p=PATTERNS.find(x=>x.id===(row.pattern_id||row.patternId));const title=String(row.title||'').trim();if(p&&title&&title.length<=80&&p.title!==title){p.title=title;changed=true}}if(changed){document.querySelectorAll('.pattern-tile[data-kind="base"]').forEach(tile=>{const p=PATTERNS.find(x=>x.id===tile.dataset.patternId);if(p)tile.setAttribute("aria-label",`Открыть паттерн ${p.title}. Удерживай, чтобы сохранить`)});if(instructionsModal.classList.contains("open")){const heading=instructionsModal.querySelector("h2");if(heading)heading.textContent=`Управление · ${patternById(runtimePatternId).title}`}window.dispatchEvent(new CustomEvent('setka:pattern-names',{detail:{updated:true}}))}};
+
 })();

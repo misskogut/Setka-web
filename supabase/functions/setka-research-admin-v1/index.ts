@@ -3,6 +3,7 @@
 // Moderation is delegated to the existing API; no experiment assigns real participants.
 import { buildData, replayCoverage, ARRAY, num, time } from './model.mjs';
 import { recordedStates } from './replay-model.mjs';
+import {loadManifest,catalogRows,assertConfiguration} from '../_shared/pattern-catalog.mjs';
 import {issueInvites} from './invites.mjs';
 const URL_BASE = Deno.env.get('SUPABASE_URL') || '';
 const SERVICE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
@@ -80,9 +81,40 @@ async function rpc(name:string,args:any){
  const res=await fetch(`${URL_BASE}/rest/v1/rpc/${name}`,{method:'POST',headers:{apikey:SERVICE,Authorization:`Bearer ${SERVICE}`,'Content-Type':'application/json'},body:JSON.stringify(args)});
  const out=await res.json();if(!res.ok)throw new Error(out.message||'write_failed');return out;
 }
+let manifestCache:any=null,manifestAt=0,manifestTask:Promise<any>|null=null;
+async function catalogManifest(){
+ if(manifestCache&&Date.now()-manifestAt<60000)return manifestCache;
+ if(manifestTask)return manifestTask;
+ manifestTask=(async()=>{
+  const manifest=await loadManifest();
+  const existing=await read('setka_research_v1_pattern_catalog','pattern_id',{},1000),known=new Set(existing.rows.map(x=>x.pattern_id));
+  const missing=manifest.patterns.filter((p:any)=>!known.has(p.id)).map((p:any)=>({pattern_id:p.id,title:p.title,revision:1}));
+  if(missing.length){const res=await fetch(`${URL_BASE}/rest/v1/setka_research_v1_pattern_catalog?on_conflict=pattern_id`,{
+   method:'POST',headers:{apikey:SERVICE,Authorization:`Bearer ${SERVICE}`,'Content-Type':'application/json',Prefer:'resolution=ignore-duplicates,return=minimal'},body:JSON.stringify(missing)});
+   if(!res.ok)throw Error('catalog_registration_failed');}
+  manifestCache=manifest;manifestAt=Date.now();return manifest;
+ })().finally(()=>{manifestTask=null});return manifestTask;
+}
+async function catalog(){
+ let manifest=null;try{manifest=await catalogManifest()}catch(_){}
+ const names=await read('setka_research_v1_pattern_catalog','pattern_id,title,revision,updated_at',{},1000,'pattern_id');
+ const defaults=await read('setka_pattern_defaults_v2','pattern_id,pattern_version,schema_version,config,revision,updated_at',{},1000,'pattern_id');
+ return {ok:true,items:manifest?catalogRows(manifest,names.rows):names.rows,defaults:defaults.rows,
+  registryRevision:manifest?.registryRevision||null,registryAvailable:!!manifest,updatedAt:new Date().toISOString()};
+}
+async function savePatternDefaults(b:any,adminId:string){
+ try{
+  const manifest=await catalogManifest(),p=manifest.patterns.find((p:any)=>p.id===b.patternId);
+  if(!p)return reply({error:'unknown_pattern'},400);
+  if(!Number.isInteger(b.expectedRevision)||b.expectedRevision<0||b.patternVersion!==p.version||b.schemaVersion!==p.schemaVersion)return reply({error:'unsupported_version'},409);
+  assertConfiguration(p,b.config);
+  return reply({ok:true,item:await rpc('setka_save_pattern_defaults_v2',{p_pattern_id:p.id,p_pattern_version:p.version,
+   p_schema_version:p.schemaVersion,p_config:b.config,p_expected_revision:b.expectedRevision,p_admin_key_id:adminId})});
+ }catch(e){const code=String(e.message);return reply({error:code==='revision_conflict'?code:code.startsWith('invalid_')||code==='unknown_parameter'?code:'configuration_save_failed'},code==='revision_conflict'?409:400)}
+}
 async function renamePattern(b:any,adminId:string){
  const title=String(b.title||'').trim();if(!validId(b.patternId,100)||!title||title.length>80||/[\u0000-\u001f]/.test(title)||!Number.isInteger(b.expectedRevision))return reply({error:'invalid_title'},400);
- try{return reply({ok:true,item:await rpc('setka_research_v1_rename_pattern',{p_pattern_id:b.patternId,p_title:title,p_expected_revision:b.expectedRevision,p_admin_key_id:adminId})});}
+ try{await catalogManifest();return reply({ok:true,item:await rpc('setka_research_v1_rename_pattern',{p_pattern_id:b.patternId,p_title:title,p_expected_revision:b.expectedRevision,p_admin_key_id:adminId})});}
  catch(e){return reply({error:e.message==='revision_conflict'?'revision_conflict':'rename_failed'},e.message==='revision_conflict'?409:503);}
 }
 function normalEvent(x:any,start:any,participantId:string){
@@ -131,8 +163,7 @@ async function replay(b:any){
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 async function isRegisteredPattern(id:any){
   const pid=String(id||'');if(!/^[a-z][a-z0-9-]{2,79}$/.test(pid))return false;
-  const catalog=await read('setka_research_v1_pattern_catalog','pattern_id',{pattern_id:pid},1);
-  return catalog.rows.some(x=>x.pattern_id===pid);
+  const manifest=await catalogManifest();return manifest.patterns.some((p:any)=>p.id===pid);
 }
 async function saveExperiment(b:any,adminId:string){
   const title=String(b.title||'').trim(),hypothesis=String(b.hypothesis||'').trim();
@@ -161,8 +192,9 @@ Deno.serve(async(req:Request)=>{
     const text=await req.text();if(text.length>16000)return reply({error:'request_too_large'},413);
     const b=JSON.parse(text);
     // Only public display names are released here. No account or research rows.
-    if(b.action==='catalog'){const r=await read('setka_research_v1_pattern_catalog','pattern_id,title,revision,updated_at',{},1000,'pattern_id');return reply({ok:true,items:r.rows,updatedAt:new Date().toISOString()});}
+    if(b.action==='catalog')return reply(await catalog());
     const adminId=await authorized(b.adminKey);if(!adminId)return reply({error:'invalid_admin_key'},403);
+    if(b.action==='save-pattern-defaults')return await savePatternDefaults(b,adminId);
     if(b.action==='rename-pattern')return await renamePattern(b,adminId);
     if(b.action==='issue-invites'){try{return reply(await issueInvites(b,{adminId},rpc));}catch(e){const code=e.message;return reply({error:code},/invalid_|request_already_issued|batch_complete|batch_not_owned/.test(code)?409:503);}}
     if(b.action==='save-experiment')return await saveExperiment(b,adminId);

@@ -13,6 +13,7 @@
     "canvas.st34-note-preview",
     "canvas.st37-community-preview",
     "canvas.st34-stable-preview",
+    ".st34-state-combo canvas",
     "canvas.st34-preview",
     "canvas.st34-user-preview"
   ].join(",");
@@ -139,7 +140,7 @@
       const note = (C?.getData?.()?.notes || []).find(n=>String(n.id)===id);
       if (!note) continue;
       const replay = resolve(note);
-      if (replay.config && replay.pid) register(canvas,replay.config,replay.frame,replay.pid);
+      if (replay.config && replay.pid && !replay.unavailable) register(canvas,replay.config,replay.frame,replay.pid);
     }
   }
   document.addEventListener("visibilitychange",()=>{if (mayAnimate()) schedule();else stop()});

@@ -5,7 +5,7 @@
   const root=document.getElementById("tab-pattern-knowledge");if(!root)return;
   const esc=v=>String(v??"").replace(/[&<>\"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));
   const fmtMs=ms=>{ms=Math.max(0,Number(ms)||0);const m=Math.round(ms/60000);if(m<1)return`${Math.round(ms/1000)} сек`;if(m<60)return`${m} мин`;return`${(m/60).toFixed(1)} ч`};
-  const CANONICAL_IDS=window.SetkaPatternRegistryV1?.ids?.()||[];
+  const canonicalIds=()=>window.SetkaPatternRegistryV1?.ids?.()||[];
   const titleMap=Object.fromEntries((window.SetkaPatternRegistryV1?.list?.()||[]).map(x=>[x.id,x.title]));
   let data=null,busy=false,timer=0,filter=null;
   const style=document.createElement("style");style.textContent=`
@@ -25,7 +25,7 @@
     const serviceByPattern=new Map();
     for(const row of patternRows){const id=row.pattern_id||row.patternId;if(id&&!serviceByPattern.has(id))serviceByPattern.set(id,row)}
     const researchByPattern=new Map(researchPatterns.map(x=>[x.patternId,x]));
-    const ids=[...new Set([...CANONICAL_IDS,...serviceByPattern.keys(),...researchByPattern.keys()])];
+    const ids=[...new Set([...canonicalIds(),...serviceByPattern.keys(),...researchByPattern.keys()])];
     const patterns=ids.map(patternId=>({patternId,service:serviceByPattern.get(patternId)||null,research:researchByPattern.get(patternId)||null,hasService:serviceByPattern.has(patternId)}))
       .sort((a,b)=>(Number(b.service?.participants)||0)-(Number(a.service?.participants)||0)||(Number(b.service?.exposures)||0)-(Number(a.service?.exposures)||0));
     root.innerHTML=`
@@ -38,7 +38,7 @@
     patterns.forEach(x=>{
       const s=x.service||{},r=x.research||{},b=document.createElement("button");b.type="button";b.className=`pk40-pattern${filter===x.patternId?" active":""}`;
       b.innerHTML=`<div class="pk40-name">${esc(patternTitle(x.patternId))}</div><div class="pk40-big">♥ ${Number(s.likes??s.saves)||0}</div><div class="pk40-unit">лайков материнскому паттерну</div>${!x.hasService?`<div class="pk40-empty" style="margin-top:7px;padding:5px 7px">Пока нет записанных просмотров или сохранений в текущей выборке</div>`:""}<div class="pk40-meta"><b>Сервис:</b> ${Number(s.viewing_accounts??s.participants)||0} аккаунтов смотрели · ${Number(s.exposures)||0} эпизодов просмотра · ${Number(s.sessions)||0} сессий · ${Number(s.saved_configurations??s.configurations)||0} сохранённых конфигураций · ${Number(s.configuration_saves)||0} сохранений конфигураций<br><b>Исследование:</b> ${Number(r.uniqueParticipants)||0} участников · ${Number(r.configCount)||0} конфигураций · ${fmtMs(r.totalDurationMs)} просмотра${r.avgStateDelta!=null?` · сдвиг ${esc(shift(r.avgStateDelta))}`:""}${r.publicNotes?` · заметок ${Number(r.publicNotes)}`:""}</div>`;
-      b.onclick=()=>{filter=filter===x.patternId?null:x.patternId;render()};pg.appendChild(b)
+      b.dataset.patternId=x.patternId;b.onclick=()=>{filter=filter===x.patternId?null:x.patternId;render()};pg.appendChild(b)
     });
 
     const observedRoot=root.querySelector("#pk40Observed");

@@ -18,7 +18,8 @@
     const rawConfig = source.config || note.config || note.state?.config || {};
     const hinted = source.patternId || note.patternId || note.state?.patternId || rawConfig.patternId || null;
     if(note.noteType==='text'||(!hinted&&!Object.keys(rawConfig).length))return null;
-    let config = clone(rawConfig), patternId = hinted || "tentacle-orbit";
+    let config = clone(rawConfig), patternId = hinted || window.SetkaPatternRegistryV1?.inference?.(rawConfig);
+    if(!patternId)return null;
     try { config = S?.cloneConfig?.(rawConfig, hinted) || config; patternId = config?.patternId || patternId; } catch (_) {}
     let configHash = source.configHash || note.configHash || note.state?.configKey || null;
     try { configHash = S?.configKey?.(config, patternId) || configHash; } catch (_) {}

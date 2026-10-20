@@ -28,7 +28,7 @@ const server=createServer(async(req,res)=>{
     }else out={ok:true,archive:{...savedArchive,sourceDevices:1}};
    }
    if(path.endsWith('setka-public-notes-v37')){
-    if(b.action==='status')out={ok:true,items:[...publications.values()]};
+    if(b.action==='my-status')out={ok:true,items:[...publications.values()]};
     if(b.action==='submit'){
      assert.equal(b.note.patternId,null);assert.equal(b.note.config,null);assert.equal(b.note.visualCapsule,null);assert.equal(b.note.publicPreviewDataUrl,undefined);
      noteActions.push('submit');const item={id:'isolated-public-note',sourceNoteKey:b.note.id,status:'pending',isPublic:false};publications.set(b.note.id,item);out={ok:true,...item};
@@ -53,7 +53,7 @@ try{
  const frontContext=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true}),front=await frontContext.newPage(),errors=[];
  front.on('pageerror',e=>errors.push({page:'front',message:e.message,stack:e.stack}));front.on('dialog',async d=>{errors.push({page:'front',nativeDialog:d.message()});await d.dismiss()});
  await front.addInitScript(localApiTransport);
- await front.addInitScript(()=>localStorage.setItem('setka-v40:cabinet-session',JSON.stringify({token:'isolated-fixture-only'})));
+ await front.addInitScript(()=>localStorage.setItem('setka-v40:cabinet-session',JSON.stringify({token:'isolated-fixture-only',testerId:'T-OWNERAAA'})));
  await front.goto(base+'/standalone-v34.html',{waitUntil:'domcontentloaded'});await front.waitForFunction(()=>!!window.__SETKA_PATTERN_CATALOG_V1__&&!!window.SetkaStandaloneV34.activity);
  assert.equal(await front.locator('.base-tile .setka-new-pattern').count(),8);
  assert.equal(await front.locator('.base-tile .setka-new-pattern').first().innerText(),'new');
@@ -81,9 +81,9 @@ try{
  await front.locator('.st34-mark-btn').click();await front.locator('.st34-mark-editor.open input').fill('6');await front.getByRole('button',{name:'Сохранить отметку',exact:true}).tap();
  await front.getByRole('button',{name:'Проверить сохранение',exact:true}).click();await front.getByText(/Состояния и отметки сохранены в аккаунте/).waitFor();
  const paused=await front.locator('.base-tile .thumb-canvas').first().evaluate(c=>c.toDataURL());await new Promise(r=>setTimeout(r,180));assert.equal(await front.locator('.base-tile .thumb-canvas').first().evaluate(c=>c.toDataURL()),paused,'previews pause behind a sheet');
- await stale.locator('#st34Nav [data-p="today"]').click();assert.ok(await stale.evaluate(()=>JSON.parse(localStorage.getItem('setka-standalone:v34')).symptoms.some(x=>x.name==='Усталость')));
+ await stale.locator('#st34Nav [data-p="today"]').click();assert.ok(await stale.evaluate(()=>JSON.parse((window.SetkaDataScopeV1?.storage||localStorage).getItem('setka-standalone:v34')).symptoms.some(x=>x.name==='Усталость')));
  await front.reload();await front.locator('#st34Nav [data-p="symptoms"]').click();await front.getByText('Усталость',{exact:true}).waitFor();assert.match(await front.locator('.st34-state-now').innerText(),/6\/10/);
- const other=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});other.on('pageerror',e=>errors.push({page:'other-device',message:e.message}));await other.addInitScript(localApiTransport);await other.addInitScript(()=>localStorage.setItem('setka-v40:cabinet-session',JSON.stringify({token:'isolated-fixture-only'})));await other.goto(base+'/standalone-v34.html');await other.waitForFunction(()=>!!window.__SETKA_PRIVATE_CORPUS_V40__);await other.evaluate(()=>window.__SETKA_PRIVATE_CORPUS_V40__.sync());await other.locator('#st34Nav [data-p="symptoms"]').click();await other.getByText('Усталость',{exact:true}).waitFor();assert.match(await other.locator('.st34-state-now').innerText(),/6\/10/);
+ const other=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});other.on('pageerror',e=>errors.push({page:'other-device',message:e.message}));await other.addInitScript(localApiTransport);await other.addInitScript(()=>localStorage.setItem('setka-v40:cabinet-session',JSON.stringify({token:'isolated-fixture-only',testerId:'T-OWNERAAA'})));await other.goto(base+'/standalone-v34.html');await other.waitForFunction(()=>!!window.__SETKA_PRIVATE_CORPUS_V40__);await other.evaluate(()=>window.__SETKA_PRIVATE_CORPUS_V40__.sync());await other.locator('#st34Nav [data-p="symptoms"]').click();await other.getByText('Усталость',{exact:true}).waitFor();assert.match(await other.locator('.st34-state-now').innerText(),/6\/10/);
  console.log('NEW BADGE, LIVE PREVIEWS WITHOUT USAGE, MULTITAB STATE/CHECKIN RETENTION AND CLOUD RESTORE ON ANOTHER DEVICE PASS');
  // Fill actual Web Storage in this isolated origin; do not mock QuotaExceededError.
  const fill=await front.evaluate(()=>{let size=0,step=1024*1024,refused=false;while(step>=1){try{localStorage.setItem('isolated-quota-filler','x'.repeat(size+step));size+=step}catch(e){refused=refused||e.name==='QuotaExceededError';step=Math.floor(step/2)}}return{size,refused}});

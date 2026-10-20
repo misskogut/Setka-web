@@ -19,15 +19,7 @@
   }
 
   function patternIdFromConfig(config) {
-    const c = config || {};
-    if (c.eyeSeparation != null || c.stereoAngle != null || (c.angleStep != null && c.numPoints != null)) return "stereo-dna";
-    if (c.numRings != null || c.baseSpacing != null || c.invertDirection != null) return "rgb-glitch-rings";
-    if (c.numLayers != null || c.ringSpacing != null) return "fish-wave";
-    if (c.maxDepth != null || c.levelSpeedRatio != null || c.firstLevelFactor != null || (c.pulseSpeed != null && c.branches != null)) return "breathing-fractal-growth";
-    if (c.pulseSpd != null || c.pulseAmp != null || (c.layers != null && c.branches != null)) return "breathing-fractal";
-    if (c.v1 != null || c.numShapes != null || c.angleSpeed != null || c.tSpeed != null || c.backgroundAlpha != null) return "dandelion";
-    if (c.numTentacles != null || c.tentacleLength != null || c.circleSize != null || c.segmentStep != null) return "tentacle-orbit";
-    return window.SetkaPatternRegistryV1?.inference?.(c)||null;
+    return window.SetkaPatternRegistryV1?.inference?.(config)||null;
   }
 
   function patternIdFromHash(note) {
@@ -38,10 +30,15 @@
 
   function patternIdOf(note) {
     const cfg = configOf(note);
-    const explicit = [note?.replaySnapshot?.patternId,note?.patternId,note?.state?.patternId,cfg?.patternId,note?.visualRecipe?.patternId,note?.visualSnapshot?.patternId];
-    return explicit.find(id=>KNOWN_PATTERN_IDS.includes(id))
-      || patternIdFromHash(note)
+    if(note?.replaySnapshot?.patternId)return note.replaySnapshot.patternId;
+    // An explicit recipe identity, including a future/unknown ID, is not a
+    // hint that may be replaced with stale top-level UI metadata.
+    if(cfg?.patternId)return cfg.patternId;
+    const explicit = [cfg?.patternId,note?.patternId,note?.state?.patternId,note?.visualRecipe?.patternId,note?.visualSnapshot?.patternId];
+    const unknown = explicit.find(id=>id&&!KNOWN_PATTERN_IDS.includes(id));
+    return unknown || patternIdFromHash(note)
       || patternIdFromConfig(cfg)
+      || explicit.find(id=>KNOWN_PATTERN_IDS.includes(id))
       || null;
   }
 
@@ -51,14 +48,17 @@
     const frames = [note?.replaySnapshot?.frame,note?.frame,note?.state?.frame,note?.visualRecipe?.frame,note?.visualSnapshot?.frame];
     let frame = 44;
     for (const v of frames) { const n = v == null ? NaN : Number(v); if (Number.isFinite(n)) { frame=n; break; } }
-    return {pid,config,frame};
+    const registry=window.SetkaPatternRegistryV1;
+    const checked=note?.replaySnapshot&&registry?.restore?.(note.replaySnapshot);
+    const unavailable=!!(pid&&!KNOWN_PATTERN_IDS.includes(pid))||checked?.ok===false;
+    return {pid,config,frame,unavailable,reason:checked?.reason||(unavailable?"unknown_pattern":null)};
   }
 
   function recipeFor(noteLike, replay = null) {
     const r = replay || replayOf(noteLike);
     const base = {
       patternId:r.pid,
-      patternVersion:noteLike?.patternVersion || noteLike?.visualRecipe?.patternVersion || noteLike?.state?.patternVersion || 1,
+      patternVersion:noteLike?.replaySnapshot?.patternVersion || noteLike?.patternVersion || noteLike?.visualRecipe?.patternVersion || noteLike?.state?.patternVersion || 1,
       configHash:noteLike?.configHash || noteLike?.visualRecipe?.configHash || noteLike?.state?.configKey || null,
       frame:r.frame,
       seed:noteLike?.visualRecipe?.seed ?? null,
@@ -123,7 +123,7 @@
         saveBtn.onclick = function(saveEvent) {
           const saved = originalSave.call(this,saveEvent);
           const created = [...(C.getData?.()?.notes || [])].reverse().find(n => !before.has(n.id));
-          if (created && moment) bindMomentToNote(created,moment);
+          if (created && moment && !created.replaySnapshot) bindMomentToNote(created,moment);
           return saved;
         };
         saveBtn.dataset.liveSnapshotSaveBound = "2";
@@ -184,7 +184,7 @@
   function repairCard(card) {
     if (!(card instanceof Element)) return;
     const note=resolveNote(card); if(!note) return;
-    const replay=replayOf(note); if(!replay.config) return;
+    const replay=replayOf(note); if(!replay.config||replay.unavailable) return;
     const canvas=card.querySelector("canvas.st34-note-preview");
     if(canvas){
       const live=window.SetkaLivePreviewsV1;
@@ -194,7 +194,7 @@
         drawNoteSnapshot(canvas,note,replay).catch(e=>console.warn("SETKA note snapshot failed",e));
     }
     const open=card.querySelector(".st34-note-preview-button");
-    if (open) open.onclick=e=>{e?.preventDefault?.();e?.stopPropagation?.();C.hideLayer?.();Setka.openConfig?.(clone(replay.config),{type:"memory",id:note.id,patternId:replay.pid,baseId:replay.pid,communityId:note.communityId||null,noteId:note.id,frame:replay.frame});};
+    if (open) open.onclick=e=>{e?.preventDefault?.();e?.stopPropagation?.();C.hideLayer?.();Setka.openConfig?.(clone(replay.config),{type:"memory",id:note.id,patternId:replay.pid,patternVersion:note.replaySnapshot?.patternVersion||note.patternVersion,schemaVersion:note.replaySnapshot?.schemaVersion,baseId:replay.pid,communityId:note.communityId||null,noteId:note.id,frame:replay.frame});};
     const label=card.querySelector(".st34-note-preview-label");
     if (label) { const title=replay.pid&&Setka.getPatternTitle?.(replay.pid); label.textContent=title?`${note.replaySnapshot?.config?"ПАТТЕРН В МОМЕНТ ЗАМЕТКИ":"ВОССТАНОВЛЕНО ПО НАСТРОЙКАМ"} · ${String(title).toUpperCase()}`:"ПАТТЕРН БЕЗ ПОДТВЕРЖДЁННОГО СЛЕПКА"; }
     card.dataset.noteSnapshotFixed="5";

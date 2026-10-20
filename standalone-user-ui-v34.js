@@ -59,42 +59,16 @@
   function usableSessions(){return C.getData().sessions.filter(s=>s.startedAt)}
   function current(){return C.getActiveSession()}
 
-  function drawPatternPreview(canvas,config,frame=44){
-    if(!canvas||!config)return;
-    const ctx=canvas.getContext("2d"),w=canvas.width,h=canvas.height;
-    const c={...Setka.DEFAULT_CONFIG,...config};
-    const rad=d=>d*Math.PI/180,mod=(n,m)=>((n%m)+m)%m;
-    ctx.fillStyle="#000";ctx.fillRect(0,0,w,h);ctx.save();ctx.translate(w/2,h/2);
-    const extent=Math.max(40,c.tentacleLength*3+c.baseRadius+c.tentacleLength*c.circleSize/20);
-    const scale=Math.min(.92,(Math.min(w,h)/2-9)/extent);ctx.scale(scale,scale);
-    const shift=Number(frame||44)*c.colorSpeed*.5;
-    for(let i=0;i<360;i+=360/c.numTentacles){
-      const x0=Math.sin(rad(i))*c.baseRadius,y0=Math.cos(rad(i))*c.baseRadius;
-      for(let q=0;q<c.tentacleLength;q+=c.segmentStep){
-        const a=Math.cos(rad(c.tentacleLength-q+Number(frame||44)*c.movementSpeed))*q;
-        const xx=Math.sin(rad(i-a))*q*3,yy=Math.cos(rad(i-a))*q*3,d=(c.tentacleLength-q)*c.circleSize/10;
-        let col="#fff";
-        if(c.colorModeIndex===1)col=`hsl(${mod(i+q*2+shift,360)} 100% 50%)`;
-        if(c.colorModeIndex===2)col=`hsl(${mod(Number(frame||44)+q*2,360)} 100% 50%)`;
-        if(c.colorModeIndex===3)col="hsl(200 100% 50%)";
-        if(c.colorModeIndex===4)col="hsl(330 100% 50%)";
-        if(c.colorModeIndex===5)col=`hsl(${mod(Math.atan2(yy,xx)*180/Math.PI+180+shift,360)} 100% 50%)`;
-        if(c.colorModeIndex===6)col=`hsl(${mod(i+shift,360)} 100% 50%)`;
-        if(c.colorModeIndex===7)col=`hsl(${mod(q*5+shift,360)} 100% 50%)`;
-        if(c.colorModeIndex===8)col=`hsl(${mod(xx+yy+shift,360)} 100% 50%)`;
-        ctx.strokeStyle=col;ctx.lineWidth=c.lineWeight;ctx.beginPath();ctx.arc(x0+xx,y0+yy,Math.max(.075,d/2),0,Math.PI*2);ctx.stroke();
-      }
-    }
-    ctx.restore();
-  }
 
   function openNoteMoment(n){
-    if(!n?.config)return;
+    const replay=window.__SETKA_NOTE_REPLAY_V34__?.replayOf(n);
+    if(!replay?.config||replay.unavailable)return;
     C.hideLayer();
-    Setka.openConfig?.(clone(n.config),{type:"memory",id:n.id,patternId:n.patternId||n.config?.patternId||null,communityId:n.communityId||null,noteId:n.id,frame:n.frame??44});
+    Setka.openConfig?.(clone(replay.config),{type:"memory",id:n.id,patternId:replay.pid,patternVersion:n.replaySnapshot?.patternVersion||n.patternVersion,schemaVersion:n.replaySnapshot?.schemaVersion,communityId:n.communityId||null,noteId:n.id,frame:replay.frame});
   }
 
   function renderNoteCard(parent,n,{compact=false}={}){
+    const replay=window.__SETKA_NOTE_REPLAY_V34__?.replayOf(n);
     const card=document.createElement("article");card.className="st34-note-card";card.dataset.noteId=String(n.id);
     const context=[];
     if(n.requestKey)context.push(intentLabel(n.requestKey));
@@ -102,15 +76,15 @@
     const head=document.createElement("div");
     head.innerHTML=`<div class="st34-note-text">${esc(n.text)}</div><div class="st34-note-meta">${dt(n.observedAt)}${context.length?` · ${esc(context.join(" · "))}`:""}</div>`;
     card.appendChild(head);
-    if(n.config){
+    if(replay?.config&&!replay.unavailable){
       const open=document.createElement("button");open.type="button";open.className="st34-note-preview-button";open.setAttribute("aria-label","Открыть паттерн в момент заметки");
       const canvas=document.createElement("canvas");canvas.className="st34-note-preview";canvas.width=720;canvas.height=500;open.appendChild(canvas);
       const mark=document.createElement("span");mark.className="st34-note-open-mark";mark.textContent="Открыть ↗";open.appendChild(mark);
       open.onclick=()=>openNoteMoment(n);card.appendChild(open);
       const label=document.createElement("div");label.className="st34-note-preview-label";label.textContent="ПАТТЕРН В МОМЕНТ ЗАМЕТКИ";card.appendChild(label);
-      requestAnimationFrame(()=>{try{Setka.renderPreview?.(canvas,clone(n.config),n.frame??44,n.patternId||n.config?.patternId||null)}catch(e){console.warn("SETKA note preview failed",e)}});
-    }else if(!compact){
-      const empty=document.createElement("div");empty.className="st34-note-no-preview";empty.textContent=n.noteType==="text"?"Заметка без паттерна":"У этой старой заметки визуальный момент не сохранился";card.appendChild(empty);
+      requestAnimationFrame(()=>{try{Setka.renderPreview?.(canvas,clone(replay.config),replay.frame,replay.pid)}catch(e){console.warn("SETKA note preview failed",e)}});
+    }else if(!compact||replay?.unavailable){
+      const empty=document.createElement("div");empty.className="st34-note-no-preview";empty.textContent=replay?.unavailable?"Эта версия паттерна недоступна. Заметка и настройки сохранены.":n.noteType==="text"?"Заметка без паттерна":"У этой старой заметки визуальный момент не сохранился";card.appendChild(empty);
     }
     parent.appendChild(card);return card;
   }

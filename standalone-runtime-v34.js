@@ -40,17 +40,17 @@
   };
   function canonicalState(state=Setka.getState?.()){
     if(!state||state.view!=="game"||!state.config)return null;
-    const patternId=state.patternId||state.config?.patternId||"tentacle-orbit";
+    let patternId;try{patternId=window.SetkaPatternRegistryV1.resolve(state.config,state.patternId||state.config?.patternId)}catch(_){return null}
     const config=clone(state.config);
     const configKey=Setka.configKey?.(config,patternId)||state.configKey||null;
     if(!configKey)return null;
-    return{patternId,configKey,config,sourceType:state.sourceType||"working",sourceId:state.sourceId||patternId,communityId:state.communityId||null,previewFrame:Number.isFinite(Number(state.frame))?Number(state.frame):44};
+    return{patternId,patternVersion:state.patternVersion||window.SetkaPatternRegistryV1.get(patternId).version,configSchemaVersion:window.SetkaPatternRegistryV1.get(patternId).schemaVersion,configKey,config,sourceType:state.sourceType||"working",sourceId:state.sourceId||patternId,communityId:state.communityId||null,previewFrame:Number.isFinite(Number(state.frame))?Number(state.frame):44};
   }
   function mirrorSessionUsage(sessionId){
     if(!sessionId)return;
     const d=C.getData(),session=d.sessions?.find(x=>x.id===sessionId);if(!session)return;
     const all=ensureExposures().filter(x=>x.sessionId===sessionId);
-    session.usage=all.map(x=>({patternId:x.patternId,communityConfigId:x.communityId||null,configKey:x.configKey,config:clone(x.config),startedMs:Math.max(0,Date.parse(x.startedAt)-Date.parse(session.startedAt)),endedMs:Math.max(0,Date.parse(x.endedAt)-Date.parse(session.startedAt)),durationMs:x.durationMs,saved:!!x.saved,phase:x.context==="after_feedback"?"after_feedback":"measured",previewFrame:x.previewFrame}));
+    session.usage=all.map(x=>({patternId:x.patternId,patternVersion:x.patternVersion,configSchemaVersion:x.configSchemaVersion,communityConfigId:x.communityId||null,configKey:x.configKey,config:clone(x.config),startedMs:Math.max(0,Date.parse(x.startedAt)-Date.parse(session.startedAt)),endedMs:Math.max(0,Date.parse(x.endedAt)-Date.parse(session.startedAt)),durationMs:x.durationMs,saved:!!x.saved,phase:x.context==="after_feedback"?"after_feedback":"measured",previewFrame:x.previewFrame}));
     const s=activeSession();if(s?.id===sessionId)s.usage=clone(session.usage);
   }
   function closeExposure(reason="close"){

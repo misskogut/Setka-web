@@ -3,35 +3,22 @@
   const C=window.SetkaStandaloneV34,Setka=window.SetkaApp;
   if(!C||!Setka)return;
 
-  const FIELDS=["numTentacles","tentacleLength","baseRadius","movementSpeed","colorSpeed","circleSize","lineWeight","segmentStep","colorModeIndex"];
+  const registry=window.SetkaPatternRegistryV1;
   const clone=v=>JSON.parse(JSON.stringify(v));
-  const finite=(v,fallback)=>Number.isFinite(Number(v))?Number(v):fallback;
-
-  function normalize(config){
-    const d=Setka.DEFAULT_CONFIG||{};
-    const c=config||{};
-    return {
-      numTentacles:Math.max(3,Math.min(72,Math.round(finite(c.numTentacles,d.numTentacles||24)))),
-      tentacleLength:Math.max(10,Math.min(800,finite(c.tentacleLength,d.tentacleLength||100))),
-      baseRadius:Math.max(0,Math.min(100,finite(c.baseRadius,d.baseRadius||10))),
-      movementSpeed:Math.max(.05,Math.min(10,finite(c.movementSpeed,d.movementSpeed||1))),
-      colorSpeed:Math.max(.05,Math.min(10,finite(c.colorSpeed,d.colorSpeed||1))),
-      circleSize:Math.max(.2,Math.min(20,finite(c.circleSize,d.circleSize||1))),
-      lineWeight:Math.max(.1,Math.min(10,finite(c.lineWeight,d.lineWeight||1))),
-      segmentStep:Math.max(1,Math.min(20,Math.round(finite(c.segmentStep,d.segmentStep||2)))),
-      colorModeIndex:Math.max(0,Math.min(8,Math.round(finite(c.colorModeIndex,d.colorModeIndex||0))))
-    };
-  }
-  function encode(config){return FIELDS.map(k=>String(normalize(config)[k])).join(",")}
+  function normalize(config){return Setka.cloneConfig(config,config?.patternId||registry.inference(config))}
+  function encode(config){return 'v2.'+btoa(unescape(encodeURIComponent(JSON.stringify(registry.snapshot({patternId:config.patternId,config,frame:0})))))}
   function decode(raw){
-    const parts=String(raw||"").split(",");if(parts.length!==FIELDS.length)return null;
-    const d={};FIELDS.forEach((k,i)=>d[k]=Number(parts[i]));
-    if(FIELDS.some(k=>!Number.isFinite(d[k])))return null;
-    return normalize(d);
+    try{
+      if(String(raw).startsWith('v2.')){const saved=JSON.parse(decodeURIComponent(escape(atob(String(raw).slice(3))))),out=registry.restore(saved);return out.ok?out.snapshot.config:null}
+      // A documented pre-v2 link has nine numeric Tentacle fields, no ID.
+      const fields=registry.get('tentacle-orbit').keyFields,values=String(raw||'').split(',');
+      if(values.length!==fields.length||!values.every(x=>x.trim()!==''&&Number.isFinite(Number(x))))return null;
+      return normalize({patternId:'tentacle-orbit',...Object.fromEntries(fields.map((k,i)=>[k,Number(values[i])]))});
+    }catch(_){return null}
   }
   function exactForSource(config,source={}){
     const hasExplicit=!!config&&typeof config==="object";
-    let exact=hasExplicit?normalize(config):normalize(Setka.DEFAULT_CONFIG);
+    let exact=hasExplicit?normalize(config):null;
     if(source?.type==="favorite"&&source.id){
       const fav=Setka.getFavorites?.().find(x=>String(x.id)===String(source.id));
       if(fav?.config)exact=normalize(fav.config);
@@ -49,9 +36,10 @@
 
   const nativeOpen=Setka.openConfig.bind(Setka);
   Setka.openConfig=(config,source={})=>{
-    const exact=exactForSource(config,source);
+    let exact;try{exact=exactForSource(config,source)}catch(_){return nativeOpen(config,source)}
+    if(!exact)return false;
     const result=nativeOpen(exact,source);
-    window.dispatchEvent(new CustomEvent("setka:exact-config-open",{detail:{source:clone(source||{}),config:clone(exact),configKey:Setka.configKey?.(exact)||null}}));
+    window.dispatchEvent(new CustomEvent("setka:exact-config-open",{detail:{source:clone(source||{}),config:clone(exact),configKey:Setka.configKey?.(exact,exact.patternId)||null}}));
     return result;
   };
 
@@ -72,10 +60,10 @@
   const params=new URLSearchParams(location.search),linked=decode(params.get("cfg"));
   if(linked){
     const noteId=params.get("note")||null,src=params.get("src")||"admin-link";
-    setTimeout(()=>{
+    Promise.resolve(window.SetkaPatternPluginsV1?.ready?.()).then(()=>{
       C.hideLayer?.();
-      Setka.openConfig(linked,{type:"exact-link",id:noteId||src,communityId:null});
+      Setka.openConfig(linked,{type:"exact-link",id:noteId||src,communityId:null,frame:Number(params.get("frame"))||0});
       C.recordEvent?.("config_deep_link_open",{noteId,source:src,configKey:Setka.configKey?.(linked)||null,state:C.stateSnapshot?.()},false);
-    },180);
+    });
   }
 })();

@@ -6,8 +6,9 @@
   const esc=C.esc;
   const clone=v=>v==null?v:JSON.parse(JSON.stringify(v));
   const intentLabel=k=>C.INTENTS.find(x=>x[0]===k)?.[1]||"Сессия";
-  const patternIdOf=u=>u?.patternId||u?.config?.patternId||"tentacle-orbit";
-  const patternTitle=pid=>Setka.getPatternTitle?.(pid)||(pid==="dandelion"?"Одуванчик":"Tentacle Orbit");
+  const patternIdOf=u=>u?.patternId||u?.config?.patternId||window.SetkaPatternRegistryV1?.inference?.(u?.config)||null;
+  const keyOf=u=>{if(u.configKey)return u.configKey;try{return Setka.configKey?.(u.config,patternIdOf(u))||null}catch(_){return null}};
+  const patternTitle=pid=>(pid?Setka.getPatternTitle?.(pid):null)||"Паттерн не записан";
 
   const style=document.createElement("style");
   style.textContent=`
@@ -52,7 +53,7 @@
     return wrap;
   }
 
-  function measuredSegments(session){return (session?.usage||[]).filter(u=>u?.config&&Number(u.durationMs)>0&&(u.phase==="measured"||!u.phase)).map((u,index)=>({index,patternId:patternIdOf(u),config:clone(u.config),durationMs:Number(u.durationMs)||0,previewFrame:Number(u.previewFrame)||44,configKey:u.configKey||Setka.configKey?.(u.config,patternIdOf(u))||null})).sort((a,b)=>b.durationMs-a.durationMs)}
+  function measuredSegments(session){return (session?.usage||[]).filter(u=>u?.config&&Number(u.durationMs)>0&&(u.phase==="measured"||!u.phase)).map((u,index)=>({index,patternId:patternIdOf(u),config:clone(u.config),durationMs:Number(u.durationMs)||0,previewFrame:u.previewFrame!=null&&Number.isFinite(Number(u.previewFrame))?Number(u.previewFrame):44,configKey:keyOf(u)})).sort((a,b)=>b.durationMs-a.durationMs)}
   function sessionPatternTime(session){const segs=measuredSegments(session),sum=segs.reduce((a,x)=>a+x.durationMs,0);return{segs,total:sum||Math.max(0,Number(session.measuredActiveMs)||0)}}
   function stateSessions(state,range){
     const min=cutoff(range),checks=(data().checkins||[]),out=[];

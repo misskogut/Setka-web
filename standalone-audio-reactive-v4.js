@@ -34,6 +34,7 @@
 
   const style=document.createElement("style");
   style.textContent=`
+    #gameScreen #st34AudioButton[hidden]{display:none!important}
     #gameScreen #st34AudioButton {
       left: 24px; top: calc(var(--safe-top) + 30px);
       width: 54px; height: 54px; z-index: 141;
@@ -88,6 +89,7 @@
   // through the button's aria-label / data attributes, never a popup.
   function announce(){}
   function renderButton(){
+    button.hidden=window.SetkaPatternRegistryV1?.get?.(window.SetkaApp?.getState?.()?.patternId)?.capabilities?.audio===false;
     button.setAttribute("aria-pressed",String(active));
     const current=profile(mode);
     const err=button.dataset.error;
@@ -456,6 +458,7 @@
     return out;
   }
   function renderConfig(original,patternId){
+    if(window.SetkaPatternRegistryV1?.get?.(patternId)?.capabilities?.audio===false)return original;
     const live=visualBands();
     if(!live||!original||typeof original!=="object")return original;
     const next=active?mode:releaseMode,old=active?previousMode:releaseMode;
@@ -505,6 +508,7 @@
     return{x:0,y:0};
   }
   function offsets(patternId,w,h){
+    if(window.SetkaPatternRegistryV1?.get?.(patternId)?.capabilities?.audio===false)return{x:0,y:0};
     const live=visualBands();
     if(!live)return{x:0,y:0};
     const next=active?mode:releaseMode,old=active?previousMode:releaseMode;
@@ -524,6 +528,7 @@
     // The glowing orbit dots are the mode indicator.
   }
   button.addEventListener("click",()=>{if(pending)stop(false);else if(active)advanceMode();else start()});
+  window.addEventListener("setka:pattern-open",()=>{if(window.SetkaPatternRegistryV1?.get?.(window.SetkaApp?.getState?.()?.patternId)?.capabilities?.audio===false&&(active||pending))stop();renderButton()});
   window.addEventListener("setka:view",e=>{if(e.detail?.view!=="game"&&(active||pending))stop()});
   document.addEventListener("visibilitychange",()=>{if(document.hidden&&(active||pending))stop()});
   window.addEventListener("pagehide",()=>{if(active||pending)stop()});
