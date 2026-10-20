@@ -23,7 +23,7 @@ try{
   assert.deepEqual(await dock.locator('.st-dock-label').allTextContents(),['Сегодня','Заметки','Пульс','Состояния','Я']);
   assert.equal(await dock.locator('[data-p="patterns"]').count(),0);
   assert.equal(await page.locator('#st34SensorQuick').isVisible(),false);
-  assert.equal(await page.locator('#allPatternsPanel .pattern-tile').count(),7);
+  assert.equal(await page.locator('#allPatternsPanel .pattern-tile').count(),8);
   await tab('today').click();
   await page.waitForFunction(()=>document.querySelector('#st34Layer').getBoundingClientRect().bottom<=document.querySelector('#st34Nav').getBoundingClientRect().top);
   const cardRect=await card.boundingBox(),dockRect=await dock.boundingBox();
