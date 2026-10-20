@@ -182,6 +182,38 @@ async function go(){
   console.log("CLOUD-ONLY COMMUNITY SCENARIO PASS",scenarioText.replace(/\\s+/g," ").slice(0,340));
   await page.locator("#st34InfoOverlay .st34-close").click();
 
+  // Dragging any pattern-key slider reveals the live pattern beneath the sheet.
+  await page.evaluate(()=>{
+    const app=window.SetkaApp,patternId="tentacle-orbit";
+    app.openConfig(app.getPatternDefaults(patternId),{type:"base",id:patternId,patternId});
+  });
+  await page.locator("#instructionsButton").click({force:true});
+  const keyRanges=page.locator("#st34KeySheet .sk-range");
+  assert.ok(await keyRanges.count()>=2,"pattern key has multiple sliders");
+  for(const [index,finish] of [[0,"pointerup"],[1,"pointercancel"]]){
+    await keyRanges.nth(index).dispatchEvent("pointerdown",{pointerId:77+index,pointerType:"touch",button:0});
+    const dimmed=await page.evaluate(()=>{
+      const sheet=document.querySelector("#st34KeySheet"),backdrop=document.querySelector("#st34KeyBackdrop");
+      return {active:sheet.classList.contains("sk-adjusting"),faded:backdrop.classList.contains("sk-adjusting"),
+        activeSettings:sheet.querySelectorAll(".sk-setting.sk-active").length,
+        backdropAlpha:Number(getComputedStyle(backdrop).backgroundColor.match(/[0-9.]+(?=\\))/)?.[0]||0)};
+    });
+    assert.equal(dimmed.active,true,"drag should make sheet transparent");
+    assert.equal(dimmed.faded,true,"drag should remove backdrop dimming");
+    assert.equal(dimmed.activeSettings,1,"only dragged slider remains visible");
+    await page.evaluate(({eventName,id})=>window.dispatchEvent(new PointerEvent(eventName,{pointerId:id,bubbles:true})),
+      {eventName:finish,id:77+index});
+    const restored=await page.evaluate(()=>{
+      const sheet=document.querySelector("#st34KeySheet"),backdrop=document.querySelector("#st34KeyBackdrop");
+      return {active:sheet.classList.contains("sk-adjusting"),faded:backdrop.classList.contains("sk-adjusting"),
+        activeSettings:sheet.querySelectorAll(".sk-setting.sk-active").length};
+    });
+    assert.deepEqual(restored,{active:false,faded:false,activeSettings:0},
+      "sheet must restore after "+finish);
+  }
+  await page.locator("#st34KeySheet .sk-action.primary").click();
+  assert.equal(await page.locator("#st34KeySheet.open").count(),0,"pattern key can still close");
+  console.log("PATTERN KEY TRANSLUCENT DRAG / POINTER CANCEL / RESTORE PASS");
   // Two identical note texts on two distinct mother patterns must keep
   // their original pattern/config/preview links.
   for(const pid of ["dandelion","stereo-dna"]){
