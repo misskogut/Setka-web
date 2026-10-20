@@ -25,6 +25,7 @@ test('private archive transport avoids OPTIONS preflight without changing sessio
     SetkaApp:{getFavorites:()=>[]},navigator:{onLine:true},
     fetch:async(_url,opts)=>{calls.push(opts);const b=JSON.parse(opts.body);return {ok:true,json:async()=>b.action==='pull'?{ok:true,archive:{payload:{notes:[{id:'saved-note',text:'fixture-only',createdAt:'2026-10-15T12:00:00Z'}],symptoms:[{id:'saved-state',name:'fixture',active:true,createdAt:'2026-10-15T12:00:00Z'}],checkins:[]},favorites:[],updatedAt:'2026-10-15T12:00:00Z'}}:{ok:true,stateHistory:{symptoms:data.symptoms,checkins:data.checkins},updatedAt:new Date().toISOString()}}};}}
   ;
+  context.window=context;
   vm.runInNewContext(read('standalone-private-corpus-v40.js'),context);
   assert.equal(await context.__SETKA_PRIVATE_CORPUS_V40__.sync(),true);
   assert.equal(data.notes.length,1);assert.equal(data.symptoms.length,1);
