@@ -124,7 +124,7 @@ try{
     }
     return details;
   });
-  assert.equal(frame.length,7);
+  assert.equal(frame.length,8);
   // Musical expressivity must come from GEOMETRY, not 7x animation speed.
   frame.forEach(x=>assert.ok(x.changed>60&&x.changed<61.2,
     "music clock should slow and remain continuous in "+x.id+": "+JSON.stringify(x)));
@@ -146,7 +146,7 @@ try{
     const viewport=audio.viewportScale();
     return{cases,futureSafe,viewport,bands:audio.status().bands};
   });
-  assert.equal(geometry.cases.length,7);
+  assert.equal(geometry.cases.length,8);
   geometry.cases.forEach(x=>{
     assert.equal(x.untouched,true,"canonical configuration was mutated: "+x.id);
     assert.ok(x.changed.length>=4,"music should modulate multiple geometric controls in "+x.id+": "+JSON.stringify(x));
@@ -249,7 +249,7 @@ try{
       for(const key of ["waveAmplitude","waveSpeed","ringSpacing"])
         assert.ok(changedFish.includes(key),"Fish choreography must change native "+key);
     }
-    assert.equal(measurement.shapes.length,7);
+    assert.equal(measurement.shapes.length,8);
     measurement.shapes.forEach(p=>assert.ok(p.changes.length>=1,
       "Each style must modulate the real geometry for "+p.id+": "+JSON.stringify(measurement)));
     if(n===4)for(const p of measurement.motion)assert.ok(Math.abs(p.x)+Math.abs(p.y)>.05,
