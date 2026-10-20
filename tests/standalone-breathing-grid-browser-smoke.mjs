@@ -99,6 +99,48 @@ try{
   assert.equal(savedNote.cols,26);
   assert.equal(savedNote.replayPattern,"breathing-grid");
   assert.equal(savedNote.replayCols,26);
+  // DNA palette regression: keep mode 0 grayscale, mode 1 ORIGINAL colored
+  // strands, and persist all nine modes in unique configuration keys.
+  const dna=await page.evaluate(()=>{
+    const S=window.SetkaApp,base=S.getPatternDefaults("stereo-dna");
+    return Array.from({length:9},(_,i)=>{
+      const c=S.cloneConfig({...base,colorModeIndex:i},"stereo-dna");
+      const cv=document.createElement("canvas");cv.width=300;cv.height=340;
+      S.renderPreview(cv,c,77,"stereo-dna");
+      const d=cv.getContext("2d").getImageData(0,0,300,340).data;let colored=0;
+      for(let n=0;n<d.length;n+=4)if(Math.abs(d[n]-d[n+1])>8||Math.abs(d[n+1]-d[n+2])>8)colored++;
+      return{mode:c.colorModeIndex,key:S.configKey(c,"stereo-dna"),colored};
+    });
+  });
+  assert.deepEqual(dna.map(x=>x.mode),[0,1,2,3,4,5,6,7,8]);
+  assert.equal(dna[0].colored,0);
+  assert.ok(dna.slice(1).every(x=>x.colored>30),"DNA's color modes vanished: "+JSON.stringify(dna));
+  assert.equal(new Set(dna.map(x=>x.key)).size,9,"DNA palette choices must remain saved");
+  await page.locator("#libraryButton").click();
+  await page.locator("#libraryScreen.active").waitFor();
+  const tile=page.locator('.base-tile[data-pattern-id="breathing-grid"] canvas.thumb-canvas');
+  const first=await tile.evaluate(c=>c.toDataURL());
+  await page.waitForFunction(before=>document.querySelector('.base-tile[data-pattern-id="breathing-grid"] canvas.thumb-canvas')?.toDataURL()!==before,first,{timeout:5500});
+
+  // New plugin registration is the ONLY required feature-specific step.
+  const next=await page.evaluate(()=>{
+    const S=window.SetkaApp,R=window.SetkaPatternRegistryV1;
+    S.registerPattern({id:"fixture-grid-test",title:"Test plugin",version:1,colorModes:3,
+      defaults:{size:12,tempo:.3,colorModeIndex:0},
+      controls:[["Размер","size",3,40,1,"Слева ↑↓",1],["Темп","tempo",.05,2,.05,"Снизу ←→",1]],
+      render(ctx,w,h,c,frame){ctx.fillStyle="#000";ctx.fillRect(0,0,w,h);ctx.fillStyle=c.colorModeIndex?"cyan":"white";ctx.fillRect(w/2-c.size/2,h/2-c.size/2+Math.sin(frame*c.tempo)*4,c.size,c.size)}
+    });
+    const cfg=S.cloneConfig({patternId:"fixture-grid-test",size:27,tempo:.8,colorModeIndex:2},"fixture-grid-test");
+    return{number:S.getPatterns().length,registered:R.has("fixture-grid-test"),controls:R.controls("fixture-grid-test").length,cfg};
+  });
+  assert.equal(next.number,9);
+  assert.equal(next.registered,true);
+  assert.equal(next.controls,2);
+  assert.equal(next.cfg.size,27);
+  assert.equal(next.cfg.colorModeIndex,2);
+  await page.locator('.base-tile[data-pattern-id="fixture-grid-test"]').click();
+  await page.locator("#instructionsButton").click();
+  assert.equal(await page.locator("#st34KeySheet.open .sk-setting").count(),2);
   console.log("BREATHING GRID / 8 B&W PREVIEWS / INVISIBLE DOTS / LINKED KEY / NOTES PASS",result.images);
   assert.deepEqual(errors,[]);
 }finally{await browser?.close();server.kill("SIGTERM")}
