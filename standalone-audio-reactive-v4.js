@@ -88,6 +88,7 @@
   // through the button's aria-label / data attributes, never a popup.
   function announce(){}
   function renderButton(){
+    button.hidden=window.SetkaPatternRegistryV1?.get?.(window.SetkaApp?.getState?.()?.patternId)?.capabilities?.audio===false;
     button.setAttribute("aria-pressed",String(active));
     const current=profile(mode);
     const err=button.dataset.error;
@@ -526,6 +527,7 @@
     // The glowing orbit dots are the mode indicator.
   }
   button.addEventListener("click",()=>{if(pending)stop(false);else if(active)advanceMode();else start()});
+  window.addEventListener("setka:pattern-open",()=>{if(window.SetkaPatternRegistryV1?.get?.(window.SetkaApp?.getState?.()?.patternId)?.capabilities?.audio===false&&(active||pending))stop();renderButton()});
   window.addEventListener("setka:view",e=>{if(e.detail?.view!=="game"&&(active||pending))stop()});
   document.addEventListener("visibilitychange",()=>{if(document.hidden&&(active||pending))stop()});
   window.addEventListener("pagehide",()=>{if(active||pending)stop()});
