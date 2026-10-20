@@ -83,6 +83,22 @@ try{
   const gridState=await page.evaluate(()=>window.SetkaApp.getState());
   assert.equal(gridState.patternId,"breathing-grid");
   assert.equal(gridState.config.cols,26);
+  // The original bottom "+" is not decorative: it must save this exact
+  // breathing-grid configuration, never Octopus or another default renderer.
+  await page.locator("#st34Note.show").click();
+  await page.locator("#st34Layer textarea").last().fill("Проверка точного слепка Breathing Grid");
+  await page.locator("#st34Layer .st-primary").filter({hasText:"Сохранить"}).click();
+  const savedNote=await page.evaluate(()=>{
+    const n=window.SetkaStandaloneV34?.getData?.()?.notes?.find(x=>x.text==="Проверка точного слепка Breathing Grid");
+    const r=n?window.__SETKA_NOTE_REPLAY_V34__?.replayOf?.(n):null;
+    return{patternId:n?.patternId,configPattern:n?.config?.patternId,cols:n?.config?.cols,
+      replayPattern:r?.pid,replayCols:r?.config?.cols};
+  });
+  assert.equal(savedNote.patternId,"breathing-grid");
+  assert.equal(savedNote.configPattern,"breathing-grid");
+  assert.equal(savedNote.cols,26);
+  assert.equal(savedNote.replayPattern,"breathing-grid");
+  assert.equal(savedNote.replayCols,26);
   console.log("BREATHING GRID / 8 B&W PREVIEWS / INVISIBLE DOTS / LINKED KEY / NOTES PASS",result.images);
   assert.deepEqual(errors,[]);
 }finally{await browser?.close();server.kill("SIGTERM")}
