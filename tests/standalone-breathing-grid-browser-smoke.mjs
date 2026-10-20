@@ -1,0 +1,88 @@
+import assert from "node:assert/strict";
+import {spawn} from "node:child_process";
+import {chromium,webkit} from "playwright";
+
+const port=49639,base="http://127.0.0.1:"+port;
+const server=spawn("python3",["-m","http.server",String(port),"--bind","127.0.0.1"],{stdio:"ignore"});
+const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+let browser;
+try{
+  for(let i=0;i<45;i++){try{if((await fetch(base+"/standalone-v34.html")).ok)break}catch{}await sleep(100)}
+  browser=await (process.env.SETKA_BROWSER==="webkit"?webkit:chromium).launch({headless:true,args:process.env.SETKA_BROWSER==="webkit"?[]:["--no-sandbox"]});
+  const page=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
+  const errors=[];page.on("pageerror",e=>errors.push(e.message));
+  await page.route("**/functions/v1/**",r=>r.fulfill({status:200,contentType:"application/json",headers:{"access-control-allow-origin":"*"},body:JSON.stringify({ok:true,items:[],metrics:{},patternMetrics:[],notes:[],profile:{}})}));
+  await page.goto(base+"/standalone-v34.html",{waitUntil:"domcontentloaded"});
+  await page.waitForFunction(()=>window.SetkaApp?.getPatterns?.().length===8);
+  const result=await page.evaluate(()=>{
+    const S=window.SetkaApp;
+    const p=S.getPatterns();
+    const images=p.map(pattern=>{
+      const c=document.createElement("canvas");c.width=220;c.height=290;
+      S.renderPreview(c,{...pattern.defaults,colorModeIndex:0},44,pattern.id);
+      const rgba=c.getContext("2d").getImageData(0,0,c.width,c.height).data;
+      let colored=0,visible=0;
+      for(let i=0;i<rgba.length;i+=4){
+        if(rgba[i]+rgba[i+1]+rgba[i+2]>36)visible++;
+        if(Math.abs(rgba[i]-rgba[i+1])>2||Math.abs(rgba[i+1]-rgba[i+2])>2)colored++;
+      }
+      return {id:pattern.id,visible,colored};
+    });
+    const grid=S.getPatterns().find(p=>p.id==="breathing-grid");
+    const c=document.createElement("canvas");c.width=180;c.height=240;
+    S.renderPreview(c,grid.defaults,44,grid.id);
+    const before=c.toDataURL();
+    S.renderPreview(c,grid.defaults,95,grid.id);
+    const after=c.toDataURL();
+    const snapshot=S.cloneConfig({...grid.defaults,cols:27,rows:18,amp:.27,colorModeIndex:3},grid.id);
+    return {patterns:p.length,images,changed:before!==after,config:snapshot,hasKey:Boolean(window.SetkaPatternKeyV1)};
+  });
+  assert.equal(result.patterns,8);
+  for(const p of result.images){
+    assert.ok(p.visible>45,"first B&W preview must be visible: "+JSON.stringify(p));
+    assert.equal(p.colored,0,"FIRST color must be monochrome: "+JSON.stringify(p));
+  }
+  assert.equal(result.changed,true,"rotated grid preview must animate without a video or saved still");
+  assert.equal(result.config.cols,27);
+  assert.equal(result.config.rows,18);
+  assert.equal(result.config.patternId,"breathing-grid");
+  assert.equal(result.hasKey,true);
+  await page.evaluate(()=>{
+    const grid=window.SetkaApp.getPatternDefaults("breathing-grid");
+    window.SetkaApp.openConfig(grid,{type:"base",id:"breathing-grid",patternId:"breathing-grid"});
+  });
+  await page.locator("#gameScreen.active").waitFor();
+  assert.equal(await page.locator("#st34Note").evaluate(e=>e.parentElement?.classList.contains("bottom-controls")),true,
+    "the original note '+' remains in the game's bottom control row");
+  const dots=await page.locator("#colorDots .color-dot").evaluateAll(list=>list.map(e=>({
+    on:e.classList.contains("visible"),opacity:getComputedStyle(e).opacity,visibility:getComputedStyle(e).visibility
+  })));
+  assert.equal(dots.length,9);
+  assert.equal(dots.filter(d=>d.on).length,1,"only first color dot lights on default");
+  assert.ok(dots.slice(1).every(d=>d.visibility==="hidden"),
+    "unlit color dots must be COMPLETELY hidden");
+  await page.locator("#colorButton").click();
+  assert.equal(await page.locator("#colorDots .color-dot.visible").count(),2);
+  assert.ok((await page.locator("#colorDots .color-dot").evaluateAll(es=>es.slice(2).every(e=>getComputedStyle(e).visibility==="hidden"))));
+  await page.locator("#instructionsButton").click();
+  await page.locator("#st34KeySheet.open").waitFor();
+  assert.equal(await page.locator("#instructionsModal.open").count(),0,
+    "key must not launch the old floating instructions modal");
+  assert.equal(await page.locator("#st34KeySheet .sk-setting").count(),10);
+  const desc=await page.locator("#st34KeySheet").innerText();
+  assert.match(desc,/Свайпы и ползунки изменяют одни и те же параметры/);
+  assert.match(desc,/Волна по горизонтали/);
+  assert.match(desc,/Волна по вертикали/);
+  assert.doesNotMatch(desc,/Зоны управления на экране|Фаза волны/);
+  await page.locator("#sk-live-cols").evaluate(e=>{e.value="26";e.dispatchEvent(new Event("input",{bubbles:true}))});
+  assert.equal(await page.evaluate(()=>window.SetkaApp.getConfig().cols),26);
+  assert.equal(await page.locator("#sk-live-cols").inputValue(),"26");
+  await page.locator('#st34KeySheet [data-action="close"]').click();
+  assert.equal(await page.locator("#st34KeySheet.open").count(),0);
+  assert.equal(await page.locator("#instructionsModal.open").count(),0);
+  const gridState=await page.evaluate(()=>window.SetkaApp.getState());
+  assert.equal(gridState.patternId,"breathing-grid");
+  assert.equal(gridState.config.cols,26);
+  console.log("BREATHING GRID / 8 B&W PREVIEWS / INVISIBLE DOTS / LINKED KEY / NOTES PASS",result.images);
+  assert.deepEqual(errors,[]);
+}finally{await browser?.close();server.kill("SIGTERM")}
