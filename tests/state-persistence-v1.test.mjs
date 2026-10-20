@@ -14,6 +14,25 @@ test('reset copies stay separate and newer state activation is not rolled back',
  rows.set('key',JSON.stringify({createdAt:'same',symptoms:[{id:'s',active:true,updatedAt:'2026-10-15T13:01:00Z'}],checkins:[]}));vm.runInNewContext(savePrelude+s.slice(a,b)+'\nsave();',{data,localStorage:store,KEY:'key',JSON,Date,Array,Map});assert.equal(JSON.parse(rows.get('key')).symptoms[0].active,false);
  data.createdAt='reset-copy';data.symptoms=[];vm.runInNewContext(savePrelude+s.slice(a,b)+'\nsave();',{data,localStorage:store,KEY:'key',JSON,Date,Array,Map});assert.equal(JSON.parse(rows.get('key')).symptoms.length,0);
 });
+test('private archive transport avoids OPTIONS preflight without changing session auth payload',async()=>{
+  const calls=[],rows=new Map([['setka-v40:cabinet-session',JSON.stringify({token:'isolated-only'})]]);
+  const store={getItem:k=>rows.get(k)||null,setItem:(k,v)=>rows.set(k,v)};
+  const data={version:41,sessions:[],notes:[],symptoms:[],checkins:[],events:[],settings:{}};
+  const context={JSON,Blob,Date,Number,Error,CustomEvent:class{constructor(type,options){this.type=type;this.detail=options?.detail}},
+    localStorage:store,sessionStorage:store,document:{addEventListener(){}},
+    setTimeout:()=>1,setInterval:()=>1,clearTimeout(){},addEventListener(){},dispatchEvent(){},
+    SetkaStandaloneV34:{sandbox:{deviceId:'isolated-device'},getData:()=>data,save(){},ready:Promise.resolve(),whenSaved:()=>Promise.resolve(true)},
+    SetkaApp:{getFavorites:()=>[]},navigator:{onLine:true},
+    fetch:async(_url,opts)=>{calls.push(opts);const b=JSON.parse(opts.body);return {ok:true,json:async()=>b.action==='pull'?{ok:true,archive:{payload:{notes:[{id:'saved-note',text:'fixture-only',createdAt:'2026-10-15T12:00:00Z'}],symptoms:[{id:'saved-state',name:'fixture',active:true,createdAt:'2026-10-15T12:00:00Z'}],checkins:[]},favorites:[],updatedAt:'2026-10-15T12:00:00Z'}}:{ok:true,stateHistory:{symptoms:data.symptoms,checkins:data.checkins},updatedAt:new Date().toISOString()}};}}
+  ;
+  context.window=context;
+  vm.runInNewContext(read('standalone-private-corpus-v40.js'),context);
+  assert.equal(await context.__SETKA_PRIVATE_CORPUS_V40__.sync(),true);
+  assert.equal(data.notes.length,1);assert.equal(data.symptoms.length,1);
+  assert.ok(calls.length>=2);
+  for(const call of calls){assert.equal(call.headers['Content-Type'].startsWith('text/plain'),true);assert.equal(call.headers.apikey,undefined);assert.equal(JSON.parse(call.body).deviceId,'isolated-device');assert.equal(JSON.parse(call.body).sessionToken,'isolated-only')}
+});
+
 test('an in-flight archive receipt never confirms a state added after that request',async()=>{
  const rows=new Map([['setka-v40:cabinet-session',JSON.stringify({token:'isolated-only'})]]),data={sessions:[],notes:[],symptoms:[],checkins:[],events:[],settings:{}},storage={getItem:k=>rows.get(k)||null,setItem:(k,v)=>rows.set(k,v)};let release;const request=new Promise(ok=>release=ok);
  const context={JSON,Blob,Date,Number,Error,CustomEvent:class{constructor(type,opts){this.type=type;this.detail=opts?.detail}},setTimeout:()=>1,setInterval:()=>1,clearTimeout(){},localStorage:storage,sessionStorage:storage,document:{addEventListener(){}},addEventListener(){},dispatchEvent(){},SetkaStandaloneV34:{sandbox:{deviceId:'isolated'},getData:()=>data,save(){}},SetkaApp:{getFavorites:()=>[]}};context.window=context;

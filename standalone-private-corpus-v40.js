@@ -3,11 +3,11 @@
   const C=window.SetkaStandaloneV34,Setka=window.SetkaApp;
   if(!C||!Setka)return;
   const API="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-tester-archive-v37";
-  const KEY="sb_publishable_1jL-x9_kp6rpfGghpSp_OA_OiXDnvsv";
+  // Session and device are authenticated by the Edge Function on every operation.
   const SESSION_KEY="setka-v40:cabinet-session";
   const STATUS_KEY="setka-v40:private-corpus-status";
   const FAVORITES_KEY="setka-web:favorites:v1";
-  const BUILD="v40.private-cloud.3-states";
+  const BUILD="v40.private-cloud.4-simple-transport";
   let pageClosing=false,pendingWrite=Promise.resolve(),busy=false,timer=0,physioTimer=0,lastSignature="",hydrated=false,authoritative=false,hydrationPromise=null,lastStatus=null;
 
   const clone=v=>v==null?v:JSON.parse(JSON.stringify(v));
@@ -97,7 +97,9 @@
     // Keepalive requests must not use AbortController on page unload.
     const ctl=keepalive||typeof AbortController!=="function"?null:new AbortController(),clock=ctl?setTimeout(()=>ctl.abort(),18000):null;
     try{
-      const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json",apikey:KEY},
+      // Safelisted text/plain request avoids a fragile cross-origin OPTIONS preflight in iOS embedded browsers.
+       // The body remains JSON and is parsed by req.json() on the server; auth stays session+device bound.
+       const r=await fetch(API,{method:"POST",headers:{"Content-Type":"text/plain;charset=UTF-8"},
         body:JSON.stringify(payload),keepalive,...(ctl?{signal:ctl.signal}:{})});
       const out=await r.json().catch(()=>({}));
       if(!r.ok||out.ok===false){
