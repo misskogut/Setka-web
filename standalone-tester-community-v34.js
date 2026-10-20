@@ -42,7 +42,7 @@
     for (const store of [localStorage, sessionStorage]) {
       try {
         const x = JSON.parse(store.getItem(SESSION_KEY) || "null");
-        if (x?.token) return x;
+        if(x?.token&&(!window.SetkaDataScopeV1||x.testerId&&window.SetkaDataScopeV1.id==="tester:"+String(x.testerId)))return x;
       } catch (_) {}
     }
     return null;
@@ -244,6 +244,7 @@
       card.appendChild(button);
     }
     const status = statusOf(note);
+    button.disabled=publicationBusy;
     button.classList.remove("pending","published","rejected","unpublished");
     if (status === "pending") {
       button.classList.add("pending");
@@ -273,15 +274,22 @@
   }
 
   function setLocalStatus(note, status, publicNoteId = null) {
-    note.publicModerationStatus = status;
-    note.publicPublished = status === "published";
-    if (publicNoteId) note.publicNoteId = publicNoteId;
+    // IndexedDB and cloud merges may have replaced the note object while the
+    // request was in flight. Commit by immutable ID into the current archive.
+    const current=(C.getData?.()?.notes||[]).find(x=>String(x.id)===String(note.id));
+    if(!current)return;
+    current.publicModerationStatus=status;
+    current.publicPublished=status==='published';
+    current.updatedAt=new Date().toISOString();
+    if(publicNoteId)current.publicNoteId=publicNoteId;
     C.save?.();
   }
 
   async function togglePublication(note, button) {
-    if (publicationBusy) return;
+    if(publicationBusy||!accountSession()?.token)return;
+    const requestToken=accountSession().token,sameAccount=()=>accountSession()?.token===requestToken;
     publicationBusy = true;
+    scan();
     button.disabled = true;
     const card=button.closest('.st34-note-card')||button.parentElement;
     // Fetching moderation status can rebuild the note list. Confirmations
@@ -290,18 +298,23 @@
       .find(el=>String(el.dataset.noteId)===String(note.id))||null;
     try {
       await refreshPub(true);
+      if(!sameAccount())return;
       const current = pub.get(String(note.id));
       const status = current?.status || statusOf(note);
       if (status === "published") {
         if (!await C.inlineConfirm(currentCard(),{title:"Снять заметку с публикации?",body:"Личная заметка останется у тебя.",accept:"Снять публикацию"})) return;
+        if(!sameAccount())return;
         await noteApi("unpublish", {sourceNoteKey:note.id});
+        if(!sameAccount())return;
         const next = {...current, id:current?.id || note.publicNoteId || null, sourceNoteKey:note.id, status:"unpublished", isPublic:false};
         pub.set(String(note.id), next);
         setLocalStatus(note, "unpublished", next.id);
         C.recordEvent?.("public_note_unpublish", {noteId:note.id}, false);
       } else if (status === "pending") {
         if (!await C.inlineConfirm(currentCard(),{title:"Отозвать запрос?",body:"Заметка останется у тебя и исчезнет из очереди модерации.",accept:"Отозвать запрос"})) return;
+        if(!sameAccount())return;
         await noteApi("cancel-submission", {sourceNoteKey:note.id});
+        if(!sameAccount())return;
         const next = {...current, id:current?.id || note.publicNoteId || null, sourceNoteKey:note.id, status:"private", isPublic:false};
         pub.set(String(note.id), next);
         setLocalStatus(note, "private", next.id);
@@ -309,7 +322,9 @@
       } else {
         if (!await C.inlineConfirm(currentCard(),{title:"Предложить заметку сообществу?",body:"После одобрения будут видны текст и паттерн, если он прикреплён. Аккаунт и личная история публично не показываются.",accept:"Отправить на модерацию"})) return;
         await C.sandbox?.sync?.();
+        if(!sameAccount())return;
         const out = await noteApi("submit", {note:clone(note)});
+        if(!sameAccount())return;
         const next = {id:out.id, sourceNoteKey:note.id, status:out.status || "pending", isPublic:false, submittedAt:out.submittedAt || new Date().toISOString()};
         pub.set(String(note.id), next);
         setLocalStatus(note, next.status, out.id);

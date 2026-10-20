@@ -28,7 +28,7 @@ const server=createServer(async(req,res)=>{
     }else out={ok:true,archive:{...savedArchive,sourceDevices:1}};
    }
    if(path.endsWith('setka-public-notes-v37')){
-    if(b.action==='status')out={ok:true,items:[...publications.values()]};
+    if(b.action==='my-status')out={ok:true,items:[...publications.values()]};
     if(b.action==='submit'){
      assert.equal(b.note.patternId,null);assert.equal(b.note.config,null);assert.equal(b.note.visualCapsule,null);assert.equal(b.note.publicPreviewDataUrl,undefined);
      noteActions.push('submit');const item={id:'isolated-public-note',sourceNoteKey:b.note.id,status:'pending',isPublic:false};publications.set(b.note.id,item);out={ok:true,...item};
