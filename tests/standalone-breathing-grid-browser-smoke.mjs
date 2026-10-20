@@ -138,7 +138,13 @@ try{
   assert.equal(next.controls,2);
   assert.equal(next.cfg.size,27);
   assert.equal(next.cfg.colorModeIndex,2);
-  await page.locator('.base-tile[data-pattern-id="fixture-grid-test"]').click();
+  await page.locator('.base-tile[data-pattern-id="fixture-grid-test"]').waitFor();
+  await page.evaluate(()=>{
+    const S=window.SetkaApp;
+    S.openConfig(S.getPatternDefaults("fixture-grid-test"),
+      {type:"base",id:"fixture-grid-test",patternId:"fixture-grid-test"});
+  });
+  await page.locator("#gameScreen.active").waitFor();
   await page.locator("#instructionsButton").click();
   assert.equal(await page.locator("#st34KeySheet.open .sk-setting").count(),2);
   console.log("BREATHING GRID / 8 B&W PREVIEWS / INVISIBLE DOTS / LINKED KEY / NOTES PASS",result.images);
