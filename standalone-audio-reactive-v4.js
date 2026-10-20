@@ -346,6 +346,13 @@
     if(!releaseAt||k<=0)return null;
     return Object.fromEntries(Object.entries(releaseBands).map(([name,v])=>[name,v*k]));
   }
+  // Eighth pattern: native rectangle breathing, five independently tuned
+  // musical signatures. Never modulate discrete grid column/row counts.
+  choreography[1]["breathing-grid"]={amp:["low",.23,"grow",0,.45],scale:["mid",.12,"swing",.3,1.1],lineWidth:["high",.15,"grow",.3,3],hueSpeed:["high",.12,"grow",0,60]};
+  choreography[2]["breathing-grid"]={amp:["low",.31,"grow",0,.45],speed:["low",.19,"grow",.005,.08],lineWidth:["mid",.13,"swing",.3,3]};
+  choreography[3]["breathing-grid"]={amp:["mid",.28,"grow",0,.45],phaseX:["mid",.18,"swing",0,1.2],phaseY:["mid",.18,"swing",0,1.2]};
+  choreography[4]["breathing-grid"]={scale:["low",.16,"swing",.3,1.1],amp:["mid",.25,"grow",0,.45],phaseY:["mid",.22,"swing",0,1.2]};
+  choreography[5]["breathing-grid"]={lineWidth:["high",.20,"grow",.3,3],scale:["high",.12,"shrink",.3,1.1],hueSpeed:["high",.13,"grow",0,60]};
   // V4 SAFE ENVELOPE. Keep musical character but don't allow microphone
   // spikes to overdrive shape math. Different renderers have different
   // perceptual sensitivities; fractals and DNA receive gentler control.
@@ -356,7 +363,8 @@
     "breathing-fractal":.29,
     "breathing-fractal-growth":.28,
     "rgb-glitch-rings":.32,
-    "stereo-dna":.30
+    "stereo-dna":.30,
+    "breathing-grid":.25
   };
   // These parameters change the shape topology/discrete stroke count.
   // No audio-frequency changes: a branch/point-count jump can look like a
@@ -384,7 +392,12 @@
     ringAlpha:19,
     tentacleLength:16,
     baseLen:12,
-    v1:.06
+    v1:.06,
+    amp:.055,
+    scale:.08,
+    phaseX:.13,
+    phaseY:.13,
+    lineWidth:.20
   };
   function cappedValue(original,key,proposed,lo,hi){
     if(!Number.isFinite(proposed))return original;
