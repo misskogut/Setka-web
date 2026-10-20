@@ -26,6 +26,7 @@ try{
     };
     window.fetch=async()=>new Response(JSON.stringify({ok:true,...data}),{status:200,headers:{"Content-Type":"application/json"}});
   });
+  await page.addScriptTag({url:root+"/standalone-pattern-registry-v1.js"});
   await page.addScriptTag({url:root+"/standalone-admin-pattern-knowledge-v40.js"});
   await page.locator(".tab[data-tab='pattern-knowledge']").click();
   await page.waitForFunction(()=>document.querySelectorAll("#pk40Patterns button").length===8,{timeout:10000});
