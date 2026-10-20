@@ -12,6 +12,7 @@
   const POLICY_API = "https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-visual-assets-v40";
   const API_KEY = "sb_publishable_1jL-x9_kp6rpfGghpSp_OA_OiXDnvsv";
   const MOTHER_IDS = new Set(window.SetkaPatternRegistryV1?.ids?.()||window.SetkaApp?.getPatterns?.().map(p=>p.id)||[]);
+  window.addEventListener("setka:registry-changed",e=>{const id=e.detail?.patternId;if(id)MOTHER_IDS.add(id)});
 
   let dbPromise = null;
   let policyPromise = null;
