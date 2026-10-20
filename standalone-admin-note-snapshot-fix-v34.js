@@ -25,7 +25,7 @@
     frame.setAttribute("aria-hidden", "true");
     frame.tabIndex = -1;
     frame.style.cssText = "position:fixed;width:1px;height:1px;left:-9999px;top:-9999px;border:0;opacity:0;pointer-events:none";
-    frame.srcdoc = `<!doctype html><html><body style="margin:0;background:#000"><main id="app"><section id="libraryScreen" class="screen active"><button id="libraryPagerButton"></button><button id="communityPagerButton"></button><button id="favoritesPagerButton"></button><div id="libraryTitle"></div><div id="librarySwipeArea"></div><div id="allPatternsPanel"></div><div id="communityPanel"></div><div id="favoritesPanel"></div></section><section id="gameScreen" class="screen"><canvas id="patternCanvas" width="320" height="320"></canvas><button id="favoriteButton"></button><button id="libraryButton"></button><button id="prevButton"></button><button id="nextButton"></button><button id="colorButton"></button><div id="colorDots"></div><button id="instructionsButton"></button><div id="instructionsModal"><div class="instructions"></div></div><div id="toast"></div></section></main><script src="app-v7-multipattern.js?v=1.5-eight-patterns-admin-20261020"><\/script></body></html>`;
+    frame.srcdoc = `<!doctype html><html><body style="margin:0;background:#000"><script>window.SetkaPatternRegistryV1=parent.SetkaPatternRegistryV1;<\/script><main id="app"><section id="libraryScreen" class="screen active"><button id="libraryPagerButton"></button><button id="communityPagerButton"></button><button id="favoritesPagerButton"></button><div id="libraryTitle"></div><div id="librarySwipeArea"></div><div id="allPatternsPanel"></div><div id="communityPanel"></div><div id="favoritesPanel"></div></section><section id="gameScreen" class="screen"><canvas id="patternCanvas" width="320" height="320"></canvas><button id="favoriteButton"></button><button id="libraryButton"></button><button id="prevButton"></button><button id="nextButton"></button><button id="colorButton"></button><div id="colorDots"></div><button id="instructionsButton"></button><div id="instructionsModal"><div class="instructions"></div></div><div id="toast"></div></section></main><script src="app-v7-multipattern.js?v=1.5-eight-patterns-admin-20261020"><\/script></body></html>`;
     frame.onload = () => {
       let tries = 0;
       const wait = () => {
@@ -105,17 +105,53 @@
     } catch (e) { console.warn("SETKA admin preview failed", e); return false; }
   }
 
+  // Shared parent-side animation scheduler. Admin thumbnails and note replay
+  // are semantic Canvas2D drawings just like front-end previews, not cached
+  // JPEGs or one-time screenshots. Render at most 8 visible canvases at 20fps.
+  const liveEntries=new Map();
+  let liveTickHandle=0,lastLive=0,livePhase=0,roundRobin=0;
+  const previewVisible=c=>{
+    if(!c.isConnected||document.hidden||!c.getClientRects().length)return false;
+    if(c.closest("[hidden],.hidden,[aria-hidden='true']"))return false;
+    const b=c.getBoundingClientRect(),css=getComputedStyle(c);
+    return css.display!=="none"&&css.visibility!=="hidden"&&
+      b.width>4&&b.height>4&&b.bottom>0&&b.top<innerHeight&&b.left<innerWidth&&b.right>0;
+  };
+  function registerLive(canvas,recipe){
+    if(!recipe?.patternId||!recipe?.config||!canvas)return;
+    liveEntries.set(canvas,{config:JSON.parse(JSON.stringify(recipe.config)),
+      patternId:recipe.patternId,frame:Number(recipe.frame)||44});
+    if(!liveTickHandle)liveTickHandle=requestAnimationFrame(tickLive);
+  }
+  function tickLive(now){
+    liveTickHandle=0;
+    for(const canvas of liveEntries.keys())if(!canvas.isConnected)liveEntries.delete(canvas);
+    if(!liveEntries.size)return;
+    if(!lastLive||now-lastLive>=50){
+      if(lastLive)livePhase+=Math.min(80,now-lastLive)/16.6667*.85;
+      lastLive=now;
+      const visible=[...liveEntries].filter(([canvas])=>previewVisible(canvas));
+      for(let i=0;i<Math.min(8,visible.length);i++){
+        const [canvas,item]=visible[(roundRobin+i)%visible.length];
+        try{previewApp?.renderPreview?.(canvas,item.config,item.frame+livePhase,item.patternId);
+          canvas.dataset.snapshotKind="live-semantic";}catch(_){}
+      }
+      if(visible.length)roundRobin=(roundRobin+8)%visible.length;
+    }
+    liveTickHandle=requestAnimationFrame(tickLive);
+  }
   function renderCanvas(canvas, item) {
     if (!canvas || !item) return false;
     sizeCanvas(canvas);
     const recipe = recipeOf(item), snapshot = item.visual_snapshot || item.visualSnapshot || null;
-    const exact = drawLegacySnapshot(canvas, snapshot, recipe);
-    if (!exact) {
+    const live = !!previewApp?.renderPreview && !!recipe?.config &&
+      !!window.SetkaPatternRegistryV1?.has?.(recipe.patternId);
+    if(live){
       renderSemantic(canvas,item,recipe);
-      if (VC?.draw) VC.draw(canvas, VC.cacheKey(recipe)).then(hit => {
-        if (hit) canvas.dataset.snapshotKind = "device-cache";
-        else VC.putCanvas?.(canvas,recipe).catch?.(() => {});
-      }).catch(() => {});
+      registerLive(canvas,recipe);
+    }else{
+      const exact=drawLegacySnapshot(canvas,snapshot,recipe);
+      if(!exact)renderSemantic(canvas,item,recipe);
     }
     canvas.dataset.snapshotPatternId = recipe.patternId || "";
     const caption = canvas.parentElement?.querySelector?.(".v4-preview-caption"), title = recipe.patternId && previewApp?.getPatternTitle?.(recipe.patternId);
@@ -144,5 +180,5 @@
 
   makePreviewEngine();
   window.addEventListener("resize", scheduleRepair);
-  window.__SETKA_ADMIN_NOTE_SNAPSHOT_FIX_V34__ = {version:6,repair:scheduleRepair,renderCanvas,getPatternTitle:id=>previewApp?.getPatternTitle?.(id)||id||"Паттерн",get ready(){return !!previewApp?.renderPreview}};
+  window.__SETKA_ADMIN_NOTE_SNAPSHOT_FIX_V34__ = {version:7,repair:scheduleRepair,renderCanvas,registerLive,getPatternTitle:id=>previewApp?.getPatternTitle?.(id)||id||"Паттерн",get ready(){return !!previewApp?.renderPreview}};
 })();
