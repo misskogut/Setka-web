@@ -8,7 +8,7 @@
   const names={
     "tentacle-orbit":"Tentacle Orbit","dandelion":"Одуванчик","fish-wave":"Носовая волна",
     "breathing-fractal":"Breathing Fractal","breathing-fractal-growth":"Breathing Fractal · Growth",
-    "rgb-glitch-rings":"RGB Glitch Rings","stereo-dna":"Stereo DNA"
+    "rgb-glitch-rings":"RGB Glitch Rings","stereo-dna":"Stereo DNA","breathing-grid":"Breathing Grid"
   };
   let items=[],busy=false;
   const esc=v=>String(v??"").replace(/[&<>\"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));
