@@ -103,7 +103,11 @@
     const p=get(raw?.patternId);if(!p)return {ok:false,reason:"unknown_pattern",snapshot:copy(raw)};
     if((raw.schemaVersion||1)>SCHEMA||(raw.configSchemaVersion||1)>p.schemaVersion)return {ok:false,reason:"unsupported_schema",snapshot:copy(raw)};
     if(raw.patternVersion!=null&&raw.patternVersion!==p.version&&!p.legacyVersions.includes(raw.patternVersion))return {ok:false,reason:"unsupported_version",snapshot:copy(raw)};
-    return {ok:true,snapshot:freeze({...copy(raw),config:normalize(raw.config,raw.patternId)})};
+    try{
+      const checked=validate(raw.config,raw.patternId);
+      if(raw.version>=3&&(!checked.ok||Object.keys(p.schema).some(k=>!Object.hasOwn(raw.config||{},k))))return {ok:false,reason:"invalid_configuration",snapshot:copy(raw)};
+      return {ok:true,snapshot:freeze({...copy(raw),config:normalize(raw.config,raw.patternId)})};
+    }catch(e){return {ok:false,reason:e.code||"invalid_configuration",snapshot:copy(raw)}}
   }
   function bindRenderer(id,render){requirePattern(id);if(typeof render!=="function")throw error("invalid_renderer",id);renderers.set(id,render);emit("setka:renderer-ready",{patternId:id})}
   function applyDefaults(rows=[]){

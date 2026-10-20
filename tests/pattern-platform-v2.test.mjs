@@ -44,6 +44,9 @@ test('unknown explicit IDs and incompatible snapshots never become a starter pat
  const failed=R.restore(original);assert.equal(failed.reason,'unknown_pattern');assert.deepEqual(plain(failed.snapshot),original);
  assert.equal(R.restore({patternId:'breathing-grid',patternVersion:22,config:{}}).reason,'unsupported_version');
  assert.equal(R.restore({patternId:'breathing-grid',schemaVersion:99,config:{}}).reason,'unsupported_schema');
+ assert.equal(R.restore({patternId:'breathing-grid',config:{patternId:'stereo-dna'}}).reason,'pattern_identity_conflict');
+ const broken=plain(R.snapshot({patternId:'breathing-grid',config:R.defaults('breathing-grid'),frame:0}));broken.config.cols='corrupt';
+ assert.equal(R.restore(broken).reason,'invalid_configuration');assert.equal(broken.config.cols,'corrupt');
 });
 test('a saved snapshot is independent of input mutations and future administrative defaults',()=>{
  const R=registry(),config=R.defaults('breathing-grid');config.cols=27;
