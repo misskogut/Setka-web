@@ -47,6 +47,8 @@
     const a=window.__SETKA_TESTER_CABINET_V40__?.state?.();
     if(!a?.authenticated){const local=C.storageStatus?.();if(local?.pending)return "Сохраняем изменения на устройстве…";if(local?.ok===false)return "Пока не удалось сохранить изменения на устройстве. Оставь приложение открытым и попробуй ещё раз.";return "Отметки хранятся в этом браузере. Для сохранения в аккаунте требуется вход."}
     const status=window.__SETKA_PRIVATE_CORPUS_V40__?.status?.();
+    if(status?.loadState==="loading")return "Загружаем состояния из аккаунта SETKA…";
+    if(status?.loadState==="error")return "Не удалось загрузить архив аккаунта. Данные на сервере не удалены."; 
     if(!activeStates().length)return "Выбранных состояний пока нет. Добавь состояние ниже.";
     if(status?.ok&&status.statesVerified&&!status.statesPending&&status.updatedAt){
       const at=new Date(status.updatedAt),date=Number.isFinite(at.getTime())?at.toLocaleString("ru-RU",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"—";
@@ -186,7 +188,13 @@
     currentRange=range;expandedStateId=keepExpanded;C.setNav("symptoms");
     const b=C.screen("Состояния","Быстро отмечай выбранные состояния. История и наблюдения спрятаны внутри «Подробнее».","МОИ СОСТОЯНИЯ",C.showPatterns);
     const states=activeStates();
-    if(!states.length){const e=document.createElement("div");e.className="st34-state-empty";e.textContent="Добавь состояние, которое хочется наблюдать. После нескольких отметок SETKA начнёт показывать понятные изменения и связи с сессиями.";b.appendChild(e)}
+    if(!states.length){
+      const load=window.__SETKA_PRIVATE_CORPUS_V40__?.status?.()?.loadState;
+      const e=document.createElement("div");e.className="st34-state-empty";
+      e.textContent=load==="loading"?"Загружаем твои состояния из аккаунта…":load==="error"?"Не удалось загрузить состояния из облака. Данные на сервере не удалены.":"Добавь состояние, которое хочется наблюдать. После нескольких отметок SETKA начнёт показывать понятные изменения и связи с сессиями.";
+      b.appendChild(e);
+      if(load==="error"){const retry=document.createElement("button");retry.type="button";retry.className="st34-add-state";retry.textContent="Повторить загрузку";retry.onclick=()=>window.__SETKA_PRIVATE_CORPUS_V40__?.ensureHydrated?.();b.appendChild(retry)}
+    }
     else states.forEach(s=>renderStateCard(b,s,range));
     renderCloudStatus(b);
     showPicker(b,range);
@@ -205,7 +213,7 @@
 
   // Archive restoration is asynchronous. If this screen was already open,
   // repaint it with restored states rather than leaving the initial empty UI.
-  for(const event of ["setka:v40-private-corpus-restored","setka:states-restored"])window.addEventListener(event,()=>{
+  for(const event of ["setka:v40-private-corpus-restored","setka:v40-private-corpus-load","setka:states-restored"])window.addEventListener(event,()=>{
     const layer=document.getElementById("st34Layer");
     if(layer&&!layer.classList.contains("hidden")&&layer.querySelector(".st-title")?.textContent?.trim()==="Состояния")
       showStates(currentRange);

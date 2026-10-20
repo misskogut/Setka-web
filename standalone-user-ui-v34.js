@@ -136,7 +136,14 @@
       };
     };
     const list=document.createElement("div");list.className="st-notes-list";b.appendChild(list);
-    if(!d.notes.length){list.innerHTML='<div class="st-empty">Пока заметок нет. Нажми «+», чтобы записать мысль.</div>';return}
+    const phase=window.__SETKA_PRIVATE_CORPUS_V40__?.status?.()?.loadState;
+    if(phase==="loading"||phase==="error"){
+      const message=document.createElement("div");message.className="st-empty st-account-archive-message";
+      message.textContent=phase==="loading"?"Загружаем твои заметки из аккаунта SETKA…": "Не удалось загрузить архив аккаунта. Сохранённые данные не удалены.";
+      list.appendChild(message);
+      if(phase==="error"){const retry=document.createElement("button");retry.type="button";retry.className="st-secondary";retry.textContent="Повторить загрузку";retry.onclick=()=>window.__SETKA_PRIVATE_CORPUS_V40__?.ensureHydrated?.();list.appendChild(retry)}
+    }
+    if(!d.notes.length){if(phase!=="loading"&&phase!=="error")list.innerHTML='<div class="st-empty">Пока заметок нет. Нажми «+», чтобы записать мысль.</div>';return}
     for(const n of d.notes.slice().reverse())renderNoteCard(list,n);
   }
 
@@ -247,16 +254,30 @@
   function showMe(){
     C.setNav("me");const d=C.getData(),sessions=usableSessions();
     const b=C.screen("Я","Твоя история, сохранённые мысли и персональные наблюдения SETKA.","МОЯ SETKA",C.showPatterns);
+    const phase=window.__SETKA_PRIVATE_CORPUS_V40__?.status?.()?.loadState;
+    if(phase==="loading"||phase==="error"){
+      const notice=document.createElement("div");notice.className="st-card st-account-archive-message";
+      notice.textContent=phase==="loading"?"Загружаем личную историю из аккаунта SETKA…": "Облачный архив пока недоступен. На этом устройстве показаны только уже сохранённые данные.";
+      b.appendChild(notice);
+    }
     if(sessions.length>=2)action(b,"Мои наблюдения","Какие запросы, состояния и паттерны повторяются",showInsights);
     else action(b,"Мои наблюдения","Появятся после нескольких сессий",showInsights);
-    action(b,"История сессий",`${sessions.length} ${sessions.length===1?"сессия":"сессий"}`,showSessions);
-    action(b,"Заметки",`${d.notes.length} сохранено`,showNotes);
+    action(b,"История сессий",phase==="loading"&&!sessions.length?"Загружаем из аккаунта…":`${sessions.length} ${sessions.length===1?"сессия":"сессий"}`,showSessions);
+    action(b,"Заметки",phase==="loading"&&!d.notes.length?"Загружаем из аккаунта…":`${d.notes.length} сохранено`,showNotes);
     action(b,"Пульс","Дополнительные наблюдения с совместимого датчика",showPulse);
     action(b,"Очистить мою историю","Удалить данные этой копии с устройства",resetLocal);
   }
 
   C.showToday=showToday;
   C.showMe=showMe;
+  // An archive may finish loading after Notes is already open. Repaint that view without losing data.
+  for(const event of ["setka:v40-private-corpus-load","setka:v40-private-corpus-restored"])window.addEventListener(event,()=>{
+    const layer=document.getElementById("st34Layer"),title=layer?.querySelector(".st-title")?.textContent?.trim();
+    if(!layer||layer.classList.contains("hidden"))return;
+    // Do not discard drafts if an account refresh finishes while the user is typing.
+    if(title==="Заметки"&&!layer.querySelector(".st-note-editor"))showNotes();
+    else if(title==="Я")showMe();
+  });
   C.showNotes=showNotes;
   C.showSessions=showSessions;
   C.showSessionDetail=showSessionDetail;

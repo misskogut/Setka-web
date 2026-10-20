@@ -3,12 +3,12 @@
   const C=window.SetkaStandaloneV34,Setka=window.SetkaApp;
   if(!C||!Setka)return;
   const API="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-tester-archive-v37";
-  const KEY="sb_publishable_1jL-x9_kp6rpfGghpSp_OA_OiXDnvsv";
+  // Session and device are authenticated by the Edge Function on every operation.
   const SESSION_KEY="setka-v40:cabinet-session";
   const STATUS_KEY=window.SetkaDataScopeV1?.key?.("setka-v40:private-corpus-status")||"setka-v40:private-corpus-status";
   const FAVORITES_KEY="setka-web:favorites:v1";
-  const BUILD="v40.private-cloud.3-states";
-  let pageClosing=false,pendingWrite=Promise.resolve(),busy=false,timer=0,physioTimer=0,lastSignature="",hydrated=false,authoritative=false,hydrationPromise=null,lastStatus=null;
+  const BUILD="v40.private-cloud.5-account-ready";
+  let pageClosing=false,pendingWrite=Promise.resolve(),busy=false,timer=0,physioTimer=0,lastSignature="",hydrated=false,authoritative=false,hydrationPromise=null,lastStatus=null,hydrationError=null,hydratedToken=null;
 
   const clone=v=>v==null?v:JSON.parse(JSON.stringify(v));
   function session(){
@@ -21,7 +21,13 @@
   function sameSession(token){return !pageClosing&&session()?.token===token}
   function did(){return C.sandbox?.deviceId||null}
   function stateFingerprint(d={}){return digest([(d.symptoms||[]).map(x=>[x.id,x.name,x.active,x.lastIntensity,x.updatedAt,x.createdAt]).sort((a,b)=>String(a[0]).localeCompare(String(b[0]))),(d.checkins||[]).map(x=>[x.id,x.symptomId,x.intensity,x.phase,x.observedAt,x.sessionId]).sort((a,b)=>String(a[0]).localeCompare(String(b[0])))]);}
-  function status(){let value=lastStatus;try{value=value||JSON.parse(localStorage.getItem(STATUS_KEY)||"null")}catch(_){}return value?{...value,statesPending:!value.stateFingerprint||value.stateFingerprint!==stateFingerprint(C.getData?.()||{})}:null}
+  function status(){
+    let value=lastStatus;try{value=value||JSON.parse(localStorage.getItem(STATUS_KEY)||"null")}catch(_){}
+    const token=session()?.token||null;
+    const loadState=!token?"signed_out":hydrated&&hydratedToken===token?"ready":hydrationError?"error":"loading";
+    return {...(value||{}),ok:loadState==="ready"&&value?.ok===true,loadState,archiveReady:loadState==="ready",statesPending:!value?.stateFingerprint||value.stateFingerprint!==stateFingerprint(C.getData?.()||{})};
+  }
+  function announceLoad(){window.dispatchEvent(new CustomEvent("setka:v40-private-corpus-load",{detail:{loadState:status().loadState}}))}
   function saveStatus(v){lastStatus=v;try{localStorage.setItem(STATUS_KEY,JSON.stringify(v))}catch(_){}window.dispatchEvent(new CustomEvent("setka:v40-private-corpus",{detail:v}))}
   function archive(){
     const d=clone(C.getData?.()||{});
@@ -100,7 +106,9 @@
     // Keepalive requests must not use AbortController on page unload.
     const ctl=keepalive||typeof AbortController!=="function"?null:new AbortController(),clock=ctl?setTimeout(()=>ctl.abort(),18000):null;
     try{
-      const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json",apikey:KEY},
+      // Safelisted text/plain request avoids a fragile cross-origin OPTIONS preflight in iOS embedded browsers.
+       // The body remains JSON and is parsed by req.json() on the server; auth stays session+device bound.
+       const r=await fetch(API,{method:"POST",headers:{"Content-Type":"text/plain;charset=UTF-8"},
         body:JSON.stringify(payload),keepalive,...(ctl?{signal:ctl.signal}:{})});
       const out=await r.json().catch(()=>({}));
       if(!r.ok||out.ok===false){
@@ -130,25 +138,33 @@
   async function restoreFromCloud(){
     if(C.ready)await C.ready;
     if(pageClosing)return false;
-    const s=session();if(!s?.token||!scopeMatches(s)){hydrated=false;authoritative=false;return false}
-    const out=await pull();if(!sameSession(s.token))return false;const a=out?.archive;
+    const s=session(),token=s?.token||null;if(!token||!scopeMatches(s)){hydrated=false;authoritative=false;hydratedToken=null;return false}
+    const out=await pull();if(!sameSession(token))return false;const a=out?.archive;
     if(!a){
-      hydrated=true;authoritative=true;lastSignature="";
+      hydrated=true;authoritative=true;hydratedToken=token;hydrationError=null;lastSignature="";
       saveStatus({enabled:true,ok:true,restored:false,stateFingerprint:stateFingerprint({}),statesVerified:false,build:BUILD,updatedAt:null,counts:null,sourceDevices:0,privacy:"private-account-only",publicExposure:false});
-      window.dispatchEvent(new CustomEvent("setka:v40-private-corpus-restored",{detail:{counts:null,sourceDevices:0,emptyRemote:true}}));
+      announceLoad();window.dispatchEvent(new CustomEvent("setka:v40-private-corpus-restored",{detail:{counts:null,sourceDevices:0,emptyRemote:true}}));
       return true;
     }
     const counts=mergeCloud(a.payload||{},a.favorites||[]);
-    hydrated=true;authoritative=true;lastSignature="";
+    hydrated=true;authoritative=true;hydratedToken=token;hydrationError=null;lastSignature="";
     saveStatus({enabled:true,ok:true,restored:true,stateFingerprint:stateFingerprint(a.payload||{}),statesVerified:true,build:BUILD,updatedAt:a.updatedAt||null,counts,sourceDevices:Number(a.sourceDevices)||1,privacy:"private-account-only",publicExposure:false});
-    window.dispatchEvent(new CustomEvent("setka:v40-private-corpus-restored",{detail:{counts,sourceDevices:Number(a.sourceDevices)||1}}));
+    announceLoad();window.dispatchEvent(new CustomEvent("setka:v40-private-corpus-restored",{detail:{counts,sourceDevices:Number(a.sourceDevices)||1}}));
     return true;
   }
   async function ensureHydrated(){
-    if(hydrated)return true;
-    if(!session()?.token)return false;
+    const token=session()?.token||null;
+    if(!token)return false;
+    if(hydrated&&hydratedToken===token)return true;
     if(hydrationPromise)return hydrationPromise;
-    hydrationPromise=restoreFromCloud().catch(e=>{hydrated=false;authoritative=false;saveStatus({enabled:true,ok:false,build:BUILD,error:String(e?.message||e),stage:"restore",privacy:"private-account-only",publicExposure:false});return false}).finally(()=>{hydrationPromise=null});
+    hydrationError=null;announceLoad();
+    hydrationPromise=restoreFromCloud().catch(e=>{
+      if(session()?.token!==token)return false;
+      hydrated=false;authoritative=false;hydratedToken=null;
+      hydrationError=String(e?.message||e);
+      saveStatus({enabled:true,ok:false,build:BUILD,error:hydrationError,stage:"restore",privacy:"private-account-only",publicExposure:false});
+      announceLoad();return false;
+    }).finally(()=>{hydrationPromise=null});
     return hydrationPromise;
   }
   async function sync(force=false,keepalive=false,closingWrite=false){
@@ -159,7 +175,7 @@
     // Unload cannot restore the remote archive first. Keep local changes for the
     // next foreground sync instead of starting an unsafe pull in a closing page.
     if(keepalive&&!hydrated)return false;
-    const loaded=hydrated||await ensureHydrated();
+    const loaded=(hydrated&&hydratedToken===s.token)||await ensureHydrated();
     if(pageClosing&&!closingWrite)return false;
     if(!sameSession(s.token)&&!closingWrite)return false;
     if(!loaded){
@@ -203,7 +219,12 @@
   window.addEventListener("setka:favorite-saved",()=>schedule(700));
   window.addEventListener("setka:favorite-removed",()=>schedule(700));
   window.addEventListener("setka:account-switch-start",()=>{pageClosing=true;hydrated=false;authoritative=false;clearTimeout(timer);clearTimeout(physioTimer)});
-  window.addEventListener("setka:v40-account",()=>{hydrated=false;authoritative=false;hydrationPromise=null;setTimeout(()=>sync(true),120)});
+  window.addEventListener("setka:v40-account",()=>{
+    // Do not allow stale account readiness to stand in for another session.
+    if(hydratedToken!==session()?.token){hydrated=false;authoritative=false;hydratedToken=null;hydrationError=null;}
+    announceLoad();
+    if(session()?.token)setTimeout(()=>sync(true),120);
+  });
   document.addEventListener("visibilitychange",()=>{if(document.hidden)sync(true,true);else schedule(500)});
   window.addEventListener("pagehide",()=>{pageClosing=true;clearTimeout(timer);clearTimeout(physioTimer);return sync(true,true,true)});
   window.addEventListener("pageshow",e=>{pageClosing=false;if(e.persisted)schedule(0)});
@@ -211,6 +232,7 @@
   window.addEventListener('setka:local-reset-cancelled',()=>{pageClosing=false;schedule(500)});
   window.addEventListener("online",()=>schedule(350));
   setInterval(()=>sync(false),45000);
-  setTimeout(()=>sync(true),2200);
-  window.__SETKA_PRIVATE_CORPUS_V40__={sync:async()=>{if(busy)await pendingWrite.catch(()=>false);return sync(true)},pull,restore:restoreFromCloud,remoteStatus,status,authoritative:()=>!!(hydrated&&authoritative&&session()?.token),build:BUILD};
+  // C.ready gates archive hydration; do not add an extra multi-second delay after page open.
+  setTimeout(()=>sync(true),100);
+  window.__SETKA_PRIVATE_CORPUS_V40__={sync:async()=>{if(busy)await pendingWrite.catch(()=>false);return sync(true)},pull,restore:restoreFromCloud,ensureHydrated,remoteStatus,status,authoritative:()=>!!(hydrated&&authoritative&&hydratedToken===session()?.token),build:BUILD};
 })();
