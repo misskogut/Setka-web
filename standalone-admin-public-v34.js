@@ -2,16 +2,7 @@
   "use strict";
   const PUBLIC_API="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-community-patterns-v38";
   const PUBLIC_KEY="sb_publishable_1jL-x9_kp6rpfGghpSp_OA_OiXDnvsv";
-  const PATTERNS=[
-    ["tentacle-orbit","Осьминог"],
-    ["dandelion","Одуванчик"],
-    ["fish-wave","Носовая волна"],
-    ["breathing-fractal","Дыхательный фрактал"],
-    ["breathing-fractal-growth","Растущий фрактал"],
-    ["rgb-glitch-rings","Цветовые кольца"],
-    ["stereo-dna","Stereo DNA"],
-    ["breathing-grid","Breathing Grid"]
-  ];
+  const PATTERNS=(window.SetkaPatternRegistryV1?.list?.()||[]).map(p=>[p.id,p.title]);
   const $=id=>document.getElementById(id);
   const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const num=v=>Math.max(0,Number.isFinite(Number(v))?Number(v):0);
