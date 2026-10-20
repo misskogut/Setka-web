@@ -129,7 +129,7 @@ async function replay(b:any){
     provenance:{raw:'prototype_v34_raw_events_all_v2',containsArchivedRaw:true,initialStateKnown:states.some(x=>x.tMs===0),screenPixelsStored:false}});
 }
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const PATTERN_IDS=new Set(['tentacle-orbit','dandelion','fish-wave','breathing-fractal','breathing-fractal-growth','rgb-glitch-rings','stereo-dna']);
+const PATTERN_IDS=new Set(['tentacle-orbit','dandelion','fish-wave','breathing-fractal','breathing-fractal-growth','rgb-glitch-rings','stereo-dna','breathing-grid']);
 async function saveExperiment(b:any,adminId:string){
   const title=String(b.title||'').trim(),hypothesis=String(b.hypothesis||'').trim();
   if(title.length<3||title.length>160||hypothesis.length<10||hypothesis.length>4000||!PATTERN_IDS.has(b.patternId)||
