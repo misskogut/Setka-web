@@ -23,7 +23,7 @@
     let value=lastStatus;try{value=value||JSON.parse(localStorage.getItem(STATUS_KEY)||"null")}catch(_){}
     const token=session()?.token||null;
     const loadState=!token?"signed_out":hydrated&&hydratedToken===token?"ready":hydrationError?"error":"loading";
-    return {...(value||{}),loadState,archiveReady:loadState==="ready",statesPending:!value?.stateFingerprint||value.stateFingerprint!==stateFingerprint(C.getData?.()||{})};
+    return {...(value||{}),ok:loadState==="ready"&&value?.ok===true,loadState,archiveReady:loadState==="ready",statesPending:!value?.stateFingerprint||value.stateFingerprint!==stateFingerprint(C.getData?.()||{})};
   }
   function announceLoad(){window.dispatchEvent(new CustomEvent("setka:v40-private-corpus-load",{detail:{loadState:status().loadState}}))}
   function saveStatus(v){lastStatus=v;try{localStorage.setItem(STATUS_KEY,JSON.stringify(v))}catch(_){}window.dispatchEvent(new CustomEvent("setka:v40-private-corpus",{detail:v}))}
