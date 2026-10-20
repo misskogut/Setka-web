@@ -195,8 +195,7 @@ async function go(){
     const dimmed=await page.evaluate(()=>{
       const sheet=document.querySelector("#st34KeySheet"),backdrop=document.querySelector("#st34KeyBackdrop");
       return {active:sheet.classList.contains("sk-adjusting"),faded:backdrop.classList.contains("sk-adjusting"),
-        activeSettings:sheet.querySelectorAll(".sk-setting.sk-active").length,
-        backdropAlpha:Number(getComputedStyle(backdrop).backgroundColor.match(/[0-9.]+(?=\\))/)?.[0]||0)};
+        activeSettings:sheet.querySelectorAll(".sk-setting.sk-active").length};
     });
     assert.equal(dimmed.active,true,"drag should make sheet transparent");
     assert.equal(dimmed.faded,true,"drag should remove backdrop dimming");
