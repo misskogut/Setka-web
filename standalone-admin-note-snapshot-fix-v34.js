@@ -49,12 +49,13 @@
 
   function pidOf(item) {
     const c = item?.replaySnapshot?.config || item?.replay_snapshot?.config || item?.config || {};
-    const known=new Set(["tentacle-orbit","dandelion","fish-wave","breathing-fractal","breathing-fractal-growth","rgb-glitch-rings","stereo-dna","breathing-grid"]);
+    const known=new Set(window.SetkaPatternRegistryV1?.ids?.()||previewApp?.getPatterns?.().map(p=>p.id)||[]);
     for(const v of [item?.replaySnapshot?.patternId,item?.replay_snapshot?.patternId,item?.pattern_id,item?.patternId,item?.visualRecipe?.patternId,item?.visual_snapshot?.patternId,item?.visualSnapshot?.patternId,c.patternId]){
       if(known.has(v))return v;
     }
     // Structural inference is for legacy notes without an explicit identity only.
-    if (c.cols != null && c.rows != null && c.phaseX != null) return "breathing-grid";
+    const registered=window.SetkaPatternRegistryV1?.inference?.(c);
+    if(registered)return registered;
     if (c.eyeSeparation != null || c.stereoAngle != null || (c.angleStep != null && c.numPoints != null)) return "stereo-dna";
     if (c.numRings != null || c.baseSpacing != null || c.invertDirection != null) return "rgb-glitch-rings";
     if (c.numLayers != null || c.ringSpacing != null) return "fish-wave";
