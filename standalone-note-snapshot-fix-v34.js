@@ -7,7 +7,8 @@
   if (!C || !Setka) return;
 
   const clone = v => v == null ? v : JSON.parse(JSON.stringify(v));
-  const KNOWN_PATTERN_IDS = window.SetkaPatternRegistryV1?.ids?.()||Setka.getPatterns().map(p=>p.id);
+  let KNOWN_PATTERN_IDS = window.SetkaPatternRegistryV1?.ids?.()||Setka.getPatterns().map(p=>p.id);
+  window.addEventListener("setka:registry-changed",()=>{KNOWN_PATTERN_IDS=window.SetkaPatternRegistryV1?.ids?.()||Setka.getPatterns().map(p=>p.id)});
 
   function configOf(note) {
     // Immutable creation-time replay first; mutable UI and older visual caches are fallback.
