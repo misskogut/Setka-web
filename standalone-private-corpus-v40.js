@@ -226,6 +226,7 @@
   window.addEventListener('setka:local-reset-cancelled',()=>{pageClosing=false;schedule(500)});
   window.addEventListener("online",()=>schedule(350));
   setInterval(()=>sync(false),45000);
-  setTimeout(()=>sync(true),2200);
+  // C.ready gates archive hydration; do not add an extra multi-second delay after page open.
+  setTimeout(()=>sync(true),100);
   window.__SETKA_PRIVATE_CORPUS_V40__={sync:async()=>{if(busy)await pendingWrite.catch(()=>false);return sync(true)},pull,restore:ensureHydrated,ensureHydrated,remoteStatus,status,authoritative:()=>!!(hydrated&&authoritative&&hydratedToken===session()?.token),build:BUILD};
 })();
