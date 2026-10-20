@@ -8,7 +8,7 @@
   const MAX_ITEMS = 160;
   const MAX_BYTES = 32 * 1024 * 1024;
   const MAX_SIDE = 560;
-  const RENDERER_VERSION = "app-v7";
+  const RENDERER_VERSION = "app-v8-breathing-grid-bw";
   const POLICY_API = "https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-visual-assets-v40";
   const API_KEY = "sb_publishable_1jL-x9_kp6rpfGghpSp_OA_OiXDnvsv";
   const MOTHER_IDS = new Set(["tentacle-orbit","dandelion","fish-wave","breathing-fractal","breathing-fractal-growth","rgb-glitch-rings","stereo-dna","breathing-grid"]);
