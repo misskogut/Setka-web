@@ -7,7 +7,7 @@
   if (!C || !Setka) return;
 
   const clone = v => v == null ? v : JSON.parse(JSON.stringify(v));
-  const KNOWN_PATTERN_IDS = ["tentacle-orbit","dandelion","fish-wave","breathing-fractal","breathing-fractal-growth","rgb-glitch-rings","stereo-dna"];
+  const KNOWN_PATTERN_IDS = ["tentacle-orbit","dandelion","fish-wave","breathing-fractal","breathing-fractal-growth","rgb-glitch-rings","stereo-dna","breathing-grid"];
 
   function configOf(note) {
     // Immutable creation-time replay first; mutable UI and older visual caches are fallback.
@@ -19,6 +19,7 @@
 
   function patternIdFromConfig(config) {
     const c = config || {};
+    if (c.cols != null && c.rows != null && c.phaseX != null) return "breathing-grid";
     if (c.eyeSeparation != null || c.stereoAngle != null || (c.angleStep != null && c.numPoints != null)) return "stereo-dna";
     if (c.numRings != null || c.baseSpacing != null || c.invertDirection != null) return "rgb-glitch-rings";
     if (c.numLayers != null || c.ringSpacing != null) return "fish-wave";
