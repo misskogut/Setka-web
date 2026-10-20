@@ -8,6 +8,8 @@ on:
       - 'standalone-audio-reactive-v2.js'
       - 'standalone-audio-reactive-v3.js'
       - 'standalone-audio-reactive-v4.js'
+      - 'standalone-pattern-key-v1.js'
+      - 'tests/standalone-breathing-grid-browser-smoke.mjs'
       - 'standalone-live-previews-v1.js'
       - 'tests/standalone-live-previews-v1-browser-smoke.mjs'
       - 'tests/standalone-audio-reactive-v1-browser-smoke.mjs'
@@ -115,6 +117,7 @@ jobs:
       - run: node --check standalone-audio-reactive-v2.js
       - run: node --check standalone-audio-reactive-v3.js
       - run: node --check standalone-audio-reactive-v4.js
+      - run: node --check standalone-pattern-key-v1.js
       - run: node --check standalone-live-previews-v1.js
       - run: node --check scripts/build-standalone-release.mjs
       - run: node --test tests/standalone-one-link-release.test.mjs
@@ -192,6 +195,8 @@ jobs:
       - run: npx playwright install --with-deps chromium webkit
       # Audio has an independent safety regression; run it before the full UI
       # suite so a flaky unrelated preview does not obscure mic test results.
+      - run: node tests/standalone-breathing-grid-browser-smoke.mjs
+      - run: SETKA_BROWSER=webkit node tests/standalone-breathing-grid-browser-smoke.mjs
       - run: node tests/standalone-audio-reactive-v1-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/standalone-audio-reactive-v1-browser-smoke.mjs
       - run: node tests/standalone-v34-browser-smoke.mjs
