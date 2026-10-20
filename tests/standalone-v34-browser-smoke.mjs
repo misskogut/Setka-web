@@ -292,7 +292,7 @@ async function go(){
   const originalStates=await page.evaluate(()=>{
     const d=window.SetkaStandaloneV34.getData();
     return {states:d.symptoms.map(x=>x.name),checkins:d.checkins.length,
-      saved:JSON.parse(localStorage.getItem("setka-standalone:v34")||"null")};
+      saved:JSON.parse((window.SetkaDataScopeV1?.storage||localStorage).getItem("setka-standalone:v34")||"null")};
   });
   assert.ok(originalStates.states.includes('Усталость'));
   assert.equal(originalStates.checkins>0,true);

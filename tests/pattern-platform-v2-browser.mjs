@@ -44,6 +44,7 @@ try{
  });
  const page=await context.newPage();await page.goto(base+'/standalone-v34.html');
  await page.waitForFunction(()=>window.SetkaPatternRegistryV1.ready('fixture-fields'));
+ await page.evaluate(async()=>{await window.SetkaPatternPluginsV1.ready();await window.SetkaStandaloneV34.ready;await window.__SETKA_PATTERN_CATALOG_V1__.refresh()});
  assert.equal(await page.locator('.base-tile').count(),10,'both new algorithms appear without UI edits');
  for(const id of fixtures.map(p=>p.id)){
   const tile=page.locator(`.base-tile[data-pattern-id="${id}"] canvas`);await tile.scrollIntoViewIfNeeded();const image=await tile.evaluate(c=>c.toDataURL());
