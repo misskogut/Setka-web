@@ -30,7 +30,7 @@ test('private archive transport avoids OPTIONS preflight without changing sessio
   assert.equal(await context.__SETKA_PRIVATE_CORPUS_V40__.sync(),true);
   assert.equal(data.notes.length,1);assert.equal(data.symptoms.length,1);
   assert.ok(calls.length>=2);
-  for(const call of calls){assert.match(call.headers['Content-Type'],/^text\\/plain/i);assert.equal(call.headers.apikey,undefined);assert.equal(JSON.parse(call.body).deviceId,'isolated-device');assert.equal(JSON.parse(call.body).sessionToken,'isolated-only')}
+  for(const call of calls){assert.equal(call.headers['Content-Type'].startsWith('text/plain'),true);assert.equal(call.headers.apikey,undefined);assert.equal(JSON.parse(call.body).deviceId,'isolated-device');assert.equal(JSON.parse(call.body).sessionToken,'isolated-only')}
 });
 
 test('an in-flight archive receipt never confirms a state added after that request',async()=>{
