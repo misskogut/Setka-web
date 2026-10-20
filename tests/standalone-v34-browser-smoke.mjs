@@ -5,7 +5,7 @@ import {chromium,webkit} from "playwright";
 
 const port=48372;
 const root="http://127.0.0.1:"+port;
-const patternIds=["tentacle-orbit","dandelion","fish-wave","breathing-fractal","breathing-fractal-growth","rgb-glitch-rings","stereo-dna"];
+const patternIds=["tentacle-orbit","dandelion","fish-wave","breathing-fractal","breathing-fractal-growth","rgb-glitch-rings","stereo-dna","breathing-grid"];
 const names=["Tentacle Orbit","Одуванчик","Носовая волна","Breathing Fractal","Breathing Fractal · Growth","RGB Glitch Rings","Stereo DNA"];
 const patternMetrics=patternIds.map((patternId,i)=>({patternId,viewingAccounts:i+1,sessions:10*(i+1),exposures:100*(i+1),likes:i+1,totalDurationMs:(i+1)*60000,configurationSaves:i+1,savedConfigurations:i+1}));
 const server=spawn("python3",["-m","http.server",String(port),"--bind","127.0.0.1"],{stdio:"ignore"});
@@ -34,7 +34,7 @@ async function go(){
     await route.fulfill({status:200,contentType:"application/json",headers:{"access-control-allow-origin":"*"},body:JSON.stringify(payload)});
   });
   await page.goto(root+"/standalone-v34.html?browser-smoke=41",{waitUntil:"domcontentloaded"});
-  await page.waitForFunction(()=>document.querySelectorAll("#allPatternsPanel .pattern-tile").length===7,{timeout:20000});
+  await page.waitForFunction(()=>document.querySelectorAll("#allPatternsPanel .pattern-tile").length===8,{timeout:20000});
   await page.waitForFunction(()=>!!window.SetkaStandaloneV34?.cloudCommunity?.status?.().lastOkAt,{timeout:20000});
   // Library navigation polish: one common icon baseline, no hint text and a
   // visual gap beneath the community heading (including mobile WebKit).
@@ -153,7 +153,7 @@ async function go(){
         pixels:a.length,changed:mismatch,changedShare:mismatch/a.length};
     });
   });
-  assert.equal(continuity.length,7,"all seven canonical previews survive redraw");
+  assert.equal(continuity.length,8,"all eight canonical previews survive redraw");
   for(const row of continuity)assert.ok(row.changedShare<0.015,
     row.patternId+" preview must not jump when tiles are rebuilt: "+JSON.stringify(row));
   console.log("LIVE PREVIEW PHASE STAYS STABLE ACROSS CATALOG REBUILD PASS",JSON.stringify(continuity));
