@@ -5,11 +5,7 @@
   const KEY="sb_publishable_1jL-x9_kp6rpfGghpSp_OA_OiXDnvsv";
   const ADMIN_KEY="setka-research:admin-key:v1";
   const MAX_FILE=2*1024*1024;
-  const names={
-    "tentacle-orbit":"Tentacle Orbit","dandelion":"Одуванчик","fish-wave":"Носовая волна",
-    "breathing-fractal":"Breathing Fractal","breathing-fractal-growth":"Breathing Fractal · Growth",
-    "rgb-glitch-rings":"RGB Glitch Rings","stereo-dna":"Stereo DNA","breathing-grid":"Breathing Grid"
-  };
+  const names=Object.fromEntries((window.SetkaPatternRegistryV1?.list?.()||[]).map(p=>[p.id,p.title]));
   let items=[],busy=false;
   const esc=v=>String(v??"").replace(/[&<>\"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));
   const adminKey=()=>localStorage.getItem(ADMIN_KEY)||"";
