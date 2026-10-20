@@ -25,7 +25,7 @@
     frame.setAttribute("aria-hidden", "true");
     frame.tabIndex = -1;
     frame.style.cssText = "position:fixed;width:1px;height:1px;left:-9999px;top:-9999px;border:0;opacity:0;pointer-events:none";
-    frame.srcdoc = `<!doctype html><html><body style="margin:0;background:#000"><main id="app"><section id="libraryScreen" class="screen active"><button id="libraryPagerButton"></button><button id="communityPagerButton"></button><button id="favoritesPagerButton"></button><div id="libraryTitle"></div><div id="librarySwipeArea"></div><div id="allPatternsPanel"></div><div id="communityPanel"></div><div id="favoritesPanel"></div></section><section id="gameScreen" class="screen"><canvas id="patternCanvas" width="320" height="320"></canvas><button id="favoriteButton"></button><button id="libraryButton"></button><button id="prevButton"></button><button id="nextButton"></button><button id="colorButton"></button><div id="colorDots"></div><button id="instructionsButton"></button><div id="instructionsModal"><div class="instructions"></div></div><div id="toast"></div></section></main><script src="app-v7-multipattern.js?v=46-unified-admin-1"><\/script></body></html>`;
+    frame.srcdoc = `<!doctype html><html><body style="margin:0;background:#000"><main id="app"><section id="libraryScreen" class="screen active"><button id="libraryPagerButton"></button><button id="communityPagerButton"></button><button id="favoritesPagerButton"></button><div id="libraryTitle"></div><div id="librarySwipeArea"></div><div id="allPatternsPanel"></div><div id="communityPanel"></div><div id="favoritesPanel"></div></section><section id="gameScreen" class="screen"><canvas id="patternCanvas" width="320" height="320"></canvas><button id="favoriteButton"></button><button id="libraryButton"></button><button id="prevButton"></button><button id="nextButton"></button><button id="colorButton"></button><div id="colorDots"></div><button id="instructionsButton"></button><div id="instructionsModal"><div class="instructions"></div></div><div id="toast"></div></section></main><script src="app-v7-multipattern.js?v=1.5-eight-patterns-admin-20261020"><\/script></body></html>`;
     frame.onload = () => {
       let tries = 0;
       const wait = () => {
@@ -49,11 +49,12 @@
 
   function pidOf(item) {
     const c = item?.replaySnapshot?.config || item?.replay_snapshot?.config || item?.config || {};
-    const known=new Set(["tentacle-orbit","dandelion","fish-wave","breathing-fractal","breathing-fractal-growth","rgb-glitch-rings","stereo-dna"]);
+    const known=new Set(["tentacle-orbit","dandelion","fish-wave","breathing-fractal","breathing-fractal-growth","rgb-glitch-rings","stereo-dna","breathing-grid"]);
     for(const v of [item?.replaySnapshot?.patternId,item?.replay_snapshot?.patternId,item?.pattern_id,item?.patternId,item?.visualRecipe?.patternId,item?.visual_snapshot?.patternId,item?.visualSnapshot?.patternId,c.patternId]){
       if(known.has(v))return v;
     }
     // Structural inference is for legacy notes without an explicit identity only.
+    if (c.cols != null && c.rows != null && c.phaseX != null) return "breathing-grid";
     if (c.eyeSeparation != null || c.stereoAngle != null || (c.angleStep != null && c.numPoints != null)) return "stereo-dna";
     if (c.numRings != null || c.baseSpacing != null || c.invertDirection != null) return "rgb-glitch-rings";
     if (c.numLayers != null || c.ringSpacing != null) return "fish-wave";
