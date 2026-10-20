@@ -11,7 +11,7 @@
   const RENDERER_VERSION = "app-v7";
   const POLICY_API = "https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-visual-assets-v40";
   const API_KEY = "sb_publishable_1jL-x9_kp6rpfGghpSp_OA_OiXDnvsv";
-  const MOTHER_IDS = new Set(["tentacle-orbit","dandelion","fish-wave","breathing-fractal","breathing-fractal-growth","rgb-glitch-rings","stereo-dna"]);
+  const MOTHER_IDS = new Set(["tentacle-orbit","dandelion","fish-wave","breathing-fractal","breathing-fractal-growth","rgb-glitch-rings","stereo-dna","breathing-grid"]);
 
   let dbPromise = null;
   let policyPromise = null;
