@@ -69,7 +69,8 @@ test("personal note cards and repair/moderation use immutable note IDs", () => {
   const ui=read("standalone-user-ui-v34.js"), repair=read("standalone-note-snapshot-fix-v34.js");
   const moderation=read("standalone-tester-community-v34.js");
   assert.match(ui,/card\.dataset\.noteId=String\(n\.id\)/);
-  assert.match(ui,/Setka\.renderPreview\?\.\(canvas,clone\(n\.config\),n\.frame\?\?44,n\.patternId/);
+  assert.match(ui,/Setka\.renderPreview\?\.\(canvas,clone\(replay\.config\),replay\.frame,replay\.pid/);
+  assert.match(ui,/replay\?\.config&&!replay\.unavailable/);
   assert.match(repair,/const id=card\.dataset\.noteId/);
   assert.match(moderation,/const id=card\.dataset\.noteId/);
   assert.doesNotMatch(repair,/same\.find\(n => \{ try \{ return meta/);

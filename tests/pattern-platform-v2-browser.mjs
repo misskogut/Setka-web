@@ -47,6 +47,15 @@ try{
  await page.waitForFunction(()=>window.SetkaPatternRegistryV1.ready('fixture-fields'));
  await page.evaluate(async()=>{await window.SetkaPatternPluginsV1.ready();await window.SetkaStandaloneV34.ready;await window.__SETKA_PATTERN_CATALOG_V1__.refresh()});
  assert.deepEqual(errors,[],'front startup must complete before testing integration');
+ await page.evaluate(()=>{
+  const C=window.SetkaStandaloneV34,R=window.SetkaPatternRegistryV1,host=document.createElement('div');
+  const snapshot=JSON.parse(JSON.stringify(R.snapshot({patternId:'breathing-grid',config:R.defaults('breathing-grid'),frame:0})));
+  snapshot.patternVersion=999;
+  for(const n of [{id:'isolated-unknown',config:{patternId:'future-unknown'},patternId:'tentacle-orbit'}, {id:'isolated-version',replaySnapshot:snapshot,config:snapshot.config}]){
+   C.renderParticipantNoteCard(host,{...n,text:'isolated unavailable snapshot',observedAt:new Date().toISOString()});
+  }
+  if(host.querySelector('canvas')||host.querySelectorAll('.st34-note-no-preview').length!==2)throw Error('unavailable notes must retain text without substituting a renderer');
+ });
  assert.equal(await page.locator('.base-tile').count(),10,'both new algorithms appear without UI edits');
  for(const id of fixtures.map(p=>p.id)){
   const tile=page.locator(`.base-tile[data-pattern-id="${id}"] canvas`);await tile.scrollIntoViewIfNeeded();const image=await tile.evaluate(c=>c.toDataURL());
@@ -136,6 +145,15 @@ try{
  await page.evaluate(()=>{const R=window.SetkaPatternRegistryV1;for(let i=0;i<60;i++)window.SetkaApp.registerPattern({id:'load-fixture-'+i,title:'Load '+i,version:1,defaults:{radius:5,tempo:.1,colorModeIndex:0},controls:[['Радиус','radius',1,10,1,'↑↓',1]],render(ctx,w,h,c,f){ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);ctx.fillStyle='white';ctx.fillRect(f%30,10,c.radius,c.radius)}})});
  assert.equal(await page.evaluate(()=>window.SetkaApp.previewStatus().maxPerPaint),8);
  assert.equal(await page.locator('.base-tile').count(),71);
+ const loadSamples=await page.evaluate(async()=>{
+  const R=window.SetkaPatternRegistryV1,original=R.render,samples=[];let calls=0;
+  R.render=function(...args){calls++;return original.apply(this,args)};
+  try{for(let i=0;i<12;i++){await new Promise(requestAnimationFrame);samples.push(calls);calls=0}}finally{R.render=original}
+  return samples;
+ });
+ assert.ok(loadSamples.some(n=>n>0),'visible previews really render under load');
+ assert.ok(Math.max(...loadSamples)<=8,'render calls remain bounded per animation frame');
+ console.log('BOUNDED REAL RENDER LOAD',JSON.stringify(loadSamples));
  assert.deepEqual(errors,[]);
  fs.mkdirSync('tests/visual-smoke',{recursive:true});await page.screenshot({path:'tests/visual-smoke/platform-'+(process.env.SETKA_BROWSER||'chromium')+'.png'});
  await admin.screenshot({path:'tests/visual-smoke/platform-admin-'+(process.env.SETKA_BROWSER||'chromium')+'.png'});

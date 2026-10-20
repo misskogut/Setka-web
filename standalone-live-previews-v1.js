@@ -140,7 +140,7 @@
       const note = (C?.getData?.()?.notes || []).find(n=>String(n.id)===id);
       if (!note) continue;
       const replay = resolve(note);
-      if (replay.config && replay.pid) register(canvas,replay.config,replay.frame,replay.pid);
+      if (replay.config && replay.pid && !replay.unavailable) register(canvas,replay.config,replay.frame,replay.pid);
     }
   }
   document.addEventListener("visibilitychange",()=>{if (mayAnimate()) schedule();else stop()});

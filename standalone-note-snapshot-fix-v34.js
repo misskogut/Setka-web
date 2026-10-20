@@ -31,10 +31,14 @@
   function patternIdOf(note) {
     const cfg = configOf(note);
     if(note?.replaySnapshot?.patternId)return note.replaySnapshot.patternId;
+    // An explicit recipe identity, including a future/unknown ID, is not a
+    // hint that may be replaced with stale top-level UI metadata.
+    if(cfg?.patternId)return cfg.patternId;
     const explicit = [cfg?.patternId,note?.patternId,note?.state?.patternId,note?.visualRecipe?.patternId,note?.visualSnapshot?.patternId];
-    return explicit.find(id=>KNOWN_PATTERN_IDS.includes(id))
-      || patternIdFromHash(note)
+    const unknown = explicit.find(id=>id&&!KNOWN_PATTERN_IDS.includes(id));
+    return unknown || patternIdFromHash(note)
       || patternIdFromConfig(cfg)
+      || explicit.find(id=>KNOWN_PATTERN_IDS.includes(id))
       || null;
   }
 
@@ -44,7 +48,10 @@
     const frames = [note?.replaySnapshot?.frame,note?.frame,note?.state?.frame,note?.visualRecipe?.frame,note?.visualSnapshot?.frame];
     let frame = 44;
     for (const v of frames) { const n = v == null ? NaN : Number(v); if (Number.isFinite(n)) { frame=n; break; } }
-    return {pid,config,frame};
+    const registry=window.SetkaPatternRegistryV1;
+    const checked=note?.replaySnapshot&&registry?.restore?.(note.replaySnapshot);
+    const unavailable=!!(pid&&!KNOWN_PATTERN_IDS.includes(pid))||checked?.ok===false;
+    return {pid,config,frame,unavailable,reason:checked?.reason||(unavailable?"unknown_pattern":null)};
   }
 
   function recipeFor(noteLike, replay = null) {
@@ -177,7 +184,7 @@
   function repairCard(card) {
     if (!(card instanceof Element)) return;
     const note=resolveNote(card); if(!note) return;
-    const replay=replayOf(note); if(!replay.config) return;
+    const replay=replayOf(note); if(!replay.config||replay.unavailable) return;
     const canvas=card.querySelector("canvas.st34-note-preview");
     if(canvas){
       const live=window.SetkaLivePreviewsV1;

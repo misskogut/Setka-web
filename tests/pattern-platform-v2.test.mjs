@@ -6,6 +6,21 @@ import {parseManifest,assertConfiguration,catalogRows,researchConfig} from '../s
 const source=fs.readFileSync('standalone-pattern-registry-v1.js','utf8');
 function registry(){const context={window:{dispatchEvent(){}},CustomEvent:class{}};vm.runInNewContext(source,context);return context.window.SetkaPatternRegistryV1}
 const plain=x=>JSON.parse(JSON.stringify(x));
+test('note replay preserves explicit unknown identity and rejects incompatible immutable versions',()=>{
+ const R=registry(),window={SetkaPatternRegistryV1:R,SetkaStandaloneV34:{},SetkaApp:{getPatterns:()=>R.list()},addEventListener(){}};
+ const document={getElementById:()=>null,querySelectorAll:()=>[],documentElement:{}};
+ vm.runInNewContext(fs.readFileSync('standalone-note-snapshot-fix-v34.js','utf8'),{window,document,MutationObserver:class{observe(){}},Element:class{},console});
+ const replay=window.__SETKA_NOTE_REPLAY_V34__.replayOf;
+ const unknown={patternId:'tentacle-orbit',config:{patternId:'future-unknown',numTentacles:24},frame:0};
+ const before=plain(unknown),result=replay(unknown);
+ assert.equal(result.pid,'future-unknown');assert.equal(result.unavailable,true);assert.equal(result.frame,0);assert.deepEqual(unknown,before);
+ const snapshot=plain(R.snapshot({patternId:'breathing-grid',config:R.defaults('breathing-grid'),frame:0}));
+ snapshot.patternVersion=999;
+ assert.equal(replay({replaySnapshot:snapshot}).reason,'unsupported_version');
+ snapshot.patternVersion=1;
+ assert.equal(replay({patternId:'tentacle-orbit',replaySnapshot:snapshot}).pid,'breathing-grid');
+ assert.equal(replay({replaySnapshot:snapshot}).unavailable,false);
+});
 const fixture=id=>({id,title:id,version:1,colorModes:3,defaults:{radius:12,tempo:.3,seed:7,outline:false,colorModeIndex:2},
  controls:[['Радиус','radius',3,40,1,'Слева ↑↓',1],['Темп','tempo',.05,2,.05,'Снизу ←→',1]],
  schema:{seed:{type:'number',min:0,max:999,integer:true},outline:{type:'boolean'}},
