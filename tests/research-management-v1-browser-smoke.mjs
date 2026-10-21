@@ -23,7 +23,9 @@ const server=createServer(async(req,res)=>{
    }
    if(path.endsWith('setka-tester-archive-v37')){
     if(b.action==='sync'){
-     savedArchive={payload:{...b.archive,symptoms:fixtureMerge(savedArchive.payload.symptoms,b.archive.symptoms),checkins:fixtureMerge(savedArchive.payload.checkins,b.archive.checkins)},favorites:b.favorites||[],updatedAt:new Date().toISOString()};
+     // Production combines archives from multiple devices. A late isolated
+     // device upload must not erase another device's already persisted notes.
+     savedArchive={payload:{...b.archive,notes:fixtureMerge(savedArchive.payload.notes,b.archive.notes),symptoms:fixtureMerge(savedArchive.payload.symptoms,b.archive.symptoms),checkins:fixtureMerge(savedArchive.payload.checkins,b.archive.checkins)},favorites:b.favorites||[],updatedAt:new Date().toISOString()};
      out={ok:true,updatedAt:savedArchive.updatedAt,stateHistory:{symptoms:savedArchive.payload.symptoms,checkins:savedArchive.payload.checkins},counts:{symptoms:savedArchive.payload.symptoms.length,checkins:savedArchive.payload.checkins.length}};
     }else out={ok:true,archive:{...savedArchive,sourceDevices:1}};
    }
