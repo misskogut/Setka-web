@@ -105,8 +105,8 @@ try{
   assert.notEqual(after,before,'Rain swipe changes '+key);
  };
  await swipe(.52,.85,70,0,'speedFactor');
- await swipe(.13,.52,0,-95,'density');
- await swipe(.87,.52,0,-90,'streakLength');
+ await swipe(.20,.52,0,-95,'density');
+ await swipe(.80,.52,0,-90,'streakLength');
  await swipe(.52,.12,80,0,'waveStrength');
  // A tap changes Rain motion mode, while a dragging swipe does not.
  const tapBefore=await page.evaluate(()=>window.SetkaApp.getConfig().motionMode);
