@@ -80,7 +80,9 @@
   }
   function signature(){const fav=favorites(),u=serviceUsage(),last=u.sessions.at(-1)||{};return [fav.map(x=>`${x.configKey}:${x.id||""}`).join(","),u.sessions.length,last.id||"",last.endedAt||"",u.sessions.map(s=>`${s.id}:${s.completed?1:0}`).join(","),u.exposures.length,u.exposures.reduce((a,x)=>a+(Number(x.durationMs)||0),0)].join("|")}
   async function post(url,payload,keepalive=false){
-    const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json",apikey:API_KEY},body:JSON.stringify(payload),keepalive});
+    // The API validates the session token and device ID inside the JSON payload.
+    // Avoid CORS preflight delays in embedded iOS WebKit (identical to account/cloud adapter).
+    const r=await fetch(url,{method:"POST",headers:{"Content-Type":"text/plain;charset=UTF-8"},body:JSON.stringify(payload),keepalive});
     const out=await r.json().catch(()=>({}));if(!r.ok)throw new Error(out.error||`http_${r.status}`);return out;
   }
   async function syncSemantic(fav,keepalive=false){
@@ -105,6 +107,9 @@
     try{
       const heartbeat=await post(API,{action:"sync",channel:CHANNEL,deviceId,firstSeenAt:firstSeen,build:"v41-account-only"},keepalive);
       const fav=favorites(),semantic=await syncSemantic(fav,keepalive);
+      if(semantic?.ignored)throw new Error("account_not_confirmed_by_semantic_server");
+      if(Number(semantic?.rejectedFavorites)>0||Number(semantic?.rejectedExposures)>0)
+        throw new Error("pattern_catalog_out_of_sync");
       lastSignature=sig;lastOkAt=heartbeat.updatedAt||new Date().toISOString();lastSubjectKey=heartbeat.subjectKey||null;
       lastFavoriteStats={...lastFavoriteStats,cloud:Number(semantic?.favorites??0)||0};
       lastUsageStats={sessions:Number(semantic?.acceptedSessions??lastUsageStats.sessions)||0,exposures:Number(semantic?.acceptedExposures??lastUsageStats.exposures)||0};
