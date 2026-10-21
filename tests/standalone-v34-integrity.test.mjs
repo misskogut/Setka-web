@@ -219,7 +219,7 @@ test("semantic backend derives pattern IDs from catalog and never attributes fut
   assert.match(source,/from\("setka_research_v1_pattern_catalog"\)/);
   assert.match(source,/const ids=await patternIds\(\)/);
   assert.match(source,/if\(!pid\)\{rejectedFavorites\+\+;continue\}/);
-  assert.match(source,/if\(!ids\.has\(pid\)\)\{rejectedExposures\+\+;continue\}/);
+  assert.ok(source.includes('if(!ids.has(pid)){rejectedExposures++;continue;}'));
   assert.match(source,/if\(b\.favoritesAuthoritative===true&&rejectedFavorites===0\)/);
   assert.match(source,/canonicalPatterns:ids\.size/);
   assert.doesNotMatch(source,/return "tentacle-orbit"/);
