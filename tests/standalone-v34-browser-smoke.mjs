@@ -206,6 +206,7 @@ async function go(){
 
   // Regression: a mother tile must open the same baseline recipe that its live preview uses,
   // even if a previous visit changed that mother's sliders or color palette.
+  const windowExpectedMothers=await page.evaluate(()=>window.SetkaPatternRegistryV1.ids().length);
   const parity=await page.evaluate(()=>{
     const S=window.SetkaApp,R=window.SetkaPatternRegistryV1;
     const ids=R.ids(),out=[];
@@ -231,7 +232,7 @@ async function go(){
     document.getElementById("libraryButton").click();
     return out;
   });
-  assert.equal(parity.length,8,"all mother patterns verified against their canonical previews");
+  assert.equal(parity.length,windowExpectedMothers,"all mother patterns verified against their canonical previews");
   assert.ok(parity.every(p=>p.expected===p.actual&&p.modified!==p.actual));
   // Exercise the actual card pointer handler, not only the public openConfig API.
   await page.evaluate(()=>{
