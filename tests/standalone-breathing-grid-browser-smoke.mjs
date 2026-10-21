@@ -220,7 +220,7 @@ try{
     const cfg=S.cloneConfig({patternId:"fixture-grid-test",size:27,tempo:.8,colorModeIndex:2},"fixture-grid-test");
     return{number:S.getPatterns().length,registered:R.has("fixture-grid-test"),controls:R.controls("fixture-grid-test").length,cfg};
   });
-  assert.equal(next.number,9);
+  assert.equal(next.number,10,"ninth mother plus one added runtime fixture");
   assert.equal(next.registered,true);
   assert.equal(next.controls,2);
   assert.equal(next.cfg.size,27);
