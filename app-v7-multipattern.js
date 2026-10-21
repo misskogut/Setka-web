@@ -40,7 +40,7 @@
   // A shared, resumable library clock prevents previews from skipping to a
   // distant absolute frame after card rebuilds, tab switches or Safari pauses.
   const PREVIEW_INTERVAL_MS=1000/30,PREVIEW_MAX_STEP_MS=40,PREVIEW_SPEED=.75;
-  let previewCursor=0;const previewStats={frames:0,maxPerPaint:8};
+  let previewCursor=0;const previewStats={frames:0,maxPerPaint:12};
   let previewAnimation=0,previewLastPaint=0,previewLastTick=0,previewPhase=0,previewPaintPhase=0;
   const previewFrame=base=>base+previewPhase;
   // Recreated tiles must begin at the last *displayed* phase; the logical
@@ -146,18 +146,27 @@
         previewLastTick=now;
         previewLastPaint=now;
         previewPaintPhase=previewPhase;
-        let paintedCount=0;const candidates=[...previewTiles];
-        for(let i=0;i<candidates.length&&paintedCount<8;i++){
-          const [canvas,item]=candidates[(previewCursor+i)%candidates.length];
+        // Only onscreen, connected canvases participate in this paint cycle.
+        // The old fixed budget of 8 skipped one of the 9 mother previews,
+        // advancing its animation phase without actually drawing its frame.
+        // The cursor must advance WHEN painting, not on every idle rAF.
+        const visible=[];
+        for(const [canvas,item] of previewTiles){
           if(!canvas.isConnected){previewTiles.delete(canvas);continue}
           const panel=canvas.closest('.pattern-panel');
           if(panel?.classList.contains('hidden-left')||panel?.classList.contains('hidden-right'))continue;
           const rect=canvas.getBoundingClientRect();
-          if(rect.bottom<0||rect.top>innerHeight||rect.right<0||rect.left>innerWidth)continue;
-          drawThumbnail(canvas,item.config,previewFrame(item.frame),item.patternId);paintedCount++;previewStats.frames++;
+          if(rect.width<4||rect.height<4||rect.bottom<0||rect.top>innerHeight||rect.right<0||rect.left>innerWidth)continue;
+          visible.push([canvas,item]);
         }
+        const count=Math.min(previewStats.maxPerPaint,visible.length);
+        for(let i=0;i<count;i++){
+          const [canvas,item]=visible[(previewCursor+i)%visible.length];
+          drawThumbnail(canvas,item.config,previewFrame(item.frame),item.patternId);
+          previewStats.frames++;
+        }
+        previewCursor=visible.length?(previewCursor+count)%visible.length:0;
       }
-      previewCursor=(previewCursor+8)%Math.max(1,previewTiles.size);
       previewAnimation=requestAnimationFrame(tick);
     };
     previewAnimation=requestAnimationFrame(tick);
