@@ -57,6 +57,42 @@ try{
  await page.waitForFunction(()=>window.SetkaPatternRegistryV1.ready('fixture-fields'));
  await page.evaluate(async()=>{await window.SetkaPatternPluginsV1.ready();await window.SetkaStandaloneV34.ready;await window.__SETKA_PATTERN_CATALOG_V1__.refresh()});
  assert.deepEqual(errors,[],'front startup must complete before testing integration');
+ // Release order is NOT the library order: every unviewed new module appears
+ // first, then its first successful opening places it last, persistently.
+ await page.waitForFunction(()=>document.querySelector('#allPatternsPanel > .pattern-tile')?.dataset.patternId==='fixture-fields');
+ const baseIds=()=>page.locator('#allPatternsPanel > .pattern-tile[data-kind="base"]')
+    .evaluateAll(tiles=>tiles.map(t=>t.dataset.patternId));
+ let initialIds=await baseIds();
+ assert.equal(initialIds[0],'fixture-fields','last auto-registered package is first while unviewed');
+ assert.equal(initialIds[1],'fixture-shapes','next newest unopened pattern is next');
+ assert.equal(await page.locator('.base-tile[data-pattern-id="fixture-fields"] .setka-new-pattern').count(),1);
+ const grid=await page.locator('#allPatternsPanel > .pattern-tile').evaluateAll(tiles=>tiles.slice(0,8).map(el=>{
+  const a=el.getBoundingClientRect(),canvas=el.querySelector('canvas'),c=canvas?.getBoundingClientRect();
+  return {left:a.left,top:a.top,width:a.width,height:a.height,canvasX:c?c.left+c.width/2:null,tileX:a.left+a.width/2};
+ }));
+ assert.ok(grid.length>=8,'responsive library has two complete rows');
+ for(let i=0;i<grid.length;i++){
+  assert.ok(Math.abs(grid[i].width-grid[i].height)<1,'all tiles square '+i);
+  assert.ok(Math.abs(grid[i].canvasX-grid[i].tileX)<1,'preview canvas centered '+i);
+  if(i%4!==0)assert.ok(Math.abs(grid[i].top-grid[i-1].top)<1,'all four tiles in one straight row '+i);
+ }
+ const firstView=await page.evaluate(()=>{
+  const id='fixture-fields',S=window.SetkaApp;
+  return S.openConfig(S.getPatternDefaults(id),{type:'base',id,patternId:id});
+ });
+ assert.equal(firstView,true);
+ await page.locator('#libraryButton').click();
+ await page.waitForFunction(()=>document.querySelector('#allPatternsPanel')?.lastElementChild?.dataset.patternId==='fixture-fields');
+ const afterFirst=await baseIds();
+ assert.equal(afterFirst[0],'fixture-shapes','the next unviewed new module rises to first');
+ assert.equal(afterFirst.at(-1),'fixture-fields','opened new pattern goes to the very bottom');
+ assert.equal(await page.locator('.base-tile[data-pattern-id="fixture-fields"] .setka-new-pattern').count(),0,'new badge disappears after first view');
+ await page.evaluate(async()=>{await window.SetkaStandaloneV34.whenSaved?.()});
+ await page.reload();await page.waitForFunction(()=>window.SetkaPatternRegistryV1.ready('fixture-fields'));
+ await page.evaluate(async()=>{await window.SetkaStandaloneV34.ready;await window.SetkaPatternPluginsV1.ready()});
+ await page.waitForFunction(()=>document.querySelector('#allPatternsPanel')?.lastElementChild?.dataset.patternId==='fixture-fields');
+ assert.equal((await baseIds()).at(-1),'fixture-fields','opened status and order survive reload');
+ assert.equal(await page.locator('.base-tile[data-pattern-id="fixture-fields"] .setka-new-pattern').count(),0);
  // Every mother and every dynamically registered plugin gets its exact
  // shared gesture contract shown in the key: fingers, side, or slider-only.
  for(const pattern of R.list()){

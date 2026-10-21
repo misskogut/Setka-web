@@ -109,6 +109,17 @@ test('Orbital Threads: original exact shape, nine palettes, two genuine rainbows
    return [...used];
   }
   const standard=R.defaults(id);
+  // Regression: the original p5 -40 horizontal translation made its square
+  // library tile look shifted. Both gameplay and previews must center.
+  for(const preview of [false,true]){
+   const centers=[],ctx={
+    save(){},restore(){},scale(){},rotate(){},fillRect(){},
+    translate(x,y){centers.push([x,y])},beginPath(){},moveTo(){},lineTo(){},stroke(){}
+   };
+   R.render(ctx,240,240,standard,44,preview,id);
+   assert.ok(centers.length>0,'scene translated in '+(preview?'preview':'game'));
+   assert.deepEqual(centers.every(([x,y])=>x===120&&y===120),true,'Orbital center not offset in '+(preview?'preview':'game'));
+  }
   assert.ok(colors(standard).length>0);
   for(let mode=1;mode<9;mode++)assert.ok(colors({...standard,colorModeIndex:mode}).length>0,'color '+mode);
   assert.ok(colors({...standard,colorModeIndex:7}).length>50,'rainbow spans many distinct hues');
