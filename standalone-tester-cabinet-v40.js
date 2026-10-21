@@ -155,6 +155,15 @@
   }
 
   function syncMessage(cp={}){
+    const phase=C.sandbox?.status?.()?.accountSync?.phase||"idle";
+    if(session()?.token){
+      if(phase==="retry")return "Связь с сервером пока не подтверждена. Записи сохранены на устройстве, отправка повторится автоматически.";
+      if(phase==="loading")return "Получаем данные аккаунта с сервера…";
+      if(phase==="saving")return "Сохраняем заметки, состояния и избранное на сервере…";
+      if(phase==="metrics")return "Проверяем сохранения и статистику для исследовательской админки…";
+      if(phase==="synced")return "Личный архив и исследовательские показатели подтверждены сервером.";
+      return "Подключаем облачную синхронизацию аккаунта…";
+    }
     if(cp.ok===true&&cp.updatedAt){
       const dt=new Date(cp.updatedAt);
       const when=Number.isFinite(dt.getTime())?
@@ -171,7 +180,7 @@
     if(!el)return;
     const cp=corpus()||{};
     el.textContent=syncMessage(cp);
-    document.getElementById("st40CabinetAutoSyncDot")?.classList.toggle("off",cp.ok!==true);
+    document.getElementById("st40CabinetAutoSyncDot")?.classList.toggle("off",C.sandbox?.status?.()?.accountSync?.phase!=="synced");
   }
   async function showCabinet(){
     const st=cached()?.authenticated?cached():await refresh(true);
@@ -183,7 +192,7 @@
     desc.textContent="История, заметки, состояния и сохранённые паттерны находятся в обычных разделах SETKA. Облачная копия обновляется автоматически при наличии связи.";
     const sync=document.createElement("div");sync.className="st40-ok";
     const dot=document.createElement("span");dot.id="st40CabinetAutoSyncDot";
-    dot.className="st40-dot"+(cp.ok===true?"":" off");
+    dot.className="st40-dot"+(C.sandbox?.status?.()?.accountSync?.phase==="synced"?"":" off");
     const status=document.createElement("span");status.id="st40CabinetAutoSync";status.textContent=syncMessage(cp);
     sync.append(dot,status);
     const research=document.createElement("div");research.className="st40-ok";
@@ -355,7 +364,8 @@
     if(sawMeTools){clearTimeout(timer);timer=setTimeout(renderMe,0)}
   });
   if(layer)mo.observe(layer,{childList:true,subtree:true});
-  window.addEventListener("setka:v40-research-bridge",renderMe);window.addEventListener("setka:v40-private-corpus",()=>{renderMe();updateCabinetSync()});window.addEventListener("setka:v40-account",e=>{const d=e?.detail;if(d?.authenticated)cache({...cached(),...safeState(d),authenticated:true});renderMe()});
+  window.addEventListener("setka:v40-research-bridge",renderMe);window.addEventListener("setka:v40-private-corpus",()=>{renderMe();updateCabinetSync()});
+  window.addEventListener("setka:account-sync-status",()=>{updateCabinetSync();renderMe()});window.addEventListener("setka:v40-account",e=>{const d=e?.detail;if(d?.authenticated)cache({...cached(),...safeState(d),authenticated:true});renderMe()});
   setTimeout(async()=>{cached();renderMe();await refresh(true);renderMe()},700);
   window.__SETKA_TESTER_CABINET_V40__={refresh:()=>refresh(true),show:showCabinet,recover:showRecover,state:()=>cached(),logout};
 })();
