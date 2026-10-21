@@ -1,6 +1,6 @@
 // Front, note previews and research event replay share the same algorithms.
 // This entry initializes no UI, personal storage or telemetry.
-import '../standalone-pattern-registry-v1.js?v=1.2.0-spiral-snakes-20261021';
+import '../standalone-pattern-registry-v1.js';
 import '../standalone-pattern-renderers-v1.js';
 import '../standalone-pattern-plugins-v1.js';
 const registry=globalThis.SetkaPatternRegistryV1;
