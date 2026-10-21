@@ -3,6 +3,7 @@
   "id": "rain",
   "title": "Поток · Rain",
   "version": 1,
+  "introducedAt": "2026-10-21T17:23:24.000Z",
   "schemaVersion": 1,
   "module": "standalone-pattern-rain.js",
   "colorModes": 4,
