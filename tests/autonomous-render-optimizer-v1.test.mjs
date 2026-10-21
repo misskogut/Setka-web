@@ -68,3 +68,18 @@ test("the performance governor shares one work budget across mother and note pre
   assert.equal(snapshot.groups.length,2);
   assert.equal(snapshot.groups.reduce((sum,x)=>sum+x.painted,0),2);
 });
+
+test("sparse-line art is automatically protected from resolution reduction",()=>{
+  const {engine,setTime,el}=setup(),canvas=el();
+  const data=new Uint8ClampedArray(canvas.width*canvas.height*4);
+  for(let i=0;i<15;i++){const o=i*400;data[o]=255;data[o+1]=255;data[o+2]=255;data[o+3]=255;}
+  canvas.getContext=()=>({getImageData:()=>({data})});
+  engine.choose("library",Array.from({length:9},(_,i)=>[i?el():canvas,{patternId:"sparse-"+i}]),100);
+  for(let i=0;i<44;i++){
+    const at=200+i*33;setTime(at);
+    engine.paint("library",canvas,"sparse-0",at,()=>{setTime(at+7)});
+  }
+  const p=engine.status().patterns.find(x=>x.id==="sparse-0");
+  assert.equal(p.resolutionScale,1,"small numbers of lines must never disappear");
+  assert.equal(p.limitation,"renderer-bound","report a true algorithm bottleneck instead");
+});
