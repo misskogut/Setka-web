@@ -361,3 +361,16 @@ test("preview cadence covers all nine mother cards and never increments the queu
   assert.match(renderer,/rasterBudget=Math\.min\(POINT_BUDGET,Math\.max\(12000,Math\.round\(w\*h\/3\)\)\)/);
   assert.doesNotMatch(renderer,/\bpreview\s*\?/);
 });
+
+test("opening Community never erases historical local configurations or fakes popularity",()=>{
+  const js=read("standalone-community-cloud-v38.js");
+  assert.doesNotMatch(js,/d\.localCommunity\s*=\s*\[\]/);
+  assert.match(js,/items\.filter\(item=>Number\.isFinite\(Number\(item\.saveCount\)\)\&\&Number\(item\.saveCount\)>0\)/);
+});
+test("favorite archives are not rewritten during startup; new renderers trigger rechecking",()=>{
+  const js=read("app-v7-multipattern.js");
+  assert.match(js,/favorites=loadFavorites\(\);\s*renderLibrary\(\)/);
+  assert.match(js,/Startup is read-only/);
+  assert.doesNotMatch(js,/persistFavorites\(\);buildColorDots\(\)/);
+  assert.match(js,/unavailableReason:/);
+});
