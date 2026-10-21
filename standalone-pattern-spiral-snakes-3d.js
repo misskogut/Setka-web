@@ -19,11 +19,6 @@ function color(mode,theta,phase){
   if(mode===7)return theta%TAU<Math.PI?"#ff9fd4":"#86fff2";
   return "#ffd9a0";
 }
-function point(phi,theta,frequency){
-  const r=80+20*Math.sin(frequency*phi+theta);
-  const ring=150+r*Math.cos(phi);
-  return [ring*Math.cos(theta),ring*Math.sin(theta),r*Math.sin(phi)];
-}
 function render(ctx,width,height,c,frame){
   const w=Math.max(1,width),h=Math.max(1,height),n=c.numSnakes|0;
   const history=clamp(Math.trunc(c.baseHistory*0.02/c.waveSpeed),100,PHI_STEP_LIMIT);
