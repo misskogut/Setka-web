@@ -37,7 +37,7 @@ function rebuild(){
    const kind=fingers===0?"slider":gesture==="Тап"?"tap":fingers===2?"two":"one";
    if(kind!==group){
      const head=document.createElement("div");head.className="sk-section";
-     head.textContent=kind==="slider"?"ТОЛЬКО БЕГУНКОМ":kind==="tap"?"КАСАНИЕ":kind==="two"?"СВАЙП · 2 ПАЛЬЦА":"СВАЙП · 1 ПАЛЬЦЕМ";
+     head.textContent=kind==="slider"?"ТОЛЬКО БЕГУНКОМ":kind==="tap"?"КАСАНИЕ":kind==="two"?"СВАЙП · 2 ПАЛЬЦАМИ":"СВАЙП · 1 ПАЛЬЦЕМ";
      list.append(head);group=kind;
    }
    const box=document.createElement("div");box.className="sk-setting";
