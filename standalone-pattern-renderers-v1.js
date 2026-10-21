@@ -101,7 +101,14 @@ if(!registry)throw new Error("pattern_registry_required");
     // Orient ONLY the geometry. All UI, gesture zones and saved snapshots
     // remain portrait; this is exactly a clockwise phone rotation.
     t.translate(w,0);t.rotate(Math.PI/2);
-    const vw=h,vh=w,sx=vw/c.cols,sy=vh/c.rows;
+    // The square mother thumbnail defines this pattern's original geometry:
+    // after the clockwise rotation, cells are c.cols/c.rows times wider than tall.
+    // Using h/c.cols on a portrait phone stretched the short preview rectangles
+    // toward squares. Keep ONE uniform reference scale for both views and
+    // extend the repeated grid offscreen to cover the taller/wider viewport.
+    const vw=h,vh=w,reference=Math.min(vw,vh);
+    const sx=reference/c.cols,sy=reference/c.rows;
+    const visibleCols=Math.ceil(vw/sx),visibleRows=Math.ceil(vh/sy);
     const time=f*c.speed*2.25;
     const palette=GRID_PALETTES[c.colorModeIndex]||GRID_PALETTES[0];
     const white=c.colorModeIndex===0;
@@ -111,9 +118,9 @@ if(!registry)throw new Error("pattern_registry_required");
     if(offset)t.translate(offset.y,-offset.x);
     t.lineJoin="miter";t.lineWidth=c.lineWidth;
     if(white)t.strokeStyle="rgba(255,255,255,"+a+")";
-    for(let i=0;i<c.cols;i++){
+    for(let i=0;i<visibleCols;i++){
       const cx=(i+.5)*sx;
-      for(let j=0;j<c.rows;j++){
+      for(let j=0;j<visibleRows;j++){
         const cy=(j+.5)*sy;
         const breath=1+c.amp*Math.sin(time+i*c.phaseX+j*c.phaseY);
         const rw=sx*c.scale*breath,rh=sy*c.scale*breath;
