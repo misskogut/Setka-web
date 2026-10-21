@@ -89,7 +89,9 @@ function render(ctx,width,height,c,frame,preview){
   const t=phase*.005;
   const theta=Math.sin((past+1)*.01*rotate);
   ctx.save();
-  ctx.translate(w/2-40*scale,h/2);
+  // Original p5 sketch deliberately offset the whole scene by -40 px.
+  // SETKA uses a centered, square viewport so library cards align in rows.
+  ctx.translate(w/2,h/2);
   ctx.rotate(theta);
   ctx.scale(scale,scale);
   ctx.lineCap="round";
