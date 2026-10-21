@@ -35,7 +35,7 @@ const NAV={home:['01 / ОБЗОР','Главная','Общая картина �
 let adminKey='',data=null,page='home',busy=false,player=null,animation=0,renderToken=0,sessionKind='measured',communityTab='patterns',researchTab='outcomes',selectedPattern=null,participantsTab='people';
 let filters={scope:'current',from:null,to:null};
 const registry=globalThis.SetkaPatternRegistryV1;
-let communityData=null,communityError=null,lastError=null;
+let communityData=null,communityError=null,lastError=null,catalogError=null;
 const dialog=$('detail-dialog'),detail=$('detail-content');
 
 async function api(action,payload={},url=API){
@@ -65,7 +65,7 @@ async function login(e){
 function logout(){adminKey='';credentialStore.clear();accessWarning='';data=null;communityData=null;player?.stop();stopPreviews();if(dialog.open)dialog.close();detail.replaceChildren();$('content').replaceChildren();$('workspace').hidden=true;$('login').hidden=false;$('key').hidden=false;$('key').required=true;$('key-label').hidden=false;$('login-error').textContent='';}
 async function refresh(initial=false){
   if(busy)return;busy=true;$('refresh').disabled=true;$('refresh').textContent='Обновляем…';if(initial)$('content').innerHTML=loading();
-  try{const catalog=await api('catalog').catch(()=>null);if(catalog?.items){registry.setTitles(catalog.items);registry.applyDefaults(catalog.defaults||[]);setPatternNames(catalog.items)}const out=await api('overview');if(!out.ok||!out.data)throw new Error('data_unavailable');data=out.data;setPatternNames(data.patternCatalog);lastError=null;communityData=null;communityError=null;$('updated').textContent=`Обновлено ${fmtDate(data.updatedAt)}`;$('live-status').textContent=data.sources.some(s=>!s.ok||s.truncated)?'Данные неполные':'Данные получены';render();}
+  try{catalogError=null;const catalog=await api('catalog').catch(e=>{catalogError=e;return null});if(Array.isArray(catalog?.items)){registry.setTitles(catalog.items);registry.applyDefaults(catalog.defaults||[]);setPatternNames(catalog.items)}else if(!catalogError)catalogError=new Error('catalog_invalid_response');const out=await api('overview');if(!out.ok||!out.data)throw new Error('data_unavailable');data=out.data;setPatternNames(data.patternCatalog);lastError=null;communityData=null;communityError=null;$('updated').textContent=`Обновлено ${fmtDate(data.updatedAt)}`;$('live-status').textContent=catalogError||data.sources.some(s=>!s.ok||s.truncated)?'Данные неполные':'Данные получены';render();}
   catch(e){lastError=e;if(e.status===403){logout();$('login-error').textContent=errorText(e);}else{$('notice').innerHTML=`<div class="notice error" role="alert">${esc(errorText(e))}${data?' Ранее полученные данные устарели.':''}</div>`;if(!data)$('content').innerHTML=empty('Данные не загружены','Нажмите «Обновить», когда соединение восстановится.');$('live-status').textContent='Не удалось обновить';}}
   finally{busy=false;$('refresh').disabled=false;$('refresh').textContent='↻ Обновить';}
 }
@@ -79,7 +79,7 @@ function setPeriod(){
   render();
 }
 function navigate(next){if(!NAV[next])return;page=next;history.replaceState(null,'',`#${next}`);document.querySelectorAll('.nav').forEach(b=>b.classList.toggle('selected',b.dataset.page===page));$('page-number').textContent=NAV[page][0];$('page-title').textContent=NAV[page][1];$('page-description').textContent=NAV[page][2];render();}
-function render(){if(!data)return;stopPreviews();renderToken++;const view=sliceData(data,filters);$('notice').innerHTML=`${accessWarning?`<div class="notice" role="status">${esc(accessWarning)}</div>`:''}<div class="notice">${filters.scope==='current'?'Показаны только данные вошедших аккаунтов. Гостевая история хранится на устройстве и здесь не учтена.':filters.scope==='history'?'Исторические записи показаны отдельно. Гостевое устройство не равно отдельному человеку.':'Аккаунты и исторические устройства показаны вместе. Неподтверждённые личности не объединены.'}${data.sources.some(s=>!s.ok||s.truncated)?' Часть источников недоступна — откройте диагностику.':''}${lastError?' Данные устарели: обновление не удалось.':''}</div>`;
+function render(){if(!data)return;stopPreviews();renderToken++;const view=sliceData(data,filters);$('notice').innerHTML=`${accessWarning?`<div class="notice" role="status">${esc(accessWarning)}</div>`:''}<div class="notice">${filters.scope==='current'?'Показаны только данные вошедших аккаунтов. Гостевая история хранится на устройстве и здесь не учтена.':filters.scope==='history'?'Исторические записи показаны отдельно. Гостевое устройство не равно отдельному человеку.':'Аккаунты и исторические устройства показаны вместе. Неподтверждённые личности не объединены.'}${data.sources.some(s=>!s.ok||s.truncated)?' Часть источников недоступна — откройте диагностику.':''}${catalogError?' Каталог паттернов не подтверждён сервером: названия и стартовые настройки могут быть устаревшими.':''}${lastError?' Данные устарели: обновление не удалось.':''}</div>`;
   ({home:homePage,sessions:sessionsPage,participants:participantsPage,patterns:patternsPage,community:communityPage,research:researchPage}[page])(view);
   bind($('content'));startPreviews();
 }
