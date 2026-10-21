@@ -144,6 +144,32 @@ try{
     "animation must share wave phase computation across snakes rather than repeating it per point: "+JSON.stringify(spiralWork));
   console.log("SPIRAL SNAKES SHARED TRIGONOMETRY / NO PREVIEW-SPECIFIC DOWNSAMPLING PASS",spiralWork);
 
+  // At equal dimensions and frame, preview and gameplay pixels remain
+  // identical. Small rasters need fewer subpixel points than a large
+  // gameplay canvas, with no preview-specific renderer or config mutation.
+  const rasterWork=await page.evaluate(()=>{
+    const R=window.SetkaPatternRegistryV1,id="spiral-snakes-3d";
+    const cfg=R.defaults(id),before=JSON.stringify(cfg);
+    function measure(w,h,preview){
+      const cv=document.createElement("canvas");cv.width=w;cv.height=h;
+      const ctx=cv.getContext("2d"),real=ctx.fillRect.bind(ctx);
+      let drawn=0;
+      ctx.fillRect=(...args)=>{drawn++;real(...args)};
+      R.render(ctx,w,h,cfg,44,preview,id);
+      return{drawn,checksum:cv.toDataURL()};
+    }
+    const little=measure(180,180,true),same=measure(180,180,false);
+    const big=measure(390,844,false);
+    return{smallDots:little.drawn,bigDots:big.drawn,
+      samePixels:little.checksum===same.checksum,unchanged:JSON.stringify(cfg)===before};
+  });
+  assert.equal(rasterWork.samePixels,true,"preview and gameplay share identical pixels at the same raster size");
+  assert.equal(rasterWork.unchanged,true,"resolution-aware raster work cannot rewrite the canonical pattern");
+  assert.ok(rasterWork.smallDots<rasterWork.bigDots,
+    "a small thumbnail must avoid subpixel overdraw while fullscreen retains more point samples: "+JSON.stringify(rasterWork));
+  console.log("SPIRAL SNAKES SMOOTH SMALL-RASTER DRAW BUDGET / SHARED RENDERER PASS",rasterWork);
+
+
 
   for(const p of result.images){
     assert.ok(p.visible>45,"first B&W preview must be visible: "+JSON.stringify(p));
