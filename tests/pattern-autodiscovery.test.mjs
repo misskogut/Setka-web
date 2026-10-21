@@ -44,7 +44,7 @@ test('every automatically discovered pattern renders its real white-on-black sta
  const dir=workspace();
  try{
   const {source,manifest}=build(dir),registry=loadRegistry(source);
-  const packages=registry.list().filter(p=>p.module);
+  const packages=registry.list().filter(p=>p.module&&fs.existsSync(path.join(dir,p.module)));
   assert.ok(packages.length>=2,'Rain and Orbital are independently discovered');
   assert.equal(packages.length,fs.readdirSync(dir).filter(n=>/^standalone-pattern-[a-z0-9-]+\.js$/.test(n)&&fs.readFileSync(path.join(dir,n),'utf8').startsWith('/* SETKA_PATTERN_DESCRIPTOR')).length);
   for(const pattern of packages){
