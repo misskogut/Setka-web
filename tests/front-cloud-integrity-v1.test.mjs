@@ -81,3 +81,15 @@ test('account screen distinguishes cloud restore, pending automatic upload and a
   assert.match(message({}),/ожидается/);
   assert.match(message({ok:true,updatedAt:'2026-10-14T01:00:00Z'}),/автоматически передана в облако/);
 });
+
+test('recovery UI distinguishes server-confirmed password change from a failed local sign-in',()=>{
+  const code=read('standalone-tester-cabinet-v40.js');
+  const start=code.indexOf('  async function showRecover(){'),end=code.indexOf('  async function showLogin(){',start);
+  assert.ok(start>=0&&end>start);
+  const recovery=code.slice(start,end);
+  assert.match(recovery,/timeoutMs:30000/);
+  assert.match(recovery,/recoveryConfirmed=true/);
+  assert.match(recovery,/Новый пароль уже установлен/);
+  assert.match(recovery,/Вернуться ко входу/);
+  assert.match(recovery,/Не удалось получить подтверждение восстановления/);
+});
