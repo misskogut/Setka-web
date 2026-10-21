@@ -46,6 +46,20 @@ try{
  const front=await context.newPage();front.on('pageerror',e=>errors.push(['front',e.message]));
  await front.goto(base+'/standalone-v34.html',{waitUntil:'domcontentloaded'});
  await front.waitForFunction(()=>!!window.SetkaStandaloneV34?.cloudCommunity);
+ const contractionPixels=await front.evaluate(()=>{
+  const R=window.SetkaPatternRegistryV1,id='breathing-fractal-growth';
+  const config=R.defaults(id),canvas=document.createElement('canvas');
+  canvas.width=180;canvas.height=180;
+  const context=canvas.getContext('2d');
+  return [0,50,100,150,200].map(frame=>{
+    R.render(context,180,180,config,frame,true,id);
+    const data=context.getImageData(0,0,180,180).data;
+    let pixels=0;for(let i=0;i<data.length;i+=4)if(data[i]+data[i+1]+data[i+2]>70)pixels++;
+    return pixels;
+  });
+ });
+ assert.ok(contractionPixels.every(n=>n>20),'growth pattern must remain visible during every contraction on WebKit: '+contractionPixels.join(','));
+ console.log('GROWTH CANVAS: FULL-CYCLE NONBLANK PREVIEW PASS',contractionPixels);
  await front.locator('#communityPagerButton').click();
  await front.waitForFunction(()=>!!window.SetkaStandaloneV34?.cloudCommunity?.status()?.lastOkAt);
  assert.equal(await front.locator('#st40CommunityLoadError').count(),0);
