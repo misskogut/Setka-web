@@ -49,6 +49,7 @@ try{
  assert.equal(await front.locator('#st40CommunityLoadError').count(),0);
  feedMalformed=true;
  await front.evaluate(()=>window.SetkaStandaloneV34.cloudCommunity.refresh());
+ await front.waitForFunction(()=>!!window.SetkaStandaloneV34.cloudCommunity.status().lastError,{timeout:15000});
  const state=await front.evaluate(()=>window.SetkaStandaloneV34.cloudCommunity.status());
  assert.match(state.lastError,/community_invalid_response/,'HTTP 200 without items cannot masquerade as empty confirmed feed');
  await front.locator('#st40CommunityLoadError').waitFor();
