@@ -5,7 +5,7 @@
   const API="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-community-patterns-v38";
   const API_KEY="sb_publishable_1jL-x9_kp6rpfGghpSp_OA_OiXDnvsv";
   const MODES=new Set(["for_me","popular","new","notes"]);
-  let items=[],metrics=null,patternMetrics=[],patternScenarios=[],historicalPatterns=[],publicNotes=[],busy=false,notesBusy=false,timer=0,lastOkAt=null,lastError=null,lastPage=Setka.getState?.()?.libraryPage||null,viewEpoch=0;
+  let items=[],metrics=null,patternMetrics=[],patternScenarios=[],historicalPatterns=[],publicNotes=[],busy=false,refreshQueued=false,notesBusy=false,timer=0,lastOkAt=null,lastError=null,lastPage=Setka.getState?.()?.libraryPage||null,viewEpoch=0;
 
   const style=document.createElement("style");
   style.textContent=`
@@ -150,7 +150,7 @@
   }
 
   async function refresh(){
-    if(busy)return;busy=true;lastError=null;
+    if(busy){refreshQueued=true;return;}busy=true;lastError=null;
     const epoch=viewEpoch;
     try{
       const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json","apikey":API_KEY},body:JSON.stringify({action:"feed",limit:300})});
@@ -168,7 +168,7 @@
       lastError=String(e?.message||e);retainLegacyLocal();
       if(mode()!=="notes"){if(!items.length){C.publicCommunity=[];Setka.setCommunity?.([])}showAvailability()}
       window.dispatchEvent(new CustomEvent("setka:community-cloud",{detail:{ok:false,error:lastError}}));
-    }finally{busy=false}
+    }finally{busy=false;if(refreshQueued){refreshQueued=false;schedule(0)}}
   }
   function schedule(ms=600){clearTimeout(timer);timer=setTimeout(refresh,ms)}
 
