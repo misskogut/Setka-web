@@ -13,7 +13,7 @@ try{
   const errors=[];page.on("pageerror",e=>errors.push(e.message));
   await page.route("**/functions/v1/**",r=>r.fulfill({status:200,contentType:"application/json",headers:{"access-control-allow-origin":"*"},body:JSON.stringify({ok:true,items:[],metrics:{},patternMetrics:[],notes:[],profile:{}})}));
   await page.goto(base+"/standalone-v34.html",{waitUntil:"domcontentloaded"});
-  await page.waitForFunction(()=>window.SetkaApp?.getPatterns?.().length===8);
+  await page.waitForFunction(()=>window.SetkaApp?.getPatterns?.().length===window.SetkaPatternRegistryV1?.ids?.().length);
   // The descriptor, mother thumbnail and fullscreen must all open from the
   // same canonical recipe, with DNA initially black/white. The original color
   // palettes remain selectable as personal configurations.
@@ -80,7 +80,7 @@ try{
     const snapshot=S.cloneConfig({...grid.defaults,cols:27,rows:18,amp:.27,colorModeIndex:3},grid.id);
     return {patterns:p.length,images,changed:before!==after,config:snapshot,hasKey:Boolean(window.SetkaPatternKeyV1)};
   });
-  assert.equal(result.patterns,8);
+  assert.equal(result.patterns,9,'Spiral Snakes auto-registers as the ninth mother pattern');
   for(const p of result.images){
     assert.ok(p.visible>45,"first B&W preview must be visible: "+JSON.stringify(p));
     assert.equal(p.colored,0,"FIRST color must be monochrome: "+JSON.stringify(p));
