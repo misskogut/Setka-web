@@ -74,7 +74,31 @@ function applyResolution(canvas,quality){
   if(canvas.width!==width)canvas.width=width;
   if(canvas.height!==height)canvas.height=height;
 }
-function tune(p,goal){
+function canReduceResolution(canvas){
+  // Sparse-line art needs every physical pixel. Before changing raster size,
+  // inspect the already rendered frame ONCE to ensure it has sufficient
+  // populated pixels. This does not change the artwork or personal data.
+  if(!canvas?.getContext)return true; // Synthetic non-DOM benchmark surface.
+  try{
+    const w=canvas.width|0,h=canvas.height|0;
+    if(w<8||h<8||w*h>650000)return false;
+    const data=canvas.getContext("2d").getImageData(0,0,w,h).data;
+    let foreground=0,total=0;
+    const stride=Math.max(1,Math.floor(w*h/5500));
+    const base=[data[0],data[1],data[2]];
+    for(let pixel=0;pixel<w*h;pixel+=stride){
+      const o=pixel*4;
+      if(Math.abs(data[o]-base[0])+Math.abs(data[o+1]-base[1])+
+         Math.abs(data[o+2]-base[2])>35)foreground++;
+      total++;
+    }
+    // Less than 1% occupied: keep native resolution and line detail.
+    return total>0&&foreground/total>=.01;
+  }catch(_){
+    return false; // Fail closed for canvas security/compatibility problems.
+  }
+}
+function tune(p,goal,canvas){
   if(p.samples<12||p.samples%12!==0)return;
   if(p.attempt){
     // If fewer raster pixels did NOT reduce render time, revert and stop
@@ -88,6 +112,10 @@ function tune(p,goal){
   if(p.mean>goal*1.5){p.pressure++;p.healthy=0;}
   else{p.healthy++;p.pressure=Math.max(0,p.pressure-1);}
   if(p.pressure>=2&&!p.noBenefit&&p.quality>MIN_QUALITY){
+    if(!canReduceResolution(canvas)){
+      p.noBenefit=true;p.pressure=0;
+      return;
+    }
     const previous=p.mean;
     p.quality=clamp(Math.round((p.quality-.1)*100)/100,MIN_QUALITY,1);
     p.attempt={baseline:previous};
@@ -110,7 +138,7 @@ function paint(name,canvas,id,now,render,options={}){
     if(s)s.last=now;
     globalSpent+=spent;
     const goal=Math.max(2,WORK_BUDGET/Math.max(1,g.visible));
-    if(options.adaptiveResolution!==false)tune(p,goal);
+    if(options.adaptiveResolution!==false)tune(p,goal,canvas);
     return result;
   }catch(e){
     p.skipped++;g.skipped++;throw e;
