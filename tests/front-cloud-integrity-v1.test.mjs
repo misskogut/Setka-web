@@ -96,7 +96,7 @@ test('recovery UI distinguishes server-confirmed password change from a failed l
 
 test('account login avoids CORS preflight on iOS and never disguises local data save failure as a password error',()=>{
   const code=read('standalone-tester-cabinet-v40.js');
-  assert.match(code,/headers:\{"Content-Type":"text\\/plain;charset=UTF-8"\}/);
+  assert.ok(code.includes('headers:{"Content-Type":"text/plain;charset=UTF-8"}'));
   assert.match(code,/options\.timeoutMs\?\?30000/);
   assert.match(code,/action:"login"[\s\S]*?timeoutMs:30000/);
   assert.match(code,/local_archive_not_saved:"Пароль принят сервером/);
