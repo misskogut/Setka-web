@@ -71,6 +71,25 @@ try{
    'game exit must restore its source library: '+source);
  }
  console.log('FRONT: BASE / FAVORITES / COMMUNITY RETURN NAVIGATION PASS');
+ // A filled heart means "remove", an empty heart means "save": verify both
+ // states, and verify the UI tile exists after the canonical model changes.
+ const opened=await front.evaluate(()=>{
+  const S=window.SetkaApp,id='dandelion';
+  return S.openConfig(S.getPatternDefaults(id),{type:'base',id,patternId:id});
+ });
+ assert.equal(opened,true);
+ const before=await front.evaluate(()=>window.SetkaApp.getFavorites().length);
+ await front.locator('#favoriteButton').click();
+ await front.waitForFunction(n=>window.SetkaApp.getFavorites().length===n+1,before);
+ await front.locator('#libraryButton').click();
+ await front.locator('#favoritesPagerButton').click();
+ await front.locator('#favoritesPanel .favorite-tile').first().waitFor();
+ await front.locator('#favoritesPanel .favorite-tile').first().click();
+ await front.getByRole('button',{name:'Просто посмотреть',exact:true}).click();
+ await front.locator('#gameScreen.active').waitFor();
+ await front.locator('#favoriteButton').click();
+ await front.waitForFunction(n=>window.SetkaApp.getFavorites().length===n,before);
+ console.log('FRONT: FAVORITE SAVE → PREVIEW → OPEN → UNSAVE PASS');
 
  const admin=await context.newPage();admin.on('pageerror',e=>errors.push(['research-admin',e.message]));
  await admin.goto(base+'/standalone-research-admin-v1.html',{waitUntil:'domcontentloaded'});
