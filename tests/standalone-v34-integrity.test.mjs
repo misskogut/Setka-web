@@ -326,3 +326,25 @@ test("animated pattern previews advance smoothly and resume without time or rebu
   step(5516);
   assert.ok(draws.at(-1).frame>=last,"resumed preview never resets to the start");
 });
+
+test("every mother pattern reads the same canonical registry defaults for preview, launch, and saved mother gesture",()=>{
+  const sandbox={};
+  vm.runInNewContext(read("standalone-pattern-registry-v1.js"),sandbox);
+  const R=sandbox.SetkaPatternRegistryV1;
+  assert.ok(R&&R.ids().length>=8);
+  for(const id of R.ids()){
+    const recipe=R.defaults(id),descriptor=R.get(id);
+    assert.equal(recipe.patternId,id);
+    assert.equal(R.configKey(recipe,id),R.configKey(descriptor.defaults,id));
+  }
+  assert.equal(R.defaults("stereo-dna").colorModeIndex,0,
+    "Stereo DNA canonical mother must be black-white");
+  assert.equal(R.get("stereo-dna").colorModes,9,
+    "color choices must not be deleted to force a monochrome thumbnail");
+  const app=read("app-v7-multipattern.js");
+  assert.ok(app.includes('config:registry.defaults(p.id),previewFrame:BASE_PREVIEW_FRAME'));
+  assert.ok(app.includes('openConfig(cloneConfig(item.config||registry.defaults(patternId),patternId)'));
+  assert.ok(app.includes('const cfg=item.kind==="base"?registry.defaults(patternId):item.config'));
+  assert.ok(app.includes('getPatterns:()=>PATTERNS.map(p=>({id:p.id,title:registry.title(p.id),version:p.version,defaults:registry.defaults(p.id)}))'));
+  assert.doesNotMatch(app,/const remembered=source.type==="base"/);
+});
