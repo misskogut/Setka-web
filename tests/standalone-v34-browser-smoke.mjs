@@ -158,6 +158,52 @@ async function go(){
     row.patternId+" preview must not jump when tiles are rebuilt: "+JSON.stringify(row));
   console.log("LIVE PREVIEW PHASE STAYS STABLE ACROSS CATALOG REBUILD PASS",JSON.stringify(continuity));
 
+  // Breathing Grid: the canonical square thumbnail has HORIZONTAL rectangles.
+  // Portrait fullscreen must KEEP that exact cell aspect ratio, not turn them
+  // into squares by independently stretching columns/rows to screen size.
+  const gridGeometry=await page.evaluate(()=>{
+    const R=window.SetkaPatternRegistryV1;
+    const results=[];
+    for(const configured of [
+      {...R.defaults("breathing-grid"),amp:0},
+      {...R.defaults("breathing-grid"),cols:9,rows:18,amp:0,scale:0.72}
+    ]){
+      const measure=(width,height,preview)=>{
+        const cells=[],ctx={
+          save(){},restore(){},fillRect(){},translate(){},rotate(){},
+          strokeRect(x,y,w,h){cells.push({x,y,w,h})}
+        };
+        R.render(ctx,width,height,configured,44,preview,"breathing-grid");
+        if(!cells.length)throw Error("Breathing Grid did not draw any cells");
+        return {width,height,count:cells.length,ratio:cells[0].h/cells[0].w,
+          first:cells[0],last:cells.at(-1)};
+      };
+      const thumb=measure(180,180,true);
+      const iphone=measure(390,844,false);
+      const landscape=measure(844,390,false);
+      for(const full of [iphone,landscape]){
+        if(Math.abs(full.ratio-thumb.ratio)>0.0000001)
+          throw Error("Cell proportions changed: "+JSON.stringify({thumb,full}));
+        if(full.count<thumb.count)
+          throw Error("Grid did not extend its cells to fill screen: "+JSON.stringify({thumb,full}));
+      }
+      // Portrait viewport becomes taller, not more square: the renderer has to
+      // repeat the established cell pitch farther down instead of stretching it.
+      const expectedCount=Math.ceil(844/(390/configured.cols))*configured.rows;
+      if(iphone.count!==expectedCount)
+        throw Error("Unexpected fullscreen cell coverage: "+JSON.stringify({expectedCount,iphone}));
+      results.push({cols:configured.cols,rows:configured.rows,thumbnail:thumb,iphone,landscape});
+    }
+    return results;
+  });
+  assert.equal(gridGeometry.length,2);
+  for(const row of gridGeometry){
+    assert.ok(Math.abs(row.thumbnail.ratio-row.iphone.ratio)<1e-7);
+    assert.ok(Math.abs(row.thumbnail.ratio-row.landscape.ratio)<1e-7);
+  }
+  console.log("BREATHING GRID RECTANGLES KEEP THUMBNAIL ASPECT ON IPHONE PASS",
+    JSON.stringify(gridGeometry.map(x=>({cols:x.cols,rows:x.rows,ratio:x.thumbnail.ratio,phoneRatio:x.iphone.ratio}))));
+
   // Regression: a mother tile must open the same baseline recipe that its live preview uses,
   // even if a previous visit changed that mother's sliders or color palette.
   const parity=await page.evaluate(()=>{
