@@ -5,7 +5,7 @@
   const API="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-community-patterns-v38";
   const API_KEY="sb_publishable_1jL-x9_kp6rpfGghpSp_OA_OiXDnvsv";
   const MODES=new Set(["for_me","popular","new","notes"]);
-  let items=[],metrics=null,patternMetrics=[],patternScenarios=[],historicalPatterns=[],publicNotes=[],busy=false,notesBusy=false,timer=0,lastOkAt=null,lastError=null,lastPage=Setka.getState?.()?.libraryPage||null,viewEpoch=0;
+  let items=[],metrics=null,patternMetrics=[],patternScenarios=[],historicalPatterns=[],publicNotes=[],busy=false,refreshQueued=false,notesBusy=false,timer=0,lastOkAt=null,lastError=null,lastPage=Setka.getState?.()?.libraryPage||null,viewEpoch=0;
 
   const style=document.createElement("style");
   style.textContent=`
@@ -75,11 +75,22 @@
     });
   }
 
+  function showAvailability(){
+    const panel=document.getElementById("communityPanel");if(!panel)return;
+    panel.querySelector("#st40CommunityLoadError")?.remove();
+    if(!lastError||mode()==="notes")return;
+    const warning=document.createElement("div");warning.id="st40CommunityLoadError";
+    warning.className="st40-community-empty";warning.setAttribute("role","status");
+    warning.textContent=items.length?
+      "Не удалось обновить сообщество. Показаны ранее подтверждённые данные.":
+      "Сообщество временно недоступно. Актуальные данные не подтверждены сервером.";
+    panel.prepend(warning);
+  }
   function renderPatterns(){
     if(mode()==="notes")return;
     document.getElementById("st40CommunityNotes")?.remove();
     const title=document.getElementById("libraryTitle");if(title)title.textContent="Сообщество";
-    const shown=sorted();C.publicCommunity=shown;Setka.setCommunity?.(shown);syncModeUi();cleanPatternTiles();
+    const shown=sorted();C.publicCommunity=shown;Setka.setCommunity?.(shown);syncModeUi();cleanPatternTiles();showAvailability();
   }
 
   async function loadNotes(force=false){
@@ -139,14 +150,15 @@
   }
 
   async function refresh(){
-    if(busy)return;busy=true;lastError=null;
+    if(busy){refreshQueued=true;return;}busy=true; // Retain stale/error status until a successful read.
     const epoch=viewEpoch;
     try{
       const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json","apikey":API_KEY},body:JSON.stringify({action:"feed",limit:300})});
       const out=await r.json().catch(()=>({}));if(!r.ok)throw new Error(out.error||`community_${r.status}`);
-      items=Array.isArray(out.items)?out.items.map(x=>({...x,createdAt:x.created_at||x.createdAt||null,localOnly:false})):[];
+      if(out.ok!==true||!Array.isArray(out.items))throw Error("community_invalid_response");
+      items=out.items.map(x=>({...x,createdAt:x.created_at||x.createdAt||null,localOnly:false}));
       metrics=out.metrics&&typeof out.metrics==="object"?out.metrics:null;patternMetrics=Array.isArray(out.patternMetrics)?out.patternMetrics:[];patternScenarios=Array.isArray(out.patternScenarios)?out.patternScenarios:[];historicalPatterns=Array.isArray(out.historicalPatterns)?out.historicalPatterns:[];
-      lastOkAt=new Date().toISOString();
+      lastError=null;lastOkAt=new Date().toISOString();
       if(epoch===viewEpoch){
         if(mode()==="notes"){await loadNotes(false);if(epoch===viewEpoch&&mode()==="notes")renderNotes()}
         else renderPatterns();
@@ -154,9 +166,9 @@
       window.dispatchEvent(new CustomEvent("setka:community-cloud",{detail:{ok:true,count:items.length,mode:mode(),updatedAt:lastOkAt,metrics,patternMetrics,patternScenarios,historicalPatterns}}));
     }catch(e){
       lastError=String(e?.message||e);retainLegacyLocal();
-      if(mode()!=="notes"&&!items.length){C.publicCommunity=[];Setka.setCommunity?.([])}
+      if(mode()!=="notes"){if(!items.length){C.publicCommunity=[];Setka.setCommunity?.([])}showAvailability()}
       window.dispatchEvent(new CustomEvent("setka:community-cloud",{detail:{ok:false,error:lastError}}));
-    }finally{busy=false}
+    }finally{busy=false;if(refreshQueued){refreshQueued=false;schedule(0)}}
   }
   function schedule(ms=600){clearTimeout(timer);timer=setTimeout(refresh,ms)}
 

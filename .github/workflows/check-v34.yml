@@ -104,6 +104,7 @@ on:
       - 'supabase/functions/setka-standalone-v34/index.ts'
       - 'supabase/functions/setka-tester-archive-v37/index.ts'
       - 'tests/standalone-v34-browser-smoke.mjs'
+      - 'tests/setka-front-research-audit-browser.mjs'
       - 'tests/standalone-v34-admin-browser-smoke.mjs'
       - 'tests/standalone-v34-admin-integrity.test.mjs'
       - 'supabase/functions/setka-pattern-knowledge-v40/index.ts'
@@ -203,6 +204,9 @@ jobs:
           node-version: '22'
       - run: npm install --no-save --ignore-scripts playwright esbuild
       - run: npx playwright install --with-deps chromium webkit
+      # Fail fast on cross-surface contract issues before slower visual suites.
+      - run: node tests/setka-front-research-audit-browser.mjs
+      - run: SETKA_BROWSER=webkit node tests/setka-front-research-audit-browser.mjs
       # Audio has an independent safety regression; run it before the full UI
       # suite so a flaky unrelated preview does not obscure mic test results.
       - run: node tests/standalone-breathing-grid-browser-smoke.mjs
