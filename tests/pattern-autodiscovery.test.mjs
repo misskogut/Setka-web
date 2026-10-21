@@ -60,17 +60,29 @@ test('every automatically discovered pattern renders its real white-on-black sta
    assert.ok(manifest.patterns.some(p=>p.id===pattern.id),'same manifest '+pattern.id);
    function trace(config,frame){
      const strokes=[],fills=[],gradientStops=[];
-     let start,end;
+     let start,end,totalStrokes=0;
      const ctx={
        save(){},restore(){},translate(){},scale(){},rotate(){},beginPath(){},
        fillRect(){fills.push(this.fillStyle)},
        createLinearGradient(){const stops=[];gradientStops.push(stops);return {__stops:stops,addColorStop(_,v){stops.push(v)}}},
        moveTo(x,y){start=[x,y]},
        lineTo(x,y){end=[x,y]},
-       stroke(){if(strokes.length<20)strokes.push({start,end,color:typeof this.strokeStyle==='string'?this.strokeStyle:this.strokeStyle.__stops.slice()});}
+       stroke(){totalStrokes++;if(strokes.length<20)strokes.push({start,end,color:typeof this.strokeStyle==='string'?this.strokeStyle:this.strokeStyle.__stops.slice()});}
      };
      registry.render(ctx,250,250,config,frame,true,pattern.id);
-     return {strokes,fills,gradientStops};
+     return {strokes,fills,gradientStops,totalStrokes};
+   }
+   // A future unknown package declaring a trail control must show a visibly
+   // different, deterministic exposure at a fixed replay frame. This is
+   // enforced by feature contract, not by a hardcoded pattern ID.
+   if(pattern.controls.some(row=>row[1]==='trail')){
+     const clear=trace({...c,trail:0},220),trailed=trace({...c,trail:100},220);
+     assert.ok(trailed.totalStrokes>clear.totalStrokes,
+       'trail enables additional visible temporal samples: '+pattern.id);
+     assert.notDeepEqual(trailed.strokes,clear.strokes,
+       'trail visually changes the same replay frame: '+pattern.id);
+     assert.deepEqual(trailed,trace({...c,trail:100},220),
+       'trail remains deterministic on direct-open notes/research: '+pattern.id);
    }
    const a=trace(c,44),b=trace(c,44);
    assert.ok(a.fills.includes('#000'),'real black canvas '+pattern.id);
