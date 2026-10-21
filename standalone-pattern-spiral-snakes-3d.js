@@ -19,11 +19,6 @@ function color(mode,theta,phase){
   if(mode===7)return theta%TAU<Math.PI?"#ff9fd4":"#86fff2";
   return "#ffd9a0";
 }
-function point(phi,theta,frequency){
-  const r=80+20*Math.sin(frequency*phi+theta);
-  const ring=150+r*Math.cos(phi);
-  return [ring*Math.cos(theta),ring*Math.sin(theta),r*Math.sin(phi)];
-}
 function render(ctx,width,height,c,frame){
   const w=Math.max(1,width),h=Math.max(1,height),n=c.numSnakes|0;
   const history=clamp(Math.trunc(c.baseHistory*0.02/c.waveSpeed),100,PHI_STEP_LIMIT);
@@ -32,6 +27,23 @@ function render(ctx,width,height,c,frame){
   // thumbnail or replay can now jump directly to frame N without hidden state.
   const stride=Math.max(1,Math.ceil(n*history/POINT_BUDGET));
   const phase=frame*c.waveSpeed;
+  // Compute the shared wave phase once per history sample, not independently
+  // for each of the 60 snakes. This retains all original points, history,
+  // geometry, transparency bands and the exact same preview/fullscreen path.
+  const cosPhi=new Float64Array(history),sinPhi=new Float64Array(history);
+  const sinWave=new Float64Array(history),cosWave=new Float64Array(history);
+  for(let j=0;j<history;j++){
+    const phi=phase-(history-1-j)*c.waveSpeed;
+    cosPhi[j]=Math.cos(phi);sinPhi[j]=Math.sin(phi);
+    const thetaWave=c.waveFreq*phi;
+    sinWave[j]=Math.sin(thetaWave);cosWave[j]=Math.cos(thetaWave);
+  }
+  const thetaCos=new Float64Array(n),thetaSin=new Float64Array(n),snakeColors=new Array(n);
+  for(let i=0;i<n;i++){
+    const theta=TAU*i/n;
+    thetaCos[i]=Math.cos(theta);thetaSin[i]=Math.sin(theta);
+    snakeColors[i]=color(c.colorModeIndex,theta,phase);
+  }
   const rx=phase*0.2,ry=phase*0.3;
   const cosX=Math.cos(rx),sinX=Math.sin(rx),cosY=Math.cos(ry),sinY=Math.sin(ry);
   const unit=Math.min(w,h)/540*c.zoom;
@@ -43,13 +55,15 @@ function render(ctx,width,height,c,frame){
     const end=Math.min(history,Math.ceil((band+1)*history/AGE_BANDS));
     ctx.globalAlpha=clamp(((band+0.5)/AGE_BANDS)*0.96,0,1);
     for(let i=0;i<n;i++){
-      const theta=TAU*i/n;
-      ctx.fillStyle=color(c.colorModeIndex,theta,phase);
+      const thetaX=thetaCos[i],thetaY=thetaSin[i];
+      ctx.fillStyle=snakeColors[i];
       // Oldest historical samples first; the newest points reach full alpha.
       for(let j=first;j<end;j+=stride){
-        const age=history-1-j;
-        const phi=phase-age*c.waveSpeed;
-        const [x,y,z]=point(phi,theta,c.waveFreq);
+        // sin(frequency*phi + theta) = sin(frequency*phi)*cos(theta)
+        // + cos(frequency*phi)*sin(theta): one shared wave table per frame.
+        const radius=80+20*(sinWave[j]*thetaX+cosWave[j]*thetaY);
+        const ring=150+radius*cosPhi[j];
+        const x=ring*thetaX,y=ring*thetaY,z=radius*sinPhi[j];
         // p5 rotateX(phase*0.2); rotateY(phase*0.3)
         const x1=x*cosY+z*sinY, z1=-x*sinY+z*cosY;
         const y2=y*cosX-z1*sinX, z2=y*sinX+z1*cosX;
