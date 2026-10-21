@@ -70,7 +70,7 @@ try{
  await front.locator('#patternCanvas').tap({position:{x:190,y:330}});await front.evaluate(()=>window.SetkaStandaloneV34.activity.flush());
  const activity=await front.evaluate(()=>window.SetkaStandaloneV34.getData().activityIntervals);assert.ok(activity.some(x=>x.patternId==='dandelion'&&x.touches>0&&x.coverage==='observed'));assert.ok(activity.every(x=>x.configKey&&x.exposureId));
  await front.locator('#libraryButton').click();await front.reload({waitUntil:'domcontentloaded'});await front.waitForFunction(()=>!!window.__SETKA_PATTERN_CATALOG_V1__);
- assert.equal(await front.locator('.base-tile .setka-new-pattern').count(),7);
+ assert.equal(await front.locator('.base-tile .setka-new-pattern').count(),(await front.evaluate(()=>window.SetkaPatternRegistryV1.ids().length))-1,'one observed mother is no longer marked new');
  catalog.find(x=>x.pattern_id==='dandelion').title='Новое имя <b>паттерна</b>';
  await front.evaluate(()=>window.__SETKA_PATTERN_CATALOG_V1__.refresh());
  assert.equal(await front.locator('.base-tile[data-pattern-id="dandelion"]').getAttribute('aria-label'),'Открыть паттерн Новое имя <b>паттерна</b>. Удерживай, чтобы сохранить');
