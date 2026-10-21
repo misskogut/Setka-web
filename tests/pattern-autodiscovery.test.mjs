@@ -88,6 +88,22 @@ test('invalid package blocks the build before changing generated outputs',()=>{
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
 
+test('automated discovery refuses undefined or fractional gesture finger counts',()=>{
+ const dir=workspace();
+ try{
+  const before=build(dir);
+  const filename=path.join(dir,'standalone-pattern-invalid-gesture.js');
+  for(const count of [0.025,0.01,undefined,3]){
+   const descriptor=mini('invalid-gesture',{
+    controls:[['Speed','speed',0.1,10,0.1,'Снизу ←→',count]]
+   });
+   fs.writeFileSync(filename,packageContent(descriptor));
+   assert.throws(()=>build(dir),/invalid_gesture_contract/);
+   assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir,'setka-pattern-manifest-v1.json'),'utf8')),before.manifest);
+  }
+ }finally{fs.rmSync(dir,{recursive:true,force:true});}
+});
+
 test('no new standalone package may launch in color, even with valid controls',()=>{
  const dir=workspace();
  try{

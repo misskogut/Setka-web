@@ -37,7 +37,17 @@
       }
     }
     schema.colorModeIndex={type:"number",min:0,max:colorModes-1,integer:true};
-    for(const [label,key,min,max,step] of raw.controls){
+    for(const [label,key,min,max,step,gesture,fingers] of raw.controls){
+      // New modules must describe a real gesture: 0=slider only,
+      // 1=one finger/tap, 2=two fingers/pinch. Never use a speed factor here.
+      if(raw.module&&(!Number.isInteger(fingers)||fingers<0||fingers>2||
+          typeof gesture!=="string"||
+          (fingers===0&&!["Ползунок","Бегунок"].includes(gesture))||
+          (fingers>0&&["Ползунок","Бегунок"].includes(gesture))||
+          (gesture==="Пинч"&&fingers!==2)||
+          (gesture==="Тап"&&fingers!==1)||
+          (fingers>0&&gesture!=="Тап"&&gesture!=="Пинч"&&!/[↑↓←→]/.test(gesture))))
+        throw error("invalid_gesture_contract",raw.id+"/"+key);
       const rule=schema[key];
       if(!label||!rule||rule.type!=="number"||![min,max,step].every(Number.isFinite)||min>max||step<=0||rule.min!==min||rule.max!==max)
         throw error("invalid_control_schema",raw.id+"/"+key);
