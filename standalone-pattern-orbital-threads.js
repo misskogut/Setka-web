@@ -79,13 +79,23 @@ function render(ctx,width,height,c,frame,preview){
  ctx.save();
  ctx.fillStyle="#000";
  ctx.fillRect(0,0,w,h);
- // Trails are deterministic reconstructed past frames. Unlike an accumulated
- // alpha canvas, a saved frame/research replay is correct without its history.
- const ghosts=c.trail===0?0:(preview?2:4);
- const total=ghosts+1;
+ // Reconstruct a *continuous-looking* exposure from historical positions.
+ // The former four weak echoes (3 frames apart) looked like hard, disconnected
+ // strokes instead of the motion smear of the original sketch.
+ // Sampling absolute frame positions, rather than depending on an accumulated
+ // canvas, gives identical trails in gameplay, previews, notes and Replay.
+ // Rendering cost stays bounded for every declared lineCount and preview size.
+ const trailStrength=Math.max(0,Math.min(1,(Number(c.trail)||0)/100));
+ const ghosts=trailStrength===0?0:Math.max(2,Math.ceil((preview?8:14)*trailStrength));
+ const exposureFrames=trailStrength*(preview?74:112);
  for(let layer=ghosts;layer>=0;layer--){
-  const past=Math.max(0,f-layer*3);
-  const ghostAlpha=layer===0?1:Math.min(0.42,(c.trail/100)*0.46)*Math.exp(-layer*.65);
+  const age=ghosts?layer/ghosts:0;
+  // Ease samples toward the present so neighbouring traces merge smoothly.
+  const offset=exposureFrames*Math.pow(age,1.35);
+  if(layer>0&&offset>=f)continue; // No fabricated history before frame zero.
+  const past=Math.max(0,f-offset);
+  const ghostAlpha=layer===0?1:trailStrength*.65*Math.pow(1-age,1.45);
+  if(ghostAlpha<=0)continue;
   const phase=(past+1)*speed;
   const t=phase*.005;
   const theta=Math.sin((past+1)*.01*rotate);
@@ -96,7 +106,9 @@ function render(ctx,width,height,c,frame,preview){
   ctx.rotate(theta);
   ctx.scale(scale,scale);
   ctx.lineCap="round";
-  const increment=layer===0?stride:stride*2;
+  // Ghosts are cheaper than the sharp foreground but share its geometry.
+  // This density cap avoids multiplying mobile Canvas work by lineCount.
+  const increment=layer===0?stride:Math.max(stride,Math.ceil(lines/(preview?165:235)));
   for(let i=1;i<lines;i+=increment){
    const u=t+i;
    const sa=Math.sin(u/10),ca=Math.cos(u/10);
