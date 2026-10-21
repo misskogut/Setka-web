@@ -73,13 +73,17 @@ test('research contribution bridge uses the same temporary session',async()=>{
   const {context,requests,token}=storageContext('standalone-research-bridge-v40.js',{throwOnStorage:true});assert.equal(await context.__SETKA_RESEARCH_BRIDGE_V40__.sync(),true);assert.deepEqual(requests.map(x=>x.body.action),['status','my-status']);assert.ok(requests.every(x=>x.body.sessionToken===token));
 });
 test('account screen distinguishes cloud restore, pending automatic upload and a failed receipt',()=>{
-  const src=read('standalone-tester-cabinet-v40.js'),a=src.indexOf('  function syncMessage('),b=src.indexOf('  function updateCabinetSync(){',a),message=vm.runInNewContext(src.slice(a,b)+'\nsyncMessage;');
+  const src=read('standalone-tester-cabinet-v40.js'),a=src.indexOf('  function syncMessage('),b=src.indexOf('  function updateCabinetSync(){',a),message=vm.runInNewContext(src.slice(a,b)+'\nsyncMessage;', {C:{sandbox:{status:()=>({accountSync:{phase:'idle'}})}},session:()=>null});
   assert.match(message({ok:true,restored:true,updatedAt:'2026-08-31T10:00:00Z'}),/архив восстановлен из облака/);
   assert.doesNotMatch(message({ok:true,restored:true,updatedAt:'2026-08-31T10:00:00Z'}),/передана в облако/);
   assert.match(message({enabled:true,ok:false}),/обновление пока не прошло/i);
   assert.match(message({enabled:true,ok:false}),/автоматически/);
   assert.match(message({}),/ожидается/);
   assert.match(message({ok:true,updatedAt:'2026-10-14T01:00:00Z'}),/автоматически передана в облако/);
+  const current=vm.runInNewContext(src.slice(a,b)+'\nsyncMessage;', {C:{sandbox:{status:()=>({accountSync:{phase:'metrics'}})}},session:()=>({token:'fixture'})});
+  assert.match(current({ok:true,updatedAt:'2026-10-14T01:00:00Z'}),/исследовательской админки/);
+  const synced=vm.runInNewContext(src.slice(a,b)+'\nsyncMessage;', {C:{sandbox:{status:()=>({accountSync:{phase:'synced'}})}},session:()=>({token:'fixture'})});
+  assert.match(synced({ok:true}),/подтверждены сервером/);
 });
 
 test('recovery UI distinguishes server-confirmed password change from a failed local sign-in',()=>{
@@ -102,4 +106,20 @@ test('account login avoids CORS preflight on iOS and never disguises local data 
   assert.match(code,/local_archive_not_saved:"Пароль принят сервером/);
   assert.match(code,/if\(C\.whenSaved&&!await C\.whenSaved\(\)\)/);
   assert.match(code,/setSession\(out\.sessionToken,out\.sessionExpiresAt,out\.testerId\)/);
+});
+
+test('signed-in data sync is ordered: cloud restore, durable archive receipt, analytics receipt, then admin notification',()=>{
+  const service=read('standalone-sync-v34.js');
+  const admin=read('research-v1/app.mjs');
+  assert.match(service,/async function syncAccount\(\)/);
+  assert.ok(service.indexOf('await corpus.ensureHydrated?.()')<service.indexOf('await corpus.sync?.()'));
+  assert.ok(service.indexOf('await corpus.sync?.()')<service.indexOf('await sync(true)'));
+  assert.match(service,/if\(busy\)\{rerunRequested=true;return false\}/);
+  assert.match(service,/if\(rerunRequested\|\|signature\(\)!==sig\)/);
+  assert.match(service,/semantic\?\.ok!==true\|\|semantic\?\.ignored/);
+  assert.match(service,/Number\(semantic\?\.favorites\)!==fav.length/);
+  assert.match(service,/BroadcastChannel\("setka:research-sync-v1"\)/);
+  assert.match(admin,/BroadcastChannel\("setka:research-sync-v1"\)/);
+  assert.match(admin,/account-metrics-committed/);
+  assert.match(admin,/setInterval\(\(\)=>\{if\(adminKey/);
 });
