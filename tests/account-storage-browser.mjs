@@ -41,10 +41,14 @@ try{
  assert.equal(await page.evaluate(()=>window.SetkaDataScopeV1.legacyOwner()),'guest');
  await page.waitForFunction(()=>window.__SETKA_PRIVATE_CORPUS_V40__?.authoritative()&&window.SetkaApp.getFavorites().length===3);
  assert.deepEqual(await page.evaluate(()=>window.SetkaApp.getFavorites().map(f=>f.id).sort()),remoteFavorites.map(f=>f.id).sort());
+ await page.evaluate(()=>window.SetkaApp.openConfig(window.SetkaApp.getPatternDefaults('fish-wave'),{type:'base',id:'fish-wave',patternId:'fish-wave'}));
+ await page.locator('#favoriteButton').click();
+ await page.waitForFunction(()=>window.SetkaApp.getFavorites().length===4&&window.SetkaStandaloneV34.getData().settings.favoriteCollection?.rows.length===4);
+ await page.evaluate(()=>window.SetkaStandaloneV34.whenSaved());
  offlineArchive=true;
  await page.reload();await page.evaluate(async()=>{await window.SetkaStandaloneV34.ready;window.SetkaApp.setLibraryPage('favorites')});
- await page.waitForFunction(()=>window.SetkaApp.getFavorites().length===3);
- assert.equal(await page.locator('#favoritesPanel .favorite-tile').count(),3);
+ await page.waitForFunction(()=>window.SetkaApp.getFavorites().length===4);
+ assert.equal(await page.locator('#favoritesPanel .favorite-tile').count(),4);
  offlineArchive=false;
  await page.reload();await page.waitForFunction(()=>window.__SETKA_TESTER_CABINET_V40__?.state()?.authenticated===true);
  assert.equal(await page.evaluate(()=>window.SetkaDataScopeV1.id),'tester:T-ISOLATED');
@@ -58,6 +62,6 @@ try{
  await page.waitForFunction(()=>window.SetkaDataScopeV1?.id==='tester:T-ISOLATED');
  await page.waitForFunction(()=>window.__SETKA_TESTER_CABINET_V40__?.state()?.authenticated===true);
  assert.ok(requests.includes('login'));
- await page.waitForFunction(()=>window.SetkaApp.getFavorites().length===3);
- console.log('RECOVERY STORAGE PASS: three cloud recipes, full localStorage, IndexedDB offline reload, temporary session, logout and ordinary password login');
+ await page.waitForFunction(()=>window.SetkaApp.getFavorites().length===4);
+ console.log('RECOVERY STORAGE PASS: three cloud recipes plus a new favorite, full localStorage, IndexedDB offline reload, temporary session, logout and ordinary password login');
 }finally{await browser?.close();server.kill('SIGTERM')}
