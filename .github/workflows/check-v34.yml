@@ -14,6 +14,8 @@ on:
       - 'scripts/build-pattern-manifest.mjs'
       - 'tests/standalone-breathing-grid-browser-smoke.mjs'
       - 'standalone-live-previews-v1.js'
+      - 'standalone-auto-optimizer-v1.js'
+      - 'tests/autonomous-render-optimizer-v1.test.mjs'
       - 'tests/standalone-live-previews-v1-browser-smoke.mjs'
       - 'tests/standalone-audio-reactive-v1-browser-smoke.mjs'
       - 'standalone-multipattern-bridge-v34.js'
@@ -125,6 +127,8 @@ jobs:
       - run: node --check standalone-pattern-plugins-v1.js
       - run: node scripts/build-pattern-manifest.mjs
       - run: node --check standalone-live-previews-v1.js
+      - run: node --check standalone-auto-optimizer-v1.js
+      - run: node --test tests/autonomous-render-optimizer-v1.test.mjs
       - run: node --check scripts/build-standalone-release.mjs
       - run: node --test tests/standalone-one-link-release.test.mjs
       - run: node --check standalone-multipattern-bridge-v34.js
