@@ -87,7 +87,7 @@ try{
   assert.ok(!/точной настройкой/i.test(result.description||''));
   for(const control of pattern.controls){
    const [,key,,,,gesture,fingers]=control;
-   const title=fingers===0?'ТОЛЬКО БЕГУНКОМ':gesture==='Тап'?'КАСАНИЕ':fingers===2?'СВАЙП · 2 ПАЛЬЦАМИ':'СВАЙП · 1 ПАЛЬЦЕМ';
+   const title=fingers===0?'ТОЛЬКО БЕГУНКОМ':gesture==='Тап'?'КАСАНИЕ':fingers===2?'ЖЕСТЫ · 2 ПАЛЬЦАМИ':'СВАЙП · 1 ПАЛЬЦЕМ';
    assert.ok(result.headings.includes(title),'gesture title '+pattern.id+'/'+key);
   }
   await page.locator('#st34KeySheet [data-action="close"]').click();
