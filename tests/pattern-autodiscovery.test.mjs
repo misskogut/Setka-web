@@ -122,7 +122,7 @@ test('Rain draws actual white gradients on black in default mode and preserves b
   const initial=capture(R.defaults('rain'));
   assert.equal(initial.fills[0],'#000');
   assert.ok(initial.gradients.length>0);
-  assert.ok(initial.gradients.every(stops=>stops.every(color=>/^rgba\\(255,255,255,/.test(color))));
+  assert.ok(initial.gradients.every(stops=>stops.every(color=>/^rgba\(255,255,255,/.test(color))));
   const blue=capture({...R.defaults('rain'),colorModeIndex:0});
   assert.ok(blue.gradients.some(stops=>stops.some(color=>color.includes('rgba(0,200,255,'))));
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
