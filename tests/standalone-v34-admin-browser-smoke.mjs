@@ -30,9 +30,9 @@ try{
   await page.addScriptTag({url:root+"/standalone-pattern-registry-v1.js"});
   await page.addScriptTag({url:root+"/standalone-admin-pattern-knowledge-v40.js"});
   await page.locator(".tab[data-tab='pattern-knowledge']").click();
-  await page.waitForFunction(()=>document.querySelectorAll("#pk40Patterns button").length===8,{timeout:10000});
+  await page.waitForFunction(()=>document.querySelectorAll("#pk40Patterns button").length===window.SetkaPatternRegistryV1.ids().length,{timeout:10000});
   const patterns=await page.locator("#pk40Patterns button").allInnerTexts();
-  assert.equal(patterns.length,8);
+  assert.equal(patterns.length,await page.evaluate(()=>window.SetkaPatternRegistryV1.ids().length));
   assert.ok(patterns.some(t=>t.includes("Одуванчик")));
   assert.ok(patterns.some(t=>t.includes("Stereo DNA")));
   assert.equal(await page.locator("#pk40Observed .card").count(),2);
@@ -40,7 +40,7 @@ try{
   await page.locator("#pk40Patterns button").filter({hasText:"Одуванчик"}).click();
   assert.equal(await page.locator("#pk40Observed .card").count(),1);
   assert.match(await page.locator("#pk40Observed").innerText(),/12 просмотров/);
-  console.log("ADMIN 8 CATALOG + UNSAVED CONFIG VIEWS PASS");
+  console.log("ADMIN DYNAMIC CATALOG + UNSAVED CONFIG VIEWS PASS");
 
   // Admin preview must prefer frozen recipe identity to the structural shape.
   const fresh=await (await fetch(root+"/standalone-admin-note-snapshot-fix-v34.js")).text();
