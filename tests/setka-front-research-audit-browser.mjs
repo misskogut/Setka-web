@@ -102,7 +102,11 @@ try{
  await front.locator('#favoritesPagerButton').click();
  await front.locator('#favoritesPanel .favorite-tile').first().waitFor();
  await front.locator('#favoritesPanel .favorite-tile').first().click();
- await front.getByRole('button',{name:'Просто посмотреть',exact:true}).click();
+ // The common bridge shows a session-choice sheet only for paths without an
+ // active session; other paths legitimately open the renderer immediately.
+ await front.waitForFunction(()=>!!document.querySelector('#gameScreen.active')||!!document.querySelector('#st34MpChoice'));
+ if(await front.locator('#st34MpChoice').count())
+   await front.getByRole('button',{name:'Просто посмотреть',exact:true}).click();
  await front.locator('#gameScreen.active').waitFor();
  await front.locator('#favoriteButton').click();
  await front.waitForFunction(n=>window.SetkaApp.getFavorites().length===n,before);
