@@ -4,7 +4,7 @@ import {accessLink,accessStorage,accessError} from './access.mjs?v=1.4.9';
 import {inviteState} from './invites.mjs?v=1.4.0';
 import {resolveRecipe} from './recipe.mjs?v=1.1.2';
 import {sliceData,median,num,time,exactSnapshot,VERSION} from './model.mjs?v=1.4.0';
-import {patterns,draw,exactPattern,rendererVersion,configKey} from './renderer.mjs?v=1.1.2';
+import {patterns,draw,exactPattern,rendererVersion,configKey} from './renderer.mjs?v=1.2.0-spiral-snakes-20261021';
 import {mountReplay,patternName,setPatternNames,eventName,parameterName,COVERAGE,clock} from './replay.mjs?v=1.4.0';
 
 const API='https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-research-admin-v1';
