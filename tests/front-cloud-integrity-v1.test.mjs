@@ -93,3 +93,13 @@ test('recovery UI distinguishes server-confirmed password change from a failed l
   assert.match(recovery,/Вернуться ко входу/);
   assert.match(recovery,/Не удалось получить подтверждение восстановления/);
 });
+
+test('account login avoids CORS preflight on iOS and never disguises local data save failure as a password error',()=>{
+  const code=read('standalone-tester-cabinet-v40.js');
+  assert.match(code,/headers:\{"Content-Type":"text\\/plain;charset=UTF-8"\}/);
+  assert.match(code,/options\.timeoutMs\?\?30000/);
+  assert.match(code,/action:"login"[\s\S]*?timeoutMs:30000/);
+  assert.match(code,/local_archive_not_saved:"Пароль принят сервером/);
+  assert.match(code,/if\(C\.whenSaved&&!await C\.whenSaved\(\)\)/);
+  assert.match(code,/setSession\(out\.sessionToken,out\.sessionExpiresAt,out\.testerId\)/);
+});
