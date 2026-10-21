@@ -81,6 +81,50 @@ try{
     return {patterns:p.length,images,changed:before!==after,config:snapshot,hasKey:Boolean(window.SetkaPatternKeyV1)};
   });
   assert.equal(result.patterns,9,'Spiral Snakes auto-registers as the ninth mother pattern');
+  // New real plugin: one canonical configuration and one rendering function
+  // for both the actual thumbnail canvas and a game-sized canvas.
+  const spiral=await page.evaluate(()=>{
+    const R=window.SetkaPatternRegistryV1,S=window.SetkaApp;
+    const id="spiral-snakes-3d",mother=R.defaults(id),listed=S.getPatterns().find(p=>p.id===id);
+    if(!R.ready(id))throw Error("Spiral Snakes renderer module was not loaded");
+    const sample=(width,height,preview,config,frame)=>{
+      const cv=document.createElement("canvas");
+      cv.width=width;cv.height=height;
+      R.render(cv.getContext("2d"),width,height,config,frame,preview,id);
+      const data=cv.getContext("2d").getImageData(0,0,width,height).data;
+      let bright=0,colored=0;
+      for(let i=0;i<data.length;i+=4){
+        if(data[i]+data[i+1]+data[i+2]>36)bright++;
+        if(Math.max(data[i],data[i+1],data[i+2])-Math.min(data[i],data[i+1],data[i+2])>3)colored++;
+      }
+      return{bright,colored,dataUrl:cv.toDataURL()};
+    };
+    const first=sample(180,180,true,mother,44);
+    const same=sample(180,180,false,mother,44);
+    const next=sample(180,180,true,mother,68);
+    const blue=sample(180,180,true,{...mother,colorModeIndex:1},44);
+    const modified={...mother,numSnakes:73,waveFreq:5.2,zoom:1.25};
+    S.openConfig(modified,{type:"exact",id:"test-custom-spiral",patternId:id});
+    const opened=S.getConfig();
+    S.openConfig(R.defaults(id),{type:"base",id,patternId:id});
+    const reset=S.getConfig();
+    document.getElementById("libraryButton").click();
+    return{mother,listed:listed?.defaults,first,same,next,blue,opened,reset};
+  });
+  assert.equal(spiral.mother.colorModeIndex,0);
+  assert.equal(spiral.mother.numSnakes,60);
+  assert.deepEqual(spiral.listed,spiral.mother);
+  assert.ok(spiral.first.bright>50,"new live mother preview is visible");
+  assert.equal(spiral.first.colored,0,"mother preview is black and white");
+  assert.equal(spiral.first.dataUrl,spiral.same.dataUrl,"same renderer returns exactly the same pixels for identical config/dimensions/frame, regardless of preview flag");
+  assert.notEqual(spiral.first.dataUrl,spiral.next.dataUrl,"new mother's preview animates");
+  assert.ok(spiral.blue.colored>50,"original blue mode remains available");
+  assert.equal(spiral.opened.numSnakes,73);
+  assert.equal(spiral.opened.waveFreq,5.2);
+  assert.equal(spiral.reset.numSnakes,60);
+  assert.equal(spiral.reset.colorModeIndex,0);
+  console.log("SPIRAL SNAKES V1 AUTOREGISTER / CANONICAL PREVIEW / COLOR / OPEN PASS");
+
   for(const p of result.images){
     assert.ok(p.visible>45,"first B&W preview must be visible: "+JSON.stringify(p));
     assert.equal(p.colored,0,"FIRST color must be monochrome: "+JSON.stringify(p));
