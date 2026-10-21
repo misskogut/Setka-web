@@ -1152,7 +1152,7 @@
       "glowStrength": 150,
       "timeSpeed": 0.02,
       "pointSize": 3,
-      "colorModeIndex": 1
+      "colorModeIndex": 0
     },
     "module": null,
     "schemaVersion": 1,
