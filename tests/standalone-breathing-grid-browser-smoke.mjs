@@ -203,7 +203,9 @@ try{
     "key must not launch the old floating instructions modal");
   assert.equal(await page.locator("#st34KeySheet .sk-setting").count(),10);
   const desc=await page.locator("#st34KeySheet").innerText();
-  assert.match(desc,/Свайпы и ползунки изменяют одни и те же параметры/);
+  assert.match(desc,/Каждый параметр можно менять бегунком/);
+   assert.match(desc,/ТОЛЬКО БЕГУНКОМ/);
+   assert.doesNotMatch(desc,/ТОЧНАЯ НАСТРОЙКА/);
   assert.match(desc,/Волна по горизонтали/);
   assert.match(desc,/Волна по вертикали/);
   assert.doesNotMatch(desc,/Зоны управления на экране|Фаза волны/);
