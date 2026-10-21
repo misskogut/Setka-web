@@ -88,7 +88,7 @@
         if(selected){
           for(const [canvas,item] of selected){
             optimizer.paint("auxiliary",canvas,item.patternId,now,
-              ()=>paint(canvas,item,item.frame+painted));
+              ()=>paint(canvas,item,item.frame+painted),{adaptiveResolution:false});
           }
         }else{
           const count=Math.min(MAX_CANVASES,candidates.length);
