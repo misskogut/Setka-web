@@ -78,6 +78,9 @@ try{
  console.log('FRONT: MALFORMED FEED → OUTAGE STATUS → RECOVERY PASS');
  // Returning from the game follows the original library, not always "all".
  for(const [source,pageId] of [['favorite','favoritesPagerButton'],['community','communityPagerButton'],['base','libraryPagerButton']]){
+  // Navigation stores the actual origin tab, not a forged source hint.
+  // Open the matching library first: this is how a user reaches that pattern.
+  await front.locator('#'+pageId).click();
   const opened=await front.evaluate(type=>{
    const app=window.SetkaApp,id='dandelion';
    return app.openConfig(app.getPatternDefaults(id),{type,id,patternId:id});
