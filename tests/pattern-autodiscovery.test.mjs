@@ -30,7 +30,7 @@ const mini=(id,extra={})=>({
  id,title:id,version:1,schemaVersion:1,module:'standalone-pattern-'+id+'.js',
  defaults:{speed:1,seed:123,colorModeIndex:0},
  controls:[['Скорость','speed',0.1,10,0.1,'←→',1]],
- colorModes:2,...extra
+ colorModes:2,palettes:[[255,255,255],[0,200,255]],...extra
 });
 const packageContent=meta=>'/* SETKA_PATTERN_DESCRIPTOR\n'+JSON.stringify(meta,null,2)+'\nEND_SETKA_PATTERN_DESCRIPTOR */\n'+
  'window.SetkaPatternRegistryV1.bindRenderer(document.currentScript.dataset.patternId,()=>{});\n';
@@ -46,6 +46,10 @@ test('a single pattern file automatically becomes one shared catalog, repeatedly
   assert.deepEqual(R.defaults('rain').patternId,'rain');
   assert.ok(R.controls('rain').length>=4);
   assert.equal(R.validate(R.defaults('rain'),'rain').ok,true);
+  const rain=R.get('rain');
+  assert.equal(rain.defaults.colorModeIndex,3,'Rain must open in its original black-and-white palette');
+  assert.deepEqual(JSON.parse(JSON.stringify(rain.palettes[rain.defaults.colorModeIndex])),[255,255,255]);
+  assert.deepEqual(JSON.parse(JSON.stringify(rain.palettes[0])),[0,200,255],'saved blue mode stays blue');
   const second=build(dir);
   assert.equal(second.source,first.source,'same inputs may never create registry drift');
   assert.deepEqual(second.manifest,first.manifest,'same inputs must produce the same manifest');
@@ -81,6 +85,46 @@ test('invalid package blocks the build before changing generated outputs',()=>{
   assert.throws(()=>build(dir));
   assert.equal(fs.readFileSync(path.join(dir,'standalone-pattern-registry-v1.js'),'utf8'),valid.source);
   assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir,'setka-pattern-manifest-v1.json'),'utf8')),valid.manifest);
+ }finally{fs.rmSync(dir,{recursive:true,force:true});}
+});
+
+test('no new standalone package may launch in color, even with valid controls',()=>{
+ const dir=workspace();
+ try{
+  const valid=build(dir);
+  const filename=path.join(dir,'standalone-pattern-invalid-color.js');
+  fs.writeFileSync(filename,packageContent(mini('invalid-color',{
+   defaults:{speed:1,seed:123,colorModeIndex:1}
+  })));
+  assert.throws(()=>build(dir),/black-white initial palette required|initial_palette_must_be_monochrome/);
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir,'setka-pattern-manifest-v1.json'),'utf8')),valid.manifest);
+  fs.writeFileSync(filename,packageContent(mini('invalid-color',{palettes:undefined})));
+  assert.throws(()=>build(dir),/black-white initial palette required/);
+ }finally{fs.rmSync(dir,{recursive:true,force:true});}
+});
+
+test('Rain draws actual white gradients on black in default mode and preserves blue when selected',()=>{
+ const dir=workspace();
+ try{
+  const {source}=build(dir),R=loadRegistry(source),d={currentScript:{dataset:{patternId:'rain'}}};
+  vm.runInNewContext(fs.readFileSync(path.join(dir,'standalone-pattern-rain.js'),'utf8'),
+   {window:{SetkaPatternRegistryV1:R},document:d,Math},{timeout:1500});
+  function capture(config){
+   const gradients=[],fills=[];
+   const ctx={
+    save(){},restore(){},translate(){},scale(){},beginPath(){},moveTo(){},lineTo(){},stroke(){},
+    fillRect(){fills.push(this.fillStyle)},
+    createLinearGradient(){const stops=[];gradients.push(stops);return {addColorStop(_position,color){stops.push(color)}}}
+   };
+   R.render(ctx,180,280,config,32,true,'rain');
+   return {fills,gradients};
+  }
+  const initial=capture(R.defaults('rain'));
+  assert.equal(initial.fills[0],'#000');
+  assert.ok(initial.gradients.length>0);
+  assert.ok(initial.gradients.every(stops=>stops.every(color=>/^rgba\\(255,255,255,/.test(color))));
+  const blue=capture({...R.defaults('rain'),colorModeIndex:0});
+  assert.ok(blue.gradients.some(stops=>stops.some(color=>color.includes('rgba(0,200,255,'))));
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
 
