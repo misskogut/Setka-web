@@ -269,6 +269,9 @@ try{
  assert.equal(await page.locator('.base-tile[data-pattern-id="fixture-later"]').count(),1);
  await admin.reload();await admin.waitForFunction(()=>window.SetkaPatternRegistryV1.ready('fixture-later'));
  await admin.locator('#workspace:not([hidden])').waitFor();
+ // Saved admin access opens the workspace before the asynchronous catalog
+ // and overview fetch complete. Count rendered cards only after data loads.
+ await admin.locator('.pattern-card[data-id="fixture-later"]').waitFor();
  assert.equal(await admin.locator('.pattern-card').count(),R.list().length,'research automatically lists each registered algorithm');
  await page.evaluate(()=>window.SetkaStandaloneV34.showPatterns());
  // H: bounded scheduling with many algorithms; no edits to library/notes/admin.
