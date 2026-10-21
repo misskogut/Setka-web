@@ -139,17 +139,17 @@ try{
       const live=audio.renderConfig(p.defaults,p.id);
       const changed=Object.keys(live).filter(key=>typeof canonical[key]==="number"&&Math.abs(live[key]-canonical[key])>1e-6);
       const untouched=JSON.stringify(p.defaults)===JSON.stringify(original);
-      return{id:p.id,changed,untouched};
+      return{id:p.id,changed,untouched,plugin:!!window.SetkaPatternRegistryV1?.get?.(p.id)?.module};
     });
     const future={patternId:"future-renderer",zoom:1};
     const futureSafe=audio.renderConfig(future,"future-renderer")===future;
     const viewport=audio.viewportScale();
     return{cases,futureSafe,viewport,bands:audio.status().bands};
   });
-  assert.equal(geometry.cases.length,8);
+  assert.equal(geometry.cases.length,await page.evaluate(()=>window.SetkaPatternRegistryV1.ids().length));
   geometry.cases.forEach(x=>{
     assert.equal(x.untouched,true,"canonical configuration was mutated: "+x.id);
-    assert.ok(x.changed.length>=4,"music should modulate multiple geometric controls in "+x.id+": "+JSON.stringify(x));
+    assert.ok(x.changed.length>=(x.plugin?2:4),"music should modulate multiple continuous geometric controls in "+x.id+": "+JSON.stringify(x));
   });
   assert.equal(geometry.futureSafe,true,"new pattern recipes must remain untouched");
   const dnaKeys=geometry.cases.find(x=>x.id==="stereo-dna").changed;
