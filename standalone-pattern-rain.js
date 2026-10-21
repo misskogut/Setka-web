@@ -6,6 +6,7 @@
   "schemaVersion": 1,
   "module": "standalone-pattern-rain.js",
   "colorModes": 4,
+  "palettes": [[0,200,255],[100,255,200],[150,150,255],[255,255,255]],
   "defaults": {
     "patternId": "rain",
     "speedFactor": 2,
@@ -15,7 +16,7 @@
     "waveStrength": 1,
     "motionMode": 0,
     "seed": 417,
-    "colorModeIndex": 0
+    "colorModeIndex": 3
   },
   "controls": [
     ["Скорость потока", "speedFactor", 0.2, 10, 0.1, "Снизу ←→", 0.025],
@@ -40,7 +41,8 @@ if(typeof window!=="object"||typeof document!=="object")return;
 const registry=window.SetkaPatternRegistryV1;
 const id=document.currentScript?.dataset.patternId;
 if(!id||!registry?.has(id))return;
-const palette=[[0,200,255],[100,255,200],[150,150,255],[255,255,255]];
+// The palette is a single source of truth in the shared descriptor.
+const palette=registry.get(id).palettes;
 const clamp=(n,min,max)=>Math.min(max,Math.max(min,n));
 const TAU=Math.PI*2;
 // Stateless integer hash: a saved pattern/config/frame always recreates the

@@ -17,6 +17,15 @@
     if(!Number.isInteger(raw.version)||raw.version<1)throw error("invalid_pattern_version",raw.id);
     const colorModes=raw.colorModes??9;
     if(!Number.isInteger(colorModes)||colorModes<1||colorModes>9)throw error("invalid_palette_count",raw.id);
+    // A newly packaged algorithm declares actual RGB palettes in the shared
+    // contract. The chosen initial mode must render white on black.
+    if(raw.palettes!==undefined){
+      if(!Array.isArray(raw.palettes)||raw.palettes.length!==colorModes||
+         raw.palettes.some(rgb=>!Array.isArray(rgb)||rgb.length!==3||
+           rgb.some(v=>!Number.isInteger(v)||v<0||v>255)))throw error("invalid_palette_contract",raw.id);
+      const initial=raw.palettes[raw.defaults.colorModeIndex??0];
+      if(!initial||initial.some(v=>v!==255))throw error("initial_palette_must_be_monochrome",raw.id);
+    }
     const defaults=copy({...raw.defaults,patternId:raw.id,colorModeIndex:raw.defaults.colorModeIndex??0});
     const schema=copy(raw.schema||{});
     for(const [key,value] of Object.entries(defaults)){
@@ -41,6 +50,7 @@
     const p=freeze({id:raw.id,title:String(raw.title||raw.id).trim().slice(0,80),version:raw.version,schemaVersion:raw.schemaVersion||1,
       defaults,schema,controls:copy(raw.controls),colorModes,capabilities:{...standard,...copy(raw.capabilities||{})},
       aliases:copy(raw.aliases||{}),keyFields:copy(raw.keyFields||null),legacyVersions:copy(raw.legacyVersions||[]),
+      ...(raw.palettes?{palettes:copy(raw.palettes)}:{}),
       module:raw.module||null});
     records.set(p.id,p);
     if(typeof raw.render==="function")renderers.set(p.id,raw.render);
