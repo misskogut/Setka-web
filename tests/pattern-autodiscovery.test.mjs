@@ -14,7 +14,7 @@ function workspace(){
  }
  // The test workspace, like the production build, discovers all new pattern
  // modules from files. Never manually append the next pattern to test setup.
- for(const file of fs.readdirSync('.').filter(name=>/^standalone-pattern-[a-z0-9-]+\\.js$/.test(name))){
+ for(const file of fs.readdirSync('.').filter(name=>/^standalone-pattern-[a-z0-9-]+\.js$/.test(name))){
   if(fs.readFileSync(file,'utf8').startsWith('/* SETKA_PATTERN_DESCRIPTOR'))fs.copyFileSync(file,path.join(tmp,file));
  }
  return tmp;
