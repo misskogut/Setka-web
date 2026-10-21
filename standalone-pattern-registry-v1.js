@@ -129,7 +129,8 @@
     // Compatibility with earlier callers; descriptors are never inferred from UI state.
     attachEngine:()=>{}};
   root.SetkaPatternRegistryV1=api;
-  // Canonical built-in contracts. Add a new descriptor here and its renderer module.
+  // Canonical legacy built-ins. New standalone-pattern-*.js packages are
+  // discovered at build time; do not append new descriptors here.
   const builtins=[
   {
     "id": "tentacle-orbit",
