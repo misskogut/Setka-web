@@ -150,7 +150,7 @@
   }
 
   async function refresh(){
-    if(busy){refreshQueued=true;return;}busy=true;lastError=null;
+    if(busy){refreshQueued=true;return;}busy=true; // Retain stale/error status until a successful read.
     const epoch=viewEpoch;
     try{
       const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json","apikey":API_KEY},body:JSON.stringify({action:"feed",limit:300})});
@@ -158,7 +158,7 @@
       if(out.ok!==true||!Array.isArray(out.items))throw Error("community_invalid_response");
       items=out.items.map(x=>({...x,createdAt:x.created_at||x.createdAt||null,localOnly:false}));
       metrics=out.metrics&&typeof out.metrics==="object"?out.metrics:null;patternMetrics=Array.isArray(out.patternMetrics)?out.patternMetrics:[];patternScenarios=Array.isArray(out.patternScenarios)?out.patternScenarios:[];historicalPatterns=Array.isArray(out.historicalPatterns)?out.historicalPatterns:[];
-      lastOkAt=new Date().toISOString();
+      lastError=null;lastOkAt=new Date().toISOString();
       if(epoch===viewEpoch){
         if(mode()==="notes"){await loadNotes(false);if(epoch===viewEpoch&&mode()==="notes")renderNotes()}
         else renderPatterns();
