@@ -18,7 +18,7 @@
 
 После настройки платформы новый паттерн — **ровно один файл** `standalone-pattern-<id>.js`, содержащий два компонента:
 
-1. В начале файла блок `/* SETKA_PATTERN_DESCRIPTOR\n{ ... }\nEND_SETKA_PATTERN_DESCRIPTOR */` с `id`, `title`, `version`, `schemaVersion`, `module`, `defaults`, `controls`, `colorModes` и при необходимости `schema`, `keyFields`, `capabilities`.
+1. В начале файла блок `/* SETKA_PATTERN_DESCRIPTOR\n{ ... }\nEND_SETKA_PATTERN_DESCRIPTOR */` с `id`, `title`, `version`, **`introducedAt` (UTC ISO 8601 — момент первого публичного добавления)**, `schemaVersion`, `module`, `defaults`, `controls`, `colorModes` и при необходимости `schema`, `keyFields`, `capabilities`. `introducedAt` записывается в единственный файл нового модуля, после выпуска не изменяется и не управляется его названием или просмотром.
 2. Исполняемый Canvas-рендерер, который связывает функцию через `window.SetkaPatternRegistryV1.bindRenderer(document.currentScript.dataset.patternId, renderer)`.
 
 После добавления единственного файла:
