@@ -143,7 +143,7 @@ try{
  await page.evaluate(()=>window.SetkaStandaloneV34.showPatterns());
  // H: bounded scheduling with many algorithms; no edits to library/notes/admin.
  await page.evaluate(()=>{const R=window.SetkaPatternRegistryV1;for(let i=0;i<60;i++)window.SetkaApp.registerPattern({id:'load-fixture-'+i,title:'Load '+i,version:1,defaults:{radius:5,tempo:.1,colorModeIndex:0},controls:[['Радиус','radius',1,10,1,'↑↓',1]],render(ctx,w,h,c,f){ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);ctx.fillStyle='white';ctx.fillRect(f%30,10,c.radius,c.radius)}})});
- assert.equal(await page.evaluate(()=>window.SetkaApp.previewStatus().maxPerPaint),8);
+ assert.equal(await page.evaluate(()=>window.SetkaApp.previewStatus().maxPerPaint),12,"scheduler handles all nine real mothers and remains bounded under stress");
  assert.equal(await page.locator('.base-tile').count(),R.list().length+60,'preview scheduler scales with additional patterns');
  const loadSamples=await page.evaluate(async()=>{
   const R=window.SetkaPatternRegistryV1,original=R.render,samples=[];let calls=0;
