@@ -159,13 +159,25 @@
           if(rect.width<4||rect.height<4||rect.bottom<0||rect.top>innerHeight||rect.right<0||rect.left>innerWidth)continue;
           visible.push([canvas,item]);
         }
-        const count=Math.min(previewStats.maxPerPaint,visible.length);
-        for(let i=0;i<count;i++){
-          const [canvas,item]=visible[(previewCursor+i)%visible.length];
-          drawThumbnail(canvas,item.config,previewFrame(item.frame),item.patternId);
-          previewStats.frames++;
+        const optimizer=window.SetkaAutoOptimizerV1;
+        const selected=optimizer?.choose("library",visible,now,{
+          interval:PREVIEW_INTERVAL_MS,maxPaint:previewStats.maxPerPaint
+        })||null;
+        if(selected){
+          for(const [canvas,item] of selected){
+            optimizer.paint("library",canvas,item.patternId,now,
+              ()=>drawThumbnail(canvas,item.config,previewFrame(item.frame),item.patternId));
+            previewStats.frames++;
+          }
+        }else{
+          const count=Math.min(previewStats.maxPerPaint,visible.length);
+          for(let i=0;i<count;i++){
+            const [canvas,item]=visible[(previewCursor+i)%visible.length];
+            drawThumbnail(canvas,item.config,previewFrame(item.frame),item.patternId);
+            previewStats.frames++;
+          }
+          previewCursor=visible.length?(previewCursor+count)%visible.length:0;
         }
-        previewCursor=visible.length?(previewCursor+count)%visible.length:0;
       }
       previewAnimation=requestAnimationFrame(tick);
     };
@@ -196,7 +208,13 @@
         ctx.scale(audioScale,audioScale);
         ctx.translate(-r.width/2,-r.height/2);
       }
-      renderPattern(ctx,r.width,r.height,liveConfig,currentFrame,false,runtimePatternId);
+      // Profile actual gameplay cost without changing gameplay resolution,
+      // canonical parameters, audio modulation, or the renderer.
+      const optimizer=window.SetkaAutoOptimizerV1;
+      if(optimizer)optimizer.paint("game",null,runtimePatternId,now,
+        ()=>renderPattern(ctx,r.width,r.height,liveConfig,currentFrame,false,runtimePatternId),
+        {adaptiveResolution:false});
+      else renderPattern(ctx,r.width,r.height,liveConfig,currentFrame,false,runtimePatternId);
       if(audioScale>1.0001)ctx.restore();
       animationFrame=requestAnimationFrame(tick)};animationFrame=requestAnimationFrame(tick)}
   function stopAnimation(){if(animationFrame)cancelAnimationFrame(animationFrame);animationFrame=0}
@@ -302,7 +320,8 @@
     document.querySelectorAll('.pattern-tile[data-kind="base"]').forEach(tile=>tile.setAttribute("aria-label",`Открыть паттерн ${registry.title(tile.dataset.patternId)}. Удерживай, чтобы сохранить`));
   }
   window.addEventListener("setka:pattern-names",refreshPatternTitles);
-  window.SetkaApp={setPatternTitles:rows=>registry.setTitles(rows),restorePersonalConfigs,exportPersonalConfigs:()=>JSON.parse(JSON.stringify(lastConfigs)),previewStatus:()=>({...previewStats,registered:previewTiles.size}),registerPattern,getState:()=>statePayload(),getConfig:()=>cloneConfig(runtimeConfig,runtimePatternId),getFavorites:()=>favorites.map(f=>f.unavailable?JSON.parse(JSON.stringify(f)):({...f,config:cloneConfig(f.config,f.baseId)})),setConfigPatch:(patch={})=>{if(!patch||typeof patch!=="object")return cloneConfig(runtimeConfig,runtimePatternId);const before=configKey(runtimeConfig,runtimePatternId);runtimeConfig=cloneConfig({...runtimeConfig,...patch,patternId:runtimePatternId},runtimePatternId);if(before!==configKey(runtimeConfig,runtimePatternId)){updateFavoriteButtonState();updateColorIndicator();emit("gesture-move",{origin:"slider"})}return cloneConfig(runtimeConfig,runtimePatternId)},getPatterns:()=>PATTERNS.map(p=>({id:p.id,title:registry.title(p.id),version:p.version,defaults:registry.defaults(p.id)})),getPatternDefaults:id=>IDS.has(id)?registry.defaults(id):null,getPatternTitle:id=>registry.title(id),cloneConfig,configKey,openConfig,renderPreview,setCommunity(items){communityItems=Array.isArray(items)?items.map(normalizeCommunityItem):[];renderLibrary()},setRecommendations(data={}){recommendedCommunity=new Set((data.community||[]).map(String));recommendedPatterns=new Set((data.patterns||[]).map(String));renderLibrary()},updateFavoriteMeta,refreshFavorites(){favorites=loadFavorites();renderLibrary();updateFavoriteButtonState()},renderLibrary,setLibraryPage,finishCurrentUsageHint(){return statePayload()},DEFAULT_CONFIG:cloneConfig(TENTACLE_DEFAULT,TENTACLE_ID),DANDELION_DEFAULT:cloneConfig(DANDELION_DEFAULT,DANDELION_ID),FISH_DEFAULT:cloneConfig(FISH_DEFAULT,FISH_ID),BREATHING_FRACTAL_DEFAULT:cloneConfig(BREATH_DEFAULT,BREATH_ID),BREATHING_GROWTH_DEFAULT:cloneConfig(GROWTH_DEFAULT,GROWTH_ID),RGB_RINGS_DEFAULT:cloneConfig(RGB_DEFAULT,RGB_ID),STEREO_DNA_DEFAULT:cloneConfig(DNA_DEFAULT,DNA_ID),BREATHING_GRID_DEFAULT:cloneConfig(GRID_DEFAULT,GRID_ID)};
+  window.SetkaApp={setPatternTitles:rows=>registry.setTitles(rows),restorePersonalConfigs,exportPersonalConfigs:()=>JSON.parse(JSON.stringify(lastConfigs)),previewStatus:()=>({...previewStats,registered:previewTiles.size,
+    autonomous:window.SetkaAutoOptimizerV1?.status?.()||null}),registerPattern,getState:()=>statePayload(),getConfig:()=>cloneConfig(runtimeConfig,runtimePatternId),getFavorites:()=>favorites.map(f=>f.unavailable?JSON.parse(JSON.stringify(f)):({...f,config:cloneConfig(f.config,f.baseId)})),setConfigPatch:(patch={})=>{if(!patch||typeof patch!=="object")return cloneConfig(runtimeConfig,runtimePatternId);const before=configKey(runtimeConfig,runtimePatternId);runtimeConfig=cloneConfig({...runtimeConfig,...patch,patternId:runtimePatternId},runtimePatternId);if(before!==configKey(runtimeConfig,runtimePatternId)){updateFavoriteButtonState();updateColorIndicator();emit("gesture-move",{origin:"slider"})}return cloneConfig(runtimeConfig,runtimePatternId)},getPatterns:()=>PATTERNS.map(p=>({id:p.id,title:registry.title(p.id),version:p.version,defaults:registry.defaults(p.id)})),getPatternDefaults:id=>IDS.has(id)?registry.defaults(id):null,getPatternTitle:id=>registry.title(id),cloneConfig,configKey,openConfig,renderPreview,setCommunity(items){communityItems=Array.isArray(items)?items.map(normalizeCommunityItem):[];renderLibrary()},setRecommendations(data={}){recommendedCommunity=new Set((data.community||[]).map(String));recommendedPatterns=new Set((data.patterns||[]).map(String));renderLibrary()},updateFavoriteMeta,refreshFavorites(){favorites=loadFavorites();renderLibrary();updateFavoriteButtonState()},renderLibrary,setLibraryPage,finishCurrentUsageHint(){return statePayload()},DEFAULT_CONFIG:cloneConfig(TENTACLE_DEFAULT,TENTACLE_ID),DANDELION_DEFAULT:cloneConfig(DANDELION_DEFAULT,DANDELION_ID),FISH_DEFAULT:cloneConfig(FISH_DEFAULT,FISH_ID),BREATHING_FRACTAL_DEFAULT:cloneConfig(BREATH_DEFAULT,BREATH_ID),BREATHING_GROWTH_DEFAULT:cloneConfig(GROWTH_DEFAULT,GROWTH_ID),RGB_RINGS_DEFAULT:cloneConfig(RGB_DEFAULT,RGB_ID),STEREO_DNA_DEFAULT:cloneConfig(DNA_DEFAULT,DNA_ID),BREATHING_GRID_DEFAULT:cloneConfig(GRID_DEFAULT,GRID_ID)};
   window.addEventListener("setka:catalog-updated",()=>{for(const p of PATTERNS)p.defaults=registry.defaults(p.id);renderLibrary()});
   registry?.attachEngine?.(window.SetkaApp);
   persistFavorites();buildColorDots();updateColorIndicator();updateFavoriteButtonState();renderLibrary();emit("ready",{});
