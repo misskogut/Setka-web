@@ -196,6 +196,10 @@ async function go(){
     document.getElementById("libraryButton").click();
   });
   await page.locator('#allPatternsPanel .pattern-tile[data-pattern-id="tentacle-orbit"]').dispatchEvent("pointerup",{pointerId:491,pointerType:"touch",bubbles:true});
+  // The app intercepts the card to ask whether to start a measured session.
+  // Complete the real "Просто посмотреть" route before checking the opened configuration.
+  await page.locator("#st34Choice").waitFor({state:"visible"});
+  await page.locator("#st34Choice .st-secondary").first().click();
   const actualTileOpen=await page.evaluate(()=>{
     const S=window.SetkaApp,R=window.SetkaPatternRegistryV1,id="tentacle-orbit";
     return{source:S.getState().sourceType,actual:S.configKey(S.getConfig(),id),expected:S.configKey(R.defaults(id),id)};
