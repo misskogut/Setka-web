@@ -19,7 +19,7 @@ async function patternIds():Promise<Set<string>>{
     const res=await fetch(PATTERN_MANIFEST,{cache:"no-store",headers:{accept:"application/json"},signal:AbortSignal.timeout(5000)});
     if(!res.ok)throw Error("pattern_manifest_unavailable");
     const manifest=await res.json();
-    if(manifest?.schema!==1||!Array.isArray(manifest.patterns)||manifest.patterns.length<8||manifest.patterns.length>500)
+    if(manifest?.schema!==1||!Array.isArray(manifest.patterns)||!manifest.patterns.length||manifest.patterns.length>500)
       throw Error("invalid_pattern_manifest");
     const fresh=new Set<string>(),missing=[];
     for(const p of manifest.patterns){
