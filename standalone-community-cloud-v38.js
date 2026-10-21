@@ -42,7 +42,9 @@
     const bar=ensureModeButton();if(!bar)return;
     const m=mode();bar.querySelectorAll("button[data-m]").forEach(b=>b.classList.toggle("active",b.dataset.m===m));
   }
-  function clearLegacyLocal(){try{const d=data();if(Array.isArray(d.localCommunity)&&d.localCommunity.length){d.localCommunity=[];C.save?.()}}catch(_){}}
+  // Local community history is an archival record: not part of the public feed.
+  // Browsing a feed must never modify private records.
+  function retainLegacyLocal(){return Array.isArray(data().localCommunity);}
   function sessionUsages(){
     const out=[],d=data();
     for(const s of d.sessions||[]){const events=(d.events||[]).filter(e=>e.sessionId===s.id&&["pattern_open","pattern_state","color","favorite_save"].includes(e.type));const configs=new Map();for(const e of events){const st=e.payload?.state;if(st?.configKey)configs.set(st.configKey,{sessionId:s.id,configKey:st.configKey,saved:configs.get(st.configKey)?.saved||e.type==="favorite_save"})}out.push(...configs.values())}
@@ -56,7 +58,9 @@
     return score/uses.length+(Number(item.saveCount)||0)*.03;
   }
   function sorted(){
-    const a=items.slice(),m=mode();
+    // Public community cards represent configurations saved by real accounts;
+    // filtering zero-savers is a view-only operation and does not change data.
+    const a=items.filter(item=>Number.isFinite(Number(item.saveCount))&&Number(item.saveCount)>0),m=mode();
     if(m==="new")return a.sort((x,y)=>Date.parse(y.createdAt||0)-Date.parse(x.createdAt||0));
     if(m==="popular")return a.sort((x,y)=>(Number(y.saveCount)||0)-(Number(x.saveCount)||0)||Date.parse(y.createdAt||0)-Date.parse(x.createdAt||0));
     return a.sort((x,y)=>personalScore(y)-personalScore(x)||Date.parse(y.createdAt||0)-Date.parse(x.createdAt||0));
@@ -149,7 +153,7 @@
       }
       window.dispatchEvent(new CustomEvent("setka:community-cloud",{detail:{ok:true,count:items.length,mode:mode(),updatedAt:lastOkAt,metrics,patternMetrics,patternScenarios,historicalPatterns}}));
     }catch(e){
-      lastError=String(e?.message||e);clearLegacyLocal();
+      lastError=String(e?.message||e);retainLegacyLocal();
       if(mode()!=="notes"&&!items.length){C.publicCommunity=[];Setka.setCommunity?.([])}
       window.dispatchEvent(new CustomEvent("setka:community-cloud",{detail:{ok:false,error:lastError}}));
     }finally{busy=false}
@@ -162,8 +166,8 @@
     setMode(b.dataset.m);applyMode();
   },true);
 
-  window.addEventListener("setka:favorite-saved",()=>{clearLegacyLocal();if(mode()!=="notes")renderPatterns();schedule(900)});
-  window.addEventListener("setka:favorite-removed",()=>{clearLegacyLocal();if(mode()!=="notes")renderPatterns();schedule(900)});
+  window.addEventListener("setka:favorite-saved",()=>{retainLegacyLocal();if(mode()!=="notes")renderPatterns();schedule(900)});
+  window.addEventListener("setka:favorite-removed",()=>{retainLegacyLocal();if(mode()!=="notes")renderPatterns();schedule(900)});
   window.addEventListener("setka:v34-sync",e=>schedule(e.detail?.ok?120:1200));
   window.addEventListener("setka:library-page",e=>{
     const page=e.detail?.page,prev=lastPage;lastPage=page;
@@ -177,7 +181,7 @@
   },true);
 
   async function bootstrap(){
-    clearLegacyLocal();ensureModeButton();
+    retainLegacyLocal();ensureModeButton();
     const d=data();d.settings=d.settings||{};delete d.settings.communitySection;if(!MODES.has(d.settings.communityMode)||d.settings.communityMode==="notes")d.settings.communityMode="for_me";C.save?.();
     try{await C.sandbox?.sync?.()}catch(_){}
     await Promise.all([refresh(),loadNotes(true)]);

@@ -67,7 +67,38 @@
     }
     writeJSON(LAST_KEY,lastConfigs);return JSON.parse(JSON.stringify(lastConfigs));
   }
-  function normalizeFavorite(item,index,forcedId=null){let baseId;try{baseId=forcedId||inferPatternId(item?.config,item?.baseId||item?.patternId)}catch(_){return {...item,unavailable:true,baseId:item?.baseId||item?.patternId||item?.config?.patternId||null}};const raw={...(item?.config||{}),patternId:baseId};return{id:String(item?.id||`favorite-${Date.now()}-${index}`),baseId,patternId:baseId,config:cloneConfig(raw,baseId),previewFrame:Number.isFinite(Number(item?.previewFrame))?Number(item.previewFrame):BASE_PREVIEW_FRAME,createdAt:Number(item?.createdAt)||Date.now(),communityId:item?.communityId?String(item.communityId):null,parentCommunityId:item?.parentCommunityId?String(item.parentCommunityId):null,patternVersion:Math.max(1,Math.round(Number(item?.patternVersion)||patternById(baseId).version))}}
+  function normalizeFavorite(item,index,forcedId=null){
+    // Never replace an unresolved archived favorite with a starter recipe.
+    // An immutable snapshot is stronger evidence than a mutable display row.
+    const frozen=item?.replaySnapshot?.config&&item.replaySnapshot.patternId?item.replaySnapshot:null;
+    const rawConfig=frozen?.config||item?.config;
+    let baseId;
+    try{
+      const candidate=forcedId||frozen?.patternId||rawConfig?.patternId||item?.patternId||item?.baseId||null;
+      baseId=forcedId||inferPatternId(rawConfig,candidate);
+      // Conflicting known identities are an error, not a reason to repaint
+      // the favorite as another pattern.
+      const knownMetadata=[frozen?.patternId,rawConfig?.patternId,item?.patternId,item?.baseId]
+        .filter(id=>id&&registry.has(id));
+      if(new Set(knownMetadata).size>1&&!forcedId)throw new Error("favorite_pattern_identity_conflict");
+      if(!registry.has(baseId))throw new Error("favorite_pattern_unknown");
+      const raw={...rawConfig,patternId:baseId};
+      const config=cloneConfig(raw,baseId);
+      return {...item,id:String(item?.id||`favorite-${index}`),baseId,patternId:baseId,
+        config,unavailable:false,
+        previewFrame:Number.isFinite(Number(item?.previewFrame))?Number(item.previewFrame):BASE_PREVIEW_FRAME,
+        createdAt:Number(item?.createdAt)||Date.now(),
+        communityId:item?.communityId?String(item.communityId):null,
+        parentCommunityId:item?.parentCommunityId?String(item.parentCommunityId):null,
+        patternVersion:Math.max(1,Math.round(Number(frozen?.patternVersion||item?.patternVersion)||registry.get(baseId).version))};
+    }catch(error){
+      // A frozen raw record stays byte-for-byte recoverable in the archive.
+      // It can become renderable when the missing version/module is installed.
+      return {...item,unavailable:true,
+        baseId:item?.baseId||item?.patternId||item?.config?.patternId||frozen?.patternId||null,
+        unavailableReason:error?.code||error?.message||"unavailable"};
+    }
+  }
   function loadFavorites(){const out=[],seen=new Set(),push=f=>{const sig=f.unavailable?JSON.stringify(f):`${f.id}|${configKey(f.config,f.baseId)}`;if(!seen.has(sig)){seen.add(sig);out.push(f)}};const main=readJSON(STORAGE_FAVORITES,[]);if(Array.isArray(main))main.forEach((x,i)=>push(normalizeFavorite(x,i)));const fish=readJSON(LEGACY_FISH_KEY,[]);if(Array.isArray(fish))fish.forEach((x,i)=>push(normalizeFavorite(x,1000+i,FISH_ID)));const breath=readJSON(LEGACY_BREATH_KEY,[]);if(Array.isArray(breath))breath.forEach((x,i)=>push(normalizeFavorite(x,2000+i,BREATH_ID)));const growth=readJSON(LEGACY_GROWTH_KEY,[]);if(Array.isArray(growth))growth.forEach((x,i)=>push(normalizeFavorite(x,3000+i,GROWTH_ID)));return out}
   let favorites=loadFavorites();
   function persistFavorites(){writeJSON(STORAGE_FAVORITES,favorites)}
@@ -105,7 +136,28 @@
     });
     setLibraryPage(activeLibraryPage,true);
   }
-  function makePatternTile(item){const itemPattern=item.patternId||item.baseId||(item.kind==="base"?item.id:null);if(item.unavailable||itemPattern&&!registry.ready(itemPattern)){const unavailable=document.createElement("div");unavailable.className="pattern-tile unavailable-pattern";unavailable.textContent="Паттерн временно недоступен · запись сохранена";unavailable.dataset.patternId=item.patternId||item.baseId||"";return unavailable}const patternId=inferPatternId(item.config,item.patternId||item.baseId||(item.kind==="base"?item.id:null)),b=document.createElement("button");b.type="button";b.className=`pattern-tile ${item.kind}-tile`;b.dataset.kind=item.kind;b.dataset.itemId=item.id;b.dataset.patternId=patternId;b.setAttribute("aria-label",item.kind==="favorite"?"Открыть сохраненную конфигурацию. Удерживай, чтобы удалить":item.kind==="community"?"Открыть конфигурацию сообщества. Удерживай, чтобы сохранить себе":`Открыть паттерн ${patternById(patternId).title}. Удерживай, чтобы сохранить`);const thumb=document.createElement("canvas");thumb.width=180;thumb.height=180;thumb.className="thumb-canvas";b.appendChild(thumb);drawThumbnail(thumb,item.config||registry.defaults(patternId),previewRenderedFrame(Number.isFinite(Number(item.previewFrame))?Number(item.previewFrame):BASE_PREVIEW_FRAME),patternId);previewTiles.set(thumb,{patternId,config:cloneConfig(item.config||registry.defaults(patternId),patternId),frame:Number.isFinite(Number(item.previewFrame))?Number(item.previewFrame):BASE_PREVIEW_FRAME});if(item.kind==="favorite"){const h=document.createElement("span");h.className="mini-heart";h.textContent="♥";b.appendChild(h)}if(item.kind==="community"){const badge=document.createElement("span");badge.className="community-count";badge.textContent=`♥ ${Math.max(0,Number(item.saveCount)||0)}`;b.appendChild(badge)}const rec=document.createElement("span");rec.className="recommendation-mark";rec.textContent="●";b.appendChild(rec);let timer=0,held=false,sx=0,sy=0;const cancel=()=>{if(timer)clearTimeout(timer);timer=0};b.addEventListener("pointerdown",e=>{if(e.target.closest?.(".st34-info"))return;held=false;sx=e.clientX;sy=e.clientY;b.setPointerCapture?.(e.pointerId);timer=setTimeout(()=>{held=true;if(item.kind==="favorite"){const f=favorites.find(x=>x.id===item.id);if(f)removeFavorite(f,"tile_hold")}else{const cfg=item.kind==="base"?registry.defaults(patternId):item.config,old=matchingFavorite(cfg,patternId);if(old)removeFavorite(old,"tile_hold");else saveFavorite(cfg,item.previewFrame,{origin:"tile_hold",baseId:patternId,communityId:item.kind==="community"?item.communityId:null,parentCommunityId:item.kind==="community"?item.communityId:null,patternVersion:item.patternVersion||patternById(patternId).version})}navigator.vibrate?.(18)},620)});b.addEventListener("pointermove",e=>{if(!held&&Math.hypot(e.clientX-sx,e.clientY-sy)>18)cancel()});b.addEventListener("pointercancel",cancel);b.addEventListener("pointerup",e=>{cancel();if(e.target.closest?.(".st34-info"))return;if(held){e.preventDefault();return}if(item.kind==="base")openConfig(cloneConfig(item.config||registry.defaults(patternId),patternId),{type:"base",id:patternId,patternId,communityId:null});if(item.kind==="favorite"){const f=favorites.find(x=>x.id===item.id);if(f)openConfig(f.config,{type:"favorite",id:f.id,patternId:f.baseId,communityId:f.communityId||null})}if(item.kind==="community")openConfig(item.config,{type:"community",id:item.communityId,patternId,communityId:item.communityId})});b.addEventListener("contextmenu",e=>e.preventDefault());return b}
+  function makePatternTile(item){const itemPattern=item.patternId||item.baseId||(item.kind==="base"?item.id:null);if(item.unavailable||itemPattern&&!registry.ready(itemPattern)){
+    const pending=!item.unavailable&&registry.has(itemPattern)&&!registry.ready(itemPattern);
+    const placeholder=document.createElement("button");
+    placeholder.type="button";
+    placeholder.className="pattern-tile unavailable-pattern";
+    placeholder.dataset.patternId=itemPattern||"";
+    placeholder.dataset.kind=item.kind||"";
+    placeholder.dataset.itemId=String(item.id||"");
+    const icon=document.createElement("span");icon.className="unavailable-icon";icon.textContent=pending?"◌":"◇";
+    const caption=document.createElement("span");caption.className="unavailable-caption";
+    caption.textContent=pending?"Загрузка паттерна":"Слепок сохранён";
+    placeholder.setAttribute("aria-label",pending?"Дождаться загрузки паттерна":"Паттерн этой версии недоступен. Слепок сохранён. Повторить проверку");
+    placeholder.title=(itemPattern||"Неизвестный алгоритм")+" · исходные данные не удалены";
+    placeholder.append(icon,caption);
+    placeholder.addEventListener("click",()=>{
+      window.SetkaPatternPluginsV1?.loadModules?.();
+      favorites=loadFavorites();
+      renderLibrary();
+      if(!pending)showToast("Слепок сохранён. Для открытия нужен совместимый паттерн.");
+    });
+    return placeholder;
+  }const patternId=inferPatternId(item.config,item.patternId||item.baseId||(item.kind==="base"?item.id:null)),b=document.createElement("button");b.type="button";b.className=`pattern-tile ${item.kind}-tile`;b.dataset.kind=item.kind;b.dataset.itemId=item.id;b.dataset.patternId=patternId;b.setAttribute("aria-label",item.kind==="favorite"?"Открыть сохраненную конфигурацию. Удерживай, чтобы удалить":item.kind==="community"?"Открыть конфигурацию сообщества. Удерживай, чтобы сохранить себе":`Открыть паттерн ${patternById(patternId).title}. Удерживай, чтобы сохранить`);const thumb=document.createElement("canvas");thumb.width=180;thumb.height=180;thumb.className="thumb-canvas";b.appendChild(thumb);drawThumbnail(thumb,item.config||registry.defaults(patternId),previewRenderedFrame(Number.isFinite(Number(item.previewFrame))?Number(item.previewFrame):BASE_PREVIEW_FRAME),patternId);previewTiles.set(thumb,{patternId,config:cloneConfig(item.config||registry.defaults(patternId),patternId),frame:Number.isFinite(Number(item.previewFrame))?Number(item.previewFrame):BASE_PREVIEW_FRAME});if(item.kind==="favorite"){const h=document.createElement("span");h.className="mini-heart";h.textContent="♥";b.appendChild(h)}if(item.kind==="community"){const badge=document.createElement("span");badge.className="community-count";badge.textContent=`♥ ${Math.max(0,Number(item.saveCount)||0)}`;b.appendChild(badge)}const rec=document.createElement("span");rec.className="recommendation-mark";rec.textContent="●";b.appendChild(rec);let timer=0,held=false,sx=0,sy=0;const cancel=()=>{if(timer)clearTimeout(timer);timer=0};b.addEventListener("pointerdown",e=>{if(e.target.closest?.(".st34-info"))return;held=false;sx=e.clientX;sy=e.clientY;b.setPointerCapture?.(e.pointerId);timer=setTimeout(()=>{held=true;if(item.kind==="favorite"){const f=favorites.find(x=>x.id===item.id);if(f)removeFavorite(f,"tile_hold")}else{const cfg=item.kind==="base"?registry.defaults(patternId):item.config,old=matchingFavorite(cfg,patternId);if(old)removeFavorite(old,"tile_hold");else saveFavorite(cfg,item.previewFrame,{origin:"tile_hold",baseId:patternId,communityId:item.kind==="community"?item.communityId:null,parentCommunityId:item.kind==="community"?item.communityId:null,patternVersion:item.patternVersion||patternById(patternId).version})}navigator.vibrate?.(18)},620)});b.addEventListener("pointermove",e=>{if(!held&&Math.hypot(e.clientX-sx,e.clientY-sy)>18)cancel()});b.addEventListener("pointercancel",cancel);b.addEventListener("pointerup",e=>{cancel();if(e.target.closest?.(".st34-info"))return;if(held){e.preventDefault();return}if(item.kind==="base")openConfig(cloneConfig(item.config||registry.defaults(patternId),patternId),{type:"base",id:patternId,patternId,communityId:null});if(item.kind==="favorite"){const f=favorites.find(x=>x.id===item.id);if(f)openConfig(f.config,{type:"favorite",id:f.id,patternId:f.baseId,communityId:f.communityId||null})}if(item.kind==="community")openConfig(item.config,{type:"community",id:item.communityId,patternId,communityId:item.communityId})});b.addEventListener("contextmenu",e=>e.preventDefault());return b}
 
   function openConfig(config,source={}){
     try{
@@ -323,6 +375,9 @@
   }
   function syncRegistry(){
     for(const p of registry.list())if(!IDS.has(p.id)){PATTERNS.push({...p,title:registry.title(p.id)});IDS.add(p.id);customRenderers.set(p.id,true)}
+    // Retry every saved record when a renderer appears; no mutation of raw
+    // localStorage or user archive, including unknown legacy pattern IDs.
+    favorites=loadFavorites();
     renderLibrary();
   }
   window.addEventListener("setka:renderer-ready",()=>{if(window.SetkaApp)syncRegistry()});
@@ -336,6 +391,8 @@
     autonomous:window.SetkaAutoOptimizerV1?.status?.()||null}),registerPattern,getState:()=>statePayload(),getConfig:()=>cloneConfig(runtimeConfig,runtimePatternId),getFavorites:()=>favorites.map(f=>f.unavailable?JSON.parse(JSON.stringify(f)):({...f,config:cloneConfig(f.config,f.baseId)})),setConfigPatch:(patch={})=>{if(!patch||typeof patch!=="object")return cloneConfig(runtimeConfig,runtimePatternId);const before=configKey(runtimeConfig,runtimePatternId);runtimeConfig=cloneConfig({...runtimeConfig,...patch,patternId:runtimePatternId},runtimePatternId);if(before!==configKey(runtimeConfig,runtimePatternId)){updateFavoriteButtonState();updateColorIndicator();emit("gesture-move",{origin:"slider"})}return cloneConfig(runtimeConfig,runtimePatternId)},getPatterns:()=>PATTERNS.map(p=>({id:p.id,title:registry.title(p.id),version:p.version,defaults:registry.defaults(p.id)})),getPatternDefaults:id=>IDS.has(id)?registry.defaults(id):null,getPatternTitle:id=>registry.title(id),cloneConfig,configKey,openConfig,renderPreview,setCommunity(items){communityItems=Array.isArray(items)?items.map(normalizeCommunityItem):[];renderLibrary()},setRecommendations(data={}){recommendedCommunity=new Set((data.community||[]).map(String));recommendedPatterns=new Set((data.patterns||[]).map(String));renderLibrary()},updateFavoriteMeta,refreshFavorites(){favorites=loadFavorites();renderLibrary();updateFavoriteButtonState()},renderLibrary,setLibraryPage,finishCurrentUsageHint(){return statePayload()},DEFAULT_CONFIG:cloneConfig(TENTACLE_DEFAULT,TENTACLE_ID),DANDELION_DEFAULT:cloneConfig(DANDELION_DEFAULT,DANDELION_ID),FISH_DEFAULT:cloneConfig(FISH_DEFAULT,FISH_ID),BREATHING_FRACTAL_DEFAULT:cloneConfig(BREATH_DEFAULT,BREATH_ID),BREATHING_GROWTH_DEFAULT:cloneConfig(GROWTH_DEFAULT,GROWTH_ID),RGB_RINGS_DEFAULT:cloneConfig(RGB_DEFAULT,RGB_ID),STEREO_DNA_DEFAULT:cloneConfig(DNA_DEFAULT,DNA_ID),BREATHING_GRID_DEFAULT:cloneConfig(GRID_DEFAULT,GRID_ID)};
   window.addEventListener("setka:catalog-updated",()=>{for(const p of PATTERNS)p.defaults=registry.defaults(p.id);renderLibrary()});
   registry?.attachEngine?.(window.SetkaApp);
-  persistFavorites();buildColorDots();updateColorIndicator();updateFavoriteButtonState();renderLibrary();emit("ready",{});
+  // Startup is read-only: do not overwrite saved favorites with a temporary
+  // normalization result before all plug-in renderers/accounts have loaded.
+  buildColorDots();updateColorIndicator();updateFavoriteButtonState();renderLibrary();emit("ready",{});
 
 })();
