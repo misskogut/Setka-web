@@ -17,7 +17,7 @@ try{
  for(let n=0;n<45;n++){try{if((await fetch(base+'/standalone-v34.html')).ok)break}catch{}await sleep(100)}
  browser=await (process.env.SETKA_BROWSER==='webkit'?webkit:chromium).launch({headless:true,args:process.env.SETKA_BROWSER==='webkit'?[]:['--no-sandbox']});
  const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
- let catalogFail=false,feedMalformed=false;
+ let catalogFail=false,feedMalformed=false;const feedRequests=[];
  const errors=[];
  const route=async r=>{
   const req=r.request(),url=req.url();let input={};
@@ -36,8 +36,10 @@ try{
    }
    if(input.action==='overview')payload={ok:true,data:overview};
   }
-  if(url.includes('setka-community-patterns-v38')&&input.action==='feed')
+  if(url.includes('setka-community-patterns-v38')&&input.action==='feed'){
+   feedRequests.push({malformed:feedMalformed,action:input.action});
    payload=feedMalformed?{ok:true}:{ok:true,items:[],metrics:{},patternMetrics:[]};
+  }
   return r.fulfill({status,contentType:'application/json',headers,body:JSON.stringify(payload)});
  };
  await context.route('**/functions/v1/**',route);
@@ -51,6 +53,7 @@ try{
  await front.evaluate(()=>window.SetkaStandaloneV34.cloudCommunity.refresh());
  await front.waitForFunction(()=>!!window.SetkaStandaloneV34.cloudCommunity.status().lastError,{timeout:15000});
  const state=await front.evaluate(()=>window.SetkaStandaloneV34.cloudCommunity.status());
+ console.log('AUDIT FEED STATUS',JSON.stringify({state,feedRequests}));
  assert.match(state.lastError,/community_invalid_response/,'HTTP 200 without items cannot masquerade as empty confirmed feed');
  await front.locator('#st40CommunityLoadError').waitFor();
  assert.match(await front.locator('#st40CommunityLoadError').innerText(),/не подтверждены сервером/);
