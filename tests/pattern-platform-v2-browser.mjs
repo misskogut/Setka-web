@@ -56,7 +56,7 @@ try{
   }
   if(host.querySelector('canvas')||host.querySelectorAll('.st34-note-no-preview').length!==2)throw Error('unavailable notes must retain text without substituting a renderer');
  });
- assert.equal(await page.locator('.base-tile').count(),10,'both new algorithms appear without UI edits');
+ assert.equal(await page.locator('.base-tile').count(),R.list().length,'every existing/new algorithm appears without UI edits');
  for(const id of fixtures.map(p=>p.id)){
   const tile=page.locator(`.base-tile[data-pattern-id="${id}"] canvas`);await tile.scrollIntoViewIfNeeded();const image=await tile.evaluate(c=>c.toDataURL());
   await page.waitForFunction(({id,image})=>document.querySelector(`.base-tile[data-pattern-id="${id}"] canvas`)?.toDataURL()!==image,{id,image});
