@@ -27,6 +27,10 @@ for(const entry of fs.readdirSync(".",{withFileTypes:true}).sort((a,b)=>a.name.l
   if(!descriptor||typeof descriptor!=="object"||Array.isArray(descriptor)
     ||!/^[a-z][a-z0-9-]{2,79}$/.test(descriptor.id)
     ||descriptor.module!==entry.name
+    ||typeof descriptor.introducedAt!=="string"
+    ||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(descriptor.introducedAt)
+    ||!Number.isFinite(Date.parse(descriptor.introducedAt))
+    ||new Date(descriptor.introducedAt).toISOString()!==descriptor.introducedAt
     ||seen.has(descriptor.id)){
     throw Error("Invalid/duplicate pattern package: "+entry.name);
   }
@@ -42,6 +46,10 @@ for(const entry of fs.readdirSync(".",{withFileTypes:true}).sort((a,b)=>a.name.l
   seen.add(descriptor.id);
   discovered.push(descriptor);
 }
+// File names are not release chronology. Each one-file package carries its
+// immutable first-publication timestamp. Never hand-maintain a parallel ID
+// ordering in the front, admin, research or SQL.
+discovered.sort((a,b)=>Date.parse(a.introducedAt)-Date.parse(b.introducedAt)||a.id.localeCompare(b.id));
 const generated=source.slice(0,start+BEGIN.length)+"\n  const discovered="+JSON.stringify(discovered,null,2).replace(/\n/g,"\n  ")+";\n  "+source.slice(finish);
 const context={window:{dispatchEvent(){}},CustomEvent:class{constructor(type,args){this.type=type;this.detail=args?.detail}}};
 vm.runInNewContext(generated,vm.createContext(context),{timeout:1500});

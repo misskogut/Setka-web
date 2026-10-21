@@ -5,17 +5,12 @@
  // Canonical participant archive is the only source of "opened once".
  // No second localStorage key, launch-time heuristic or per-pattern exception.
  function seenInfo(){
-  const d=C.getData(),ids=new Set(),first=new Map();
-  function add(id,at){
-   if(typeof id!=='string'||!id)return;
-   ids.add(id);
-   const stamp=at?Date.parse(at):NaN;
-   if(Number.isFinite(stamp)&&(!first.has(id)||stamp<first.get(id)))first.set(id,stamp);
-  }
-  for(const x of d.openedPatterns||[])add(x.patternId,x.firstOpenedAt||x.openedAt||x.createdAt);
-  for(const x of d.patternExposures||[])add(x.patternId,x.startedAt||x.observedAt);
-  for(const e of d.events||[])if(e.type==='pattern_open')add(e.payload?.state?.patternId||e.payload?.patternId,e.wallAt||e.observedAt);
-  return{ids,first};
+  const d=C.getData(),ids=new Set();
+  const add=id=>{if(typeof id==='string'&&id)ids.add(id)};
+  for(const x of d.openedPatterns||[])add(x.patternId);
+  for(const x of d.patternExposures||[])add(x.patternId);
+  for(const e of d.events||[])if(e.type==='pattern_open')add(e.payload?.state?.patternId||e.payload?.patternId);
+  return{ids};
  }
  function seen(){return seenInfo().ids}
  function orderBaseTiles(info){
@@ -27,8 +22,9 @@
    const ia=a.dataset.patternId,ib=b.dataset.patternId,va=info.ids.has(ia),vb=info.ids.has(ib);
    if(va!==vb)return va?1:-1; // unopened ("new") always at the top
    if(!va)return (releaseOrder.get(ib)??-1)-(releaseOrder.get(ia)??-1); // newest first
-   const ta=info.first.get(ia)??0,tb=info.first.get(ib)??0;
-   return ta-tb||((releaseOrder.get(ia)??0)-(releaseOrder.get(ib)??0)); // viewed most recently = last
+   // Viewed patterns preserve their RELEASE chronology, regardless of
+   // which order the user opened them. Opening time controls only "new".
+   return (releaseOrder.get(ia)??0)-(releaseOrder.get(ib)??0);
   });
   if(sorted.every((tile,i)=>tile===tiles[i]))return; // avoid observer loops / preview resets
   const fragment=document.createDocumentFragment();

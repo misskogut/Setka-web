@@ -93,6 +93,24 @@ try{
  await page.waitForFunction(()=>document.querySelector('#allPatternsPanel')?.lastElementChild?.dataset.patternId==='fixture-fields');
  assert.equal((await baseIds()).at(-1),'fixture-fields','opened status and order survive reload');
  assert.equal(await page.locator('.base-tile[data-pattern-id="fixture-fields"] .setka-new-pattern').count(),0);
+ // Open the earlier-released fixture LAST. After both have been seen their
+ // display order must nevertheless remain fixture-shapes, fixture-fields.
+ await page.evaluate(()=>{
+  const S=window.SetkaApp,id='fixture-shapes';
+  S.openConfig(S.getPatternDefaults(id),{type:'base',id,patternId:id});
+ });
+ await page.locator('#libraryButton').click();
+ await page.waitForFunction(()=>{
+  const ids=[...document.querySelectorAll('#allPatternsPanel > .base-tile')].map(x=>x.dataset.patternId);
+  return ids.at(-2)==='fixture-shapes'&&ids.at(-1)==='fixture-fields';
+ });
+ assert.deepEqual((await baseIds()).slice(-2),['fixture-shapes','fixture-fields'],
+   'release order persists even though user opened fields then shapes');
+ await page.reload();
+ await page.waitForFunction(()=>window.SetkaPatternRegistryV1.ready('fixture-fields'));
+ await page.evaluate(async()=>{await window.SetkaStandaloneV34.ready;await window.SetkaPatternPluginsV1.ready()});
+ assert.deepEqual((await baseIds()).slice(-2),['fixture-shapes','fixture-fields'],
+   'chronological viewed order survives reload');
  // Every mother and every dynamically registered plugin gets its exact
  // shared gesture contract shown in the key: fingers, side, or slider-only.
  for(const pattern of R.list()){
@@ -128,6 +146,14 @@ try{
   }
   await page.locator('#st34KeySheet [data-action="close"]').click();
  }
+ // Regression: after all patterns have been opened, the grid must be
+ // ordered by creation/publication, never by the order the user viewed them.
+ await page.locator('#libraryButton').click();
+ const viewedOrder=await baseIds();
+ assert.deepEqual(viewedOrder,R.list().map(p=>p.id),
+  'once every pattern is viewed, release chronology matches the registry exactly');
+ assert.ok(viewedOrder.indexOf('rain')<viewedOrder.indexOf('orbital-threads'),
+  'Orbital really was added after Rain and must be lower');
  // Rain's actual swipe must change the same field described in the key.
  await page.evaluate(()=>window.SetkaApp.openConfig(window.SetkaApp.getPatternDefaults('rain'),{type:'base',id:'rain',patternId:'rain'}));
  const rainCanvas=page.locator('#patternCanvas'),bounds=await rainCanvas.boundingBox();

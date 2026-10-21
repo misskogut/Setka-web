@@ -32,7 +32,7 @@ function loadRegistry(source){
  return context.window.SetkaPatternRegistryV1;
 }
 const mini=(id,extra={})=>({
- id,title:id,version:1,schemaVersion:1,module:'standalone-pattern-'+id+'.js',
+ id,title:id,version:1,schemaVersion:1,introducedAt:'2026-10-22T00:00:00.000Z',module:'standalone-pattern-'+id+'.js',
  defaults:{speed:1,seed:123,colorModeIndex:0},
  controls:[['Скорость','speed',0.1,10,0.1,'←→',1]],
  colorModes:2,palettes:[[255,255,255],[0,200,255]],...extra
@@ -154,6 +154,42 @@ test('a single pattern file automatically becomes one shared catalog, repeatedly
   const second=build(dir);
   assert.equal(second.source,first.source,'same inputs may never create registry drift');
   assert.deepEqual(second.manifest,first.manifest,'same inputs must produce the same manifest');
+ }finally{fs.rmSync(dir,{recursive:true,force:true});}
+});
+
+test('release chronology, not alphabetical filenames, drives front and research catalog order',()=>{
+ const dir=workspace();
+ try{
+  const {source,manifest}=build(dir),R=loadRegistry(source);
+  const ids=R.list().map(p=>p.id);
+  assert.ok(ids.indexOf('rain')<ids.indexOf('orbital-threads'),'Rain published before Orbital despite alphabetical filenames');
+  assert.equal(ids.at(-1),'orbital-threads','latest released module must be last among viewed');
+  assert.equal(manifest.patterns.at(-1).id,'orbital-threads','research/server manifest uses same chronology');
+  // An alphabetically earlier future ID should still be later chronologically.
+  fs.writeFileSync(path.join(dir,'standalone-pattern-aaa-future.js'),
+    packageContent(mini('aaa-future',{introducedAt:'2026-10-23T12:00:00.000Z'})));
+  const next=build(dir),after=loadRegistry(next.source).list().map(p=>p.id);
+  assert.equal(after.at(-1),'aaa-future','future patterns automatically appear at true release position');
+  assert.equal(next.manifest.patterns.at(-1).id,'aaa-future');
+  // Back-dated modules are inserted by actual introducedAt, not appended.
+  fs.writeFileSync(path.join(dir,'standalone-pattern-zzz-past.js'),
+    packageContent(mini('zzz-past',{introducedAt:'2026-10-21T17:45:00.000Z'})));
+  const sorted=build(dir),order=loadRegistry(sorted.source).list().map(p=>p.id);
+  assert.ok(order.indexOf('rain')<order.indexOf('zzz-past')&&
+    order.indexOf('zzz-past')<order.indexOf('orbital-threads'));
+  assert.deepEqual(sorted.manifest.patterns.map(p=>p.id),Array.from(order),'VM realm registry arrays need plain Node values');
+ }finally{fs.rmSync(dir,{recursive:true,force:true});}
+});
+
+test('missing or invalid introduction date is rejected without corrupting catalog',()=>{
+ const dir=workspace();
+ try{
+  const valid=build(dir),filename=path.join(dir,'standalone-pattern-no-release-date.js');
+  for(const introducedAt of [undefined,'2026-10-21','2026-10-21T28:00:00.000Z']){
+   fs.writeFileSync(filename,packageContent(mini('no-release-date',{introducedAt})));
+   assert.throws(()=>build(dir),/Invalid\/duplicate pattern package/);
+   assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir,'setka-pattern-manifest-v1.json'),'utf8')),valid.manifest);
+  }
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
 

@@ -3,6 +3,7 @@
   "id": "orbital-threads",
   "title": "Орбитальные нити",
   "version": 1,
+  "introducedAt": "2026-10-21T18:49:43.000Z",
   "schemaVersion": 1,
   "module": "standalone-pattern-orbital-threads.js",
   "colorModes": 9,
