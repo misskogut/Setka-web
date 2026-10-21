@@ -3,12 +3,8 @@
   const C=window.SetkaStandaloneV34,Setka=window.SetkaApp;
   if(!C||!Setka)return;
 
-  // v38: community is cloud-backed only. Remove legacy local clones of favorites.
-  try{
-    const d=C.getData?.();
-    if(d&&Array.isArray(d.localCommunity)&&d.localCommunity.length){d.localCommunity=[];C.save?.()}
-    localStorage.setItem("setka-standalone:v38-real-community","1");
-  }catch(_){}
+  // Community rendering uses the server feed. Keep legacy local recipes intact:
+  // changing the display source must never delete recovery evidence.
 
   // Put the note control into the same bottom control row as the working key button.
   function placeNoteButton(){

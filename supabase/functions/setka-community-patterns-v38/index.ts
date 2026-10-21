@@ -1,5 +1,6 @@
 // @ts-nocheck
 import {loadManifest} from "../_shared/pattern-catalog.mjs";
+import {historicalSavedCatalog} from "./saved-catalog.mjs";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const db=createClient(Deno.env.get("SUPABASE_URL")!,Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,{auth:{persistSession:false,autoRefreshToken:false}});
 const H={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type","Access-Control-Allow-Methods":"POST, OPTIONS","Content-Type":"application/json; charset=utf-8"};
@@ -16,6 +17,7 @@ const INTENTS=new Set(["sleep","relax","tension","focus","energy","switch","expl
 // build. Only trusted, well-formed IDs are admitted. Keep admin-renamed titles.
 const KNOWN_PATTERNS=new Set<string>();
 const VERSIONS=new Map<string,number>();
+let descriptors:any[]=[];
 let catalogLast=0,catalogPending:Promise<void>|null=null;
 async function syncPatternCatalog(){
   if(catalogPending)return catalogPending;
@@ -27,6 +29,7 @@ async function syncPatternCatalog(){
     const ins=await db.from("setka_research_v1_pattern_catalog").upsert(rows,{onConflict:"pattern_id",ignoreDuplicates:true});
     if(ins.error)throw ins.error;
     KNOWN_PATTERNS.clear();VERSIONS.clear();
+    descriptors=manifest.patterns;
     for(const p of manifest.patterns){KNOWN_PATTERNS.add(p.id);VERSIONS.set(p.id,p.version)}
     catalogLast=Date.now();
   })().finally(()=>{catalogPending=null});
@@ -89,6 +92,16 @@ async function historicalRows(){
   return [];
 }
 
+async function historicalFavorites(){
+  const rows:any[]=[];
+  for(let i=0;i<100;i++){
+    const q=await db.from("prototype_v35_favorites").select("device_id,config_key,pattern_id,config,saved_at,updated_at").order("device_id").order("config_key").range(i*1000,i*1000+999);
+    if(q.error)throw q.error;rows.push(...(q.data||[]));
+    if((q.data||[]).length<1000)return historicalSavedCatalog(rows,descriptors);
+  }
+  throw new Error("historical_favorites_pagination_exceeded");
+}
+
 Deno.serve(async req=>{
   if(req.method==="OPTIONS")return new Response("ok",{headers:H});
   if(req.method!=="POST")return J({error:"method_not_allowed"},405);
@@ -142,14 +155,19 @@ Deno.serve(async req=>{
         created_at:x.first_saved_at,updated_at:x.last_saved_at
       });
     }
-    const [accountsQ,archiveQ,historical]=await Promise.all([
+    const [accountsQ,archiveQ,historical,savedHistory]=await Promise.all([
       db.from("prototype_v40_tester_accounts").select("tester_id,consent_at,consent_version,active").limit(1000),
       db.from("prototype_v37_tester_private_archives").select("tester_id,payload").limit(1000),
-      historicalRows()
+      historicalRows(),historicalFavorites()
     ]);
     for(const q of [accountsQ,archiveQ])if(q.error)throw q.error;
     const patternScenarios=communityIntentSummary(accountsQ.data||[],archiveQ.data||[]);
     const historicalPatterns=historicalPatternSummary(historical);
+    const currentKeys=new Set(items.map(x=>x.config_key));
+    for(const x of savedHistory){
+      if(currentKeys.has(x.config_key))continue;
+      items.push({...x,id:`historical-${await shortHash(String(x.config_key))}`});
+    }
     const d=day(),now=new Date().toISOString();
     const snap=await db.from("prototype_v40_service_metric_snapshots").upsert({
       day:d,participants:metrics.connectedAccounts,connected_testers:metrics.connectedAccounts,sessions:metrics.sessions,exposures:metrics.exposures,

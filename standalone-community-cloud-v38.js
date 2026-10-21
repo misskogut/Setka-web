@@ -42,7 +42,6 @@
     const bar=ensureModeButton();if(!bar)return;
     const m=mode();bar.querySelectorAll("button[data-m]").forEach(b=>b.classList.toggle("active",b.dataset.m===m));
   }
-  function clearLegacyLocal(){try{const d=data();if(Array.isArray(d.localCommunity)&&d.localCommunity.length){d.localCommunity=[];C.save?.()}}catch(_){}}
   function sessionUsages(){
     const out=[],d=data();
     for(const s of d.sessions||[]){const events=(d.events||[]).filter(e=>e.sessionId===s.id&&["pattern_open","pattern_state","color","favorite_save"].includes(e.type));const configs=new Map();for(const e of events){const st=e.payload?.state;if(st?.configKey)configs.set(st.configKey,{sessionId:s.id,configKey:st.configKey,saved:configs.get(st.configKey)?.saved||e.type==="favorite_save"})}out.push(...configs.values())}
@@ -67,7 +66,7 @@
     panel.querySelectorAll(".community-tile").forEach(tile=>{
       const item=items.find(x=>String(x.id)===String(tile.dataset.itemId));
       const badge=tile.querySelector(".community-count");
-      if(badge&&item)badge.textContent=`♥ ${Math.max(0,Number(item.saveCount)||0)}`;
+      if(badge&&item){badge.textContent=`♥ ${Math.max(0,Number(item.historical?item.legacySaveCount:item.saveCount)||0)}`;badge.title=item.historical?"Сохранения в предыдущей версии SETKA":"Сохранения участников";}
     });
   }
 
@@ -149,8 +148,13 @@
       }
       window.dispatchEvent(new CustomEvent("setka:community-cloud",{detail:{ok:true,count:items.length,mode:mode(),updatedAt:lastOkAt,metrics,patternMetrics,patternScenarios,historicalPatterns}}));
     }catch(e){
-      lastError=String(e?.message||e);clearLegacyLocal();
+      lastError=String(e?.message||e);
       if(mode()!=="notes"&&!items.length){C.publicCommunity=[];Setka.setCommunity?.([])}
+      const panel=document.getElementById("communityPanel");
+      if(mode()!=="notes"&&panel&&!panel.querySelector('[data-community-error]')){
+        const notice=document.createElement('div');notice.dataset.communityError='true';notice.className='st40-community-empty';
+        notice.textContent='Не удалось загрузить сообщество. Это ошибка загрузки, а не пустая коллекция.';panel.prepend(notice);
+      }
       window.dispatchEvent(new CustomEvent("setka:community-cloud",{detail:{ok:false,error:lastError}}));
     }finally{busy=false}
   }
@@ -162,8 +166,8 @@
     setMode(b.dataset.m);applyMode();
   },true);
 
-  window.addEventListener("setka:favorite-saved",()=>{clearLegacyLocal();if(mode()!=="notes")renderPatterns();schedule(900)});
-  window.addEventListener("setka:favorite-removed",()=>{clearLegacyLocal();if(mode()!=="notes")renderPatterns();schedule(900)});
+  window.addEventListener("setka:favorite-saved",()=>{if(mode()!=="notes")renderPatterns();schedule(900)});
+  window.addEventListener("setka:favorite-removed",()=>{if(mode()!=="notes")renderPatterns();schedule(900)});
   window.addEventListener("setka:v34-sync",e=>schedule(e.detail?.ok?120:1200));
   window.addEventListener("setka:library-page",e=>{
     const page=e.detail?.page,prev=lastPage;lastPage=page;
@@ -177,7 +181,7 @@
   },true);
 
   async function bootstrap(){
-    clearLegacyLocal();ensureModeButton();
+    ensureModeButton();
     const d=data();d.settings=d.settings||{};delete d.settings.communitySection;if(!MODES.has(d.settings.communityMode)||d.settings.communityMode==="notes")d.settings.communityMode="for_me";C.save?.();
     try{await C.sandbox?.sync?.()}catch(_){}
     await Promise.all([refresh(),loadNotes(true)]);
