@@ -125,6 +125,26 @@ try{
   assert.equal(spiral.reset.colorModeIndex,0);
   console.log("SPIRAL SNAKES V1 AUTOREGISTER / CANONICAL PREVIEW / COLOR / OPEN PASS");
 
+  // Rendering cost regression: all 60 snakes must reuse precomputed wave
+  // phases. With the original renderer each history point called trigonometry
+  // separately (~60 * history/stride). Preview still uses all the same points.
+  const spiralWork=await page.evaluate(()=>{
+    const R=window.SetkaPatternRegistryV1,id="spiral-snakes-3d",cfg=R.defaults(id);
+    const target=document.createElement("canvas");target.width=180;target.height=180;
+    const originalSin=Math.sin,originalCos=Math.cos;
+    let trigCalls=0;
+    Math.sin=function(...args){trigCalls++;return originalSin.apply(this,args)};
+    Math.cos=function(...args){trigCalls++;return originalCos.apply(this,args)};
+    try{R.render(target.getContext("2d"),180,180,cfg,44,true,id)}
+    finally{Math.sin=originalSin;Math.cos=originalCos}
+    const maxHistory=Math.min(1200,Math.max(100,Math.trunc(cfg.baseHistory*.02/cfg.waveSpeed)));
+    return{trigCalls,history:maxHistory,number:cfg.numSnakes};
+  });
+  assert.ok(spiralWork.trigCalls<=spiralWork.history*4+spiralWork.number*3+30,
+    "animation must share wave phase computation across snakes rather than repeating it per point: "+JSON.stringify(spiralWork));
+  console.log("SPIRAL SNAKES SHARED TRIGONOMETRY / NO PREVIEW-SPECIFIC DOWNSAMPLING PASS",spiralWork);
+
+
   for(const p of result.images){
     assert.ok(p.visible>45,"first B&W preview must be visible: "+JSON.stringify(p));
     assert.equal(p.colored,0,"FIRST color must be monochrome: "+JSON.stringify(p));
