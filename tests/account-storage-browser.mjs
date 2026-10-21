@@ -38,5 +38,14 @@ try{
  await page.reload();await page.waitForFunction(()=>window.__SETKA_TESTER_CABINET_V40__?.state()?.authenticated===true);
  assert.equal(await page.evaluate(()=>window.SetkaDataScopeV1.id),'tester:T-ISOLATED');
  assert.ok(requests.includes('recover-password'));
- console.log('RECOVERY STORAGE PASS: full localStorage, IndexedDB archive, temporary session, scoped reload and authenticated status');
+ await page.evaluate(()=>{void window.__SETKA_TESTER_CABINET_V40__.logout()});
+ await page.waitForFunction(()=>window.SetkaDataScopeV1?.id==='guest');
+ await page.evaluate(async()=>{await window.SetkaStandaloneV34.ready;await window.__SETKA_TESTER_CABINET_V40__.show()});
+ await page.getByLabel('Tester ID',{exact:true}).fill('T-ISOLATED');
+ await page.getByLabel('Пароль',{exact:true}).fill('isolated-password');
+ await page.getByRole('button',{name:'Войти',exact:true}).click();
+ await page.waitForFunction(()=>window.SetkaDataScopeV1?.id==='tester:T-ISOLATED');
+ await page.waitForFunction(()=>window.__SETKA_TESTER_CABINET_V40__?.state()?.authenticated===true);
+ assert.ok(requests.includes('login'));
+ console.log('RECOVERY STORAGE PASS: full localStorage, IndexedDB archive, temporary session, scoped reload, logout and ordinary password login');
 }finally{await browser?.close();server.kill('SIGTERM')}
