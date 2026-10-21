@@ -158,6 +158,53 @@ async function go(){
     row.patternId+" preview must not jump when tiles are rebuilt: "+JSON.stringify(row));
   console.log("LIVE PREVIEW PHASE STAYS STABLE ACROSS CATALOG REBUILD PASS",JSON.stringify(continuity));
 
+  // Regression: a mother tile must open the same baseline recipe that its live preview uses,
+  // even if a previous visit changed that mother's sliders or color palette.
+  const parity=await page.evaluate(()=>{
+    const S=window.SetkaApp,R=window.SetkaPatternRegistryV1;
+    const ids=R.ids(),out=[];
+    for(const id of ids){
+      const canonical=R.defaults(id),key=S.configKey(canonical,id);
+      const source={type:"base",id,patternId:id};
+      if(!S.openConfig(canonical,source))throw Error(id+" not openable");
+      const control=R.controls(id).find(row=>row[3]>row[2]);
+      if(!control)throw Error(id+" has no editable numeric control");
+      const name=control[1],different=canonical[name]===control[2]?control[3]:control[2];
+      S.setConfigPatch({[name]:different});
+      const modified=S.getConfig();
+      if(S.configKey(modified,id)===key)throw Error(id+" edit did not change recipe");
+      if(!S.openConfig(canonical,source))throw Error(id+" not reopenable");
+      const reopened=S.getConfig();
+      out.push({id,expected:key,actual:S.configKey(reopened,id),modified:S.configKey(modified,id)});
+      if(S.configKey(reopened,id)!==key)throw Error(id+" substituted a personalized config");
+      // Saved derivative/community configs must still open as requested.
+      S.openConfig(modified,{type:"favorite",id:"audit-personal-"+id,patternId:id});
+      if(S.configKey(S.getConfig(),id)!==S.configKey(modified,id))
+        throw Error(id+" could not open explicit custom configuration");
+    }
+    document.getElementById("libraryButton").click();
+    return out;
+  });
+  assert.equal(parity.length,8,"all mother patterns verified against their canonical previews");
+  assert.ok(parity.every(p=>p.expected===p.actual&&p.modified!==p.actual));
+  // Exercise the actual card pointer handler, not only the public openConfig API.
+  await page.evaluate(()=>{
+    const S=window.SetkaApp,R=window.SetkaPatternRegistryV1,id="tentacle-orbit";
+    S.openConfig(R.defaults(id),{type:"base",id,patternId:id});
+    const control=R.controls(id)[0],name=control[1],alternate=R.defaults(id)[name]===control[2]?control[3]:control[2];
+    S.setConfigPatch({[name]:alternate});
+    document.getElementById("libraryButton").click();
+  });
+  await page.locator('#allPatternsPanel .pattern-tile[data-pattern-id="tentacle-orbit"]').dispatchEvent("pointerup",{pointerId:491,pointerType:"touch",bubbles:true});
+  const actualTileOpen=await page.evaluate(()=>{
+    const S=window.SetkaApp,R=window.SetkaPatternRegistryV1,id="tentacle-orbit";
+    return{source:S.getState().sourceType,actual:S.configKey(S.getConfig(),id),expected:S.configKey(R.defaults(id),id)};
+  });
+  assert.deepEqual(actualTileOpen,{source:"base",actual:actualTileOpen.expected,expected:actualTileOpen.expected},
+    "tapping the actual mother thumbnail must open its displayed baseline, not a remembered edit");
+  await page.locator("#libraryButton").click();
+  console.log("MOTHER PATTERN PREVIEW → BASE OPEN PARITY PASS",JSON.stringify(parity.map(p=>p.id)));
+
   // One observed scenario per session, never per gesture/configuration change.
   await page.evaluate(()=>{
     const C=window.SetkaStandaloneV34,d=C.getData();
