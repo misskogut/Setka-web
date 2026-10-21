@@ -204,6 +204,9 @@ jobs:
           node-version: '22'
       - run: npm install --no-save --ignore-scripts playwright esbuild
       - run: npx playwright install --with-deps chromium webkit
+      # Fail fast on cross-surface contract issues before slower visual suites.
+      - run: node tests/setka-front-research-audit-browser.mjs
+      - run: SETKA_BROWSER=webkit node tests/setka-front-research-audit-browser.mjs
       # Audio has an independent safety regression; run it before the full UI
       # suite so a flaky unrelated preview does not obscure mic test results.
       - run: node tests/standalone-breathing-grid-browser-smoke.mjs
@@ -216,7 +219,6 @@ jobs:
       - run: node tests/standalone-invites-autosync-browser-smoke.mjs
       - run: node tests/standalone-pulse-v1-browser-smoke.mjs
       - run: node tests/research-management-v1-browser-smoke.mjs
-      - run: node tests/setka-front-research-audit-browser.mjs
       - run: node tests/research-admin-v1-access-browser-smoke.mjs
       - run: node tests/standalone-v34-admin-browser-smoke.mjs
       - run: node tests/standalone-v34-open-admin-browser-smoke.mjs
@@ -226,7 +228,6 @@ jobs:
       - run: SETKA_BROWSER=webkit node tests/standalone-invites-autosync-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/standalone-pulse-v1-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/research-management-v1-browser-smoke.mjs
-      - run: SETKA_BROWSER=webkit node tests/setka-front-research-audit-browser.mjs
       - run: SETKA_BROWSER=webkit node tests/research-admin-v1-access-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/standalone-v34-admin-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/standalone-v34-open-admin-browser-smoke.mjs
