@@ -30,6 +30,15 @@ for(const entry of fs.readdirSync(".",{withFileTypes:true}).sort((a,b)=>a.name.l
     ||seen.has(descriptor.id)){
     throw Error("Invalid/duplicate pattern package: "+entry.name);
   }
+  // Mandatory new-pattern invariant: first launch is black background and
+  // white (RGB 255/255/255) artwork. Palette is reused by the renderer.
+  const initialPalette=descriptor.palettes?.[descriptor.defaults?.colorModeIndex??0];
+  if(!Array.isArray(descriptor.palettes)||
+      descriptor.palettes.length!==descriptor.colorModes||
+      !Array.isArray(initialPalette)||
+      initialPalette.length!==3||initialPalette.some(v=>v!==255)){
+    throw Error("SETKA black-white initial palette required: "+entry.name);
+  }
   seen.add(descriptor.id);
   discovered.push(descriptor);
 }
