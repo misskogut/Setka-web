@@ -177,7 +177,7 @@ test('release chronology, not alphabetical filenames, drives front and research 
   const sorted=build(dir),order=loadRegistry(sorted.source).list().map(p=>p.id);
   assert.ok(order.indexOf('rain')<order.indexOf('zzz-past')&&
     order.indexOf('zzz-past')<order.indexOf('orbital-threads'));
-  assert.deepEqual(sorted.manifest.patterns.map(p=>p.id),order);
+  assert.deepEqual(sorted.manifest.patterns.map(p=>p.id),Array.from(order),'VM realm registry arrays need plain Node values');
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
 
