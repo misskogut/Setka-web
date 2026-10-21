@@ -129,7 +129,8 @@
     // Compatibility with earlier callers; descriptors are never inferred from UI state.
     attachEngine:()=>{}};
   root.SetkaPatternRegistryV1=api;
-  // Canonical built-in contracts. Add a new descriptor here and its renderer module.
+  // Canonical legacy built-ins. New standalone-pattern-*.js packages are
+  // discovered at build time; do not append new descriptors here.
   const builtins=[
   {
     "id": "tentacle-orbit",
@@ -1483,5 +1484,8 @@
     "keyFields": ["numSnakes","baseHistory","waveFreq","waveSpeed","zoom","pointSize","colorModeIndex"]
   }
 ];
-  for(const p of builtins)register(p);
+  // SETKA_AUTO_DISCOVERY_BEGIN
+  const discovered=[]; // generated at build time from standalone-pattern-*.js descriptors
+  // SETKA_AUTO_DISCOVERY_END
+  for(const p of [...builtins,...discovered])register(p);
 })();

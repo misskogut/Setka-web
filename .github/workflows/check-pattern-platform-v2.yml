@@ -23,7 +23,7 @@ jobs:
       - run: npm install --no-save --ignore-scripts playwright@1.62.1 esbuild@0.25.12
       - run: npx playwright install --with-deps ${{ matrix.browser }}
       - run: node scripts/build-pattern-manifest.mjs
-      - run: node --test tests/pattern-platform-v2.test.mjs tests/research-replay-integrity-v1.test.mjs tests/standalone-*.test.mjs tests/state-persistence-v1.test.mjs tests/front-cloud-integrity-v1.test.mjs tests/setka-tester-account-ownership.test.mjs
+      - run: node --test tests/pattern-autodiscovery.test.mjs tests/pattern-platform-v2.test.mjs tests/research-replay-integrity-v1.test.mjs tests/standalone-*.test.mjs tests/state-persistence-v1.test.mjs tests/front-cloud-integrity-v1.test.mjs tests/setka-tester-account-ownership.test.mjs
       - run: node tests/pattern-platform-v2-browser.mjs
         env:
           SETKA_BROWSER: ${{ matrix.browser }}

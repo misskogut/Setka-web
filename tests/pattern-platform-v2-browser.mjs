@@ -28,8 +28,18 @@ try{
   return route.fulfill({contentType:'text/javascript',body:`window.SetkaPatternRegistryV1.bindRenderer(document.currentScript.dataset.patternId,function(ctx,w,h,c,f){ctx.save();ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);ctx.fillStyle=c.colorModeIndex?'cyan':'white';const size=c.radius||c.cells*3;ctx.fillRect(w/2-size/2+Math.sin(f*(c.tempo||.1))*15,h/2-size/2,size,size);ctx.restore()});`});
  });
  await context.route('**/functions/v1/**',async route=>{
-  let body={};try{body=route.request().postDataJSON()||{}}catch{}
-  if(apiFailure&&body.action==='catalog')return route.fulfill({status:503,contentType:'application/json',headers:{'access-control-allow-origin':'*'},body:JSON.stringify({error:'isolated_unavailable'})});
+  // Credentialed CORS must reflect the origin, especially in Safari/WebKit.
+  const request=route.request(),headers=request.headers();
+  const cors={
+   'access-control-allow-origin':headers.origin||new URL(base).origin,
+   'access-control-allow-credentials':'true',
+   'access-control-allow-headers':headers['access-control-request-headers']||'content-type,apikey,authorization,x-client-info',
+   'access-control-allow-methods':'GET,POST,OPTIONS',
+   'vary':'Origin'
+  };
+  if(request.method()==='OPTIONS')return route.fulfill({status:204,headers:cors,body:''});
+  let body={};try{body=request.postDataJSON()||{}}catch{}
+  if(apiFailure&&body.action==='catalog')return route.fulfill({status:503,contentType:'application/json',headers:cors,body:JSON.stringify({error:'isolated_unavailable'})});
   let out={ok:true,items:[],metrics:{},patternMetrics:[],notes:[],profile:{}};
   if(body.action==='catalog')out={ok:true,registryRevision:outdated?'future-isolated-registry':R.revision(),items:R.list().map(p=>({pattern_id:p.id,title:names.get(p.id)?.title||p.title,revision:names.get(p.id)?.revision||1})),defaults:[...defaults.values()]};
   if(body.action==='overview')out={ok:true,data:buildData({accounts:observed?[{tester_id:'T-ISOLATED',created_at:observed.createdAt}]:[],archives:observed?[{tester_id:'T-ISOLATED',device_id:'fixture-browser',payload:observed}]:[],patternCatalog:R.list().map(p=>({pattern_id:p.id,title:names.get(p.id)?.title||p.title,revision:names.get(p.id)?.revision||1}))})};
@@ -41,7 +51,7 @@ try{
    assert.equal(body.expectedRevision,defaults.get(body.patternId)?.revision||0);
    const item={pattern_id:body.patternId,pattern_version:body.patternVersion,schema_version:body.schemaVersion,config:body.config,revision:body.expectedRevision+1};defaults.set(body.patternId,item);out={ok:true,item};
   }
-  await route.fulfill({status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*','access-control-allow-headers':'content-type,apikey,authorization,x-client-info','access-control-allow-methods':'POST,OPTIONS'},body:JSON.stringify(out)});
+  await route.fulfill({status:200,contentType:'application/json',headers:cors,body:JSON.stringify(out)});
  });
  const page=await context.newPage();await page.goto(base+'/standalone-v34.html');
  await page.waitForFunction(()=>window.SetkaPatternRegistryV1.ready('fixture-fields'));

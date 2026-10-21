@@ -1,8 +1,8 @@
 (()=>{
 "use strict";
-// Future SETKA pattern: add ONE descriptor (including module:"your-pattern.js")
-// to the registry and write that renderer. The front and admin iframe load it
-// automatically; no changes to favorite/note/slider/preview/admin modules.
+// Build discovers each standalone-pattern-*.js package and injects its
+// descriptor into the shared runtime registry. Both front and research
+// automatically load that module; no per-pattern UI/storage/admin edits.
 if(typeof document==='undefined')return;
 const registry=window.SetkaPatternRegistryV1;
 if(!registry)return;
