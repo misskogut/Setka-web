@@ -183,7 +183,7 @@ try{
   assert.equal(geometry.viewport,1,"no global viewport pulse: use each pattern's native controls");
   for(const name of ["low","mid","high"])
     assert.ok(geometry.bands[name]>.1,"independent "+name+" music channel must be measured");
-  console.log("MULTIBAND GEOMETRY IN ALL 7 PATTERNS",JSON.stringify(geometry));
+  console.log("MULTIBAND GEOMETRY IN ALL REGISTERED PATTERNS",JSON.stringify(geometry));
   // Frequency-specific fixture: switching the same synthetic microphone from
   // bass to treble must move different independent channels, not just speed.
   const frequencyTest=await page.evaluate(()=>{
@@ -249,16 +249,16 @@ try{
       for(const key of ["waveAmplitude","waveSpeed","ringSpacing"])
         assert.ok(changedFish.includes(key),"Fish choreography must change native "+key);
     }
-    assert.equal(measurement.shapes.length,8);
+    assert.equal(measurement.shapes.length,await page.evaluate(()=>window.SetkaPatternRegistryV1.ids().length));
     measurement.shapes.forEach(p=>assert.ok(p.changes.length>=1,
       "Each style must modulate the real geometry for "+p.id+": "+JSON.stringify(measurement)));
     if(n===4)for(const p of measurement.motion)assert.ok(Math.abs(p.x)+Math.abs(p.y)>.05,
-      "Spatial mode must move ALL seven patterns in X/Y: "+JSON.stringify(p));
+      "Spatial mode must move ALL registered patterns in X/Y: "+JSON.stringify(p));
     if(n===5)assert.ok(measurement.scale<1.01,"Detail mode should emphasize small elements instead of zoom");
     profiles.push(measurement);
   }
   // Guardrail regression for the real complaint: under full-volume synthetic
-  // music none of the 35 shape+mode combinations may radically jump geometry,
+  // music none of the all pattern+mode combinations may radically jump geometry,
   // and audio must never rebuild branch/point/ring counts.
   const safety=await page.evaluate(()=>{
     const a=window.SetkaAudioReactiveV1,patterns=window.SetkaApp.getPatterns();
