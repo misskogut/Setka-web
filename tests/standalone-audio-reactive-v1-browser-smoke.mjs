@@ -124,7 +124,7 @@ try{
     }
     return details;
   });
-  assert.equal(frame.length,8);
+  assert.equal(frame.length,await page.evaluate(()=>window.SetkaPatternRegistryV1.ids().length),"audio clock covers every registered pattern");
   // Musical expressivity must come from GEOMETRY, not 7x animation speed.
   frame.forEach(x=>assert.ok(x.changed>60&&x.changed<61.2,
     "music clock should slow and remain continuous in "+x.id+": "+JSON.stringify(x)));
