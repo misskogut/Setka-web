@@ -20,6 +20,21 @@ try{
  for(let n=0;n<45;n++){try{if((await fetch(base+'/standalone-v34.html')).ok)break}catch{}await sleep(100)}
  browser=await (process.env.SETKA_BROWSER==='webkit'?webkit:chromium).launch({headless:true});
  const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+ // All browser fixtures must be fully isolated from the real research host.
+ // Rewrite before app scripts run: Safari/WebKit can otherwise reject cross-
+ // origin credentials even when Playwright fulfils a mocked OPTIONS response.
+ // The existing context.route('**/functions/v1/**') then serves local responses.
+ await context.addInitScript(()=>{
+  const supabase='https://gfchgaphzhxufwdhrcis.supabase.co';
+  const originalFetch=window.fetch.bind(window);
+  window.fetch=(input,init)=>{
+   if(typeof input==='string'&&input.startsWith(supabase+'/functions/v1/'))
+    return originalFetch(location.origin+input.slice(supabase.length),init);
+   if(input instanceof Request&&input.url.startsWith(supabase+'/functions/v1/'))
+    return originalFetch(new Request(location.origin+input.url.slice(supabase.length),input),init);
+   return originalFetch(input,init);
+  };
+ });
  const errors=[];context.on('page',page=>page.on('pageerror',e=>errors.push(e.stack||e.message)));
  await context.route('**/standalone-pattern-registry-v1.js*',route=>route.fulfill({contentType:'text/javascript',body:
   fs.readFileSync('standalone-pattern-registry-v1.js','utf8')+'\n'+fixtures.map(p=>'window.SetkaPatternRegistryV1.register('+JSON.stringify(p)+');').join('\n')}));
