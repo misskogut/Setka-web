@@ -14,6 +14,49 @@ try{
   await page.route("**/functions/v1/**",r=>r.fulfill({status:200,contentType:"application/json",headers:{"access-control-allow-origin":"*"},body:JSON.stringify({ok:true,items:[],metrics:{},patternMetrics:[],notes:[],profile:{}})}));
   await page.goto(base+"/standalone-v34.html",{waitUntil:"domcontentloaded"});
   await page.waitForFunction(()=>window.SetkaApp?.getPatterns?.().length===8);
+  // The descriptor, mother thumbnail and fullscreen must all open from the
+  // same canonical recipe, with DNA initially black/white. The original color
+  // palettes remain selectable as personal configurations.
+  const initialDNA=await page.evaluate(()=>{
+    const S=window.SetkaApp,R=window.SetkaPatternRegistryV1,id="stereo-dna";
+    const canonical=R.defaults(id),publicDefaults=S.getPatternDefaults(id);
+    const listed=S.getPatterns().find(p=>p.id===id)?.defaults;
+    const pixelStats=(config,thumb)=>{
+      const cv=document.createElement("canvas");
+      cv.width=thumb?180:390;cv.height=thumb?180:844;
+      R.render(cv.getContext("2d"),cv.width,cv.height,config,44,thumb,id);
+      const data=cv.getContext("2d").getImageData(0,0,cv.width,cv.height).data;
+      let colored=0,bright=0;
+      for(let i=0;i<data.length;i+=4){
+        if(data[i]+data[i+1]+data[i+2]>48)bright++;
+        if(Math.max(data[i],data[i+1],data[i+2])-Math.min(data[i],data[i+1],data[i+2])>3)colored++;
+      }
+      return {colored,bright};
+    };
+    const motherThumb=pixelStats(canonical,true);
+    S.openConfig(canonical,{type:"base",id,patternId:id});
+    const motherOpen=S.getConfig(),motherFull=pixelStats(motherOpen,false);
+    const custom={...canonical,colorModeIndex:1};
+    S.openConfig(custom,{type:"favorite",id:"isolated-color-fixture",patternId:id});
+    const customFull=pixelStats(S.getConfig(),false);
+    S.openConfig(R.defaults(id),{type:"base",id,patternId:id});
+    const reopened=S.getConfig();
+    const summary={registry:canonical.colorModeIndex,public:publicDefaults.colorModeIndex,
+      listed:listed.colorModeIndex,opened:motherOpen.colorModeIndex,reopened:reopened.colorModeIndex,
+      canonicalKey:R.configKey(canonical,id),openedKey:R.configKey(motherOpen,id),
+      motherThumb,motherFull,customFull,customMode:custom.colorModeIndex};
+    document.getElementById("libraryButton").click();
+    return summary;
+  });
+  for(const key of ["registry","public","listed","opened","reopened"])
+    assert.equal(initialDNA[key],0,"Stereo DNA must start in monochrome across every mother entry point: "+key);
+  assert.equal(initialDNA.canonicalKey,initialDNA.openedKey,"opening mother must preserve the precise initial configuration");
+  assert.ok(initialDNA.motherThumb.bright>10&&initialDNA.motherFull.bright>10,"DNA mother must remain visible");
+  assert.equal(initialDNA.motherThumb.colored,0,"DNA preview must be monochrome by default");
+  assert.equal(initialDNA.motherFull.colored,0,"DNA fullscreen mother must be monochrome by default");
+  assert.ok(initialDNA.customFull.colored>10,"the original colored DNA must remain selectable after mode 0");
+  console.log("STEREO DNA CANONICAL BLACK-WHITE START / COLOR PALETTES PRESERVED PASS",initialDNA);
+
   const result=await page.evaluate(()=>{
     const S=window.SetkaApp;
     const p=S.getPatterns();
