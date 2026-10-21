@@ -64,10 +64,10 @@ test('every automatically discovered pattern renders its real white-on-black sta
      const ctx={
        save(){},restore(){},translate(){},scale(){},rotate(){},beginPath(){},
        fillRect(){fills.push(this.fillStyle)},
-       createLinearGradient(){const stops=[];gradientStops.push(stops);return {addColorStop(_,v){stops.push(v)}}},
+       createLinearGradient(){const stops=[];gradientStops.push(stops);return {__stops:stops,addColorStop(_,v){stops.push(v)}}},
        moveTo(x,y){start=[x,y]},
        lineTo(x,y){end=[x,y]},
-       stroke(){if(strokes.length<20)strokes.push({start,end,color:this.strokeStyle});}
+       stroke(){if(strokes.length<20)strokes.push({start,end,color:typeof this.strokeStyle==='string'?this.strokeStyle:this.strokeStyle.__stops.slice()});}
      };
      registry.render(ctx,250,250,config,frame,true,pattern.id);
      return {strokes,fills,gradientStops};
