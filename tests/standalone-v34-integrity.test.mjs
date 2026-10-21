@@ -214,6 +214,20 @@ test("app accepts private archive version 41 as an existing local corpus, never 
   assert.match(js,/v\.patternExposures=Array\.isArray\(v\.patternExposures\)/);
 });
 
+test("semantic backend derives pattern IDs from catalog and never attributes future patterns to Tentacle Orbit",()=>{
+  const source=read("supabase/functions/setka-semantic-v35/index.ts");
+  assert.match(source,/from\("setka_research_v1_pattern_catalog"\)/);
+  assert.match(source,/const ids=await patternIds\(\)/);
+  assert.match(source,/if\(!pid\)\{rejectedFavorites\+\+;continue\}/);
+  assert.ok(source.includes('if(!ids.has(pid)){rejectedExposures++;continue;}'));
+  assert.match(source,/if\(b\.favoritesAuthoritative===true&&rejectedFavorites===0\)/);
+  assert.match(source,/canonicalPatterns:ids\.size/);
+  assert.doesNotMatch(source,/return "tentacle-orbit"/);
+  assert.doesNotMatch(source,/const IDS=new Set/);
+  const frontend=read("standalone-sync-v34.js");
+  assert.match(frontend,/account_not_confirmed_by_semantic_server/);
+  assert.match(frontend,/pattern_catalog_out_of_sync/);
+});
 test("account service sync is blocked until private corpus has been restored",()=>{
   const js=read("standalone-sync-v34.js");
   const gate='if(!window.__SETKA_PRIVATE_CORPUS_V40__?.authoritative?.())';
