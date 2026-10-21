@@ -79,12 +79,25 @@
       // Fair rotation when many notes share a scroll container; do not run
       // every hidden/offscreen card or render hundreds of large canvases.
       if (candidates.length) {
-        const count = Math.min(MAX_CANVASES, candidates.length);
-        for (let i=0; i<count; i++) {
-          const [canvas,item] = candidates[(cursor + i) % candidates.length];
-          paint(canvas,item,item.frame + painted);
+        // Notes/community cards join the SAME runtime governor as mother tiles.
+        // Both groups share a work budget and measured per-pattern render costs.
+        const optimizer=window.SetkaAutoOptimizerV1;
+        const selected=optimizer?.choose("auxiliary",candidates,now,{
+          interval:INTERVAL,maxPaint:MAX_CANVASES
+        })||null;
+        if(selected){
+          for(const [canvas,item] of selected){
+            optimizer.paint("auxiliary",canvas,item.patternId,now,
+              ()=>paint(canvas,item,item.frame+painted));
+          }
+        }else{
+          const count=Math.min(MAX_CANVASES,candidates.length);
+          for(let i=0;i<count;i++){
+            const [canvas,item]=candidates[(cursor+i)%candidates.length];
+            paint(canvas,item,item.frame+painted);
+          }
+          cursor=(cursor+count)%candidates.length;
         }
-        cursor = (cursor + count) % candidates.length;
       }
     }
     if (previews.size) schedule();
