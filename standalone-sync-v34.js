@@ -134,9 +134,11 @@
       if(rerunRequested||signature()!==sig){rerunRequested=false;schedule(150)}
     }
   }
-  let priorityTimer=0,priorityBusy=false,priorityAgain=false,priorityFailure=0;
+  let priorityTimer=0,priorityBusy=false,priorityAgain=false,priorityFailure=0,lastAccountPhase="idle",lastAccountError=null,lastFullReceipt=null;
   function accountSyncStatus(stage,ok,error=null){
-    window.dispatchEvent(new CustomEvent("setka:account-sync-status",{detail:{stage,ok,error}}));
+    lastAccountPhase=stage;lastAccountError=error;
+    if(ok)lastFullReceipt=new Date().toISOString();
+    window.dispatchEvent(new CustomEvent("setka:account-sync-status",{detail:{stage,ok,error,lastFullReceipt}}));
   }
   async function syncAccount(){
     if(priorityBusy){priorityAgain=true;return false}
@@ -182,13 +184,13 @@
   window.addEventListener("setka:favorite-removed",()=>schedulePriority(200));
   window.addEventListener("setka:v34-sync-request",()=>schedulePriority(80));
   window.addEventListener("setka:v40-account",e=>{
-    lastAccountToken=null;lastSignature="";lastOkAt=null;lastSubjectKey=null;
-    clearTimeout(priorityTimer);priorityFailure=0;
+    lastAccountToken=null;lastSignature="";lastOkAt=null;lastSubjectKey=null;lastFullReceipt=null;
+    clearTimeout(priorityTimer);priorityFailure=0;accountSyncStatus("loading",false);
     if(e.detail?.authenticated)schedulePriority(0);
   });
   window.addEventListener("setka:v40-private-corpus-restored",()=>schedulePriority(90));
   window.addEventListener("setka:v40-private-corpus",e=>{
-    if(e.detail?.ok===true&&e.detail?.updatedAt&&!lastOkAt)schedulePriority(100);
+    if(!priorityBusy&&e.detail?.ok===true&&e.detail?.updatedAt&&!lastOkAt)schedulePriority(100);
   });
   document.addEventListener("visibilitychange",()=>{if(document.hidden)sync(true,true);else{schedulePriority(100);schedule(500)}});
   window.addEventListener("online",()=>schedulePriority(80));
@@ -199,6 +201,6 @@
   C.sandbox={
     label:"Гость",channel:CHANNEL,deviceId,firstSeenAt:firstSeen,
     sync:()=>syncAccount(),
-    status:()=>({deviceId,label:String(lastSubjectKey||"").startsWith("T-")?"Тестировщик":"Гость",subjectKey:lastSubjectKey,lastOkAt,lastError,favorites:lastFavoriteStats,serviceUsage:lastUsageStats,privacyMode:"authenticated-account-only",personalArchiveSynced:!!window.__SETKA_PRIVATE_CORPUS_V40__?.status?.()?.ok,rawTelemetrySynced:false})
+    status:()=>({deviceId,label:String(lastSubjectKey||"").startsWith("T-")?"Тестировщик":"Гость",subjectKey:lastSubjectKey,lastOkAt,lastError,accountSync:{phase:lastAccountPhase,error:lastAccountError,lastFullReceipt,pending:lastAccountPhase!=="synced"},favorites:lastFavoriteStats,serviceUsage:lastUsageStats,privacyMode:"authenticated-account-only",personalArchiveSynced:!!window.__SETKA_PRIVATE_CORPUS_V40__?.status?.()?.ok,rawTelemetrySynced:false})
   };
 })();
