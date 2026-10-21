@@ -423,7 +423,7 @@
     for(const row of pattern.controls){
       const [,key,min,max,step]=row;
       if(typeof key!=="string"||!Number.isFinite(min)||!Number.isFinite(max)||
-        !Number.isFinite(step)||step>=1||staticTopology.has(key)||
+        !Number.isFinite(step)||step>=1||staticTopology.has(key)||key==="zoom"||
         /(?:count|number|depth|layers|branches|num|points|rings|cols|rows)/i.test(key))continue;
       const channel=mix[(count+modeNumber-1)%3];
       out[key]=[channel,.10,modeNumber%2===0?"swing":"grow",min,max];
