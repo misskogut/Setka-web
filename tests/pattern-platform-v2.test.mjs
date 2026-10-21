@@ -31,7 +31,8 @@ test('every built-in parameter has a typed contract and all defaults validate',(
   assert.deepEqual(Object.keys(p.schema).sort(),Object.keys(p.defaults).filter(k=>k!=='patternId').sort());
   assert.equal(assertConfiguration(p,plain(p.defaults)).patternId,p.id);
  }
- assert.equal(R.defaults('stereo-dna').colorModeIndex,1,'first launch retains original colored DNA');
+ assert.equal(R.defaults('stereo-dna').colorModeIndex,0,'mother Stereo DNA always begins black and white');
+ assert.equal(R.normalize({...R.defaults('stereo-dna'),colorModeIndex:1},'stereo-dna').colorModeIndex,1,'original color mode remains available');
 });
 test('two new algorithms and a subsequent third integrate through the same registration contract',()=>{
  const R=registry(),before=R.revision();
