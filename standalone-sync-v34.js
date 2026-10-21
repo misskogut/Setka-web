@@ -83,8 +83,13 @@
   async function post(url,payload,keepalive=false){
     // The API validates the session token and device ID inside the JSON payload.
     // Avoid CORS preflight delays in embedded iOS WebKit (identical to account/cloud adapter).
-    const r=await fetch(url,{method:"POST",headers:{"Content-Type":"text/plain;charset=UTF-8"},body:JSON.stringify(payload),keepalive});
-    const out=await r.json().catch(()=>({}));if(!r.ok)throw new Error(out.error||`http_${r.status}`);return out;
+    const ctl=keepalive?null:new AbortController(),clock=ctl?setTimeout(()=>ctl.abort(),30000):null;
+    try{
+      const r=await fetch(url,{method:"POST",headers:{"Content-Type":"text/plain;charset=UTF-8"},body:JSON.stringify(payload),keepalive,...(ctl?{signal:ctl.signal}:{})});
+      const out=await r.json().catch(()=>({}));
+      if(!r.ok||out.ok===false)throw new Error(out.error||`http_${r.status}`);
+      return out;
+    }finally{if(clock)clearTimeout(clock)}
   }
   async function syncSemantic(fav,keepalive=false){
     const u=serviceUsage(),session=accountSession(),favoritesAuthoritative=!!window.__SETKA_PRIVATE_CORPUS_V40__?.authoritative?.();
@@ -176,10 +181,12 @@
   }
   function schedulePriority(ms=250){
     if(!accountSession()?.token)return;
+    if(lastAccountPhase==="synced")accountSyncStatus("saving",false);
     clearTimeout(priorityTimer);priorityTimer=setTimeout(syncAccount,ms);
   }
   function schedule(ms=900){clearTimeout(timer);timer=setTimeout(()=>sync(false),ms)}
-  window.addEventListener("setka:standalone-event",()=>schedule(1200));
+  window.addEventListener("setka:standalone-event",()=>{schedule(1200);if(accountSession()?.token){if(lastAccountPhase==="synced")accountSyncStatus("saving",false);schedulePriority(1800)}});
+  window.addEventListener("setka:states-restored",()=>schedulePriority(200));
   window.addEventListener("setka:favorite-saved",()=>schedulePriority(200));
   window.addEventListener("setka:favorite-removed",()=>schedulePriority(200));
   window.addEventListener("setka:v34-sync-request",()=>schedulePriority(80));
