@@ -35,14 +35,14 @@ test('every built-in parameter has a typed contract and all defaults validate',(
  assert.equal(R.normalize({...R.defaults('stereo-dna'),colorModeIndex:1},'stereo-dna').colorModeIndex,1,'original color mode remains available');
 });
 test('two new algorithms and a subsequent third integrate through the same registration contract',()=>{
- const R=registry(),before=R.revision();
+ const R=registry(),before=R.revision(),initialCount=R.list().length;
  for(const id of ['fixture-shapes','fixture-fields','fixture-later']){
   const def=fixture(id);if(id==='fixture-fields'){def.defaults={density:6,bend:.4,colorModeIndex:0};def.controls=[['Плотность','density',1,30,1,'↑↓',1],['Изгиб','bend',0,1,.01,'←→',1]];def.schema={}}
   R.register(def);assert.ok(R.ready(id));assert.equal(R.ids().includes(id),true);
   const saved=R.snapshot({patternId:id,config:R.defaults(id),frame:0});
   assert.equal(R.restore(saved).ok,true);assert.equal(saved.frame,0);assert.ok(R.controls(id).length);assert.ok(R.supports(id,'notes'));assert.ok(R.supports(id,'statistics'));
  }
- assert.notEqual(before,R.revision());assert.equal(R.list().length,11);
+ assert.notEqual(before,R.revision());assert.equal(R.list().length,initialCount+3);
 });
 test('normalization preserves zero, false, seed, colors and rounds declared integer values',()=>{
  const R=registry();R.register(fixture('fixture-values'));

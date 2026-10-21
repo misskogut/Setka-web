@@ -5,10 +5,44 @@ const CHANNEL="yulia_lab_v34";
 const H={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type","Access-Control-Allow-Methods":"POST, OPTIONS","Content-Type":"application/json; charset=utf-8"};
 const J=(d:any,s=200)=>new Response(JSON.stringify(d),{status:s,headers:H});
 const T=(v:any,m=500)=>String(v??"").trim().slice(0,m),O=(v:any)=>v&&typeof v==="object"&&!Array.isArray(v)?v:{},A=(v:any)=>Array.isArray(v)?v:[];
-// Canonical pattern identities are registered in the shared research catalog.
+// The immutable release manifest, not a hand-maintained server list, owns
+// pattern identity. Register a new mother BEFORE acknowledging user metrics,
+// even if the Research Admin has not been opened since deployment.
+const PATTERN_MANIFEST="https://misskogut.github.io/Setka-web/setka-pattern-manifest-v1.json";
+let cachedIds:Set<string>|null=null,cacheUntil=0;
 async function patternIds():Promise<Set<string>>{
+  if(cachedIds&&Date.now()<cacheUntil)return new Set(cachedIds);
   const q=await db.from("setka_research_v1_pattern_catalog").select("pattern_id");
-  if(q.error)throw q.error;return new Set((q.data||[]).map((p:any)=>T(p.pattern_id,100)).filter(Boolean));
+  if(q.error)throw q.error;
+  const ids=new Set<string>((q.data||[]).map((p:any)=>T(p.pattern_id,100)).filter(Boolean));
+  try{
+    const res=await fetch(PATTERN_MANIFEST,{cache:"no-store",headers:{accept:"application/json"},signal:AbortSignal.timeout(5000)});
+    if(!res.ok)throw Error("pattern_manifest_unavailable");
+    const manifest=await res.json();
+    if(manifest?.schema!==1||!Array.isArray(manifest.patterns)||!manifest.patterns.length||manifest.patterns.length>500)
+      throw Error("invalid_pattern_manifest");
+    const fresh=new Set<string>(),missing=[];
+    for(const p of manifest.patterns){
+      const id=T(p?.id,100);
+      if(!/^[a-z][a-z0-9-]{2,79}$/.test(id)||fresh.has(id)||!Number.isInteger(p?.version)||p.version<1||!T(p?.title,85))
+        throw Error("invalid_manifest_pattern");
+      fresh.add(id);
+      if(!ids.has(id))missing.push({pattern_id:id,title:T(p.title,80),revision:1});
+    }
+    // Ignore conflicts to preserve owner-edited pattern names and revisions.
+    if(missing.length){
+      const up=await db.from("setka_research_v1_pattern_catalog").upsert(missing,{onConflict:"pattern_id",ignoreDuplicates:true});
+      if(up.error)throw up.error;
+    }
+    for(const id of fresh)ids.add(id);
+    cachedIds=ids;cacheUntil=Date.now()+45000;
+  }catch(e){
+    // Keep already-known patterns working if GitHub Pages is temporarily down;
+    // do not accept an unregistered ID under a different mother's identity.
+    console.warn("manifest_registration_deferred",String((e as Error)?.message||e));
+    cachedIds=null;cacheUntil=0;
+  }
+  return ids;
 }
 async function sha(v:string){const d=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(v));return[...new Uint8Array(d)].map(b=>b.toString(16).padStart(2,"0")).join("")}
 function infer(f:any,ids:Set<string>){

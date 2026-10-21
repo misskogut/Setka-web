@@ -56,7 +56,7 @@ try{
   }
   if(host.querySelector('canvas')||host.querySelectorAll('.st34-note-no-preview').length!==2)throw Error('unavailable notes must retain text without substituting a renderer');
  });
- assert.equal(await page.locator('.base-tile').count(),10,'both new algorithms appear without UI edits');
+ assert.equal(await page.locator('.base-tile').count(),R.list().length,'every existing/new algorithm appears without UI edits');
  for(const id of fixtures.map(p=>p.id)){
   const tile=page.locator(`.base-tile[data-pattern-id="${id}"] canvas`);await tile.scrollIntoViewIfNeeded();const image=await tile.evaluate(c=>c.toDataURL());
   await page.waitForFunction(({id,image})=>document.querySelector(`.base-tile[data-pattern-id="${id}"] canvas`)?.toDataURL()!==image,{id,image});
@@ -139,12 +139,12 @@ try{
  assert.equal(await page.locator('.base-tile[data-pattern-id="fixture-later"]').count(),1);
  await admin.reload();await admin.waitForFunction(()=>window.SetkaPatternRegistryV1.ready('fixture-later'));
  await admin.locator('#workspace:not([hidden])').waitFor();
- assert.equal(await admin.locator('.pattern-card').count(),11);
+ assert.equal(await admin.locator('.pattern-card').count(),R.list().length,'research automatically lists each registered algorithm');
  await page.evaluate(()=>window.SetkaStandaloneV34.showPatterns());
  // H: bounded scheduling with many algorithms; no edits to library/notes/admin.
  await page.evaluate(()=>{const R=window.SetkaPatternRegistryV1;for(let i=0;i<60;i++)window.SetkaApp.registerPattern({id:'load-fixture-'+i,title:'Load '+i,version:1,defaults:{radius:5,tempo:.1,colorModeIndex:0},controls:[['Радиус','radius',1,10,1,'↑↓',1]],render(ctx,w,h,c,f){ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);ctx.fillStyle='white';ctx.fillRect(f%30,10,c.radius,c.radius)}})});
  assert.equal(await page.evaluate(()=>window.SetkaApp.previewStatus().maxPerPaint),8);
- assert.equal(await page.locator('.base-tile').count(),71);
+ assert.equal(await page.locator('.base-tile').count(),R.list().length+60,'preview scheduler scales with additional patterns');
  const loadSamples=await page.evaluate(async()=>{
   const R=window.SetkaPatternRegistryV1,original=R.render,samples=[];let calls=0;
   R.render=function(...args){calls++;return original.apply(this,args)};

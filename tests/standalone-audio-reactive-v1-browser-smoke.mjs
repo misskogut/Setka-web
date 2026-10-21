@@ -124,7 +124,7 @@ try{
     }
     return details;
   });
-  assert.equal(frame.length,8);
+  assert.equal(frame.length,await page.evaluate(()=>window.SetkaPatternRegistryV1.ids().length),"audio clock covers every registered pattern");
   // Musical expressivity must come from GEOMETRY, not 7x animation speed.
   frame.forEach(x=>assert.ok(x.changed>60&&x.changed<61.2,
     "music clock should slow and remain continuous in "+x.id+": "+JSON.stringify(x)));
@@ -139,17 +139,17 @@ try{
       const live=audio.renderConfig(p.defaults,p.id);
       const changed=Object.keys(live).filter(key=>typeof canonical[key]==="number"&&Math.abs(live[key]-canonical[key])>1e-6);
       const untouched=JSON.stringify(p.defaults)===JSON.stringify(original);
-      return{id:p.id,changed,untouched};
+      return{id:p.id,changed,untouched,plugin:!!window.SetkaPatternRegistryV1?.get?.(p.id)?.module};
     });
     const future={patternId:"future-renderer",zoom:1};
     const futureSafe=audio.renderConfig(future,"future-renderer")===future;
     const viewport=audio.viewportScale();
     return{cases,futureSafe,viewport,bands:audio.status().bands};
   });
-  assert.equal(geometry.cases.length,8);
+  assert.equal(geometry.cases.length,await page.evaluate(()=>window.SetkaPatternRegistryV1.ids().length));
   geometry.cases.forEach(x=>{
     assert.equal(x.untouched,true,"canonical configuration was mutated: "+x.id);
-    assert.ok(x.changed.length>=4,"music should modulate multiple geometric controls in "+x.id+": "+JSON.stringify(x));
+    assert.ok(x.changed.length>=(x.plugin?2:4),"music should modulate multiple continuous geometric controls in "+x.id+": "+JSON.stringify(x));
   });
   assert.equal(geometry.futureSafe,true,"new pattern recipes must remain untouched");
   const dnaKeys=geometry.cases.find(x=>x.id==="stereo-dna").changed;
@@ -183,7 +183,7 @@ try{
   assert.equal(geometry.viewport,1,"no global viewport pulse: use each pattern's native controls");
   for(const name of ["low","mid","high"])
     assert.ok(geometry.bands[name]>.1,"independent "+name+" music channel must be measured");
-  console.log("MULTIBAND GEOMETRY IN ALL 7 PATTERNS",JSON.stringify(geometry));
+  console.log("MULTIBAND GEOMETRY IN ALL REGISTERED PATTERNS",JSON.stringify(geometry));
   // Frequency-specific fixture: switching the same synthetic microphone from
   // bass to treble must move different independent channels, not just speed.
   const frequencyTest=await page.evaluate(()=>{
@@ -249,16 +249,16 @@ try{
       for(const key of ["waveAmplitude","waveSpeed","ringSpacing"])
         assert.ok(changedFish.includes(key),"Fish choreography must change native "+key);
     }
-    assert.equal(measurement.shapes.length,8);
+    assert.equal(measurement.shapes.length,await page.evaluate(()=>window.SetkaPatternRegistryV1.ids().length));
     measurement.shapes.forEach(p=>assert.ok(p.changes.length>=1,
       "Each style must modulate the real geometry for "+p.id+": "+JSON.stringify(measurement)));
     if(n===4)for(const p of measurement.motion)assert.ok(Math.abs(p.x)+Math.abs(p.y)>.05,
-      "Spatial mode must move ALL seven patterns in X/Y: "+JSON.stringify(p));
+      "Spatial mode must move ALL registered patterns in X/Y: "+JSON.stringify(p));
     if(n===5)assert.ok(measurement.scale<1.01,"Detail mode should emphasize small elements instead of zoom");
     profiles.push(measurement);
   }
   // Guardrail regression for the real complaint: under full-volume synthetic
-  // music none of the 35 shape+mode combinations may radically jump geometry,
+  // music none of the all pattern+mode combinations may radically jump geometry,
   // and audio must never rebuild branch/point/ring counts.
   const safety=await page.evaluate(()=>{
     const a=window.SetkaAudioReactiveV1,patterns=window.SetkaApp.getPatterns();

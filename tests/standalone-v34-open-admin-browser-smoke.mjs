@@ -5,7 +5,7 @@ const port=48391,base="http://127.0.0.1:"+port;
 const server=spawn("python3",["-m","http.server",String(port),"--bind","127.0.0.1"],{stdio:"ignore"});
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 let browser;
-const eight=["tentacle-orbit","dandelion","fish-wave","breathing-fractal","breathing-fractal-growth","rgb-glitch-rings","stereo-dna","breathing-grid"];
+// All public cards follow the registry; no fixed list of mother algorithms.
 const fixture={ok:true,metrics:{connectedAccounts:2,sessions:3,exposures:37,patterns:2,savedConfigurations:3,configurationSaves:5,activeAccounts30d:1},
  patternMetrics:[{patternId:"tentacle-orbit",viewingAccounts:1,sessions:2,exposures:25,likes:1,savedConfigurations:2,totalDurationMs:83000},
  {patternId:"dandelion",viewingAccounts:1,sessions:2,exposures:12,likes:1,savedConfigurations:1,totalDurationMs:44000}],
@@ -31,9 +31,10 @@ try{
   assert.match(await page.locator("#totals").innerText(),/37/);
   assert.equal(await page.locator("a[href='standalone-admin-private-v34.html']").count(),1);
   await page.locator('[data-panel="patterns"]').click();
-  assert.equal(await page.locator("#patterns article[data-pattern-id]").count(),8);
+  const allIds=await page.evaluate(()=>window.SetkaPatternRegistryV1.ids());
+  assert.equal(await page.locator("#patterns article[data-pattern-id]").count(),allIds.length);
   const names=await page.locator("#patterns article[data-pattern-id]").evaluateAll(a=>a.map(n=>n.dataset.patternId));
-  assert.deepEqual(names,eight);
+  assert.deepEqual(names,allIds);
   assert.match(await page.locator("#patterns").innerText(),/пока нет зарегистрированных данных/);
   assert.match(await page.locator("article[data-pattern-id=\"tentacle-orbit\"]").innerText(),/Уснуть · 75%/);
   assert.match(await page.locator("article[data-pattern-id=\"tentacle-orbit\"]").innerText(),/395 просмотров/);

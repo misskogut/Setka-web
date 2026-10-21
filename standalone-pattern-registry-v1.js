@@ -1454,6 +1454,33 @@
       "statistics": true,
       "audio": true
     }
+  },
+  {
+    "id": "spiral-snakes-3d",
+    "title": "Spiral Snakes 3D",
+    "version": 1,
+    "schemaVersion": 1,
+    "colorModes": 9,
+    "module": "standalone-pattern-spiral-snakes-3d.js",
+    "defaults": {
+      "patternId": "spiral-snakes-3d",
+      "numSnakes": 60,
+      "baseHistory": 1000,
+      "waveFreq": 3,
+      "waveSpeed": 0.02,
+      "zoom": 1,
+      "pointSize": 1.2,
+      "colorModeIndex": 0
+    },
+    "controls": [
+      ["Частота волны","waveFreq",1,12,0.1,"Сверху ←→",1],
+      ["Скорость волны","waveSpeed",0.005,0.08,0.001,"Снизу ↑↓",1],
+      ["Масштаб","zoom",0.2,3,0.01,"Пинч",2],
+      ["Количество змей","numSnakes",8,120,1,"Ползунок",0],
+      ["Длина следа","baseHistory",100,1200,20,"Ползунок",0],
+      ["Толщина точек","pointSize",0.5,3,0.1,"Ползунок",0]
+    ],
+    "keyFields": ["numSnakes","baseHistory","waveFreq","waveSpeed","zoom","pointSize","colorModeIndex"]
   }
 ];
   for(const p of builtins)register(p);

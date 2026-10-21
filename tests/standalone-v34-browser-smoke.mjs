@@ -34,7 +34,7 @@ async function go(){
     await route.fulfill({status:200,contentType:"application/json",headers:{"access-control-allow-origin":"*"},body:JSON.stringify(payload)});
   });
   await page.goto(root+"/standalone-v34.html?browser-smoke=41",{waitUntil:"domcontentloaded"});
-  await page.waitForFunction(()=>document.querySelectorAll("#allPatternsPanel .pattern-tile").length===8,{timeout:20000});
+  await page.waitForFunction(()=>document.querySelectorAll("#allPatternsPanel .pattern-tile").length===window.SetkaPatternRegistryV1.ids().length,{timeout:20000});
   await page.waitForFunction(()=>!!window.SetkaStandaloneV34?.cloudCommunity?.status?.().lastOkAt,{timeout:20000});
   // Library navigation polish: one common icon baseline, no hint text and a
   // visual gap beneath the community heading (including mobile WebKit).
@@ -153,7 +153,7 @@ async function go(){
         pixels:a.length,changed:mismatch,changedShare:mismatch/a.length};
     });
   });
-  assert.equal(continuity.length,8,"all eight canonical previews survive redraw");
+  assert.equal(continuity.length,await page.evaluate(()=>window.SetkaPatternRegistryV1.ids().length),"all canonical previews survive redraw");
   for(const row of continuity)assert.ok(row.changedShare<0.015,
     row.patternId+" preview must not jump when tiles are rebuilt: "+JSON.stringify(row));
   console.log("LIVE PREVIEW PHASE STAYS STABLE ACROSS CATALOG REBUILD PASS",JSON.stringify(continuity));
@@ -206,6 +206,7 @@ async function go(){
 
   // Regression: a mother tile must open the same baseline recipe that its live preview uses,
   // even if a previous visit changed that mother's sliders or color palette.
+  const windowExpectedMothers=await page.evaluate(()=>window.SetkaPatternRegistryV1.ids().length);
   const parity=await page.evaluate(()=>{
     const S=window.SetkaApp,R=window.SetkaPatternRegistryV1;
     const ids=R.ids(),out=[];
@@ -231,7 +232,7 @@ async function go(){
     document.getElementById("libraryButton").click();
     return out;
   });
-  assert.equal(parity.length,8,"all mother patterns verified against their canonical previews");
+  assert.equal(parity.length,windowExpectedMothers,"all mother patterns verified against their canonical previews");
   assert.ok(parity.every(p=>p.expected===p.actual&&p.modified!==p.actual));
   // Exercise the actual card pointer handler, not only the public openConfig API.
   await page.evaluate(()=>{
