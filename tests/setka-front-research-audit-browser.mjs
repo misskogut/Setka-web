@@ -58,6 +58,18 @@ try{
  assert.equal(await front.locator('#st40CommunityLoadError').count(),0,'recovered feed removes false outage banner');
  assert.equal((await front.evaluate(()=>window.SetkaStandaloneV34.cloudCommunity.status())).lastError,null);
  console.log('FRONT: MALFORMED FEED → OUTAGE STATUS → RECOVERY PASS');
+ // Returning from the game follows the original library, not always "all".
+ for(const [source,pageId] of [['favorite','favoritesPagerButton'],['community','communityPagerButton'],['base','libraryPagerButton']]){
+  const opened=await front.evaluate(type=>{
+   const app=window.SetkaApp,id='dandelion';
+   return app.openConfig(app.getPatternDefaults(id),{type,id,patternId:id});
+  },source);
+  assert.equal(opened,true);
+  await front.locator('#libraryButton').click();
+  assert.match(await front.locator('#'+pageId).getAttribute('class'),/active/,
+   'game exit must restore its source library: '+source);
+ }
+ console.log('FRONT: BASE / FAVORITES / COMMUNITY RETURN NAVIGATION PASS');
 
  const admin=await context.newPage();admin.on('pageerror',e=>errors.push(['research-admin',e.message]));
  await admin.goto(base+'/standalone-research-admin-v1.html',{waitUntil:'domcontentloaded'});
