@@ -1,7 +1,7 @@
 name: Verify unified pattern platform v2
 on:
   push:
-    branches: ['audit/unified-patterns-20261020', 'main']
+    branches: ['audit/unified-patterns-20261020', 'fix/account-login-after-recovery', 'main']
     paths: ['standalone-*.js','standalone-*.html','app-v7-multipattern.js','research-v1/**','scripts/**','supabase/migrations/**','supabase/functions/_shared/pattern-catalog.mjs','supabase/functions/setka-research-admin-v1/**','tests/pattern-*','.github/workflows/check-pattern-platform-v2.yml']
   pull_request:
     paths: ['standalone-*.js','standalone-*.html','app-v7-multipattern.js','research-v1/**','scripts/**','supabase/migrations/**','supabase/functions/_shared/pattern-catalog.mjs','supabase/functions/setka-research-admin-v1/**','tests/pattern-*','.github/workflows/check-pattern-platform-v2.yml']
@@ -25,6 +25,9 @@ jobs:
       - run: node scripts/build-pattern-manifest.mjs
       - run: node --test tests/pattern-platform-v2.test.mjs tests/research-replay-integrity-v1.test.mjs tests/standalone-*.test.mjs tests/state-persistence-v1.test.mjs tests/front-cloud-integrity-v1.test.mjs tests/setka-tester-account-ownership.test.mjs
       - run: node tests/pattern-platform-v2-browser.mjs
+        env:
+          SETKA_BROWSER: ${{ matrix.browser }}
+      - run: node tests/account-storage-browser.mjs
         env:
           SETKA_BROWSER: ${{ matrix.browser }}
       - uses: actions/upload-artifact@v4

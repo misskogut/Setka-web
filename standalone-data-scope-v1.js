@@ -14,7 +14,8 @@
   const personalKeys=['setka-standalone:v34','setka-standalone:active:v34','setka-standalone:v33','setka-standalone:active:v33',
     'setka-web:favorites:v1','setka-standalone:favorite-snapshots:v34','setka-web:favorites:fish-wave:v35','setka-web:favorites:breathing-fractal:v1',
     'setka-web:favorites:breathing-fractal-growth:v1','setka-patterns:last-config:v1'];
-  let legacyOwner=read(MIGRATION);
+  const readMigration=()=>{const owner=read(MIGRATION);if(owner)return owner;try{return JSON.parse(sessionStorage.getItem(MIGRATION)||'null')}catch(_){return null}};
+  let legacyOwner=readMigration();
   if(!legacyOwner){
     // Copy, never move: rollback can still read every pre-upgrade record.
     // Unowned legacy history is retained as guest data, never uploaded on login.
@@ -33,7 +34,12 @@
     const target=testerId?'tester:'+String(testerId):'guest';
     if(target===id)return false;
     // Refuse a switch if even its ownership checkpoint cannot be persisted.
-    if(!read(MIGRATION))localStorage.setItem(MIGRATION,JSON.stringify(id));
+    if(!readMigration()){
+      const checkpoint=JSON.stringify(legacyOwner||id);let saved=false;
+      try{localStorage.setItem(MIGRATION,checkpoint);saved=localStorage.getItem(MIGRATION)===checkpoint}catch(_){}
+      if(!saved)try{sessionStorage.setItem(MIGRATION,checkpoint);saved=sessionStorage.getItem(MIGRATION)===checkpoint}catch(_){}
+      if(!saved)throw new Error('account_storage_unavailable');
+    }
     window.dispatchEvent(new CustomEvent('setka:account-switch-start',{detail:{from:id,to:target}}));
     return true; // Caller commits credentials and reloads; this page retains id.
   }

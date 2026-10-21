@@ -48,13 +48,18 @@
     return state;
   }
   function setSession(token,expiresAt,testerId=cached()?.testerId){
-    sessionEpoch++;
-    liveSession={token,expiresAt,testerId};
-    const raw=JSON.stringify(liveSession);
-    try{localStorage.setItem(SESSION_KEY,raw)}catch(_){}
-    try{sessionStorage.setItem(SESSION_KEY,raw)}catch(_){}
+    const next={token,expiresAt,testerId},raw=JSON.stringify(next);let persistent=false,temporary=false;
+    try{localStorage.setItem(SESSION_KEY,raw);persistent=localStorage.getItem(SESSION_KEY)===raw}catch(_){}
+    try{sessionStorage.setItem(SESSION_KEY,raw);temporary=sessionStorage.getItem(SESSION_KEY)===raw}catch(_){}
+    if(!persistent&&!temporary)throw new Error('account_storage_unavailable');
+    // Readers prefer localStorage. A failed overwrite must not leave the old
+    // account token shadowing the successfully saved temporary session.
+    if(!persistent)try{localStorage.removeItem(SESSION_KEY)}catch(_){}
+    if(!temporary)try{sessionStorage.removeItem(SESSION_KEY)}catch(_){}
+    sessionEpoch++;liveSession=next;
   }
   async function acceptAccount(out){
+    if(C.ready)await C.ready;
     const scope=window.SetkaDataScopeV1;
     if(scope&&scope.id!=="tester:"+String(out.testerId)){
       C.save?.();if(C.whenSaved&&!await C.whenSaved()){
@@ -127,7 +132,7 @@
   function button(parent,title,sub,fn,primary=false){const b=document.createElement("button");b.type="button";b.className=`st40-btn${primary?" primary":""}`;b.innerHTML=sub?`<b>${esc(title)}</b><div style="font-size:10px;font-weight:400;opacity:.55;margin-top:3px">${esc(sub)}</div>`:esc(title);b.onclick=fn;parent.appendChild(b);return b}
   function field(parent,label,type="text",value=""){const l=document.createElement("label");l.className="st40-field";l.innerHTML=`<span>${esc(label)}</span>`;const i=document.createElement("input");i.type=type;i.value=value;i.autocomplete=type==="password"?"current-password":"off";l.appendChild(i);parent.appendChild(l);return i}
   function msg(parent){const m=document.createElement("div");m.className="st40-msg";parent.appendChild(m);return m}
-  function friendly(e){const x=String(e?.message||e);return({invalid_tester_code:"Код не найден или уже отключён",tester_id_already_claimed:"Этот код уже использован на другом устройстве",device_already_has_tester_id:"Браузер уже закреплён за другим Tester ID. Для другого аккаунта потребуется отдельный браузер или устройство.",too_many_attempts:"Слишком много попыток. Попробуй позже",password_length:"Пароль должен содержать от 8 до 128 символов",invalid_credentials:"Tester ID или пароль не подошли",claim_proof_required:"Сначала подключи одноразовый код на этом устройстве",consent_required:"Нужно подтвердить условия приватного и исследовательского режима",invalid_recovery_code:"Recovery-код не подошёл или уже истёк",missing_recovery_fields:"Заполни Tester ID, recovery-код и новый пароль",local_archive_not_saved:"Пароль принят сервером, но не удалось сохранить текущую историю на устройстве. Чтобы не потерять записи, переключение аккаунта остановлено. Не очищай данные браузера.",request_timeout:"Сервер отвечает слишком долго. Возможно, вход уже выполнен. Не сбрасывай пароль — попробуй обычный вход ещё раз.",server_error:"Ошибка сервера при входе. Данные и пароль не сбрасывай."}[x]||"Не удалось выполнить действие")}
+  function friendly(e){const x=String(e?.message||e);return({invalid_tester_code:"Код не найден или уже отключён",tester_id_already_claimed:"Этот код уже использован на другом устройстве",device_already_has_tester_id:"Браузер уже закреплён за другим Tester ID. Для другого аккаунта потребуется отдельный браузер или устройство.",too_many_attempts:"Слишком много попыток. Попробуй позже",password_length:"Пароль должен содержать от 8 до 128 символов",invalid_credentials:"Tester ID или пароль не подошли",claim_proof_required:"Сначала подключи одноразовый код на этом устройстве",consent_required:"Нужно подтвердить условия приватного и исследовательского режима",invalid_recovery_code:"Recovery-код не подошёл или уже истёк",missing_recovery_fields:"Заполни Tester ID, recovery-код и новый пароль",account_storage_unavailable:"Пароль принят, но браузер не разрешил сохранить вход. Открой SETKA в обычной вкладке Safari и войди с новым паролем. Повторное восстановление не нужно.",local_archive_not_saved:"Пароль принят сервером, но не удалось сохранить текущую историю на устройстве. Чтобы не потерять записи, переключение аккаунта остановлено. Не очищай данные браузера.",request_timeout:"Сервер отвечает слишком долго. Возможно, вход уже выполнен. Не сбрасывай пароль — попробуй обычный вход ещё раз.",server_error:"Ошибка сервера при входе. Данные и пароль не сбрасывай."}[x]||"Не удалось выполнить действие")}
 
   async function showClaim(){const b=screen("Подключить тестирование","Публичная SETKA остаётся доступной без входа. Код нужен только для подключения приватного кабинета тестировщика.","ТЕСТИРОВАНИЕ"),f=document.createElement("div");f.className="st40-form";b.appendChild(f);const code=field(f,"Одноразовый код тестировщика"),m=msg(f),go=button(f,"Подключить Tester ID","После создания пароля личная история сможет синхронизироваться с приватным контуром SETKA",async()=>{go.disabled=true;m.textContent="Проверяем код…";try{const out=await post({action:"claim",deviceId:did(),testerCode:code.value,userAgent:navigator.userAgent,viewport:{width:innerWidth,height:innerHeight,dpr:devicePixelRatio||1}});cache(out);window.dispatchEvent(new CustomEvent("setka:v40-account",{detail:out}));showSetPassword()}catch(e){m.textContent=friendly(e)}finally{go.disabled=false}},true);}
 
