@@ -49,6 +49,7 @@ Read these before changing anything:
 5. `docs/VERSION_INHERITANCE_LAW.md`
 6. `SETKA_DATA_MODEL_V1.md`
 7. `docs/SETKA_PROCEDURAL_STORAGE_V1.md` when touching synthetics, fleets, iterative mathematics, transcript/event storage, replay, archival or compaction.
+7a. **`SETKA_APP_CANONICAL_CONTRACT.md` — mandatory app/frontend/server/research product invariants, true metrics, synchronization, new-pattern automation and release gates. Read before ANY SETKA App change.**
 8. `ADMIN_VERSIONS.md`
 9. `NEW_CHAT_ADMIN_VERSIONS.md`
 10. `docs/DECISIONS_LOG.md`
