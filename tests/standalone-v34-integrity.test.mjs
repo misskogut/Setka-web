@@ -348,3 +348,16 @@ test("every mother pattern reads the same canonical registry defaults for previe
   assert.ok(app.includes('getPatterns:()=>PATTERNS.map(p=>({id:p.id,title:registry.title(p.id),version:p.version,defaults:registry.defaults(p.id)}))'));
   assert.doesNotMatch(app,/const remembered=source.type==="base"/);
 });
+
+test("preview cadence covers all nine mother cards and never increments the queue on an idle RAF",()=>{
+  const code=read("app-v7-multipattern.js");
+  assert.match(code,/previewStats=\{frames:0,maxPerPaint:12\}/);
+  assert.match(code,/const visible=\[\]/);
+  assert.match(code,/const count=Math\.min\(previewStats\.maxPerPaint,visible\.length\)/);
+  assert.match(code,/previewCursor=visible\.length\?\(previewCursor\+count\)%visible\.length:0/);
+  assert.doesNotMatch(code,/paintedCount<8/);
+  assert.doesNotMatch(code,/previewCursor=\(previewCursor\+8\)/);
+  const renderer=read("standalone-pattern-spiral-snakes-3d.js");
+  assert.match(renderer,/rasterBudget=Math\.min\(POINT_BUDGET,Math\.max\(12000,Math\.round\(w\*h\/3\)\)\)/);
+  assert.doesNotMatch(renderer,/\bpreview\s*\?/);
+});

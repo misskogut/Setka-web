@@ -25,7 +25,12 @@ function render(ctx,width,height,c,frame){
   // The p5 sketch accumulates a trail for history frames. Render that same
   // trajectory from its deterministic analytical history at any frame; a
   // thumbnail or replay can now jump directly to frame N without hidden state.
-  const stride=Math.max(1,Math.ceil(n*history/POINT_BUDGET));
+  // Match work to *raster resolution*, not to preview/game identity. A
+  // 180px tile cannot resolve the same point density as a large gameplay
+  // canvas. This is the same renderer, recipe, phases, geometry and colors;
+  // only redundant subpixel trail samples are omitted on small rasters.
+  const rasterBudget=Math.min(POINT_BUDGET,Math.max(12000,Math.round(w*h/3)));
+  const stride=Math.max(1,Math.ceil(n*history/rasterBudget));
   const phase=frame*c.waveSpeed;
   // Compute the shared wave phase once per history sample, not independently
   // for each of the 60 snakes. This retains all original points, history,
