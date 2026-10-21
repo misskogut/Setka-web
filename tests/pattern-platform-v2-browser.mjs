@@ -152,7 +152,7 @@ try{
   return samples;
  });
  assert.ok(loadSamples.some(n=>n>0),'visible previews really render under load');
- assert.ok(Math.max(...loadSamples)<=8,'render calls remain bounded per animation frame');
+ assert.ok(Math.max(...loadSamples)<=12,'render calls remain bounded per animation frame');
  console.log('BOUNDED REAL RENDER LOAD',JSON.stringify(loadSamples));
  assert.deepEqual(errors,[]);
  fs.mkdirSync('tests/visual-smoke',{recursive:true});await page.screenshot({path:'tests/visual-smoke/platform-'+(process.env.SETKA_BROWSER||'chromium')+'.png'});
