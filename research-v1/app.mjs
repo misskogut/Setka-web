@@ -304,8 +304,20 @@ dialog.addEventListener('close',()=>{if(dialog.open)return;player?.stop();player
 document.querySelectorAll('.nav').forEach(b=>b.onclick=()=>navigate(b.dataset.page));$('period').onchange=setPeriod;$('from-date').onchange=setPeriod;$('to-date').onchange=setPeriod;$('scope').onchange=()=>{filters.scope=$('scope').value;render();};
 motion.addEventListener?.('change',startPreviews);
 window.addEventListener('setka:renderer-ready',()=>{if(data)render()});
-document.addEventListener('visibilitychange',()=>{if(document.hidden){player?.stop();stopPreviews();}else{startPreviews();if(data&&Date.now()-time(data.updatedAt)>60000)refresh();}});
-setInterval(()=>{if(adminKey&&!document.hidden&&!dialog.open)refresh();},60000);
+document.addEventListener('visibilitychange',()=>{if(document.hidden){player?.stop();stopPreviews();}else{startPreviews();if(adminKey&&(!data||Date.now()-time(data.updatedAt)>15000))refresh();}});
+// Other SETKA tabs notify the research admin immediately after a server-confirmed
+// favorite/usage sync. No private records or credentials are sent between tabs.
+try{
+  const channel=new BroadcastChannel("setka:research-sync-v1");
+  channel.onmessage=e=>{
+    if(e.data?.type!=="account-metrics-committed"||!adminKey||document.hidden)return;
+    if(!dialog.open)refresh();
+  };
+}catch(_){}
+// For SETKA sessions on another device there is no shared browser channel.
+// Keep the active Patterns/Participants research screens fresh by polling.
+setInterval(()=>{if(adminKey&&!document.hidden&&!dialog.open&&["patterns","participants","community"].includes(page))refresh();},15000);
+setInterval(()=>{if(adminKey&&!document.hidden&&!dialog.open&&!["patterns","participants","community"].includes(page))refresh();},30000);
 const route=location.hash.slice(1);if(NAV[route])page=route;
 const savedAccess=credentialStore.load();adminKey=ownerTicket?'':entryAccess.key||savedAccess.key;
 $('remember').checked=entryAccess.consumed?true:savedAccess.remember;
