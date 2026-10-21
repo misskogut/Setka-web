@@ -53,10 +53,13 @@ function choose(name,items,now,options={}){
   for(const x of eligible){
     const estimate=x.p.samples?clamp(x.p.mean,.12,20):1;
     const overdue=x.age>=MAX_AGE;
-    if(selected.length&&planned+estimate>allowance&&!overdue){x.p.skipped++;g.skipped++;continue;}
+    if(selected.length&&planned+estimate>allowance&&!(overdue&&selected.length<2)){
+      x.p.skipped++;g.skipped++;continue;
+    }
     selected.push(x.item);planned+=estimate;
     // Prevent an unbounded parade of unknown renderers on first registration.
-    if(selected.length>=Math.max(1,Math.min(items.length,24)))break;
+    if(selected.length>=Math.max(1,Math.min(items.length,
+        Number.isFinite(options.maxPaint)?Math.max(1,options.maxPaint):12)))break;
   }
   if(!selected.length&&eligible.length)selected.push(eligible[0].item);
   return selected;
