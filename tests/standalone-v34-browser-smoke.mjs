@@ -34,7 +34,7 @@ async function go(){
     await route.fulfill({status:200,contentType:"application/json",headers:{"access-control-allow-origin":"*"},body:JSON.stringify(payload)});
   });
   await page.goto(root+"/standalone-v34.html?browser-smoke=41",{waitUntil:"domcontentloaded"});
-  await page.waitForFunction(()=>document.querySelectorAll("#allPatternsPanel .pattern-tile").length===8,{timeout:20000});
+  await page.waitForFunction(()=>document.querySelectorAll("#allPatternsPanel .pattern-tile").length===window.SetkaPatternRegistryV1.ids().length,{timeout:20000});
   await page.waitForFunction(()=>!!window.SetkaStandaloneV34?.cloudCommunity?.status?.().lastOkAt,{timeout:20000});
   // Library navigation polish: one common icon baseline, no hint text and a
   // visual gap beneath the community heading (including mobile WebKit).
@@ -153,7 +153,7 @@ async function go(){
         pixels:a.length,changed:mismatch,changedShare:mismatch/a.length};
     });
   });
-  assert.equal(continuity.length,8,"all eight canonical previews survive redraw");
+  assert.equal(continuity.length,await page.evaluate(()=>window.SetkaPatternRegistryV1.ids().length),"all canonical previews survive redraw");
   for(const row of continuity)assert.ok(row.changedShare<0.015,
     row.patternId+" preview must not jump when tiles are rebuilt: "+JSON.stringify(row));
   console.log("LIVE PREVIEW PHASE STAYS STABLE ACROSS CATALOG REBUILD PASS",JSON.stringify(continuity));
