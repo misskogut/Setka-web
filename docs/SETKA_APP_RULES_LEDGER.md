@@ -15,9 +15,10 @@ The builder (`scripts/build-pattern-manifest.mjs`) discovers packages, rejects i
 ### Current one-file module chronology (historical evidence, NOT a manual runtime ordering table)
 
 - `rain`: first published 2026-10-21T17:23:24.000Z.
-- `orbital-threads`: first published 2026-10-21T18:49:43.000Z.
 
 These facts are stored *only* as `introducedAt` inside their descriptors. Any future module gets its own introduction date and is ordered automatically; never edit this list to register or reorder software.
+
+**Withdrawal 2026-10-22:** `orbital-threads` was previously public and is now explicitly retired at the owner's request. Its former source/descriptor remain recoverable in Git history, **not** in the active package directory, registry or manifest. No archive row, user note, favorite, session or community record may be deleted, overwritten or reassigned to a different algorithm during retirement. Historical unknown references remain labelled unavailable until a separately approved archival-view mechanism exists. Retired does not mean never existed.
 
 ## Product acceptance register
 
@@ -43,7 +44,8 @@ These facts are stored *only* as `introducedAt` inside their descriptors. Any fu
 | APP-018 | Audio reactivity changes real supported pattern parameters, does not overwrite user's base config or fabricate sound | **Partial implementation; audio/live device verification outstanding** |
 | APP-019 | New release preserves all previously working pattern, saved, note, admin and community features; no full-page redraw on one tile reorder | **CI smoke partial:** source-library return, favorite save/open/un-save and front/research flow now covered in `tests/setka-front-research-audit-browser.mjs`; physical-device canary remains required |
 | APP-020 | No new architecture “shortcut” that duplicates truth, throws away legacy records, or creates isolated front/admin adapters | **Architecture acceptance rule; enforced incrementally by source checks and reviews** |
-| APP-021 | A pattern declaring adjustable `trail` must visibly retain a smooth fading history of its geometry (`trail=0` means no ghost), with the exact same deterministic frame in gameplay, previews, notes and research Replay; no history-dependent canvas residue or visual disappearance on first open, with bounded mobile render work | **Source correction + generic automatically-discovered-module test added**; browser/iPhone visual and FPS checks still needed |
+| APP-021 | **WITHDRAWN:** experimental Orbital Threads trail-fidelity rule was tied to a pattern the owner rejected. It no longer imposes rendering requirements on future modules; do not resurrect that pattern via another animation patch. | **Retired 2026-10-22 / superseded by APP-022** |
+| APP-022 | Explicitly retired one-file algorithms are absent from front library, public/community active catalog, generated server manifest and research pattern selectors. The canonical package removal propagates without per-surface exceptions. Existing account snapshots, notes, favorites and history retain original identity/content and must not silently become Tentacle or be deleted. | **Retirement source + auto-discovery and browser regression added; CI/Pages/deployment/device status tracked separately** |
 
 **Vocabulary:** `CI enforceable` means an executable guard runs on repository code; `CI partial` means some scenarios are automated but not all devices/accounts; `TARGET` means a required capability is not yet demonstrated. **Never convert TARGET to DONE merely by changing this document.**
 
