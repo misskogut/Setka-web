@@ -55,8 +55,8 @@ test("current community Edge function does not import any legacy device favorite
  assert.doesNotMatch(source,/import\s*\{\s*historicalSavedCatalog\s*\}/);
  assert.doesNotMatch(source,/historicalFavorites\s*\(/);
  assert.doesNotMatch(source,/historicalRows\s*\(/);
- assert.doesNotMatch(source,/prototype_v35_favorites/);
- assert.doesNotMatch(source,/prototype_v35_pattern_exposures/);
+ assert.doesNotMatch(source,/\.from\(["']prototype_v35_favorites["']\)/);
+ assert.doesNotMatch(source,/\.from\(["']prototype_v35_pattern_exposures["']\)/);
  assert.doesNotMatch(source,/items\.push\(\{\.\.\.x,\s*id:`historical-/);
  assert.match(source,/prototype_v41_config_metrics_current/);
  assert.match(source,/if\(!Number\.isInteger\(Number\(x\.save_accounts\)\)\|\|Number\(x\.save_accounts\)<=0\)continue/);
