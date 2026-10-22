@@ -23,6 +23,8 @@
   document.head.appendChild(style);
 
   const data=()=>C.getData?.()||{};
+  const activeItems=rows=>window.SetkaPatternRegistryV1?.activeItems?.(rows)||[];
+
   function mode(){
     const m=data().settings?.communityMode||"for_me";
     return MODES.has(m)?m:"for_me";
@@ -60,7 +62,7 @@
   function sorted(){
     // Public community cards represent configurations saved by real accounts;
     // filtering zero-savers is a view-only operation and does not change data.
-    const a=items.filter(item=>(Number.isFinite(Number(item.saveCount))&&Number(item.saveCount)>0)||(item.historical===true&&Number.isFinite(Number(item.legacySaveCount))&&Number(item.legacySaveCount)>0)),m=mode();
+    const a=activeItems(items).filter(item=>(Number.isFinite(Number(item.saveCount))&&Number(item.saveCount)>0)||(item.historical===true&&Number.isFinite(Number(item.legacySaveCount))&&Number(item.legacySaveCount)>0)),m=mode();
     if(m==="new")return a.sort((x,y)=>Date.parse(y.createdAt||0)-Date.parse(x.createdAt||0));
     if(m==="popular")return a.sort((x,y)=>(Number(y.saveCount)||0)-(Number(x.saveCount)||0)||Date.parse(y.createdAt||0)-Date.parse(x.createdAt||0));
     return a.sort((x,y)=>personalScore(y)-personalScore(x)||Date.parse(y.createdAt||0)-Date.parse(x.createdAt||0));
@@ -106,11 +108,15 @@
     const panel=document.getElementById("communityPanel");if(!panel)return;
     panel.replaceChildren();
     const wrap=document.createElement("div");wrap.id="st40CommunityNotes";
-    if(!publicNotes.length){
+    const activeNotes=publicNotes.filter(note=>{
+      const id=note.replaySnapshot?.patternId||note.patternId||note.config?.patternId;
+      return !id||window.SetkaPatternRegistryV1?.has?.(id);
+    });
+    if(!activeNotes.length){
       wrap.innerHTML='<div class="st40-community-empty">Пока нет заметок, прошедших модерацию SETKA.</div>';
       panel.appendChild(wrap);syncModeUi();return;
     }
-    for(const note of publicNotes){
+    for(const note of activeNotes){
       const card=document.createElement("article");card.className="st34-note-card st37-public-card";card.dataset.publicNoteId=String(note.id||"");
       const meta=[];
       if(note.createdAt&&C.dt)meta.push(C.dt(note.createdAt));
@@ -156,8 +162,10 @@
       const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json","apikey":API_KEY},body:JSON.stringify({action:"feed",limit:300})});
       const out=await r.json().catch(()=>({}));if(!r.ok)throw new Error(out.error||`community_${r.status}`);
       if(out.ok!==true||!Array.isArray(out.items))throw Error("community_invalid_response");
-      items=out.items.map(x=>({...x,createdAt:x.created_at||x.createdAt||null,localOnly:false}));
-      metrics=out.metrics&&typeof out.metrics==="object"?out.metrics:null;patternMetrics=Array.isArray(out.patternMetrics)?out.patternMetrics:[];patternScenarios=Array.isArray(out.patternScenarios)?out.patternScenarios:[];historicalPatterns=Array.isArray(out.historicalPatterns)?out.historicalPatterns:[];
+      // Server may still carry earlier catalog data until its next successful
+      // refresh. The client always applies its currently published registry.
+      items=activeItems(out.items).map(x=>({...x,createdAt:x.created_at||x.createdAt||null,localOnly:false}));
+      metrics=out.metrics&&typeof out.metrics==="object"?out.metrics:null;patternMetrics=activeItems(out.patternMetrics);patternScenarios=activeItems(out.patternScenarios);historicalPatterns=activeItems(out.historicalPatterns);
       lastError=null;lastOkAt=new Date().toISOString();
       if(epoch===viewEpoch){
         if(mode()==="notes"){await loadNotes(false);if(epoch===viewEpoch&&mode()==="notes")renderNotes()}

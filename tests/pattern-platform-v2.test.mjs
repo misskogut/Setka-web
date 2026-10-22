@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import fs from 'node:fs';
-import {parseManifest,assertConfiguration,catalogRows,researchConfig} from '../supabase/functions/_shared/pattern-catalog.mjs';
+import {parseManifest,assertConfiguration,catalogRows,researchConfig,activePatternIds,onlyActivePatterns} from '../supabase/functions/_shared/pattern-catalog.mjs';
 const source=fs.readFileSync('standalone-pattern-registry-v1.js','utf8');
 function registry(){const context={window:{dispatchEvent(){}},CustomEvent:class{}};vm.runInNewContext(source,context);return context.window.SetkaPatternRegistryV1}
 const plain=x=>JSON.parse(JSON.stringify(x));
@@ -79,6 +79,30 @@ test('editorial name revisions do not replace algorithm versions',()=>{
  R.setTitles([{pattern_id:'fish-wave',title:'Новое имя',revision:18}]);R.setTitles([{pattern_id:'fish-wave',title:'Старая копия',revision:17}]);
  assert.equal(R.title('fish-wave'),'Новое имя');assert.equal(R.get('fish-wave').version,35);
 });
+test('generic lifecycle automatically removes a withdrawn module from every active catalog projection, never the raw archive',()=>{
+ const R=registry(),future={id:'future-shapes',title:'future',version:1};
+ const live=plain(R.list()),old=[...live,future],archived=[
+  {id:'historical-favorite',patternId:future.id,config:{patternId:future.id,x:7}},
+  {id:'live-favorite',patternId:live[0].id,config:plain(live[0].defaults)}
+ ];
+ const liveCopies=plain(archived);
+ const oldManifest=parseManifest({schema:1,patterns:old});
+ assert.ok(activePatternIds(oldManifest).has(future.id),'new file gets published through the same manifest');
+ const currentManifest=parseManifest({schema:1,patterns:live});
+ const active=activePatternIds(currentManifest);
+ const publicRows=onlyActivePatterns(archived,active);
+ assert.equal(publicRows.length,1);
+ assert.equal(publicRows[0].id,'live-favorite');
+ assert.equal(onlyActivePatterns([{pattern_id:future.id},{pattern_id:live[0].id}],active).length,1);
+ assert.equal(onlyActivePatterns([{patternId:future.id},{patternId:live[0].id}],active).length,1);
+ assert.equal(onlyActivePatterns([{config:{patternId:future.id}},{config:{patternId:live[0].id}}],active).length,1);
+ assert.deepEqual(archived,liveCopies,'the old private archive is unchanged');
+ assert.equal(R.isActive(future.id),false);
+ assert.equal(R.activeItems(archived).length,1,'front uses the same selection as the server');
+ assert.equal(R.restore({patternId:future.id,config:{patternId:future.id,x:7}}).reason,'unknown_pattern');
+ assert.ok(activePatternIds(oldManifest).has(future.id),'readding one module makes the same identity eligible again');
+});
+
 test('v2 links round-trip every pattern rather than converting recipes to Tentacle',()=>{
  const R=registry(),window={SetkaPatternRegistryV1:R,SetkaApp:{DEFAULT_CONFIG:R.defaults('tentacle-orbit'),cloneConfig:R.normalize,configKey:R.configKey,
   openConfig:c=>c,getFavorites:()=>[]},SetkaStandaloneV34:{},dispatchEvent(){}};

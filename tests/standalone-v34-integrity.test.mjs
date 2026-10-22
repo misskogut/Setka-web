@@ -365,7 +365,9 @@ test("preview cadence covers all nine mother cards and never increments the queu
 test("opening Community never erases historical local configurations or fakes popularity",()=>{
   const js=read("standalone-community-cloud-v38.js");
   assert.doesNotMatch(js,/d\.localCommunity\s*=\s*\[\]/);
-  const predicate=js.match(/items\.filter\((item=>[^;]+)\),m=mode\(\)/)?.[1];
+  // All public rows first pass the canonical active manifest projection.
+  assert.match(js,/const a=activeItems\(items\)\.filter/);
+  const predicate=js.match(/activeItems\(items\)\.filter\((item=>[^;]+)\),m=mode\(\)/)?.[1];
   assert.ok(predicate,"community uses a validated saved-recipe filter");
   const visible=new Function("item", "return ("+predicate+")(item)");
   assert.equal(visible({saveCount:2}),true);

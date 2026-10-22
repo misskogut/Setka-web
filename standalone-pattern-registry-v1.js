@@ -141,7 +141,18 @@
   }
   function render(ctx,w,h,c,frame,preview=false,id=null){const pid=resolve(c,id),renderer=renderers.get(pid);if(!renderer)throw error("renderer_unavailable",pid);return renderer(ctx,w,h,normalize(c,pid),frame,preview)}
   function setTitles(rows=[]){let changed=false;for(const row of rows){const id=row.pattern_id||row.patternId||row.id,title=String(row.title||"").trim();if(get(id)&&title&&title.length<=80&&(titles.get(id)?.revision||0)>Number(row.revision||0)){continue}if(get(id)&&title&&title.length<=80){titles.set(id,{title,revision:Number(row.revision||0)});changed=true}}if(changed)emit("setka:pattern-names",{});return changed}
-  const api={schemaVersion:SCHEMA,register,get,has:id=>records.has(id),ids:()=>[...records.keys()],list:()=>[...records.values()].map(copy),
+  // Canonical active-catalog projection for every public/runtime consumer.
+  // Archive objects are never mutated; a missing renderer is NOT grounds for
+  // destroying old notes/favorites. Only an absent descriptor hides active UI.
+  function identityOf(item){
+    if(typeof item==="string")return item;
+    if(!item||typeof item!=="object")return null;
+    return item.replaySnapshot?.patternId||item.pattern_id||item.patternId||
+      item.baseId||item.config?.patternId||null;
+  }
+  function isActive(item){const id=identityOf(item);return typeof id==="string"&&records.has(id)}
+  function activeItems(rows){return Array.isArray(rows)?rows.filter(isActive):[]}
+  const api={schemaVersion:SCHEMA,register,get,has:id=>records.has(id),isActive,activeItems,identityOf,ids:()=>[...records.keys()],list:()=>[...records.values()].map(copy),
     controls:id=>copy(get(id)?.controls||[]),inference,resolve,normalize,validate,configKey,snapshot,restore,revision,bindRenderer,render,
     ready:id=>renderers.has(id),supports:(id,feature)=>get(id)?.capabilities?.[feature]===true,
     title:id=>titles.get(id)?.title||get(id)?.title||id||"Неизвестный паттерн",setTitles,
