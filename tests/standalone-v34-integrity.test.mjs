@@ -373,8 +373,10 @@ test("opening Community never erases historical local configurations or fakes po
   assert.equal(visible({saveCount:2}),true);
   assert.equal(visible({saveCount:0}),false);
   assert.equal(visible({saveCount:Infinity}),false);
-  assert.equal(visible({saveCount:0,historical:true,legacySaveCount:3}),true);
+  assert.equal(visible({saveCount:0,historical:true,legacySaveCount:3}),false,"historical device saves are never public account likes");
   assert.equal(visible({saveCount:0,legacySaveCount:3}),false);
+  assert.equal(visible({saveCount:8,historical:true,legacySaveCount:3}),false,"historical records cannot fake an account count");
+  assert.equal(visible({saveCount:1.5}),false,"fractional/unconfirmed likes never count");
   assert.equal(visible({saveCount:0,historical:true,legacySaveCount:Infinity}),false);
 });
 test("favorite archives are not rewritten during startup; new renderers trigger rechecking",()=>{
