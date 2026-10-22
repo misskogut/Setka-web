@@ -57,6 +57,30 @@ try{
  await page.waitForFunction(()=>window.SetkaPatternRegistryV1.ready('fixture-fields'));
  await page.evaluate(async()=>{await window.SetkaPatternPluginsV1.ready();await window.SetkaStandaloneV34.ready;await window.__SETKA_PATTERN_CATALOG_V1__.refresh()});
  assert.deepEqual(errors,[],'front startup must complete before testing integration');
+ const orbitalTrailPixels=await page.evaluate(()=>{
+  const R=window.SetkaPatternRegistryV1,id='orbital-threads',c=R.defaults(id);
+  const make=()=>{const e=document.createElement('canvas');e.width=e.height=200;return e.getContext('2d',{willReadFrequently:true})};
+  const cold=make(),live=make(),sharp=make();
+  R.render(cold,200,200,c,132,true,id);
+  R.render(live,200,200,c,131,true,id);
+  R.render(live,200,200,c,132,true,id);
+  R.render(sharp,200,200,{...c,trail:0},132,true,id);
+  const a=cold.getImageData(0,0,200,200).data;
+  const b=live.getImageData(0,0,200,200).data;
+  const z=sharp.getImageData(0,0,200,200).data;
+  let mismatch=0,coldLit=0,sharpLit=0;
+  for(let i=0;i<a.length;i+=4){
+    mismatch+=Math.abs(a[i]-b[i])+Math.abs(a[i+1]-b[i+1])+Math.abs(a[i+2]-b[i+2]);
+    if(a[i]+a[i+1]+a[i+2]>45)coldLit++;
+    if(z[i]+z[i+1]+z[i+2]>45)sharpLit++;
+  }
+  return {coldLit,sharpLit,averageDifference:mismatch/(200*200*3)};
+ });
+ assert.ok(orbitalTrailPixels.coldLit>orbitalTrailPixels.sharpLit,
+  'real Canvas accumulated p5 feedback must show more illuminated trailing pixels than zero trail');
+ assert.ok(orbitalTrailPixels.averageDifference<2,
+  'direct-open screenshot must closely reproduce sequential Canvas history: '+JSON.stringify(orbitalTrailPixels));
+
  // Release order is NOT the library order: every unviewed new module appears
  // first, then its first successful opening places it last, persistently.
  await page.waitForFunction(()=>document.querySelector('#allPatternsPanel > .pattern-tile')?.dataset.patternId==='fixture-fields');
