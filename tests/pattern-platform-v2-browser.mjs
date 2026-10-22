@@ -152,8 +152,11 @@ try{
  const viewedOrder=await baseIds();
  assert.deepEqual(viewedOrder,R.list().map(p=>p.id),
   'once every pattern is viewed, release chronology matches the registry exactly');
- assert.ok(viewedOrder.indexOf('rain')<viewedOrder.indexOf('orbital-threads'),
-  'Orbital really was added after Rain and must be lower');
+ assert.ok(viewedOrder.includes('rain'),'the remaining new plugin is still visible');
+ assert.ok(!viewedOrder.includes('orbital-threads'),
+  'retired Orbital Threads never appears in the active base library');
+ assert.equal(await page.locator('[data-kind="base"][data-pattern-id="orbital-threads"]').count(),0,
+  'no retired base tile in the visible user front');
  // Rain's actual swipe must change the same field described in the key.
  await page.evaluate(()=>window.SetkaApp.openConfig(window.SetkaApp.getPatternDefaults('rain'),{type:'base',id:'rain',patternId:'rain'}));
  const rainCanvas=page.locator('#patternCanvas'),bounds=await rainCanvas.boundingBox();
