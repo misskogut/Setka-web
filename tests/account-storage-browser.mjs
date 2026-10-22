@@ -12,7 +12,7 @@ try{
   const original=Storage.prototype.setItem;
   Storage.prototype.setItem=function(k,v){if(this===localStorage)throw new DOMException('Isolated full storage','QuotaExceededError');return original.call(this,k,v)};
  });
- const requests=[];
+ const requests=[];let remoteFavorites=[],offlineArchive=false;
  await context.route('**/functions/v1/**',async route=>{
   let b={};try{b=route.request().postDataJSON()||{}}catch{}
   requests.push(b.action);
@@ -22,10 +22,14 @@ try{
    out={ok:true,testerId:authenticated?'T-ISOLATED':null,authenticated,claimed:authenticated,hasPassword:authenticated,consented:true};
    if(b.action==='recover-password'||b.action==='login')out={...out,sessionToken:'isolated-token',sessionExpiresAt:'2099-01-01T00:00:00Z'};
   }
-  if(b.action==='pull')out={ok:true,archive:null};
+  if(b.action==='pull'){
+   if(offlineArchive)return route.abort('internetdisconnected');
+   out={ok:true,archive:{payload:{settings:{}},favorites:remoteFavorites}};
+  }
   await route.fulfill({contentType:'application/json',headers:{'access-control-allow-origin':'*'},body:JSON.stringify(out)});
  });
  const page=await context.newPage();await page.goto(base+'/standalone-v34.html');
+ remoteFavorites=await page.evaluate(()=>['tentacle-orbit','dandelion','breathing-grid'].map((id,i)=>({id:'isolated-saved-'+i,baseId:id,patternId:id,config:window.SetkaApp.getPatternDefaults(id),createdAt:1700000000000+i,previewFrame:44})));
  await page.evaluate(async()=>{await window.SetkaStandaloneV34.ready;await window.__SETKA_TESTER_CABINET_V40__.recover()});
  await page.getByLabel('Tester ID',{exact:true}).fill('T-ISOLATED');
  await page.getByLabel('Recovery-код',{exact:true}).fill('ISOLATED-ONLY');
@@ -35,6 +39,17 @@ try{
  await page.waitForFunction(()=>window.SetkaDataScopeV1?.id==='tester:T-ISOLATED');
  assert.equal(await page.evaluate(()=>JSON.parse(sessionStorage.getItem('setka-v40:cabinet-session')).testerId),'T-ISOLATED');
  assert.equal(await page.evaluate(()=>window.SetkaDataScopeV1.legacyOwner()),'guest');
+ await page.waitForFunction(()=>window.__SETKA_PRIVATE_CORPUS_V40__?.authoritative()&&window.SetkaApp.getFavorites().length===3);
+ assert.deepEqual(await page.evaluate(()=>window.SetkaApp.getFavorites().map(f=>f.id).sort()),remoteFavorites.map(f=>f.id).sort());
+ await page.evaluate(()=>window.SetkaApp.openConfig(window.SetkaApp.getPatternDefaults('fish-wave'),{type:'base',id:'fish-wave',patternId:'fish-wave'}));
+ await page.locator('#favoriteButton').click();
+ await page.waitForFunction(()=>window.SetkaApp.getFavorites().length===4&&window.SetkaStandaloneV34.getData().settings.favoriteCollection?.rows.length===4);
+ await page.evaluate(()=>window.SetkaStandaloneV34.whenSaved());
+ offlineArchive=true;
+ await page.reload();await page.evaluate(async()=>{await window.SetkaStandaloneV34.ready;window.SetkaApp.setLibraryPage('favorites')});
+ await page.waitForFunction(()=>window.SetkaApp.getFavorites().length===4);
+ assert.equal(await page.locator('#favoritesPanel .favorite-tile').count(),4);
+ offlineArchive=false;
  await page.reload();await page.waitForFunction(()=>window.__SETKA_TESTER_CABINET_V40__?.state()?.authenticated===true);
  assert.equal(await page.evaluate(()=>window.SetkaDataScopeV1.id),'tester:T-ISOLATED');
  assert.ok(requests.includes('recover-password'));
@@ -47,5 +62,6 @@ try{
  await page.waitForFunction(()=>window.SetkaDataScopeV1?.id==='tester:T-ISOLATED');
  await page.waitForFunction(()=>window.__SETKA_TESTER_CABINET_V40__?.state()?.authenticated===true);
  assert.ok(requests.includes('login'));
- console.log('RECOVERY STORAGE PASS: full localStorage, IndexedDB archive, temporary session, scoped reload, logout and ordinary password login');
+ await page.waitForFunction(()=>window.SetkaApp.getFavorites().length===4);
+ console.log('RECOVERY STORAGE PASS: three cloud recipes plus a new favorite, full localStorage, IndexedDB offline reload, temporary session, logout and ordinary password login');
 }finally{await browser?.close();server.kill('SIGTERM')}

@@ -27,7 +27,19 @@
     const loadState=!token?"signed_out":hydrated&&hydratedToken===token?"ready":hydrationError?"error":"loading";
     return {...(value||{}),ok:loadState==="ready"&&value?.ok===true,loadState,archiveReady:loadState==="ready",statesPending:!value?.stateFingerprint||value.stateFingerprint!==stateFingerprint(C.getData?.()||{})};
   }
-  function announceLoad(){window.dispatchEvent(new CustomEvent("setka:v40-private-corpus-load",{detail:{loadState:status().loadState}}))}
+  function announceLoad(){
+    const loadState=status().loadState,panel=document.getElementById?.("favoritesPanel");
+    if(panel){
+      panel.querySelector?.('[data-collection-status]')?.remove();
+      if(loadState==="loading"||loadState==="error"){
+        const notice=document.createElement("div");notice.dataset.collectionStatus=loadState;
+        notice.style.cssText="grid-column:1/-1;color:#aaa;font-size:12px;padding:16px;text-align:center";
+        notice.textContent=loadState==="loading"?"Восстанавливаем сохранённые конфигурации…":"Не удалось восстановить всю коллекцию. Показаны доступные записи; загрузка повторится автоматически.";
+        panel.prepend(notice);
+      }
+    }
+    window.dispatchEvent(new CustomEvent("setka:v40-private-corpus-load",{detail:{loadState}}));
+  }
   function saveStatus(v){lastStatus=v;try{localStorage.setItem(STATUS_KEY,JSON.stringify(v))}catch(_){}window.dispatchEvent(new CustomEvent("setka:v40-private-corpus",{detail:v}))}
   function archive(){
     const d=clone(C.getData?.()||{});
@@ -52,14 +64,20 @@
   function noteCompleteness(x){if(!x||typeof x!=="object")return 0;let n=0;if(x.replaySnapshot?.config&&x.replaySnapshot?.patternId)n+=8;if(x.replaySnapshot?.frame!=null)n+=4;if(x.visualRecipe?.config&&x.visualRecipe?.patternId)n+=2;if(x.config&&x.patternId)n++;return n}
   function mergeRecords(local=[],remote=[],prefix="row",max=30000){const m=new Map(),put=(x,i)=>{const k=recKey(x,i,prefix),old=m.get(k);if(!old||stamp(x)>stamp(old)||(stamp(x)===stamp(old)&&(prefix!=="notes"||noteCompleteness(x)>=noteCompleteness(old))))m.set(k,clone(x))};(Array.isArray(remote)?remote:[]).forEach(put);(Array.isArray(local)?local:[]).forEach((x,i)=>put(x,100000+i));return [...m.values()].sort((a,b)=>stamp(a)-stamp(b)).slice(-max)}
   function favKey(f,i){try{if(f?.config)return `cfg:${Setka.configKey?.(f.config,f.baseId||f.patternId||f.config?.patternId)||JSON.stringify(f.config)}`}catch(_){}return f?.id?`id:${f.id}`:`anon:${i}`}
-  function mergeFavorites(remote=[]){
+  async function mergeFavorites(remote=[]){
     const local=favorites(),m=new Map(),put=(f,i)=>{const k=favKey(f,i),old=m.get(k);if(!old||stamp(f)>=stamp(old))m.set(k,clone(f))};
     (Array.isArray(remote)?remote:[]).forEach(put);local.forEach((f,i)=>put(f,100000+i));
     const merged=[...m.values()].slice(-10000);
-    try{(window.SetkaDataScopeV1?.storage||localStorage).setItem(FAVORITES_KEY,JSON.stringify(merged));Setka.refreshFavorites?.()}catch(_){}
+    if(Setka.restoreFavorites)await Setka.restoreFavorites(merged);
+    else {
+      const storage=window.SetkaDataScopeV1?.storage||localStorage,raw=JSON.stringify(merged);
+      storage.setItem(FAVORITES_KEY,raw);
+      if(storage.getItem(FAVORITES_KEY)!==raw)throw new Error("favorites_storage_unavailable");
+      Setka.refreshFavorites?.();
+    }
     return merged.length;
   }
-  function mergeCloud(payload={},remoteFavorites=[]){
+  async function mergeCloud(payload={},remoteFavorites=[]){
     const d=C.getData?.();if(!d)return null;
     d.version=Math.max(Number(d.version)||0,Number(payload.version)||0,41);
     if(payload.createdAt&&(!d.createdAt||Date.parse(payload.createdAt)<Date.parse(d.createdAt)))d.createdAt=payload.createdAt;
@@ -77,7 +95,7 @@
     d.settings={...(payload.settings||{}),...(d.settings||{})};
     if(Setka.restorePersonalConfigs)d.settings.patternConfigs=Setka.restorePersonalConfigs(payload.settings?.patternConfigs||{});
     C.save?.();
-    const favoriteCount=mergeFavorites(remoteFavorites);
+    const favoriteCount=await mergeFavorites(remoteFavorites);
     return {sessions:d.sessions.length,notes:d.notes.length,symptoms:d.symptoms.length,checkins:d.checkins.length,events:d.events.length,exposures:d.patternExposures.length,physio:d.physio.samples.length,favorites:favoriteCount};
   }
   function digest(value){
@@ -146,7 +164,8 @@
       announceLoad();window.dispatchEvent(new CustomEvent("setka:v40-private-corpus-restored",{detail:{counts:null,sourceDevices:0,emptyRemote:true}}));
       return true;
     }
-    const counts=mergeCloud(a.payload||{},a.favorites||[]);
+    const counts=await mergeCloud(a.payload||{},a.favorites||[]);
+    if(!sameSession(token))return false;
     hydrated=true;authoritative=true;hydratedToken=token;hydrationError=null;lastSignature="";
     saveStatus({enabled:true,ok:true,restored:true,stateFingerprint:stateFingerprint(a.payload||{}),statesVerified:true,build:BUILD,updatedAt:a.updatedAt||null,counts,sourceDevices:Number(a.sourceDevices)||1,privacy:"private-account-only",publicExposure:false});
     announceLoad();window.dispatchEvent(new CustomEvent("setka:v40-private-corpus-restored",{detail:{counts,sourceDevices:Number(a.sourceDevices)||1}}));

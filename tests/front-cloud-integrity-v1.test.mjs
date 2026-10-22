@@ -69,6 +69,23 @@ function storageContext(file,{throwOnStorage=false}={}){
 for(const throwOnStorage of [false,true])test('private archive uses the existing temporary session when persistent storage '+(throwOnStorage?'throws':'is empty'),async()=>{
   const {context,requests,token}=storageContext('standalone-private-corpus-v40.js',{throwOnStorage});assert.equal(await context.__SETKA_PRIVATE_CORPUS_V40__.sync(),true);assert.deepEqual(requests.map(x=>x.body.action),['pull','sync']);assert.ok(requests.every(x=>x.body.sessionToken===token));assert.equal(context.__SETKA_PRIVATE_CORPUS_V40__.authoritative(),true);assert.equal(context.__SETKA_PRIVATE_CORPUS_V40__.status().ok,true);
 });
+test('failed favorites hydration never authorizes a partial collection or uploads it',async()=>{
+  const {context,requests}=storageContext('standalone-private-corpus-v40.js',{throwOnStorage:true});
+  context.fetch=async(url,init)=>{const body=JSON.parse(init.body);requests.push({body});return {ok:true,json:async()=>({ok:true,archive:{payload:{},favorites:[{id:'preserved',config:{patternId:'dandelion',v1:.37}}]}})}};
+  assert.equal(await context.__SETKA_PRIVATE_CORPUS_V40__.sync(),false);
+  assert.equal(context.__SETKA_PRIVATE_CORPUS_V40__.authoritative(),false);
+  assert.deepEqual(requests.map(x=>x.body.action),['pull']);
+});
+test('cloud hydration waits for durable favorites before declaring the collection authoritative',async()=>{
+  const {context}=storageContext('standalone-private-corpus-v40.js',{throwOnStorage:true});
+  let complete,received;
+  context.SetkaApp.restoreFavorites=rows=>{received=rows;return new Promise(r=>complete=r)};
+  context.fetch=async()=>({ok:true,json:async()=>({ok:true,archive:{payload:{},favorites:[{id:'cloud-recipe',config:{patternId:'dandelion',v1:.37}}]}})});
+  const pending=context.__SETKA_PRIVATE_CORPUS_V40__.ensureHydrated();
+  for(let i=0;i<10&&!complete;i++)await Promise.resolve();
+  assert.equal(received.length,1);assert.equal(context.__SETKA_PRIVATE_CORPUS_V40__.authoritative(),false);
+  complete(1);assert.equal(await pending,true);assert.equal(context.__SETKA_PRIVATE_CORPUS_V40__.authoritative(),true);
+});
 test('research contribution bridge uses the same temporary session',async()=>{
   const {context,requests,token}=storageContext('standalone-research-bridge-v40.js',{throwOnStorage:true});assert.equal(await context.__SETKA_RESEARCH_BRIDGE_V40__.sync(),true);assert.deepEqual(requests.map(x=>x.body.action),['status','my-status']);assert.ok(requests.every(x=>x.body.sessionToken===token));
 });

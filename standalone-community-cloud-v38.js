@@ -60,7 +60,7 @@
   function sorted(){
     // Public community cards represent configurations saved by real accounts;
     // filtering zero-savers is a view-only operation and does not change data.
-    const a=items.filter(item=>Number.isFinite(Number(item.saveCount))&&Number(item.saveCount)>0),m=mode();
+    const a=items.filter(item=>(Number.isFinite(Number(item.saveCount))&&Number(item.saveCount)>0)||(item.historical===true&&Number.isFinite(Number(item.legacySaveCount))&&Number(item.legacySaveCount)>0)),m=mode();
     if(m==="new")return a.sort((x,y)=>Date.parse(y.createdAt||0)-Date.parse(x.createdAt||0));
     if(m==="popular")return a.sort((x,y)=>(Number(y.saveCount)||0)-(Number(x.saveCount)||0)||Date.parse(y.createdAt||0)-Date.parse(x.createdAt||0));
     return a.sort((x,y)=>personalScore(y)-personalScore(x)||Date.parse(y.createdAt||0)-Date.parse(x.createdAt||0));
@@ -71,7 +71,7 @@
     panel.querySelectorAll(".community-tile").forEach(tile=>{
       const item=items.find(x=>String(x.id)===String(tile.dataset.itemId));
       const badge=tile.querySelector(".community-count");
-      if(badge&&item)badge.textContent=`♥ ${Math.max(0,Number(item.saveCount)||0)}`;
+      if(badge&&item){badge.textContent=`♥ ${Math.max(0,Number(item.historical?item.legacySaveCount:item.saveCount)||0)}`;badge.title=item.historical?"Сохранения в предыдущей версии SETKA":"Сохранения участников";}
     });
   }
 

@@ -99,9 +99,39 @@
         unavailableReason:error?.code||error?.message||"unavailable"};
     }
   }
-  function loadFavorites(){const out=[],seen=new Set(),push=f=>{const sig=f.unavailable?JSON.stringify(f):`${f.id}|${configKey(f.config,f.baseId)}`;if(!seen.has(sig)){seen.add(sig);out.push(f)}};const main=readJSON(STORAGE_FAVORITES,[]);if(Array.isArray(main))main.forEach((x,i)=>push(normalizeFavorite(x,i)));const fish=readJSON(LEGACY_FISH_KEY,[]);if(Array.isArray(fish))fish.forEach((x,i)=>push(normalizeFavorite(x,1000+i,FISH_ID)));const breath=readJSON(LEGACY_BREATH_KEY,[]);if(Array.isArray(breath))breath.forEach((x,i)=>push(normalizeFavorite(x,2000+i,BREATH_ID)));const growth=readJSON(LEGACY_GROWTH_KEY,[]);if(Array.isArray(growth))growth.forEach((x,i)=>push(normalizeFavorite(x,3000+i,GROWTH_ID)));return out}
+  function loadFavorites(){const out=[],seen=new Set(),push=f=>{const sig=f.unavailable?JSON.stringify(f):`${f.id}|${configKey(f.config,f.baseId)}`;if(!seen.has(sig)){seen.add(sig);out.push(f)}};const durable=window.SetkaStandaloneV34?.getData?.()?.settings?.favoriteCollection?.rows;if(Array.isArray(durable)){durable.forEach((x,i)=>push(normalizeFavorite(x,i)));return out}const main=readJSON(STORAGE_FAVORITES,[]);if(Array.isArray(main))main.forEach((x,i)=>push(normalizeFavorite(x,i)));const fish=readJSON(LEGACY_FISH_KEY,[]);if(Array.isArray(fish))fish.forEach((x,i)=>push(normalizeFavorite(x,1000+i,FISH_ID)));const breath=readJSON(LEGACY_BREATH_KEY,[]);if(Array.isArray(breath))breath.forEach((x,i)=>push(normalizeFavorite(x,2000+i,BREATH_ID)));const growth=readJSON(LEGACY_GROWTH_KEY,[]);if(Array.isArray(growth))growth.forEach((x,i)=>push(normalizeFavorite(x,3000+i,GROWTH_ID)));return out}
   let favorites=loadFavorites();
-  function persistFavorites(){writeJSON(STORAGE_FAVORITES,favorites)}
+  async function persistFavorites(){
+    const rows=JSON.parse(JSON.stringify(favorites)),core=window.SetkaStandaloneV34;
+    let stored=false;
+    try{const storage=window.SetkaDataScopeV1?.storage||localStorage,raw=JSON.stringify(rows);storage.setItem(STORAGE_FAVORITES,raw);stored=storage.getItem(STORAGE_FAVORITES)===raw}catch(_){}
+    // Favorites need the same durable fallback as notes and states. A successful
+    // login alone does not prove that localStorage can hold the collection.
+    if(core){
+      await core.ready;
+      const d=core.getData();d.settings=d.settings||{};
+      d.settings.favoriteCollection={rows,updatedAt:new Date().toISOString()};
+      core.save();const durable=core.whenSaved?await core.whenSaved():core.storageStatus?.().ok;
+      stored=stored||durable===true;
+    }
+    if(!stored)showToast("Коллекция открыта, но пока не сохранена на устройстве");
+    return stored;
+  }
+  async function restoreFavorites(rows){
+    if(!Array.isArray(rows))throw new Error("invalid_favorite_collection");
+    favorites=rows.map((row,i)=>normalizeFavorite(row,i));
+    renderLibrary();updateFavoriteButtonState();
+    if(!await persistFavorites())throw new Error("favorites_storage_unavailable");
+    return favorites.length;
+  }
+  window.addEventListener("setka:personal-archive-restored",()=>{
+    const d=window.SetkaStandaloneV34?.getData(),saved=d?.settings?.favoriteCollection;
+    if(!Array.isArray(saved?.rows))return;
+    const removed=new Set((d.events||[]).filter(e=>e.type==="favorite_remove").map(e=>e.payload?.favoriteId));
+    const rows=new Map([...saved.rows,...favorites].filter(f=>!removed.has(f.id)).map(f=>[f.id,f]));
+    favorites=[...rows.values()].map((f,i)=>normalizeFavorite(f,i));
+    renderLibrary();updateFavoriteButtonState();
+  });
   function matchingFavorite(c=runtimeConfig,id=runtimePatternId){const k=configKey(c,id);return favorites.find(f=>!f.unavailable&&configKey(f.config,f.baseId)===k)||null}
   runtimeConfig=cloneConfig(TENTACLE_DEFAULT,TENTACLE_ID);
 
@@ -404,7 +434,7 @@
     document.querySelectorAll('.pattern-tile[data-kind="base"]').forEach(tile=>tile.setAttribute("aria-label",`Открыть паттерн ${registry.title(tile.dataset.patternId)}. Удерживай, чтобы сохранить`));
   }
   window.addEventListener("setka:pattern-names",refreshPatternTitles);
-  window.SetkaApp={setPatternTitles:rows=>registry.setTitles(rows),restorePersonalConfigs,exportPersonalConfigs:()=>JSON.parse(JSON.stringify(lastConfigs)),previewStatus:()=>({...previewStats,registered:previewTiles.size,
+  window.SetkaApp={restoreFavorites,setPatternTitles:rows=>registry.setTitles(rows),restorePersonalConfigs,exportPersonalConfigs:()=>JSON.parse(JSON.stringify(lastConfigs)),previewStatus:()=>({...previewStats,registered:previewTiles.size,
     autonomous:window.SetkaAutoOptimizerV1?.status?.()||null}),registerPattern,getState:()=>statePayload(),getConfig:()=>cloneConfig(runtimeConfig,runtimePatternId),getFavorites:()=>favorites.map(f=>f.unavailable?JSON.parse(JSON.stringify(f)):({...f,config:cloneConfig(f.config,f.baseId)})),setConfigPatch:(patch={})=>{if(!patch||typeof patch!=="object")return cloneConfig(runtimeConfig,runtimePatternId);const before=configKey(runtimeConfig,runtimePatternId);runtimeConfig=cloneConfig({...runtimeConfig,...patch,patternId:runtimePatternId},runtimePatternId);if(before!==configKey(runtimeConfig,runtimePatternId)){updateFavoriteButtonState();updateColorIndicator();emit("gesture-move",{origin:"slider"})}return cloneConfig(runtimeConfig,runtimePatternId)},getPatterns:()=>PATTERNS.map(p=>({id:p.id,title:registry.title(p.id),version:p.version,defaults:registry.defaults(p.id)})),getPatternDefaults:id=>IDS.has(id)?registry.defaults(id):null,getPatternTitle:id=>registry.title(id),cloneConfig,configKey,openConfig,renderPreview,setCommunity(items){communityItems=Array.isArray(items)?items.map(normalizeCommunityItem):[];renderLibrary()},setRecommendations(data={}){recommendedCommunity=new Set((data.community||[]).map(String));recommendedPatterns=new Set((data.patterns||[]).map(String));renderLibrary()},updateFavoriteMeta,refreshFavorites(){favorites=loadFavorites();renderLibrary();updateFavoriteButtonState()},renderLibrary,setLibraryPage,finishCurrentUsageHint(){return statePayload()},DEFAULT_CONFIG:cloneConfig(TENTACLE_DEFAULT,TENTACLE_ID),DANDELION_DEFAULT:cloneConfig(DANDELION_DEFAULT,DANDELION_ID),FISH_DEFAULT:cloneConfig(FISH_DEFAULT,FISH_ID),BREATHING_FRACTAL_DEFAULT:cloneConfig(BREATH_DEFAULT,BREATH_ID),BREATHING_GROWTH_DEFAULT:cloneConfig(GROWTH_DEFAULT,GROWTH_ID),RGB_RINGS_DEFAULT:cloneConfig(RGB_DEFAULT,RGB_ID),STEREO_DNA_DEFAULT:cloneConfig(DNA_DEFAULT,DNA_ID),BREATHING_GRID_DEFAULT:cloneConfig(GRID_DEFAULT,GRID_ID)};
   window.addEventListener("setka:catalog-updated",()=>{for(const p of PATTERNS)p.defaults=registry.defaults(p.id);renderLibrary()});
   registry?.attachEngine?.(window.SetkaApp);

@@ -365,7 +365,15 @@ test("preview cadence covers all nine mother cards and never increments the queu
 test("opening Community never erases historical local configurations or fakes popularity",()=>{
   const js=read("standalone-community-cloud-v38.js");
   assert.doesNotMatch(js,/d\.localCommunity\s*=\s*\[\]/);
-  assert.match(js,/items\.filter\(item=>Number\.isFinite\(Number\(item\.saveCount\)\)\&\&Number\(item\.saveCount\)>0\)/);
+  const predicate=js.match(/items\.filter\((item=>[^;]+)\),m=mode\(\)/)?.[1];
+  assert.ok(predicate,"community uses a validated saved-recipe filter");
+  const visible=new Function("item", "return ("+predicate+")(item)");
+  assert.equal(visible({saveCount:2}),true);
+  assert.equal(visible({saveCount:0}),false);
+  assert.equal(visible({saveCount:Infinity}),false);
+  assert.equal(visible({saveCount:0,historical:true,legacySaveCount:3}),true);
+  assert.equal(visible({saveCount:0,legacySaveCount:3}),false);
+  assert.equal(visible({saveCount:0,historical:true,legacySaveCount:Infinity}),false);
 });
 test("favorite archives are not rewritten during startup; new renderers trigger rechecking",()=>{
   const js=read("app-v7-multipattern.js");
