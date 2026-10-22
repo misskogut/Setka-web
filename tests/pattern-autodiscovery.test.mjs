@@ -153,7 +153,7 @@ test('Orbital Threads: original exact shape, nine palettes, two genuine rainbows
   assert.equal(live.strokes-warmed,standard.lineCount-2,
     'sequential canvas adds only ONE original line set, not invented ghosts');
   assert.equal(live.backgrounds.length-bgCount,1,'single faded background on next draw');
-  const originalAlpha=Number(live.backgrounds.at(-1).match(/rgba\\(0,0,0,([^)]+)\\)/)?.[1]);
+  const originalAlpha=Number(live.backgrounds.at(-1).match(/rgba\(0,0,0,([^)]+)\)/)?.[1]);
   assert.ok(Math.abs(originalAlpha-20/255)<1e-12,
     'default 75 trail exactly reproduces the p5 background(0,20) opacity');
   const at96=live.strokes;
