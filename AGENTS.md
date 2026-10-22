@@ -1,5 +1,24 @@
 # SETKA / VERSTAK · WORK BOOTSTRAP OVERRIDE
 
+## SETKA APP — MANDATORY AUTONOMOUS PLATFORM RULES
+
+**Scope:** mobile/web SETKA App, `standalone-v34.html`, live pattern modules, user archive, community and **`standalone-research-admin-v1.html`**. Do not apply these app rules to unrelated VERSTAK/CANON/Foundation/Diamond runtime missions.
+
+**Before every SETKA App edit**, read `SETKA_APP_CANONICAL_CONTRACT.md`, `docs/SETKA_APP_RULES_LEDGER.md` and `docs/PATTERN_PLATFORM_V2.md`, then inspect actual code, live deployment and relevant test failures. The chat is a source of product intent, **not proof of successful implementation**.
+
+**Standing acceptance law:**
+1. A reusable product decision becomes **one shared platform rule**, not a one-off patch for Rain, Orbital Threads, or the next pattern. Do not hard-code newly packaged pattern IDs in front, notes, user archive, community, previews, research or generic UI. Conformant new pattern = **one module file**; module descriptor drives discovery, renderer, parameters, gestures, palettes, first-open state, order, snapshots and research.
+2. For each material user correction: **update the relevant canonical contract + rule ledger + executable tests** in the same pull request, or explicitly mark an unimplemented design rule `TARGET / UNVERIFIED`. Write a generic test that also applies to a future unknown module, not just the latest named module. Never claim automatic enforcement when only documentation was written.
+3. Unopened patterns are shown at the top (newest release first). After first successful opening the `new` badge disappears; viewed patterns are always in **release/creation chronology** (oldest first), independent of viewing order. The release date `introducedAt` belongs inside the module descriptor; never order by alphabetical file names or recent tap time.
+4. New patterns start **white lines on black**. All controls must have accurate one/two-finger or slider-only descriptions and actually work. Dynamic previews reproduce the same deterministic renderer/config and align in equal square cells; optimize rendering in a shared scheduler without altering saved forms. Existing saved palette indexes and snapshots remain stable.
+5. A single canonical event/identity/version/config source underlies front, admin, saved snapshots, notes, real BPM and public counts. No fake metrics, demo data posing as real, invented success receipts, accidental cross-account merges, lost originals or unknown IDs replaced with a starter pattern. Data can be `unknown/stale/offline`; never silently call it zero or confirmed.
+6. Synchronization must be verified with server write/read-back, revision/cursor, reconnection, stale-response and real two-client/research tests; 30-second polling is **not** realtime. Measure p50/p95 latency and preview performance before promising instant or lag-free behavior.
+7. Changes must pass build/contract tests, Chromium and WebKit integrations, v34 smoke, non-destructive archive/reload, and appropriate real-device verification. No release with known required gate failing. Report `implemented`, `tested in CI`, `deployed` and `verified on actual device` as distinct states; avoid claiming one implies another.
+
+**Before coding:** state verified reality → risk → single reusable subsystem change → unaffected components. **After:** list proof (test names / build SHA / deployment / gaps). Prefer root-cause removal and backwards-compatible migration over wrappers; never delete old records or thin out the full research admin to make tests pass.
+
+## Existing runtime / flight recorder rules
+
 ## UNIVERSAL FLIGHT RECORDER RULE
 
 **BLACK BOX** means the protected SETKA / VERSTAK intellectual system.

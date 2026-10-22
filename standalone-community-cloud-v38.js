@@ -5,7 +5,7 @@
   const API="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-community-patterns-v38";
   const API_KEY="sb_publishable_1jL-x9_kp6rpfGghpSp_OA_OiXDnvsv";
   const MODES=new Set(["for_me","popular","new","notes"]);
-  let items=[],metrics=null,patternMetrics=[],patternScenarios=[],historicalPatterns=[],publicNotes=[],busy=false,notesBusy=false,timer=0,lastOkAt=null,lastError=null,lastPage=Setka.getState?.()?.libraryPage||null,viewEpoch=0;
+  let items=[],metrics=null,patternMetrics=[],patternScenarios=[],historicalPatterns=[],publicNotes=[],busy=false,refreshQueued=false,notesBusy=false,timer=0,lastOkAt=null,lastError=null,lastPage=Setka.getState?.()?.libraryPage||null,viewEpoch=0;
 
   const style=document.createElement("style");
   style.textContent=`
@@ -42,6 +42,9 @@
     const bar=ensureModeButton();if(!bar)return;
     const m=mode();bar.querySelectorAll("button[data-m]").forEach(b=>b.classList.toggle("active",b.dataset.m===m));
   }
+  // Local community history is an archival record: not part of the public feed.
+  // Browsing a feed must never modify private records.
+  function retainLegacyLocal(){return Array.isArray(data().localCommunity);}
   function sessionUsages(){
     const out=[],d=data();
     for(const s of d.sessions||[]){const events=(d.events||[]).filter(e=>e.sessionId===s.id&&["pattern_open","pattern_state","color","favorite_save"].includes(e.type));const configs=new Map();for(const e of events){const st=e.payload?.state;if(st?.configKey)configs.set(st.configKey,{sessionId:s.id,configKey:st.configKey,saved:configs.get(st.configKey)?.saved||e.type==="favorite_save"})}out.push(...configs.values())}
@@ -55,7 +58,9 @@
     return score/uses.length+(Number(item.saveCount)||0)*.03;
   }
   function sorted(){
-    const a=items.slice(),m=mode();
+    // Public community cards represent configurations saved by real accounts;
+    // filtering zero-savers is a view-only operation and does not change data.
+    const a=items.filter(item=>Number(item.saveCount)>0||item.historical===true&&Number(item.legacySaveCount)>0),m=mode();
     if(m==="new")return a.sort((x,y)=>Date.parse(y.createdAt||0)-Date.parse(x.createdAt||0));
     if(m==="popular")return a.sort((x,y)=>(Number(y.saveCount)||0)-(Number(x.saveCount)||0)||Date.parse(y.createdAt||0)-Date.parse(x.createdAt||0));
     return a.sort((x,y)=>personalScore(y)-personalScore(x)||Date.parse(y.createdAt||0)-Date.parse(x.createdAt||0));
@@ -70,11 +75,22 @@
     });
   }
 
+  function showAvailability(){
+    const panel=document.getElementById("communityPanel");if(!panel)return;
+    panel.querySelector("#st40CommunityLoadError")?.remove();
+    if(!lastError||mode()==="notes")return;
+    const warning=document.createElement("div");warning.id="st40CommunityLoadError";
+    warning.className="st40-community-empty";warning.setAttribute("role","status");
+    warning.textContent=items.length?
+      "Не удалось обновить сообщество. Показаны ранее подтверждённые данные.":
+      "Сообщество временно недоступно. Актуальные данные не подтверждены сервером.";
+    panel.prepend(warning);
+  }
   function renderPatterns(){
     if(mode()==="notes")return;
     document.getElementById("st40CommunityNotes")?.remove();
     const title=document.getElementById("libraryTitle");if(title)title.textContent="Сообщество";
-    const shown=sorted();C.publicCommunity=shown;Setka.setCommunity?.(shown);syncModeUi();cleanPatternTiles();
+    const shown=sorted();C.publicCommunity=shown;Setka.setCommunity?.(shown);syncModeUi();cleanPatternTiles();showAvailability();
   }
 
   async function loadNotes(force=false){
@@ -134,29 +150,25 @@
   }
 
   async function refresh(){
-    if(busy)return;busy=true;lastError=null;
+    if(busy){refreshQueued=true;return;}busy=true; // Retain stale/error status until a successful read.
     const epoch=viewEpoch;
     try{
       const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json","apikey":API_KEY},body:JSON.stringify({action:"feed",limit:300})});
       const out=await r.json().catch(()=>({}));if(!r.ok)throw new Error(out.error||`community_${r.status}`);
-      items=Array.isArray(out.items)?out.items.map(x=>({...x,createdAt:x.created_at||x.createdAt||null,localOnly:false})):[];
+      if(out.ok!==true||!Array.isArray(out.items))throw Error("community_invalid_response");
+      items=out.items.map(x=>({...x,createdAt:x.created_at||x.createdAt||null,localOnly:false}));
       metrics=out.metrics&&typeof out.metrics==="object"?out.metrics:null;patternMetrics=Array.isArray(out.patternMetrics)?out.patternMetrics:[];patternScenarios=Array.isArray(out.patternScenarios)?out.patternScenarios:[];historicalPatterns=Array.isArray(out.historicalPatterns)?out.historicalPatterns:[];
-      lastOkAt=new Date().toISOString();
+      lastError=null;lastOkAt=new Date().toISOString();
       if(epoch===viewEpoch){
         if(mode()==="notes"){await loadNotes(false);if(epoch===viewEpoch&&mode()==="notes")renderNotes()}
         else renderPatterns();
       }
       window.dispatchEvent(new CustomEvent("setka:community-cloud",{detail:{ok:true,count:items.length,mode:mode(),updatedAt:lastOkAt,metrics,patternMetrics,patternScenarios,historicalPatterns}}));
     }catch(e){
-      lastError=String(e?.message||e);
-      if(mode()!=="notes"&&!items.length){C.publicCommunity=[];Setka.setCommunity?.([])}
-      const panel=document.getElementById("communityPanel");
-      if(mode()!=="notes"&&panel&&!panel.querySelector('[data-community-error]')){
-        const notice=document.createElement('div');notice.dataset.communityError='true';notice.className='st40-community-empty';
-        notice.textContent='Не удалось загрузить сообщество. Это ошибка загрузки, а не пустая коллекция.';panel.prepend(notice);
-      }
+      lastError=String(e?.message||e);retainLegacyLocal();
+      if(mode()!=="notes"){if(!items.length){C.publicCommunity=[];Setka.setCommunity?.([])}showAvailability()}
       window.dispatchEvent(new CustomEvent("setka:community-cloud",{detail:{ok:false,error:lastError}}));
-    }finally{busy=false}
+    }finally{busy=false;if(refreshQueued){refreshQueued=false;schedule(0)}}
   }
   function schedule(ms=600){clearTimeout(timer);timer=setTimeout(refresh,ms)}
 
@@ -166,8 +178,8 @@
     setMode(b.dataset.m);applyMode();
   },true);
 
-  window.addEventListener("setka:favorite-saved",()=>{if(mode()!=="notes")renderPatterns();schedule(900)});
-  window.addEventListener("setka:favorite-removed",()=>{if(mode()!=="notes")renderPatterns();schedule(900)});
+  window.addEventListener("setka:favorite-saved",()=>{retainLegacyLocal();if(mode()!=="notes")renderPatterns();schedule(900)});
+  window.addEventListener("setka:favorite-removed",()=>{retainLegacyLocal();if(mode()!=="notes")renderPatterns();schedule(900)});
   window.addEventListener("setka:v34-sync",e=>schedule(e.detail?.ok?120:1200));
   window.addEventListener("setka:library-page",e=>{
     const page=e.detail?.page,prev=lastPage;lastPage=page;
@@ -181,7 +193,7 @@
   },true);
 
   async function bootstrap(){
-    ensureModeButton();
+    retainLegacyLocal();ensureModeButton();
     const d=data();d.settings=d.settings||{};delete d.settings.communitySection;if(!MODES.has(d.settings.communityMode)||d.settings.communityMode==="notes")d.settings.communityMode="for_me";C.save?.();
     try{await C.sandbox?.sync?.()}catch(_){}
     await Promise.all([refresh(),loadNotes(true)]);

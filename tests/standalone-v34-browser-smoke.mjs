@@ -78,7 +78,8 @@ async function go(){
   const result=[];
   mkdirSync("tests/visual-smoke",{recursive:true});
   for(let i=0;i<7;i++){
-    const t=tiles.nth(i);
+    // Test identity, not library position: unseen modules now sort newest first.
+    const t=page.locator(`#allPatternsPanel .pattern-tile[data-pattern-id="${patternIds[i]}"]`);
     await t.locator(".st34-info").waitFor({timeout:10000});
     const before=await t.locator("canvas").evaluate(livePixels);
     console.log("THUMB",patternIds[i],"brightPixels",before);
@@ -264,7 +265,7 @@ async function go(){
     for(let i=0;i<70;i++)d.patternExposures.push({exposureId:"audit-e-"+i,patternId:"dandelion",sessionId:i<35?"audit-sleep-a":i<69?"audit-sleep-b":"audit-focus",requestKey:i<69?"sleep":"focus",durationMs:700,configKey:"dandelion|"+i});
     C.save();
   });
-  await tiles.nth(1).locator(".st34-info").click({force:true});
+  await page.locator('#allPatternsPanel .pattern-tile[data-pattern-id="dandelion"] .st34-info').click({force:true});
   await page.locator("#st34InfoOverlay .st34-pattern-scenarios").waitFor();
   await page.locator("#st34InfoOverlay .st34-metric-help[data-help='scenarios']").click();
   assert.match(await page.locator("#st34InfoOverlay .st34-help-panel").innerText(),/Обезличенное распределение целей/);

@@ -17,6 +17,15 @@
     if(!Number.isInteger(raw.version)||raw.version<1)throw error("invalid_pattern_version",raw.id);
     const colorModes=raw.colorModes??9;
     if(!Number.isInteger(colorModes)||colorModes<1||colorModes>9)throw error("invalid_palette_count",raw.id);
+    // A newly packaged algorithm declares actual RGB palettes in the shared
+    // contract. The chosen initial mode must render white on black.
+    if(raw.palettes!==undefined){
+      if(!Array.isArray(raw.palettes)||raw.palettes.length!==colorModes||
+         raw.palettes.some(rgb=>!Array.isArray(rgb)||rgb.length!==3||
+           rgb.some(v=>!Number.isInteger(v)||v<0||v>255)))throw error("invalid_palette_contract",raw.id);
+      const initial=raw.palettes[raw.defaults.colorModeIndex??0];
+      if(!initial||initial.some(v=>v!==255))throw error("initial_palette_must_be_monochrome",raw.id);
+    }
     const defaults=copy({...raw.defaults,patternId:raw.id,colorModeIndex:raw.defaults.colorModeIndex??0});
     const schema=copy(raw.schema||{});
     for(const [key,value] of Object.entries(defaults)){
@@ -28,7 +37,17 @@
       }
     }
     schema.colorModeIndex={type:"number",min:0,max:colorModes-1,integer:true};
-    for(const [label,key,min,max,step] of raw.controls){
+    for(const [label,key,min,max,step,gesture,fingers] of raw.controls){
+      // New modules must describe a real gesture: 0=slider only,
+      // 1=one finger/tap, 2=two fingers/pinch. Never use a speed factor here.
+      if(raw.module&&(!Number.isInteger(fingers)||fingers<0||fingers>2||
+          typeof gesture!=="string"||
+          (fingers===0&&!["Ползунок","Бегунок"].includes(gesture))||
+          (fingers>0&&["Ползунок","Бегунок"].includes(gesture))||
+          (gesture==="Пинч"&&fingers!==2)||
+          (gesture==="Тап"&&fingers!==1)||
+          (fingers>0&&gesture!=="Тап"&&gesture!=="Пинч"&&!/[↑↓←→]/.test(gesture))))
+        throw error("invalid_gesture_contract",raw.id+"/"+key);
       const rule=schema[key];
       if(!label||!rule||rule.type!=="number"||![min,max,step].every(Number.isFinite)||min>max||step<=0||rule.min!==min||rule.max!==max)
         throw error("invalid_control_schema",raw.id+"/"+key);
@@ -41,6 +60,7 @@
     const p=freeze({id:raw.id,title:String(raw.title||raw.id).trim().slice(0,80),version:raw.version,schemaVersion:raw.schemaVersion||1,
       defaults,schema,controls:copy(raw.controls),colorModes,capabilities:{...standard,...copy(raw.capabilities||{})},
       aliases:copy(raw.aliases||{}),keyFields:copy(raw.keyFields||null),legacyVersions:copy(raw.legacyVersions||[]),
+      ...(raw.palettes?{palettes:copy(raw.palettes)}:{}),
       module:raw.module||null});
     records.set(p.id,p);
     if(typeof raw.render==="function")renderers.set(p.id,raw.render);
@@ -129,7 +149,8 @@
     // Compatibility with earlier callers; descriptors are never inferred from UI state.
     attachEngine:()=>{}};
   root.SetkaPatternRegistryV1=api;
-  // Canonical built-in contracts. Add a new descriptor here and its renderer module.
+  // Canonical legacy built-ins. New standalone-pattern-*.js packages are
+  // discovered at build time; do not append new descriptors here.
   const builtins=[
   {
     "id": "tentacle-orbit",
@@ -1483,5 +1504,8 @@
     "keyFields": ["numSnakes","baseHistory","waveFreq","waveSpeed","zoom","pointSize","colorModeIndex"]
   }
 ];
-  for(const p of builtins)register(p);
+  // SETKA_AUTO_DISCOVERY_BEGIN
+  const discovered=[]; // generated at build time from standalone-pattern-*.js descriptors
+  // SETKA_AUTO_DISCOVERY_END
+  for(const p of [...builtins,...discovered])register(p);
 })();

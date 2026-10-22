@@ -30,6 +30,10 @@ jobs:
         run: node scripts/build-standalone-release.mjs
       - name: Generate canonical SETKA pattern catalog
         run: node scripts/build-pattern-manifest.mjs
+      - name: Reject manual SETKA App pattern wiring before publishing
+        run: node --test tests/setka-app-platform-guard.test.mjs
+      - name: Verify automatic SETKA pattern registration before publishing
+        run: node --test tests/pattern-autodiscovery.test.mjs tests/pattern-platform-v2.test.mjs
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact

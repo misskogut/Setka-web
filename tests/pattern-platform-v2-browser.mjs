@@ -28,8 +28,18 @@ try{
   return route.fulfill({contentType:'text/javascript',body:`window.SetkaPatternRegistryV1.bindRenderer(document.currentScript.dataset.patternId,function(ctx,w,h,c,f){ctx.save();ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);ctx.fillStyle=c.colorModeIndex?'cyan':'white';const size=c.radius||c.cells*3;ctx.fillRect(w/2-size/2+Math.sin(f*(c.tempo||.1))*15,h/2-size/2,size,size);ctx.restore()});`});
  });
  await context.route('**/functions/v1/**',async route=>{
-  let body={};try{body=route.request().postDataJSON()||{}}catch{}
-  if(apiFailure&&body.action==='catalog')return route.fulfill({status:503,contentType:'application/json',headers:{'access-control-allow-origin':'*'},body:JSON.stringify({error:'isolated_unavailable'})});
+  // Credentialed CORS must reflect the origin, especially in Safari/WebKit.
+  const request=route.request(),headers=request.headers();
+  const cors={
+   'access-control-allow-origin':headers.origin||new URL(base).origin,
+   'access-control-allow-credentials':'true',
+   'access-control-allow-headers':headers['access-control-request-headers']||'content-type,apikey,authorization,x-client-info',
+   'access-control-allow-methods':'GET,POST,OPTIONS',
+   'vary':'Origin'
+  };
+  if(request.method()==='OPTIONS')return route.fulfill({status:204,headers:cors,body:''});
+  let body={};try{body=request.postDataJSON()||{}}catch{}
+  if(apiFailure&&body.action==='catalog')return route.fulfill({status:503,contentType:'application/json',headers:cors,body:JSON.stringify({error:'isolated_unavailable'})});
   let out={ok:true,items:[],metrics:{},patternMetrics:[],notes:[],profile:{}};
   if(body.action==='catalog')out={ok:true,registryRevision:outdated?'future-isolated-registry':R.revision(),items:R.list().map(p=>({pattern_id:p.id,title:names.get(p.id)?.title||p.title,revision:names.get(p.id)?.revision||1})),defaults:[...defaults.values()]};
   if(body.action==='overview')out={ok:true,data:buildData({accounts:observed?[{tester_id:'T-ISOLATED',created_at:observed.createdAt}]:[],archives:observed?[{tester_id:'T-ISOLATED',device_id:'fixture-browser',payload:observed}]:[],patternCatalog:R.list().map(p=>({pattern_id:p.id,title:names.get(p.id)?.title||p.title,revision:names.get(p.id)?.revision||1}))})};
@@ -41,12 +51,132 @@ try{
    assert.equal(body.expectedRevision,defaults.get(body.patternId)?.revision||0);
    const item={pattern_id:body.patternId,pattern_version:body.patternVersion,schema_version:body.schemaVersion,config:body.config,revision:body.expectedRevision+1};defaults.set(body.patternId,item);out={ok:true,item};
   }
-  await route.fulfill({status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*','access-control-allow-headers':'content-type,apikey,authorization,x-client-info','access-control-allow-methods':'POST,OPTIONS'},body:JSON.stringify(out)});
+  await route.fulfill({status:200,contentType:'application/json',headers:cors,body:JSON.stringify(out)});
  });
  const page=await context.newPage();await page.goto(base+'/standalone-v34.html');
  await page.waitForFunction(()=>window.SetkaPatternRegistryV1.ready('fixture-fields'));
  await page.evaluate(async()=>{await window.SetkaPatternPluginsV1.ready();await window.SetkaStandaloneV34.ready;await window.__SETKA_PATTERN_CATALOG_V1__.refresh()});
  assert.deepEqual(errors,[],'front startup must complete before testing integration');
+ // Release order is NOT the library order: every unviewed new module appears
+ // first, then its first successful opening places it last, persistently.
+ await page.waitForFunction(()=>document.querySelector('#allPatternsPanel > .pattern-tile')?.dataset.patternId==='fixture-fields');
+ const baseIds=()=>page.locator('#allPatternsPanel > .pattern-tile[data-kind="base"]')
+    .evaluateAll(tiles=>tiles.map(t=>t.dataset.patternId));
+ let initialIds=await baseIds();
+ assert.equal(initialIds[0],'fixture-fields','last auto-registered package is first while unviewed');
+ assert.equal(initialIds[1],'fixture-shapes','next newest unopened pattern is next');
+ assert.equal(await page.locator('.base-tile[data-pattern-id="fixture-fields"] .setka-new-pattern').count(),1);
+ const grid=await page.locator('#allPatternsPanel > .pattern-tile').evaluateAll(tiles=>tiles.slice(0,8).map(el=>{
+  const a=el.getBoundingClientRect(),canvas=el.querySelector('canvas'),c=canvas?.getBoundingClientRect();
+  return {left:a.left,top:a.top,width:a.width,height:a.height,canvasX:c?c.left+c.width/2:null,tileX:a.left+a.width/2};
+ }));
+ assert.ok(grid.length>=8,'responsive library has two complete rows');
+ for(let i=0;i<grid.length;i++){
+  assert.ok(Math.abs(grid[i].width-grid[i].height)<1,'all tiles square '+i);
+  assert.ok(Math.abs(grid[i].canvasX-grid[i].tileX)<1,'preview canvas centered '+i);
+  if(i%4!==0)assert.ok(Math.abs(grid[i].top-grid[i-1].top)<1,'all four tiles in one straight row '+i);
+ }
+ const firstView=await page.evaluate(()=>{
+  const id='fixture-fields',S=window.SetkaApp;
+  return S.openConfig(S.getPatternDefaults(id),{type:'base',id,patternId:id});
+ });
+ assert.equal(firstView,true);
+ await page.locator('#libraryButton').click();
+ await page.waitForFunction(()=>document.querySelector('#allPatternsPanel')?.lastElementChild?.dataset.patternId==='fixture-fields');
+ const afterFirst=await baseIds();
+ assert.equal(afterFirst[0],'fixture-shapes','the next unviewed new module rises to first');
+ assert.equal(afterFirst.at(-1),'fixture-fields','opened new pattern goes to the very bottom');
+ assert.equal(await page.locator('.base-tile[data-pattern-id="fixture-fields"] .setka-new-pattern').count(),0,'new badge disappears after first view');
+ await page.evaluate(async()=>{await window.SetkaStandaloneV34.whenSaved?.()});
+ await page.reload();await page.waitForFunction(()=>window.SetkaPatternRegistryV1.ready('fixture-fields'));
+ await page.evaluate(async()=>{await window.SetkaStandaloneV34.ready;await window.SetkaPatternPluginsV1.ready()});
+ await page.waitForFunction(()=>document.querySelector('#allPatternsPanel')?.lastElementChild?.dataset.patternId==='fixture-fields');
+ assert.equal((await baseIds()).at(-1),'fixture-fields','opened status and order survive reload');
+ assert.equal(await page.locator('.base-tile[data-pattern-id="fixture-fields"] .setka-new-pattern').count(),0);
+ // Open the earlier-released fixture LAST. After both have been seen their
+ // display order must nevertheless remain fixture-shapes, fixture-fields.
+ await page.evaluate(()=>{
+  const S=window.SetkaApp,id='fixture-shapes';
+  S.openConfig(S.getPatternDefaults(id),{type:'base',id,patternId:id});
+ });
+ await page.locator('#libraryButton').click();
+ await page.waitForFunction(()=>{
+  const ids=[...document.querySelectorAll('#allPatternsPanel > .base-tile')].map(x=>x.dataset.patternId);
+  return ids.at(-2)==='fixture-shapes'&&ids.at(-1)==='fixture-fields';
+ });
+ assert.deepEqual((await baseIds()).slice(-2),['fixture-shapes','fixture-fields'],
+   'release order persists even though user opened fields then shapes');
+ await page.reload();
+ await page.waitForFunction(()=>window.SetkaPatternRegistryV1.ready('fixture-fields'));
+ await page.evaluate(async()=>{await window.SetkaStandaloneV34.ready;await window.SetkaPatternPluginsV1.ready()});
+ assert.deepEqual((await baseIds()).slice(-2),['fixture-shapes','fixture-fields'],
+   'chronological viewed order survives reload');
+ // Every mother and every dynamically registered plugin gets its exact
+ // shared gesture contract shown in the key: fingers, side, or slider-only.
+ for(const pattern of R.list()){
+  await page.evaluate(id=>window.SetkaApp.openConfig(window.SetkaApp.getPatternDefaults(id),{type:'base',id,patternId:id}),pattern.id);
+  await page.locator('#instructionsButton').click();
+  const result=await page.evaluate(id=>{
+   const registry=window.SetkaPatternRegistryV1,rows=registry.controls(id),host=document.getElementById('st34KeySheet');
+   const panels=[...host.querySelectorAll('.sk-setting')],headings=[...host.querySelectorAll('.sk-section')].map(x=>x.textContent);
+   const badges=panels.map(x=>x.querySelector('.sk-gesture').textContent);
+   const expected=rows.map(row=>row[6]===0?'Бегунок':row[5]==='Тап'?'Тап по паттерну':row[5]==='Пинч'?'Свести / развести':row[5]);
+   const changed=[];
+   for(let i=0;i<rows.length;i++){
+    const [label,key,min,max]=rows[i],input=panels[i].querySelector('input');
+    if(!input||input.getAttribute('aria-label')!==label)throw Error('Wrong range label '+id+'/'+key);
+    const config=window.SetkaApp.getConfig(),initial=config[key];
+    input.value=Math.abs(initial-min)>0.0000001?String(min):String(max);
+    input.dispatchEvent(new Event('input',{bubbles:true}));
+    const current=window.SetkaApp.getConfig()[key];
+    if(current===initial)throw Error('Slider failed to change '+id+'/'+key);
+    changed.push(key);
+   }
+   return {count:panels.length,expected,badges,headings,changed,description:host.querySelector('.sk-description')?.textContent};
+  },pattern.id);
+  assert.equal(result.count,pattern.controls.length,'every control has a live slider '+pattern.id);
+  assert.deepEqual(result.badges,result.expected,'accurate control gesture names '+pattern.id);
+  assert.equal(result.changed.length,pattern.controls.length,'sliders change every parameter '+pattern.id);
+  assert.ok(!result.headings.some(x=>/ТОЧНАЯ НАСТРОЙКА/.test(x)));
+  assert.ok(!/точной настройкой/i.test(result.description||''));
+  for(const control of pattern.controls){
+   const [,key,,,,gesture,fingers]=control;
+   const title=fingers===0?'ТОЛЬКО БЕГУНКОМ':gesture==='Тап'?'КАСАНИЕ':fingers===2?'ЖЕСТЫ · 2 ПАЛЬЦАМИ':'СВАЙП · 1 ПАЛЬЦЕМ';
+   assert.ok(result.headings.includes(title),'gesture title '+pattern.id+'/'+key);
+  }
+  await page.locator('#st34KeySheet [data-action="close"]').click();
+ }
+ // Regression: after all patterns have been opened, the grid must be
+ // ordered by creation/publication, never by the order the user viewed them.
+ await page.locator('#libraryButton').click();
+ const viewedOrder=await baseIds();
+ assert.deepEqual(viewedOrder,R.list().map(p=>p.id),
+  'once every pattern is viewed, release chronology matches the registry exactly');
+ assert.ok(viewedOrder.indexOf('rain')<viewedOrder.indexOf('orbital-threads'),
+  'Orbital really was added after Rain and must be lower');
+ // Rain's actual swipe must change the same field described in the key.
+ await page.evaluate(()=>window.SetkaApp.openConfig(window.SetkaApp.getPatternDefaults('rain'),{type:'base',id:'rain',patternId:'rain'}));
+ const rainCanvas=page.locator('#patternCanvas'),bounds=await rainCanvas.boundingBox();
+ const swipe=async(sx,sy,dx,dy,key)=>{
+  const before=await page.evaluate(key=>window.SetkaApp.getConfig()[key],key);
+  await page.mouse.move(bounds.x+bounds.width*sx,bounds.y+bounds.height*sy);
+  await page.mouse.down();
+  await page.mouse.move(bounds.x+bounds.width*sx+dx,bounds.y+bounds.height*sy+dy,{steps:8});
+  await page.mouse.up();
+  const after=await page.evaluate(key=>window.SetkaApp.getConfig()[key],key);
+  assert.notEqual(after,before,'Rain swipe changes '+key);
+ };
+ await swipe(.52,.85,70,0,'speedFactor');
+ await swipe(.20,.52,0,-95,'density');
+ await swipe(.80,.52,0,-90,'streakLength');
+ await swipe(.52,.12,80,0,'waveStrength');
+ // A tap changes Rain motion mode, while a dragging swipe does not.
+ const tapBefore=await page.evaluate(()=>window.SetkaApp.getConfig().motionMode);
+ await rainCanvas.tap({position:{x:bounds.width*.52,y:bounds.height*.55}});
+ const tapAfter=await page.evaluate(()=>window.SetkaApp.getConfig().motionMode);
+ assert.equal(tapAfter,(tapBefore+1)%4,'Rain single touch advances its motion mode');
+ await page.locator('#libraryButton').click();
+ console.log('KEY GESTURES PASS: all mother + plugin sliders, accurate finger zones, Rain swipes and tap');
  await page.evaluate(()=>{
   const C=window.SetkaStandaloneV34,R=window.SetkaPatternRegistryV1,host=document.createElement('div');
   const snapshot=JSON.parse(JSON.stringify(R.snapshot({patternId:'breathing-grid',config:R.defaults('breathing-grid'),frame:0})));
@@ -139,6 +269,9 @@ try{
  assert.equal(await page.locator('.base-tile[data-pattern-id="fixture-later"]').count(),1);
  await admin.reload();await admin.waitForFunction(()=>window.SetkaPatternRegistryV1.ready('fixture-later'));
  await admin.locator('#workspace:not([hidden])').waitFor();
+ // Saved admin access opens the workspace before the asynchronous catalog
+ // and overview fetch complete. Count rendered cards only after data loads.
+ await admin.locator('.pattern-card[data-id="fixture-later"]').waitFor();
  assert.equal(await admin.locator('.pattern-card').count(),R.list().length,'research automatically lists each registered algorithm');
  await page.evaluate(()=>window.SetkaStandaloneV34.showPatterns());
  // H: bounded scheduling with many algorithms; no edits to library/notes/admin.
