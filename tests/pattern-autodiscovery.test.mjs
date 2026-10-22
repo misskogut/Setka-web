@@ -67,7 +67,7 @@ test('every automatically discovered pattern renders its real white-on-black sta
        createLinearGradient(){const stops=[];gradientStops.push(stops);return {__stops:stops,addColorStop(_,v){stops.push(v)}}},
        moveTo(x,y){start=[x,y]},
        lineTo(x,y){end=[x,y]},
-       stroke(){totalStrokes++;if(strokes.length<20)strokes.push({start,end,color:typeof this.strokeStyle==='string'?this.strokeStyle:this.strokeStyle.__stops.slice()});}
+       stroke(){totalStrokes++;const row={start,end,color:typeof this.strokeStyle==='string'?this.strokeStyle:this.strokeStyle.__stops.slice()};if(strokes.length>=20)strokes.shift();strokes.push(row);}
      };
      registry.render(ctx,250,250,config,frame,true,pattern.id);
      return {strokes,fills,gradientStops,totalStrokes};
@@ -137,6 +137,37 @@ test('Orbital Threads: original exact shape, nine palettes, two genuine rainbows
   assert.ok(colors({...standard,colorModeIndex:7}).length>50,'rainbow spans many distinct hues');
   assert.ok(colors({...standard,colorModeIndex:8}).length>50,'pastel rainbow spans many distinct hues');
   assert.notDeepEqual(colors({...standard,colorModeIndex:7}),colors({...standard,colorModeIndex:8}));
+  // The user's original source was p5.js background(0,20), not painted
+  // echoes. A consecutive frame MUST fade the existing canvas exactly once.
+  const live={
+   canvas:{width:300,height:300},backgrounds:[],strokes:0,
+   save(){},restore(){},translate(){},rotate(){},scale(){},beginPath(){},
+   moveTo(){},lineTo(){},
+   fillRect(){this.backgrounds.push(this.fillStyle)},
+   stroke(){this.strokes++}
+  };
+  R.render(live,300,300,standard,95,false,id);
+  const warmed=live.strokes,bgCount=live.backgrounds.length;
+  assert.ok(warmed>379,'opening a snapshot reconstructs the original history');
+  R.render(live,300,300,standard,96,false,id);
+  assert.equal(live.strokes-warmed,standard.lineCount-2,
+    'sequential canvas adds only ONE original line set, not invented ghosts');
+  assert.equal(live.backgrounds.length-bgCount,1,'single faded background on next draw');
+  const originalAlpha=Number(live.backgrounds.at(-1).match(/rgba\\(0,0,0,([^)]+)\\)/)?.[1]);
+  assert.ok(Math.abs(originalAlpha-20/255)<1e-12,
+    'default 75 trail exactly reproduces the p5 background(0,20) opacity');
+  const at96=live.strokes;
+  R.render(live,300,300,standard,96,false,id);
+  assert.equal(live.strokes,at96,'same renderer/canvas/frame is not painted twice');
+  R.render(live,300,300,{...standard,trail:0},97,false,id);
+  assert.ok(live.backgrounds.at(-1)==='#000',
+    'trail zero fully clears instead of applying a near-black ghost');
+  const previousResets=live.backgrounds.filter(x=>x==='#000').length;
+  live.canvas.width=301;
+  R.render(live,300,300,standard,98,false,id);
+  assert.ok(live.backgrounds.filter(x=>x==='#000').length>previousResets,
+    'canvas resizes rebuild correct exact snapshot history');
+
   const changed={...standard,v1:0.47381959508179683,shapeVariant:3,colorModeIndex:8,trail:91,lineCount:418};
   const saved=R.snapshot({patternId:id,config:changed,frame:91});
   const result=R.restore(saved);
