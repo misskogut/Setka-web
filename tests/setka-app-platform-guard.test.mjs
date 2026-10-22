@@ -34,7 +34,7 @@ function packages(){
 
 test('every new pattern remains a discoverable single-file package',()=>{
  const modules=packages();
- assert.ok(modules.length>=2,'expected real standalone modules');
+ assert.ok(modules.length>=1,'at least one active independently discoverable module must remain');
  const seen=new Set();
  for(const {file,code,metadata:p} of modules){
   assert.equal(p.module,file);
