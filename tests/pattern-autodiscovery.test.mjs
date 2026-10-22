@@ -45,7 +45,7 @@ test('every automatically discovered pattern renders its real white-on-black sta
  try{
   const {source,manifest}=build(dir),registry=loadRegistry(source);
   const packages=registry.list().filter(p=>p.module&&fs.existsSync(path.join(dir,p.module)));
-  assert.ok(packages.length>=2,'Rain and Orbital are independently discovered');
+  assert.ok(packages.length>=1,'the remaining Rain module is discovered without a fixed pattern count');
   assert.equal(packages.length,fs.readdirSync(dir).filter(n=>/^standalone-pattern-[a-z0-9-]+\.js$/.test(n)&&fs.readFileSync(path.join(dir,n),'utf8').startsWith('/* SETKA_PATTERN_DESCRIPTOR')).length);
   for(const pattern of packages){
    const descriptor=pattern;
@@ -96,55 +96,25 @@ test('every automatically discovered pattern renders its real white-on-black sta
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
 
-test('Orbital Threads: original exact shape, nine palettes, two genuine rainbows and controls round-trip',()=>{
+test('retired patterns leave front/research catalogs without deleting old participant references',()=>{
  const dir=workspace();
  try{
-  const {source}=build(dir),R=loadRegistry(source);
-  const id='orbital-threads',p=R.get(id);
-  assert.ok(p,'one-file automatic registration');
-  assert.equal(p.colorModes,9);
-  assert.equal(p.defaults.v1,0.47381959508179683);
-  assert.equal(p.defaults.lineCount,380);
-  assert.equal(p.defaults.colorModeIndex,0);
-  assert.equal(p.controls.length,7);
-  assert.equal(p.controls.find(c=>c[1]==='shapeVariant')[5],'Тап');
-  assert.equal(p.controls.find(c=>c[1]==='zoom')[6],2);
-  vm.runInNewContext(fs.readFileSync(path.join(dir,p.module),'utf8'),
-      {window:{SetkaPatternRegistryV1:R},document:{currentScript:{dataset:{patternId:id}}},Math},{timeout:1500});
-  function colors(config,frame=144){
-   const used=new Set(),context={
-    save(){},restore(){},translate(){},scale(){},rotate(){},beginPath(){},
-    fillRect(){},moveTo(){},lineTo(){},
-    stroke(){if(typeof this.strokeStyle==='string')used.add(this.strokeStyle.match(/rgba\((\d+),(\d+),(\d+),/)?.[0]||this.strokeStyle)}
-   };
-   R.render(context,300,300,config,frame,false,id);
-   return [...used];
-  }
-  const standard=R.defaults(id);
-  // Regression: the original p5 -40 horizontal translation made its square
-  // library tile look shifted. Both gameplay and previews must center.
-  for(const preview of [false,true]){
-   const centers=[],ctx={
-    save(){},restore(){},scale(){},rotate(){},fillRect(){},
-    translate(x,y){centers.push([x,y])},beginPath(){},moveTo(){},lineTo(){},stroke(){}
-   };
-   R.render(ctx,240,240,standard,44,preview,id);
-   assert.ok(centers.length>0,'scene translated in '+(preview?'preview':'game'));
-   assert.deepEqual(centers.every(([x,y])=>x===120&&y===120),true,'Orbital center not offset in '+(preview?'preview':'game'));
-  }
-  assert.ok(colors(standard).length>0);
-  for(let mode=1;mode<9;mode++)assert.ok(colors({...standard,colorModeIndex:mode}).length>0,'color '+mode);
-  assert.ok(colors({...standard,colorModeIndex:7}).length>50,'rainbow spans many distinct hues');
-  assert.ok(colors({...standard,colorModeIndex:8}).length>50,'pastel rainbow spans many distinct hues');
-  assert.notDeepEqual(colors({...standard,colorModeIndex:7}),colors({...standard,colorModeIndex:8}));
-  const changed={...standard,v1:0.47381959508179683,shapeVariant:3,colorModeIndex:8,trail:91,lineCount:418};
-  const saved=R.snapshot({patternId:id,config:changed,frame:91});
-  const result=R.restore(saved);
-  assert.equal(result.ok,true);
-  assert.equal(result.snapshot.config.v1,0.47381959508179683);
-  assert.equal(result.snapshot.config.colorModeIndex,8);
-  assert.equal(result.snapshot.config.lineCount,418);
-  assert.equal(R.configKey(standard,id)===R.configKey(changed,id),false);
+  const {source,manifest}=build(dir),R=loadRegistry(source);
+  const retiredId='orbital-threads';
+  assert.equal(fs.existsSync(path.join(dir,'standalone-pattern-'+retiredId+'.js')),false,
+    'retired renderer is not an active auto-discovered module');
+  assert.equal(R.has(retiredId),false,'retired algorithm absent from active platform registry');
+  assert.equal(manifest.patterns.some(p=>p.id===retiredId),false,
+    'retired algorithm absent from server and research catalog');
+  // Historical favorite/note identity cannot silently become another pattern.
+  const archived={patternId:retiredId,patternVersion:1,
+    config:{patternId:retiredId,colorModeIndex:0,trail:75},frame:91};
+  const original=JSON.parse(JSON.stringify(archived));
+  const restored=R.restore(archived);
+  assert.equal(restored.ok,false);
+  assert.equal(restored.reason,'unknown_pattern');
+  assert.deepEqual(JSON.parse(JSON.stringify(restored.snapshot)),original);
+  assert.deepEqual(archived,original,'old account payload is never rewritten by catalog retirement');
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
 
@@ -174,22 +144,22 @@ test('release chronology, not alphabetical filenames, drives front and research 
  try{
   const {source,manifest}=build(dir),R=loadRegistry(source);
   const ids=R.list().map(p=>p.id);
-  assert.ok(ids.indexOf('rain')<ids.indexOf('orbital-threads'),'Rain published before Orbital despite alphabetical filenames');
-  assert.equal(ids.at(-1),'orbital-threads','latest released module must be last among viewed');
-  assert.equal(manifest.patterns.at(-1).id,'orbital-threads','research/server manifest uses same chronology');
-  // An alphabetically earlier future ID should still be later chronologically.
+  assert.equal(ids.at(-1),'rain','Rain is the newest remaining active module');
+  assert.equal(manifest.patterns.at(-1).id,'rain',
+   'front/research manifest agrees on newest surviving active pattern');
+  // A future ID sorts by introducedAt even when its filename comes first.
   fs.writeFileSync(path.join(dir,'standalone-pattern-aaa-future.js'),
     packageContent(mini('aaa-future',{introducedAt:'2026-10-23T12:00:00.000Z'})));
   const next=build(dir),after=loadRegistry(next.source).list().map(p=>p.id);
-  assert.equal(after.at(-1),'aaa-future','future patterns automatically appear at true release position');
+  assert.equal(after.at(-1),'aaa-future','newly released algorithm follows Rain by date');
   assert.equal(next.manifest.patterns.at(-1).id,'aaa-future');
-  // Back-dated modules are inserted by actual introducedAt, not appended.
+  // Back-dated modules retain their real date order, not tap/filename order.
   fs.writeFileSync(path.join(dir,'standalone-pattern-zzz-past.js'),
     packageContent(mini('zzz-past',{introducedAt:'2026-10-21T17:45:00.000Z'})));
   const sorted=build(dir),order=loadRegistry(sorted.source).list().map(p=>p.id);
   assert.ok(order.indexOf('rain')<order.indexOf('zzz-past')&&
-    order.indexOf('zzz-past')<order.indexOf('orbital-threads'));
-  assert.deepEqual(sorted.manifest.patterns.map(p=>p.id),Array.from(order),'VM realm registry arrays need plain Node values');
+    order.indexOf('zzz-past')<order.indexOf('aaa-future'));
+  assert.deepEqual(sorted.manifest.patterns.map(p=>p.id),Array.from(order));
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
 
