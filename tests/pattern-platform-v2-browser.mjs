@@ -213,6 +213,42 @@ try{
  for(const id of fixtures.map(p=>p.id)){assert.ok(observed.patternExposures.some(x=>x.patternId===id&&x.durationMs>0&&x.patternVersion===1),'recorded usage and stable algorithm version '+id);assert.ok(observed.sessions.some(s=>s.usage.some(x=>x.patternId===id)),'new algorithm inherits session history '+id);}
  assert.equal(saved.length,2);assert.deepEqual(saved.map(x=>x.patternId),fixtures.map(p=>p.id));assert.equal(saved[0].config.radius,27);assert.equal(saved[1].config.cells,11);
  assert.equal(await page.evaluate(()=>window.SetkaApp.getFavorites().filter(f=>f.patternId.startsWith('fixture-')).length),2);
+ // Retired algorithms can have multiple personal favorites even when their
+ // renderer is withdrawn. All five original records must survive, without
+ // producing five giant "Слепок сохранён" overlapping gallery placeholders.
+ const savedBeforeArchive=await page.evaluate(()=>window.SetkaApp.getFavorites());
+ const archivalIds=Array.from({length:5},(_,i)=>'archived-retired-'+i);
+ await page.evaluate(async ids=>{
+  const S=window.SetkaApp,existing=S.getFavorites();
+  const old=ids.map((id,i)=>({
+   id,baseId:'orbital-threads',patternId:'orbital-threads',
+   patternVersion:1,previewFrame:44+i,createdAt:1761100000000+i,
+   config:{patternId:'orbital-threads',lineCount:380+i,trail:75,colorModeIndex:0}
+  }));
+  await S.restoreFavorites([...old,...existing]);
+ },archivalIds);
+ await page.locator('#favoritesPagerButton').click();
+ const archivedView=await page.evaluate(()=>{
+  const host=document.getElementById('favoritesPanel');
+  const archived=host.querySelector('.saved-archive-details');
+  const cards=[...host.querySelectorAll('.pattern-tile')].map(x=>x.dataset.patternId);
+  const rows=[...archived?.querySelectorAll('.saved-archive-entry')||[]];
+  const original=window.SetkaApp.getFavorites();
+  const stored=window.SetkaStandaloneV34.getData().settings.favoriteCollection.rows;
+  return {cards,details:!!archived,closed:!archived?.open,summary:archived?.querySelector('summary')?.textContent,
+   archiveCount:rows.length,ids:original.filter(x=>x.unavailable).map(x=>x.id),
+   storedCount:stored.length,placeholderCount:host.querySelectorAll('.unavailable-pattern').length};
+ });
+ assert.equal(archivedView.placeholderCount,0,'unsupported archived renderers never become gallery placeholders');
+ assert.ok(archivedView.details&&archivedView.closed,'archived records are accessible but collapsed by default');
+ assert.equal(archivedView.archiveCount,5,'all five historical snapshots are retained in archive');
+ assert.ok(archivedView.summary.includes('5'),'compact archive count stays visible');
+ assert.ok(archivedView.cards.every(id=>id!=='orbital-threads'),'no retired tile in main gallery');
+ assert.deepEqual(archivedView.ids,archivalIds,'raw archived favorite identities must survive unchanged');
+ assert.equal(archivedView.storedCount,savedBeforeArchive.length+5,'no saved records were deleted');
+ await page.locator('#favoritesPanel .saved-archive-details summary').click();
+ assert.equal(await page.locator('#favoritesPanel .saved-archive-entry').count(),5);
+ await page.evaluate(async rows=>window.SetkaApp.restoreFavorites(rows),savedBeforeArchive);
  await page.reload();await page.waitForFunction(()=>window.SetkaPatternRegistryV1.ready('fixture-fields'));
  const restored=await page.evaluate(()=>window.SetkaStandaloneV34.getData().notes.map(n=>n.replaySnapshot));assert.deepEqual(restored,saved);
  await page.evaluate(()=>window.SetkaStandaloneV34.showNotes());
