@@ -239,7 +239,7 @@
   document.addEventListener("visibilitychange",syncLibraryPreviews);reducedPreviewMotion.addEventListener?.("change",syncLibraryPreviews);
   function drawThumbnail(el,c,f=BASE_PREVIEW_FRAME,id=null){const t=el.getContext("2d"),pid=inferPatternId(c,id);renderPattern(t,el.width,el.height,cloneConfig(c,pid),Number.isFinite(Number(f))?Number(f):BASE_PREVIEW_FRAME,true,pid)}
   function renderPreview(el,c,f=BASE_PREVIEW_FRAME,id=null){drawThumbnail(el,c,f,id)}
-  function resizeMainCanvas(){const r=app.getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,2);canvas.width=Math.max(1,Math.floor(r.width*dpr));canvas.height=Math.max(1,Math.floor(r.height*dpr));canvas.style.width=`${r.width}px`;canvas.style.height=`${r.height}px`;ctx.setTransform(dpr,0,0,dpr,0,0)}
+  function resizeMainCanvas(){const r=app.getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,2);canvas.dataset.setkaRenderEpoch=String((Number(canvas.dataset.setkaRenderEpoch)||0)+1);canvas.width=Math.max(1,Math.floor(r.width*dpr));canvas.height=Math.max(1,Math.floor(r.height*dpr));canvas.style.width=`${r.width}px`;canvas.style.height=`${r.height}px`;ctx.setTransform(dpr,0,0,dpr,0,0)}
   function startAnimation(){if(animationFrame)return;const tick=now=>{if(!gameScreen.classList.contains("active")){animationFrame=0;return}const baseFrame=(now-animationStart)/16.6667;
       // Universal audio modulation is applied to the ONE shared animation
       // clock. Pattern implementations, saved configs and thumbnails are intact.
