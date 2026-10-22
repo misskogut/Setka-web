@@ -66,66 +66,69 @@ function rgb(mode,i,n,frame){
     (mode===7?frame*.28:-frame*.12))%360+360)%360;
  return mode===7?rainbow[position]:pastel[position];
 }
-function render(ctx,width,height,c,frame,preview){
- const w=Math.max(1,width),h=Math.max(1,height),f=Math.max(0,Number(frame)||0);
- const lines=c.lineCount,zoom=c.zoom,speed=c.speedFactor,rotate=c.rotationFactor;
- const mode=c.colorModeIndex;
- // Default shapeVariant=0 uses the precise original v1 untouched.
- // The tap cycles deterministic alternate forms without destroying exact v1.
- const raw=c.v1+shapeShifts[c.shapeVariant];
- const v1=c.shapeVariant===0?c.v1:0.2+((((raw-0.2)%0.4)+0.4)%0.4);
- const scale=Math.min(w,h)/500*zoom;
+// p5.js original: background(0, 20) EVERY draw. The black rectangle is
+// only 20/255 opaque; the PREVIOUS image remains on the same canvas.
+// Do not replace this with separately painted ghost geometry.
+const histories=new WeakMap(); // transient per-Canvas state, never user data
+const ORIGINAL_ALPHA=20/255;
+const MAX_HISTORY=96; // residual at the oldest frame is <~0.3%
+// The supplied sketch used t += 0.005 and angle += 0.01 on each draw.
+function drawOriginalFrame(ctx,w,h,c,frame,preview,v1,fade){
+ const lines=c.lineCount,mode=c.colorModeIndex;
+ const scale=Math.min(w,h)/500*c.zoom;
  const stride=preview&&lines>280?2:1;
+ const t=(frame+1)*.005*c.speedFactor;
+ const angle=(frame+1)*.01*c.rotationFactor;
  ctx.save();
- ctx.fillStyle="#000";
+ ctx.fillStyle=fade>=1?"#000":"rgba(0,0,0,"+fade+")";
  ctx.fillRect(0,0,w,h);
- // Reconstruct a *continuous-looking* exposure from historical positions.
- // The former four weak echoes (3 frames apart) looked like hard, disconnected
- // strokes instead of the motion smear of the original sketch.
- // Sampling absolute frame positions, rather than depending on an accumulated
- // canvas, gives identical trails in gameplay, previews, notes and Replay.
- // Rendering cost stays bounded for every declared lineCount and preview size.
- const trailStrength=Math.max(0,Math.min(1,(Number(c.trail)||0)/100));
- const ghosts=trailStrength===0?0:Math.max(2,Math.ceil((preview?8:14)*trailStrength));
- const exposureFrames=trailStrength*(preview?74:112);
- for(let layer=ghosts;layer>=0;layer--){
-  const age=ghosts?layer/ghosts:0;
-  // Ease samples toward the present so neighbouring traces merge smoothly.
-  const offset=exposureFrames*Math.pow(age,1.35);
-  if(layer>0&&offset>=f)continue; // No fabricated history before frame zero.
-  const past=Math.max(0,f-offset);
-  const ghostAlpha=layer===0?1:trailStrength*.65*Math.pow(1-age,1.45);
-  if(ghostAlpha<=0)continue;
-  const phase=(past+1)*speed;
-  const t=phase*.005;
-  const theta=Math.sin((past+1)*.01*rotate);
-  ctx.save();
-  // Original p5 sketch deliberately offset the whole scene by -40 px.
-  // SETKA uses a centered, square viewport so library cards align in rows.
-  ctx.translate(w/2,h/2);
-  ctx.rotate(theta);
-  ctx.scale(scale,scale);
-  ctx.lineCap="round";
-  // Ghosts are cheaper than the sharp foreground but share its geometry.
-  // This density cap avoids multiplying mobile Canvas work by lineCount.
-  const increment=layer===0?stride:Math.max(stride,Math.ceil(lines/(preview?165:235)));
-  for(let i=1;i<lines;i+=increment){
-   const u=t+i;
-   const sa=Math.sin(u/10),ca=Math.cos(u/10);
-   const sb=Math.sin(u/v1),cb=Math.cos(u/v1);
-   const [r,g,b]=rgb(mode,i,lines,past);
-   const alpha=((i-1)/(lines-1))*ghostAlpha;
-   if(alpha<=0)continue;
-   ctx.strokeStyle="rgba("+r+","+g+","+b+","+alpha+")";
-   ctx.lineWidth=.2+2.3*(i-1)/(lines-1);
-   ctx.beginPath();
-   ctx.moveTo(sa*100+cb*100,ca*100+sb*100);
-   ctx.lineTo(sa*10+cb*100,ca*10+sb*100);
-   ctx.stroke();
-  }
-  ctx.restore();
+ ctx.translate(w/2,h/2);
+ ctx.rotate(Math.sin(angle));
+ ctx.scale(scale,scale);
+ ctx.lineCap="round";
+ for(let i=1;i<lines;i+=stride){
+  const u=t+i;
+  const sa=Math.sin(u/10),ca=Math.cos(u/10);
+  const sb=Math.sin(u/v1),cb=Math.cos(u/v1);
+  const [r,g,b]=rgb(mode,i,lines,frame);
+  const alpha=(i-1)/(lines-1);
+  if(alpha<=0)continue;
+  ctx.strokeStyle="rgba("+r+","+g+","+b+","+alpha+")";
+  ctx.lineWidth=.2+2.3*alpha;
+  ctx.beginPath();
+  ctx.moveTo(sa*100+cb*100,ca*100+sb*100);
+  ctx.lineTo(sa*10+cb*100,ca*10+sb*100);
+  ctx.stroke();
  }
  ctx.restore();
+}
+function render(ctx,width,height,c,frame,preview){
+ const w=Math.max(1,width),h=Math.max(1,height);
+ const index=Math.max(0,Math.floor(Number(frame)||0));
+ const trail=Math.max(0,Math.min(100,Number(c.trail)||0));
+ // At the established default (75), this is EXACTLY background(0,20).
+ // 0 disables persistence; higher values lengthen the continuous dissolve.
+ const fade=trail===0?1:1-Math.pow(1-ORIGINAL_ALPHA,75/trail);
+ const historyFrames=fade>=1?0:Math.min(MAX_HISTORY,Math.ceil(Math.log(.002)/Math.log(1-fade)));
+ const raw=c.v1+shapeShifts[c.shapeVariant];
+ const v1=c.shapeVariant===0?c.v1:0.2+((((raw-0.2)%0.4)+0.4)%0.4);
+ // Canvas resize and config changes invalidate the old accumulated pixels;
+ // one original frame sequence reconstructs the exact saved/replay picture.
+ const canvas=ctx.canvas;
+ const signature=[w,h,canvas?.width??-1,canvas?.height??-1,!!preview,
+  c.v1,c.lineCount,c.speedFactor,c.rotationFactor,c.trail,c.zoom,c.shapeVariant,c.colorModeIndex].join("|");
+ const previous=histories.get(ctx);
+ const incremental=previous?.signature===signature&&index>previous.frame&&index-previous.frame<=6;
+ if(previous?.signature===signature&&index===previous.frame)return;
+ if(!incremental){
+  // The initial canvas is black, as in setup(); then each historic tick
+  // applies the original partially transparent background and white lines.
+  ctx.save();ctx.fillStyle="#000";ctx.fillRect(0,0,w,h);ctx.restore();
+ }
+ const from=incremental?previous.frame+1:Math.max(0,index-historyFrames);
+ for(let tick=from;tick<=index;tick++)
+  drawOriginalFrame(ctx,w,h,c,tick,preview,v1,fade);
+ histories.set(ctx,{signature,frame:index});
 }
 registry.bindRenderer(id,render);
 })();
