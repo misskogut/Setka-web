@@ -79,8 +79,10 @@ test('every automatically discovered pattern renders its real white-on-black sta
      const clear=trace({...c,trail:0},220),trailed=trace({...c,trail:100},220);
      assert.ok(trailed.totalStrokes>clear.totalStrokes,
        'trail enables additional visible temporal samples: '+pattern.id);
-     assert.notDeepEqual(trailed.strokes,clear.strokes,
-       'trail visually changes the same replay frame: '+pattern.id);
+     // Real p5 framebuffer feedback reuses the SAME foreground lines;
+     // the differing picture comes from the semi-transparent background.
+     assert.notDeepEqual(trailed.fills,clear.fills,
+       'trail changes the compositing history at the same replay frame: '+pattern.id);
      assert.deepEqual(trailed,trace({...c,trail:100},220),
        'trail remains deterministic on direct-open notes/research: '+pattern.id);
    }
