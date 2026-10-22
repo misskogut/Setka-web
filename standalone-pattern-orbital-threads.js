@@ -115,7 +115,7 @@ function render(ctx,width,height,c,frame,preview){
  // Canvas resize and config changes invalidate the old accumulated pixels;
  // one original frame sequence reconstructs the exact saved/replay picture.
  const canvas=ctx.canvas;
- const signature=[w,h,canvas?.width??-1,canvas?.height??-1,!!preview,
+ const signature=[w,h,canvas?.width??-1,canvas?.height??-1,canvas?.dataset?.setkaRenderEpoch??0,!!preview,
   c.v1,c.lineCount,c.speedFactor,c.rotationFactor,c.trail,c.zoom,c.shapeVariant,c.colorModeIndex].join("|");
  const previous=histories.get(ctx);
  const incremental=previous?.signature===signature&&index>previous.frame&&index-previous.frame<=6;
