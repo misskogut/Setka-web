@@ -227,7 +227,9 @@ try{
   }));
   await S.restoreFavorites([...old,...existing]);
  },archivalIds);
- await page.locator('#favoritesPagerButton').click();
+ // The Today inline sheet may be open after the note/session scenario;
+ // switch the canonical page API rather than clicking through that sheet.
+ await page.evaluate(()=>window.SetkaApp.setLibraryPage('favorites'));
  const archivedView=await page.evaluate(()=>{
   const host=document.getElementById('favoritesPanel');
   const archived=host.querySelector('.saved-archive-details');
@@ -246,7 +248,8 @@ try{
  assert.ok(archivedView.cards.every(id=>id!=='orbital-threads'),'no retired tile in main gallery');
  assert.deepEqual(archivedView.ids,archivalIds,'raw archived favorite identities must survive unchanged');
  assert.equal(archivedView.storedCount,savedBeforeArchive.length+5,'no saved records were deleted');
- await page.locator('#favoritesPanel .saved-archive-details summary').click();
+ await page.evaluate(()=>document.querySelector('#favoritesPanel .saved-archive-details summary').click());
+ assert.equal(await page.locator('#favoritesPanel .saved-archive-details').evaluate(e=>e.open),true);
  assert.equal(await page.locator('#favoritesPanel .saved-archive-entry').count(),5);
  await page.evaluate(async rows=>window.SetkaApp.restoreFavorites(rows),savedBeforeArchive);
  await page.reload();await page.waitForFunction(()=>window.SetkaPatternRegistryV1.ready('fixture-fields'));
