@@ -135,7 +135,7 @@
   function matchingFavorite(c=runtimeConfig,id=runtimePatternId){const k=configKey(c,id);return favorites.find(f=>!f.unavailable&&configKey(f.config,f.baseId)===k)||null}
   runtimeConfig=cloneConfig(TENTACLE_DEFAULT,TENTACLE_ID);
 
-  function statePayload(extra={}){const m=matchingFavorite();return{view:gameScreen.classList.contains("active")?"game":"library",libraryPage:activeLibraryPage,patternId:runtimePatternId,patternVersion:patternById(runtimePatternId).version,sourceType:activeSource.type,sourceId:activeSource.id,communityId:activeSource.communityId||null,config:cloneConfig(runtimeConfig,runtimePatternId),configKey:configKey(runtimeConfig,runtimePatternId),frame:currentFrame,favoriteId:m?.id||null,favoriteCommunityId:m?.communityId||null,favoriteCount:favorites.length,...extra}}
+  function statePayload(extra={}){const m=matchingFavorite();return{view:gameScreen.classList.contains("active")?"game":"library",libraryPage:activeLibraryPage,patternId:runtimePatternId,patternVersion:patternById(runtimePatternId).version,sourceType:activeSource.type,sourceId:activeSource.id,communityId:activeSource.communityId||null,config:cloneConfig(runtimeConfig,runtimePatternId),configKey:configKey(runtimeConfig,runtimePatternId),frame:currentFrame,favoriteId:m?.id||null,favoriteCommunityId:m?.communityId||null,favoriteCount:registry.activeItems(favorites).filter(f=>!f.unavailable).length,...extra}}
   function emit(name,detail={}){window.dispatchEvent(new CustomEvent(`setka:${name}`,{detail:{...detail,state:statePayload()}}))}
   function setScreen(name,initialFrame=0){const game=name==="game";libraryScreen.classList.toggle("active",!game);gameScreen.classList.toggle("active",game);if(game){clearTimeout(toastTimer);toast.classList.remove("show");toast.textContent="";const f=Number.isFinite(Number(initialFrame))?Math.max(0,Number(initialFrame)):0;resizeMainCanvas();animationStart=performance.now()-f*16.6667;currentFrame=f;startAnimation();updateColorIndicator();updateFavoriteButtonState()}else{stopAnimation();renderLibrary()}emit("view",{view:game?"game":"library"})}
   function setLibraryPage(page,silent=false){activeLibraryPage=PAGE_ORDER.includes(page)?page:"all";const i=PAGE_ORDER.indexOf(activeLibraryPage);[allPatternsPanel,communityPanel,favoritesPanel].forEach((p,n)=>{p.classList.toggle("hidden-left",n<i);p.classList.toggle("hidden-right",n>i)});libraryPagerButton.classList.toggle("active",activeLibraryPage==="all");communityPagerButton.classList.toggle("active",activeLibraryPage==="community");favoritesPagerButton.classList.toggle("active",activeLibraryPage==="favorites");libraryTitle.textContent=activeLibraryPage==="community"?"Сообщество":activeLibraryPage==="favorites"?"Сохраненные":"Паттерны";if(!silent)emit("library-page",{page:activeLibraryPage});syncLibraryPreviews()}
@@ -155,18 +155,18 @@
     reconcilePanel(allPatternsPanel,JSON.stringify([available.map(p=>[p.id,p.version,registry.defaults(p.id),registry.ready(p.id)]),[...recommendedPatterns]]),()=>{
       for(const p of available){const tile=makePatternTile({kind:"base",id:p.id,baseId:p.id,patternId:p.id,config:registry.defaults(p.id),previewFrame:BASE_PREVIEW_FRAME,title:p.title,patternVersion:p.version});if(recommendedPatterns.has(p.id))tile.classList.add("recommended");allPatternsPanel.appendChild(tile)}
     });
-    reconcilePanel(communityPanel,JSON.stringify([communityItems,[...recommendedCommunity],registry.ids().filter(id=>registry.ready(id))]),()=>{
-      if(!communityItems.length){emptyPanel(communityPanel,"◎","Здесь появятся конфигурации,<br>которые сохраняют участники");return}
-      for(const raw of communityItems){const item=normalizeCommunityItem(raw),tile=makePatternTile({kind:"community",id:String(item.id),baseId:item.baseId,patternId:item.baseId,config:item.config,previewFrame:Number(item.preview_frame??item.previewFrame??BASE_PREVIEW_FRAME),saveCount:Number(item.saveCount)||0,communityId:String(item.id),parentCommunityId:item.parent_config_id||null,unavailable:item.unavailable,patternVersion:Number(item.pattern_version)||patternById(item.baseId)?.version||1});if(recommendedCommunity.has(String(item.id)))tile.classList.add("recommended");communityPanel.appendChild(tile)}
+    const activeCommunity=registry.activeItems(communityItems);
+    reconcilePanel(communityPanel,JSON.stringify([activeCommunity,[...recommendedCommunity],registry.ids().filter(id=>registry.ready(id))]),()=>{
+      if(!activeCommunity.length){emptyPanel(communityPanel,"◎","Здесь появятся конфигурации,<br>которые сохраняют участники");return}
+      for(const raw of activeCommunity){const item=normalizeCommunityItem(raw),tile=makePatternTile({kind:"community",id:String(item.id),baseId:item.baseId,patternId:item.baseId,config:item.config,previewFrame:Number(item.preview_frame??item.previewFrame??BASE_PREVIEW_FRAME),saveCount:Number(item.saveCount)||0,communityId:String(item.id),parentCommunityId:item.parent_config_id||null,unavailable:item.unavailable,patternVersion:Number(item.pattern_version)||patternById(item.baseId)?.version||1});if(recommendedCommunity.has(String(item.id)))tile.classList.add("recommended");communityPanel.appendChild(tile)}
     });
     reconcilePanel(favoritesPanel,JSON.stringify([favorites,favoriteDisplayLimit,registry.ids().filter(id=>registry.ready(id))]),()=>{
       // Archived/retired or unknown algorithms stay in the exact personal
       // collection, but must NOT become huge overlapping placeholder tiles.
       // The gallery is for recipes we can render; an accessible, collapsed
       // archive lists unavailable originals without altering their records.
-      const displayable=favorites.filter(f=>!f.unavailable);
-      const archived=favorites.filter(f=>f.unavailable);
-      if(!displayable.length&&!archived.length){
+      const displayable=registry.activeItems(favorites).filter(f=>!f.unavailable);
+      if(!displayable.length){
         emptyPanel(favoritesPanel,"♥","Здесь появятся конфигурации,<br>которые ты сохранишь сердцем");
         return;
       }
@@ -179,26 +179,9 @@
         more.onclick=()=>{favoriteDisplayLimit+=240;renderLibrary()};
         favoritesPanel.appendChild(more);
       }
-      if(archived.length){
-        const details=document.createElement("details");
-        details.className="saved-archive-details";
-        const summary=document.createElement("summary");
-        summary.textContent="Архивные сохранения · "+archived.length;
-        summary.setAttribute("aria-label","Показать архивные сохранения, "+archived.length);
-        const entries=document.createElement("ul");
-        entries.className="saved-archive-entries";
-        for(const favorite of archived){
-          const entry=document.createElement("li");
-          entry.className="saved-archive-entry";
-          // Only trusted text nodes; no HTML from a saved record is executed.
-          const name=favorite.baseId||favorite.patternId||favorite.config?.patternId||"Неизвестный паттерн";
-          entry.textContent=name+" · временно недоступен";
-          entry.title="Оригинальный слепок и его конфигурация сохранены в личном архиве";
-          entries.appendChild(entry);
-        }
-        details.append(summary,entries);
-        favoritesPanel.appendChild(details);
-      }
+      // Retired/unknown favorites remain untouched in the private archive,
+      // but never appear anywhere in the active Saved gallery.
+
     });
     setLibraryPage(activeLibraryPage,true);
   }
@@ -471,7 +454,7 @@
   }
   window.addEventListener("setka:pattern-names",refreshPatternTitles);
   window.SetkaApp={restoreFavorites,setPatternTitles:rows=>registry.setTitles(rows),restorePersonalConfigs,exportPersonalConfigs:()=>JSON.parse(JSON.stringify(lastConfigs)),previewStatus:()=>({...previewStats,registered:previewTiles.size,
-    autonomous:window.SetkaAutoOptimizerV1?.status?.()||null}),registerPattern,getState:()=>statePayload(),getConfig:()=>cloneConfig(runtimeConfig,runtimePatternId),getFavorites:()=>favorites.map(f=>f.unavailable?JSON.parse(JSON.stringify(f)):({...f,config:cloneConfig(f.config,f.baseId)})),setConfigPatch:(patch={})=>{if(!patch||typeof patch!=="object")return cloneConfig(runtimeConfig,runtimePatternId);const before=configKey(runtimeConfig,runtimePatternId);runtimeConfig=cloneConfig({...runtimeConfig,...patch,patternId:runtimePatternId},runtimePatternId);if(before!==configKey(runtimeConfig,runtimePatternId)){updateFavoriteButtonState();updateColorIndicator();emit("gesture-move",{origin:"slider"})}return cloneConfig(runtimeConfig,runtimePatternId)},getPatterns:()=>PATTERNS.map(p=>({id:p.id,title:registry.title(p.id),version:p.version,defaults:registry.defaults(p.id)})),getPatternDefaults:id=>IDS.has(id)?registry.defaults(id):null,getPatternTitle:id=>registry.title(id),cloneConfig,configKey,openConfig,renderPreview,setCommunity(items){communityItems=Array.isArray(items)?items.map(normalizeCommunityItem):[];renderLibrary()},setRecommendations(data={}){recommendedCommunity=new Set((data.community||[]).map(String));recommendedPatterns=new Set((data.patterns||[]).map(String));renderLibrary()},updateFavoriteMeta,refreshFavorites(){favorites=loadFavorites();renderLibrary();updateFavoriteButtonState()},renderLibrary,setLibraryPage,finishCurrentUsageHint(){return statePayload()},DEFAULT_CONFIG:cloneConfig(TENTACLE_DEFAULT,TENTACLE_ID),DANDELION_DEFAULT:cloneConfig(DANDELION_DEFAULT,DANDELION_ID),FISH_DEFAULT:cloneConfig(FISH_DEFAULT,FISH_ID),BREATHING_FRACTAL_DEFAULT:cloneConfig(BREATH_DEFAULT,BREATH_ID),BREATHING_GROWTH_DEFAULT:cloneConfig(GROWTH_DEFAULT,GROWTH_ID),RGB_RINGS_DEFAULT:cloneConfig(RGB_DEFAULT,RGB_ID),STEREO_DNA_DEFAULT:cloneConfig(DNA_DEFAULT,DNA_ID),BREATHING_GRID_DEFAULT:cloneConfig(GRID_DEFAULT,GRID_ID)};
+    autonomous:window.SetkaAutoOptimizerV1?.status?.()||null}),registerPattern,getState:()=>statePayload(),getConfig:()=>cloneConfig(runtimeConfig,runtimePatternId),getFavorites:()=>favorites.map(f=>f.unavailable?JSON.parse(JSON.stringify(f)):({...f,config:cloneConfig(f.config,f.baseId)})),setConfigPatch:(patch={})=>{if(!patch||typeof patch!=="object")return cloneConfig(runtimeConfig,runtimePatternId);const before=configKey(runtimeConfig,runtimePatternId);runtimeConfig=cloneConfig({...runtimeConfig,...patch,patternId:runtimePatternId},runtimePatternId);if(before!==configKey(runtimeConfig,runtimePatternId)){updateFavoriteButtonState();updateColorIndicator();emit("gesture-move",{origin:"slider"})}return cloneConfig(runtimeConfig,runtimePatternId)},getPatterns:()=>PATTERNS.map(p=>({id:p.id,title:registry.title(p.id),version:p.version,defaults:registry.defaults(p.id)})),getPatternDefaults:id=>IDS.has(id)?registry.defaults(id):null,getPatternTitle:id=>registry.title(id),cloneConfig,configKey,openConfig,renderPreview,setCommunity(items){communityItems=registry.activeItems(items).map(normalizeCommunityItem);renderLibrary()},setRecommendations(data={}){recommendedCommunity=new Set((data.community||[]).map(String));recommendedPatterns=new Set((data.patterns||[]).filter(id=>registry.has(id)).map(String));renderLibrary()},updateFavoriteMeta,refreshFavorites(){favorites=loadFavorites();renderLibrary();updateFavoriteButtonState()},renderLibrary,setLibraryPage,finishCurrentUsageHint(){return statePayload()},DEFAULT_CONFIG:cloneConfig(TENTACLE_DEFAULT,TENTACLE_ID),DANDELION_DEFAULT:cloneConfig(DANDELION_DEFAULT,DANDELION_ID),FISH_DEFAULT:cloneConfig(FISH_DEFAULT,FISH_ID),BREATHING_FRACTAL_DEFAULT:cloneConfig(BREATH_DEFAULT,BREATH_ID),BREATHING_GROWTH_DEFAULT:cloneConfig(GROWTH_DEFAULT,GROWTH_ID),RGB_RINGS_DEFAULT:cloneConfig(RGB_DEFAULT,RGB_ID),STEREO_DNA_DEFAULT:cloneConfig(DNA_DEFAULT,DNA_ID),BREATHING_GRID_DEFAULT:cloneConfig(GRID_DEFAULT,GRID_ID)};
   window.addEventListener("setka:catalog-updated",()=>{for(const p of PATTERNS)p.defaults=registry.defaults(p.id);renderLibrary()});
   registry?.attachEngine?.(window.SetkaApp);
   // Startup is read-only: do not overwrite saved favorites with a temporary
