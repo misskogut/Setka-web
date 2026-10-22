@@ -213,44 +213,55 @@ try{
  for(const id of fixtures.map(p=>p.id)){assert.ok(observed.patternExposures.some(x=>x.patternId===id&&x.durationMs>0&&x.patternVersion===1),'recorded usage and stable algorithm version '+id);assert.ok(observed.sessions.some(s=>s.usage.some(x=>x.patternId===id)),'new algorithm inherits session history '+id);}
  assert.equal(saved.length,2);assert.deepEqual(saved.map(x=>x.patternId),fixtures.map(p=>p.id));assert.equal(saved[0].config.radius,27);assert.equal(saved[1].config.cells,11);
  assert.equal(await page.evaluate(()=>window.SetkaApp.getFavorites().filter(f=>f.patternId.startsWith('fixture-')).length),2);
- // Retired algorithms can have multiple personal favorites even when their
- // renderer is withdrawn. All five original records must survive, without
- // producing five giant "Слепок сохранён" overlapping gallery placeholders.
+ // Lifecycle regression for ANY unknown/retired one-file algorithm:
+ // active front, favorite gallery and community must follow the registry
+ // while the canonical saved archive retains exact immutable original rows.
  const savedBeforeArchive=await page.evaluate(()=>window.SetkaApp.getFavorites());
  const archivalIds=Array.from({length:5},(_,i)=>'archived-retired-'+i);
- await page.evaluate(async ids=>{
-  const S=window.SetkaApp,existing=S.getFavorites();
-  const old=ids.map((id,i)=>({
-   id,baseId:'orbital-threads',patternId:'orbital-threads',
+ const retiredId='fixture-algorithm-withdrawn';
+ await page.evaluate(async ({archivalIds,retiredId})=>{
+  const S=window.SetkaApp,registry=window.SetkaPatternRegistryV1;
+  const old=archivalIds.map((id,i)=>({
+   id,baseId:retiredId,patternId:retiredId,
    patternVersion:1,previewFrame:44+i,createdAt:1761100000000+i,
-   config:{patternId:'orbital-threads',lineCount:380+i,trail:75,colorModeIndex:0}
+   config:{patternId:retiredId,arbitraryValue:i+1,colorModeIndex:0}
   }));
-  await S.restoreFavorites([...old,...existing]);
- },archivalIds);
- // The Today inline sheet may be open after the note/session scenario;
- // switch the canonical page API rather than clicking through that sheet.
+  if(registry.has(retiredId)||registry.isActive(old[0]))throw Error('retired fixture accidentally registered');
+  await S.restoreFavorites([...old,...S.getFavorites()]);
+  S.setCommunity([
+   {id:'retired-public',patternId:retiredId,config:old[0].config,saveCount:44},
+   {id:'live-public',patternId:'rain',config:S.getPatternDefaults('rain'),saveCount:3}
+  ]);
+ },{archivalIds,retiredId});
  await page.evaluate(()=>window.SetkaApp.setLibraryPage('favorites'));
- const archivedView=await page.evaluate(()=>{
-  const host=document.getElementById('favoritesPanel');
-  const archived=host.querySelector('.saved-archive-details');
+ const archiveView=await page.evaluate(()=>{
+  const S=window.SetkaApp,R=window.SetkaPatternRegistryV1,host=document.getElementById('favoritesPanel');
   const cards=[...host.querySelectorAll('.pattern-tile')].map(x=>x.dataset.patternId);
-  const rows=[...archived?.querySelectorAll('.saved-archive-entry')||[]];
-  const original=window.SetkaApp.getFavorites();
-  const stored=window.SetkaStandaloneV34.getData().settings.favoriteCollection.rows;
-  return {cards,details:!!archived,closed:!archived?.open,summary:archived?.querySelector('summary')?.textContent,
-   archiveCount:rows.length,ids:original.filter(x=>x.unavailable).map(x=>x.id),
-   storedCount:stored.length,placeholderCount:host.querySelectorAll('.unavailable-pattern').length};
+  const items=S.getFavorites(),rows=window.SetkaStandaloneV34.getData().settings.favoriteCollection.rows;
+  const rects=[...host.querySelectorAll('.favorite-tile')].map(x=>{const r=x.getBoundingClientRect();return {w:r.width,h:r.height,left:r.left,top:r.top}});
+  return {cards,ids:items.filter(x=>x.unavailable).map(x=>x.id),storedCount:rows.length,
+   sourceSnapshots:items.filter(x=>x.unavailable).map(x=>x.config?.arbitraryValue),
+   placeholders:host.querySelectorAll('.unavailable-pattern').length,
+   archiveBadges:host.querySelectorAll('.saved-archive-details').length,
+   liveCount:cards.length,visibleCount:S.getState().favoriteCount,
+   rects,community:[...document.querySelectorAll('#communityPanel .community-tile')].map(x=>x.dataset.patternId),
+   registryActive:R.activeItems(items).length};
  });
- assert.equal(archivedView.placeholderCount,0,'unsupported archived renderers never become gallery placeholders');
- assert.ok(archivedView.details&&archivedView.closed,'archived records are accessible but collapsed by default');
- assert.equal(archivedView.archiveCount,5,'all five historical snapshots are retained in archive');
- assert.ok(archivedView.summary.includes('5'),'compact archive count stays visible');
- assert.ok(archivedView.cards.every(id=>id!=='orbital-threads'),'no retired tile in main gallery');
- assert.deepEqual(archivedView.ids,archivalIds,'raw archived favorite identities must survive unchanged');
- assert.equal(archivedView.storedCount,savedBeforeArchive.length+5,'no saved records were deleted');
- await page.evaluate(()=>document.querySelector('#favoritesPanel .saved-archive-details summary').click());
- assert.equal(await page.locator('#favoritesPanel .saved-archive-details').evaluate(e=>e.open),true);
- assert.equal(await page.locator('#favoritesPanel .saved-archive-entry').count(),5);
+ assert.equal(archiveView.placeholders,0,'no retired placeholder grid cells in personal Saved');
+ assert.equal(archiveView.archiveBadges,0,'retired patterns are absent from the active Saved surface');
+ assert.equal(archiveView.liveCount,savedBeforeArchive.length,'exactly the original live favorites remain visible');
+ assert.equal(archiveView.visibleCount,savedBeforeArchive.length,'active favorite counter excludes retired history');
+ assert.deepEqual(archiveView.ids,archivalIds,'all original retired favorite IDs retained');
+ assert.deepEqual(archiveView.sourceSnapshots,[1,2,3,4,5],'retired configurations retained exactly');
+ assert.equal(archiveView.storedCount,savedBeforeArchive.length+5,'retired rows remain in the private canonical archive');
+ assert.ok(archiveView.cards.every(id=>id!==retiredId),'removed algorithm absent from all live gallery cards');
+ assert.ok(archiveView.community.every(id=>id!==retiredId),'removed algorithm absent from public community');
+ assert.equal(archiveView.registryActive,savedBeforeArchive.length);
+ for(const r of archiveView.rects)assert.ok(Math.abs(r.w-r.h)<2,'active saved previews remain square');
+ // A real browser reload must NEVER silently purge the non-renderable history.
+ await page.reload();await page.waitForFunction(()=>window.SetkaPatternRegistryV1.ready('fixture-fields'));
+ const storedAfterReload=await page.evaluate(()=>window.SetkaApp.getFavorites().filter(x=>x.unavailable).map(x=>x.id));
+ assert.deepEqual(storedAfterReload,archivalIds,'retired snapshots survive reload');
  await page.evaluate(async rows=>window.SetkaApp.restoreFavorites(rows),savedBeforeArchive);
  await page.reload();await page.waitForFunction(()=>window.SetkaPatternRegistryV1.ready('fixture-fields'));
  const restored=await page.evaluate(()=>window.SetkaStandaloneV34.getData().notes.map(n=>n.replaySnapshot));assert.deepEqual(restored,saved);
