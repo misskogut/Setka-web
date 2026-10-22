@@ -26,6 +26,22 @@ export function assertConfiguration(descriptor,config){
   }
   return config;
 }
+// Active runtime catalog is the public projection of the published manifest.
+ // Historical SQL rows remain untouched, but any removed descriptor vanishes
+ // from all live API feed/analytics/selector results. Never infer a catalog
+ // from lingering DB rows or from old metrics.
+export function activePatternIds(manifest){
+  return new Set(parseManifest(manifest).patterns.map(p=>p.id));
+}
+export function onlyActivePatterns(rows,activeIds){
+  if(!Array.isArray(rows))return [];
+  return rows.filter(row=>{
+    const id=typeof row==="string"?row:
+      row?.replaySnapshot?.patternId||row?.pattern_id||row?.patternId||
+      row?.baseId||row?.config?.patternId;
+    return typeof id==="string"&&activeIds.has(id);
+  });
+}
 export function catalogRows(manifest,rows){
   const names=new Map(rows.map(x=>[x.pattern_id,x]));
   return manifest.patterns.map(p=>({...names.get(p.id),pattern_id:p.id,title:names.get(p.id)?.title||p.title,
