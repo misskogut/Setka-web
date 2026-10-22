@@ -4,7 +4,7 @@ import vm from "node:vm";
 import {readFileSync} from "node:fs";
 const read=n=>readFileSync(new URL("../"+n,import.meta.url),"utf8");
 const source=read("supabase/functions/setka-community-patterns-v38/index.ts");
-const from=source.indexOf("const INTENTS=new Set("),to=source.indexOf("async function historicalRows(){",from);
+const from=source.indexOf("const INTENTS=new Set("),to=source.indexOf("\nDeno.serve(async req=>{",from);
 assert.ok(from>=0&&to>from);
 // The Edge function resolves its allowlist from the published registry.
 const registryContext={window:{dispatchEvent(){}},CustomEvent:class{}};
@@ -18,10 +18,10 @@ const code=(source.slice(from,source.indexOf("const KNOWN_PATTERNS=",from))+
   .replaceAll("new Map<string,any>()","new Map()")
   .replaceAll("new Set<string>()","new Set()")
   .replace("function communityIntentSummary(accounts:any[],archives:any[])","function communityIntentSummary(accounts,archives)")
-  .replace("function historicalPatternSummary(rows:any[])","function historicalPatternSummary(rows)");
+  ;
 const env={Set,Map,JSON,Math,Number,String,Array,N:Number};
-vm.createContext(env);vm.runInContext(code+"\nthis.aggregateGoals=communityIntentSummary;this.aggregateLegacy=historicalPatternSummary;",env);
-const who=(tid,consent=true)=>({tester_id:tid,active:true,consent_at:consent?"2026-10-01":null,consent_version:"research-v2-2026-09-17"});
+vm.createContext(env);vm.runInContext(code+"\nthis.aggregateGoals=communityIntentSummary;",env);
+const who=(tid,consent=true,registered=true)=>({tester_id:tid,active:true,password_set_at:registered?"2026-10-01":null,consent_at:consent?"2026-10-01":null,consent_version:"research-v2-2026-09-17"});
 function one(tid,count=2,pid="tentacle-orbit",intent="sleep"){
   const sessions=Array.from({length:count},(_,i)=>({id:tid+"-"+i,requestKey:intent}));
   return{tester_id:tid,payload:{sessions,notes:[{text:"SECRET PRIVATE NOTE"}],patternExposures:sessions.flatMap(s=>Array.from({length:7},(_,i)=>({patternId:pid,sessionId:s.id,exposureId:s.id+"-"+i})))}};
@@ -46,16 +46,22 @@ test("no consent and smaller category never appear as a public goal",()=>{
  assert.equal(out.length,1);
  assert.deepEqual(Array.from(out[0].scenarios,x=>x.key),["sleep"]);
 });
-test("past device cohort is kept separate and suppressed below 3 devices",()=>{
- const rows=[
- {exposure_id:"1",pattern_id:"tentacle-orbit",device_id:"guest-a",session_id:"s",duration_ms:1000},
- {exposure_id:"2",pattern_id:"tentacle-orbit",device_id:"guest-b",session_id:"s",duration_ms:2000},
- {exposure_id:"3",pattern_id:"tentacle-orbit",device_id:"guest-c",session_id:"t",duration_ms:3000},
- {exposure_id:"4",pattern_id:"dandelion",device_id:"guest-a",session_id:"z",duration_ms:100},
- {exposure_id:"5",pattern_id:"dandelion",device_id:"guest-b",session_id:"z",duration_ms:100}
- ];
- const out=env.aggregateLegacy(rows);
- assert.equal(out.length,1);assert.equal(out[0].patternId,"tentacle-orbit");
- assert.equal(out[0].devices,3);assert.equal(out[0].sessions,3);
- assert.equal(out[0].exposures,3);assert.equal(out[0].totalDurationMs,6000);
+test("one registered account and historical guest devices cannot synthesize a public cohort",()=>{
+ const account=who("real"),anonymous=who("guest",true,false);
+ const out=env.aggregateGoals([account,anonymous],[one("real",8),one("guest",8)]);
+ assert.equal(out.length,0,"only one registered account exists; never create a synthetic group");
+});
+test("current community Edge function does not import any legacy device favorites or exposures",()=>{
+ assert.doesNotMatch(source,/import\s*\{\s*historicalSavedCatalog\s*\}/);
+ assert.doesNotMatch(source,/historicalFavorites\s*\(/);
+ assert.doesNotMatch(source,/historicalRows\s*\(/);
+ assert.doesNotMatch(source,/\.from\(["']prototype_v35_favorites["']\)/);
+ assert.doesNotMatch(source,/\.from\(["']prototype_v35_pattern_exposures["']\)/);
+ assert.doesNotMatch(source,/items\.push\(\{\.\.\.x,\s*id:`historical-/);
+ assert.match(source,/prototype_v41_config_metrics_current/);
+ assert.match(source,/if\(!Number\.isInteger\(Number\(x\.save_accounts\)\)\|\|Number\(x\.save_accounts\)<=0\)continue/);
+ const client=read("standalone-community-cloud-v38.js");
+ assert.doesNotMatch(client,/legacySaveCount/);
+ assert.match(client,/x\.historical!==true/);
+ assert.match(client,/Number\.isInteger\(Number\(x\.saveCount\)\)/);
 });
