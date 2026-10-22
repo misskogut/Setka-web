@@ -60,9 +60,10 @@
     return score/uses.length+(Number(item.saveCount)||0)*.03;
   }
   function sorted(){
-    // Public community cards represent configurations saved by real accounts;
-    // filtering zero-savers is a view-only operation and does not change data.
-    const a=activeItems(items).filter(item=>(Number.isFinite(Number(item.saveCount))&&Number(item.saveCount)>0)||(item.historical===true&&Number.isFinite(Number(item.legacySaveCount))&&Number(item.legacySaveCount)>0)),m=mode();
+    // Only server-confirmed, registered-account favorites enter the feed.
+    // Device-history and zero-saver cards never appear or count as accounts.
+    const a=activeItems(items).filter(item=>item.historical!==true&&
+      Number.isInteger(Number(item.saveCount))&&Number(item.saveCount)>0),m=mode();
     if(m==="new")return a.sort((x,y)=>Date.parse(y.createdAt||0)-Date.parse(x.createdAt||0));
     if(m==="popular")return a.sort((x,y)=>(Number(y.saveCount)||0)-(Number(x.saveCount)||0)||Date.parse(y.createdAt||0)-Date.parse(x.createdAt||0));
     return a.sort((x,y)=>personalScore(y)-personalScore(x)||Date.parse(y.createdAt||0)-Date.parse(x.createdAt||0));
@@ -73,7 +74,7 @@
     panel.querySelectorAll(".community-tile").forEach(tile=>{
       const item=items.find(x=>String(x.id)===String(tile.dataset.itemId));
       const badge=tile.querySelector(".community-count");
-      if(badge&&item){badge.textContent=`♥ ${Math.max(0,Number(item.historical?item.legacySaveCount:item.saveCount)||0)}`;badge.title=item.historical?"Сохранения в предыдущей версии SETKA":"Сохранения участников";}
+      if(badge&&item){badge.textContent=`♥ ${Number(item.saveCount)}`;badge.title="Зарегистрированные аккаунты, сохранившие эту конфигурацию";}
     });
   }
 
@@ -164,7 +165,12 @@
       if(out.ok!==true||!Array.isArray(out.items))throw Error("community_invalid_response");
       // Server may still carry earlier catalog data until its next successful
       // refresh. The client always applies its currently published registry.
-      items=activeItems(out.items).map(x=>({...x,createdAt:x.created_at||x.createdAt||null,localOnly:false}));
+      // Only server-confirmed registered-account saves are public.
+      // Old responses with historical device recipes are filtered too,
+      // including after cached requests or a delayed server deployment.
+      items=activeItems(out.items).filter(x=>x.historical!==true&&
+        Number.isInteger(Number(x.saveCount))&&Number(x.saveCount)>0)
+        .map(x=>({...x,createdAt:x.created_at||x.createdAt||null,localOnly:false}));
       metrics=out.metrics&&typeof out.metrics==="object"?out.metrics:null;patternMetrics=activeItems(out.patternMetrics);patternScenarios=activeItems(out.patternScenarios);historicalPatterns=activeItems(out.historicalPatterns);
       lastError=null;lastOkAt=new Date().toISOString();
       if(epoch===viewEpoch){
