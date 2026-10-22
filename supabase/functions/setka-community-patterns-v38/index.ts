@@ -1,5 +1,5 @@
 // @ts-nocheck
-import {loadManifest} from "../_shared/pattern-catalog.mjs";
+import {loadManifest,onlyActivePatterns} from "../_shared/pattern-catalog.mjs";
 import {historicalSavedCatalog} from "./saved-catalog.mjs";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const db=createClient(Deno.env.get("SUPABASE_URL")!,Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,{auth:{persistSession:false,autoRefreshToken:false}});
@@ -129,7 +129,7 @@ Deno.serve(async req=>{
       saves:N(s.configuration_saves),
       activeAccounts30d:N(s.active_accounts_30d)
     };
-    const patternMetrics=(patQ.data||[]).map((x:any)=>({
+    const patternMetrics=onlyActivePatterns(patQ.data||[],KNOWN_PATTERNS).map((x:any)=>({
       patternId:x.pattern_id,
       viewingAccounts:N(x.viewing_accounts),
       activityAccounts:N(x.viewing_accounts),
@@ -144,7 +144,7 @@ Deno.serve(async req=>{
       totalDurationMs:N(x.duration_ms)
     }));
     const items=[];
-    for(const x of cfgQ.data||[]){
+    for(const x of onlyActivePatterns(cfgQ.data||[],KNOWN_PATTERNS)){
       items.push({
         id:`community-${await shortHash(String(x.config_key))}`,
         pattern_id:x.pattern_id,patternId:x.pattern_id,pattern_version:versionFor(x.pattern_id),
@@ -164,10 +164,12 @@ Deno.serve(async req=>{
     const patternScenarios=communityIntentSummary(accountsQ.data||[],archiveQ.data||[]);
     const historicalPatterns=historicalPatternSummary(historical);
     const currentKeys=new Set(items.map(x=>x.config_key));
+    // Archived source rows may remain for audit, but are never public feed entries.
     for(const x of savedHistory){
       if(currentKeys.has(x.config_key))continue;
       items.push({...x,id:`historical-${await shortHash(String(x.config_key))}`});
     }
+    metrics.patterns=patternMetrics.filter(x=>x.exposures>0).length;
     const d=day(),now=new Date().toISOString();
     const snap=await db.from("prototype_v40_service_metric_snapshots").upsert({
       day:d,participants:metrics.connectedAccounts,connected_testers:metrics.connectedAccounts,sessions:metrics.sessions,exposures:metrics.exposures,
