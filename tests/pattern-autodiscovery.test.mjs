@@ -162,6 +162,14 @@ test('Orbital Threads: original exact shape, nine palettes, two genuine rainbows
   R.render(live,300,300,{...standard,trail:0},97,false,id);
   assert.ok(live.backgrounds.at(-1)==='#000',
     'trail zero fully clears instead of applying a near-black ghost');
+  // Main Canvas may be reassigned the SAME dimensions when leaving and
+  // reopening a favorite. The platform's generic epoch prevents a blank
+  // canvas on the next render of the identical saved frame.
+  live.canvas.dataset={setkaRenderEpoch:'1'};
+  const resetBefore=live.backgrounds.filter(x=>x==='#000').length;
+  R.render(live,300,300,{...standard,trail:0},97,false,id);
+  assert.ok(live.backgrounds.filter(x=>x==='#000').length>resetBefore,
+    'same-size Canvas clear epoch forces cold reconstruction of saved frame');
   const previousResets=live.backgrounds.filter(x=>x==='#000').length;
   live.canvas.width=301;
   R.render(live,300,300,standard,98,false,id);
