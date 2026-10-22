@@ -99,7 +99,11 @@ async function catalog(){
  let manifest=null;try{manifest=await catalogManifest()}catch(_){}
  const names=await read('setka_research_v1_pattern_catalog','pattern_id,title,revision,updated_at',{},1000,'pattern_id');
  const defaults=await read('setka_pattern_defaults_v2','pattern_id,pattern_version,schema_version,config,revision,updated_at',{},1000,'pattern_id');
- return {ok:true,items:manifest?catalogRows(manifest,names.rows):names.rows,defaults:defaults.rows,
+ // DB catalogue retains retired titles for forensic history; public/editable
+ // selectors must never resurrect them when the active manifest is missing.
+ const active=new Set((manifest?.patterns||[]).map((p:any)=>p.id));
+ return {ok:true,items:manifest?catalogRows(manifest,names.rows):[],
+  defaults:defaults.rows.filter((row:any)=>active.has(row.pattern_id)),
   registryRevision:manifest?.registryRevision||null,registryAvailable:!!manifest,updatedAt:new Date().toISOString()};
 }
 async function savePatternDefaults(b:any,adminId:string){
@@ -114,7 +118,9 @@ async function savePatternDefaults(b:any,adminId:string){
 }
 async function renamePattern(b:any,adminId:string){
  const title=String(b.title||'').trim();if(!validId(b.patternId,100)||!title||title.length>80||/[\u0000-\u001f]/.test(title)||!Number.isInteger(b.expectedRevision))return reply({error:'invalid_title'},400);
- try{await catalogManifest();return reply({ok:true,item:await rpc('setka_research_v1_rename_pattern',{p_pattern_id:b.patternId,p_title:title,p_expected_revision:b.expectedRevision,p_admin_key_id:adminId})});}
+ try{const manifest=await catalogManifest();
+  if(!manifest.patterns.some((p:any)=>p.id===b.patternId))return reply({error:'unknown_pattern'},400);
+  return reply({ok:true,item:await rpc('setka_research_v1_rename_pattern',{p_pattern_id:b.patternId,p_title:title,p_expected_revision:b.expectedRevision,p_admin_key_id:adminId})});}
  catch(e){return reply({error:e.message==='revision_conflict'?'revision_conflict':'rename_failed'},e.message==='revision_conflict'?409:503);}
 }
 function normalEvent(x:any,start:any,participantId:string){
