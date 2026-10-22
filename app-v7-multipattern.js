@@ -160,9 +160,45 @@
       for(const raw of communityItems){const item=normalizeCommunityItem(raw),tile=makePatternTile({kind:"community",id:String(item.id),baseId:item.baseId,patternId:item.baseId,config:item.config,previewFrame:Number(item.preview_frame??item.previewFrame??BASE_PREVIEW_FRAME),saveCount:Number(item.saveCount)||0,communityId:String(item.id),parentCommunityId:item.parent_config_id||null,unavailable:item.unavailable,patternVersion:Number(item.pattern_version)||patternById(item.baseId)?.version||1});if(recommendedCommunity.has(String(item.id)))tile.classList.add("recommended");communityPanel.appendChild(tile)}
     });
     reconcilePanel(favoritesPanel,JSON.stringify([favorites,favoriteDisplayLimit,registry.ids().filter(id=>registry.ready(id))]),()=>{
-      if(!favorites.length){emptyPanel(favoritesPanel,"♥","Здесь появятся конфигурации,<br>которые ты сохранишь сердцем");return}
-      for(const favorite of favorites.slice(0,favoriteDisplayLimit))favoritesPanel.appendChild(makePatternTile({kind:"favorite",id:favorite.id,patternId:favorite.baseId,...favorite}));
-      if(favorites.length>favoriteDisplayLimit){const more=document.createElement("button");more.textContent="Показать ещё сохранённые конфигурации";more.onclick=()=>{favoriteDisplayLimit+=240;renderLibrary()};favoritesPanel.appendChild(more)}
+      // Archived/retired or unknown algorithms stay in the exact personal
+      // collection, but must NOT become huge overlapping placeholder tiles.
+      // The gallery is for recipes we can render; an accessible, collapsed
+      // archive lists unavailable originals without altering their records.
+      const displayable=favorites.filter(f=>!f.unavailable);
+      const archived=favorites.filter(f=>f.unavailable);
+      if(!displayable.length&&!archived.length){
+        emptyPanel(favoritesPanel,"♥","Здесь появятся конфигурации,<br>которые ты сохранишь сердцем");
+        return;
+      }
+      for(const favorite of displayable.slice(0,favoriteDisplayLimit))
+        favoritesPanel.appendChild(makePatternTile({kind:"favorite",id:favorite.id,patternId:favorite.baseId,...favorite}));
+      if(displayable.length>favoriteDisplayLimit){
+        const more=document.createElement("button");
+        more.className="saved-gallery-more";
+        more.textContent="Показать ещё сохранённые конфигурации";
+        more.onclick=()=>{favoriteDisplayLimit+=240;renderLibrary()};
+        favoritesPanel.appendChild(more);
+      }
+      if(archived.length){
+        const details=document.createElement("details");
+        details.className="saved-archive-details";
+        const summary=document.createElement("summary");
+        summary.textContent="Архивные сохранения · "+archived.length;
+        summary.setAttribute("aria-label","Показать архивные сохранения, "+archived.length);
+        const entries=document.createElement("ul");
+        entries.className="saved-archive-entries";
+        for(const favorite of archived){
+          const entry=document.createElement("li");
+          entry.className="saved-archive-entry";
+          // Only trusted text nodes; no HTML from a saved record is executed.
+          const name=favorite.baseId||favorite.patternId||favorite.config?.patternId||"Неизвестный паттерн";
+          entry.textContent=name+" · временно недоступен";
+          entry.title="Оригинальный слепок и его конфигурация сохранены в личном архиве";
+          entries.appendChild(entry);
+        }
+        details.append(summary,entries);
+        favoritesPanel.appendChild(details);
+      }
     });
     setLibraryPage(activeLibraryPage,true);
   }
