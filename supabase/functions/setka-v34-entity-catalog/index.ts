@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.112.4";
+import {loadManifest,activePatternIds,onlyActivePatterns} from "../_shared/pattern-catalog.mjs";
 
 const db = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -46,7 +47,14 @@ async function isAdmin(adminKey: string) {
 async function catalog() {
   const { data, error } = await db.rpc("setka_v34_entity_catalog");
   if (error) throw error;
-  return data ?? { patterns: [], communityConfigs: [] };
+  // The database preserves history; this legacy admin endpoint must show
+  // the same *active* algorithms as front/research after one-file withdrawal.
+  const active=activePatternIds(await loadManifest());
+  const payload=data??{patterns:[],communityConfigs:[]};
+  return {...payload,
+    patterns:Array.isArray(payload.patterns)?payload.patterns.filter(x=>active.has(x.pattern_id||x.patternId||x.id)):[],
+    communityConfigs:onlyActivePatterns(payload.communityConfigs,active)};
+
 }
 
 Deno.serve(async (request) => {
