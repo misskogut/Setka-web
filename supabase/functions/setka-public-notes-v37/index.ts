@@ -27,11 +27,11 @@ async function accountSession(token:string,deviceId:string){
 async function capsuleMap(keys:string[]){const out=new Map();if(!keys.length)return out;const q=await db.from("prototype_v40_visual_capsules").select("capsule_key,pattern_id,pattern_version,renderer_version,config_key,config,frame,seed,viewport,capsule,snapshot_base64,snapshot_mime,snapshot_bytes,snapshot_sha256,snapshot_signature,public_visible,retain_internal,updated_at").in("capsule_key",keys);if(q.error)throw q.error;for(const x of q.data||[])out.set(String(x.capsule_key),x);return out}
 async function feed(testerId:any,limit=100){
   limit=Math.max(1,Math.min(200,Math.round(Number(limit)||100)));
-  const q=await db.from("prototype_v36_public_notes").select("id,note_text,pattern_id,pattern_version,config_key,config,preview_frame,visual_snapshot,visual_capsule_key,published_at,created_at").eq("is_public",true).eq("moderation_status","published").not("author_tester_id","is",null).order("published_at",{ascending:false}).limit(limit);if(q.error)throw q.error;
+  const q=await db.from("setka_metric_public_notes").select("id,note_text,pattern_id,pattern_version,config_key,config,preview_frame,visual_snapshot,visual_capsule_key,published_at,created_at").eq("is_public",true).eq("moderation_status","published").not("author_tester_id","is",null).order("published_at",{ascending:false}).limit(limit);if(q.error)throw q.error;
   const notes=q.data||[],ids=notes.map((x:any)=>x.id),cm=await capsuleMap(notes.map((x:any)=>x.visual_capsule_key).filter(Boolean));
   let saves:any[]=[],mine:any[]=[];
   if(ids.length){
-    const s=await db.from("prototype_v41_note_saves").select("note_id,saver_tester_id").in("note_id",ids);if(s.error)throw s.error;saves=s.data||[];
+    const s=await db.from("setka_metric_note_saves").select("note_id,saver_tester_id").in("note_id",ids);if(s.error)throw s.error;saves=s.data||[];
     if(testerId){const m=await db.from("prototype_v41_note_saves").select("note_id").eq("saver_tester_id",testerId).in("note_id",ids);if(m.error)throw m.error;mine=m.data||[]}
   }
   const counts=new Map();for(const s of saves)counts.set(s.note_id,(counts.get(s.note_id)||0)+1);const my=new Set(mine.map((x:any)=>x.note_id));
@@ -66,7 +66,7 @@ Deno.serve(async req=>{
       return J({ok:true,unpublished:!!q.data,status:"unpublished",moderationStatus:"unpublished"})
     }
     if(action==="save"){
-      const id=T(b.id,80),chk=await db.from("prototype_v36_public_notes").select("id").eq("id",id).eq("is_public",true).eq("moderation_status","published").not("author_tester_id","is",null).maybeSingle();if(chk.error)throw chk.error;if(!chk.data)return J({error:"note_not_public"},404);
+      const id=T(b.id,80),chk=await db.from("setka_metric_public_notes").select("id").eq("id",id).eq("is_public",true).eq("moderation_status","published").not("author_tester_id","is",null).maybeSingle();if(chk.error)throw chk.error;if(!chk.data)return J({error:"note_not_public"},404);
       const q=await db.from("prototype_v41_note_saves").upsert({note_id:id,saver_tester_id:testerId},{onConflict:"note_id,saver_tester_id"});if(q.error)throw q.error;
       return J({ok:true,saved:true})
     }

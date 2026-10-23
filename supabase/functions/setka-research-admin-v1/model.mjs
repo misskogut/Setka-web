@@ -44,6 +44,7 @@ function exposureRow(x, participantId, source, deviceId=null) {
 }
 export function buildData(raw, sources=[], now=new Date().toISOString()) {
   const devices=ARRAY(raw.devices), accounts=ARRAY(raw.accounts), archives=ARRAY(raw.archives), snapshots=ARRAY(raw.snapshots);
+  const cohorts=new Map(ARRAY(raw.accountCohorts).map(x=>[x.tester_id,x]));
   const accountIds=new Set(accounts.map(x=>x.tester_id)), aliases=new Map(ARRAY(raw.aliases).map(x=>[x.device_id,x.label]));
   const archivedDevice=new Map(archives.filter(x=>accountIds.has(x.tester_id)).map(x=>[x.device_id,x.tester_id]));
   const participantForDevice = d => {
@@ -52,7 +53,7 @@ export function buildData(raw, sources=[], now=new Date().toISOString()) {
     return verified ? `account:${verified}` : `device:${d}`;
   };
   const participants=new Map();
-  for (const a of accounts) participants.set(`account:${a.tester_id}`,{id:`account:${a.tester_id}`,label:a.tester_id,status:'tester',current:true,
+  for (const a of accounts) participants.set(`account:${a.tester_id}`,{id:`account:${a.tester_id}`,label:cohorts.get(a.tester_id)?.display_name||a.tester_id,cohort:cohorts.get(a.tester_id)?.cohort||null,isTest:cohorts.has(a.tester_id),includedInMetrics:a.active!==false&&cohorts.get(a.tester_id)?.include_in_metrics!==false,status:'tester',current:true,
     firstAt:a.created_at,lastAt:a.last_seen_at || a.updated_at,consentVersion:a.consent_version || null,consentAt:a.consent_at || null,devices:[],source:'account',active:a.active!==false});
   devices.forEach((d,i)=>{
     const id=participantForDevice(d.device_id),old=participants.get(id);
@@ -111,7 +112,8 @@ export function buildData(raw, sources=[], now=new Date().toISOString()) {
     warnings:[{code:'guest-local-only',message:'Текущие гости хранят историю на своём устройстве. В этих показателях их использование не учтено.'},{code:'identity',message:'Исторические гостевые устройства не объединены в людей. Число устройств не равно числу людей.'},...sources.filter(s=>!s.ok||s.truncated).map(s=>({code:'source-incomplete',message:`Источник «${s.label}» ${s.truncated?'загружен не полностью':'недоступен'}.`}))]};
 }
 export function sliceData(data,{scope='current',from=null,to=null}={}) {
-  const inScope=r=>scope==='all'||(scope==='current'?r.current:!r.current);
+  const excluded=new Set(data.participants.filter(p=>p.includedInMetrics===false).map(p=>p.id));
+  const inScope=r=>scope==='all'||(scope==='current'?r.current&&!excluded.has(r.participantId||r.id):!r.current);
   const low=time(from),high=time(to);
   const inPeriod=v=>{const t=time(v);return t!==null&&(low===null||t>=low)&&(high===null||t<high);};
   const sessions=data.sessions.filter(s=>inScope(s)&&inPeriod(s.startedAt));
