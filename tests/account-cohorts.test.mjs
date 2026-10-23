@@ -1,7 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import {execFileSync} from 'node:child_process';
 import {buildData,sliceData} from '../research-v1/model.mjs';
+
+// Pages stamps relative browser imports; server imports intentionally stay plain.
+// Ignore only that build-time transport suffix, never differences in model logic.
+const modelSource=s=>s.replace(/((?:from\s*|import\s*)["']\.{1,2}\/[^"'?]+\.(?:mjs|js))\?build=[a-f0-9]{40}(["'])/g,'$1$2');
 
 const date='2026-10-23T12:00:00Z';
 function fixture(include=true,active=true){return {
@@ -37,5 +44,19 @@ test('public notes and coarse scenarios consume the same account eligibility as 
  const community=fs.readFileSync('supabase/functions/setka-community-patterns-v38/index.ts','utf8');assert.match(community,/from\("setka_metric_accounts"\)/);
  const api=fs.readFileSync('supabase/functions/setka-research-admin-v1/index.ts','utf8');
  assert.ok(api.indexOf("const adminId=await authorized")<api.indexOf("b.action==='set-cohort-state'"));
- assert.equal(fs.readFileSync('supabase/functions/setka-research-admin-v1/model.mjs','utf8'),fs.readFileSync('research-v1/model.mjs','utf8'));
+ assert.equal(modelSource(fs.readFileSync('supabase/functions/setka-research-admin-v1/model.mjs','utf8')),modelSource(fs.readFileSync('research-v1/model.mjs','utf8')));
+});
+
+test('actual Pages stamping preserves model parity and still detects changed behavior',()=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'setka-cohort-release-'));
+ try{
+  fs.mkdirSync(path.join(dir,'research-v1'));
+  fs.writeFileSync(path.join(dir,'standalone-v34.html'),'<meta name="setka-release-build" content="local" />');
+  const original=fs.readFileSync('supabase/functions/setka-research-admin-v1/model.mjs','utf8');
+  fs.writeFileSync(path.join(dir,'research-v1/model.mjs'),original);
+  execFileSync(process.execPath,[path.resolve('scripts/build-standalone-release.mjs')],{cwd:dir,env:{...process.env,GITHUB_SHA:'a'.repeat(40)},stdio:'pipe'});
+  const stamped=fs.readFileSync(path.join(dir,'research-v1/model.mjs'),'utf8');
+  assert.notEqual(stamped,original);assert.equal(modelSource(stamped),modelSource(original));
+  assert.notEqual(modelSource(stamped+'\nthrow Error("changed model");'),modelSource(original));
+ }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });

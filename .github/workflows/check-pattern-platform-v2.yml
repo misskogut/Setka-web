@@ -2,9 +2,9 @@ name: Verify unified pattern platform v2
 on:
   push:
     branches: ['audit/unified-patterns-20261020', 'fix/account-login-after-recovery', 'main']
-    paths: ['standalone-*.js','standalone-*.html','app-v7-multipattern.js','research-v1/**','scripts/**','supabase/migrations/**','supabase/functions/_shared/pattern-catalog.mjs','supabase/functions/setka-research-admin-v1/**','tests/pattern-*','tests/setka-app-platform-guard.test.mjs','AGENTS.md','SETKA_START_HERE.md','SETKA_APP_CANONICAL_CONTRACT.md','docs/SETKA_APP_RULES_LEDGER.md','docs/PATTERN_PLATFORM_V2.md','.github/workflows/check-pattern-platform-v2.yml']
+    paths: ['standalone-*.js','standalone-*.html','app-v7-multipattern.js','research-v1/**','scripts/**','supabase/migrations/**','supabase/functions/_shared/pattern-catalog.mjs','supabase/functions/setka-research-admin-v1/**','tests/pattern-*','tests/account-cohorts*','research-v1/sql/account-cohorts.sql','tests/setka-app-platform-guard.test.mjs','AGENTS.md','SETKA_START_HERE.md','SETKA_APP_CANONICAL_CONTRACT.md','docs/SETKA_APP_RULES_LEDGER.md','docs/PATTERN_PLATFORM_V2.md','.github/workflows/check-pattern-platform-v2.yml']
   pull_request:
-    paths: ['standalone-*.js','standalone-*.html','app-v7-multipattern.js','research-v1/**','scripts/**','supabase/migrations/**','supabase/functions/_shared/pattern-catalog.mjs','supabase/functions/setka-research-admin-v1/**','tests/pattern-*','.github/workflows/check-pattern-platform-v2.yml']
+    paths: ['standalone-*.js','standalone-*.html','app-v7-multipattern.js','research-v1/**','scripts/**','supabase/migrations/**','supabase/functions/_shared/pattern-catalog.mjs','supabase/functions/setka-research-admin-v1/**','tests/pattern-*','tests/account-cohorts*','research-v1/sql/account-cohorts.sql','.github/workflows/check-pattern-platform-v2.yml']
 permissions:
   contents: read
 jobs:
@@ -23,7 +23,7 @@ jobs:
       - run: npm install --no-save --ignore-scripts playwright@1.62.1 esbuild@0.25.12
       - run: npx playwright install --with-deps ${{ matrix.browser }}
       - run: node scripts/build-pattern-manifest.mjs
-      - run: node --test tests/setka-app-platform-guard.test.mjs tests/pattern-autodiscovery.test.mjs tests/pattern-platform-v2.test.mjs tests/research-replay-integrity-v1.test.mjs tests/standalone-*.test.mjs tests/state-persistence-v1.test.mjs tests/front-cloud-integrity-v1.test.mjs tests/setka-tester-account-ownership.test.mjs
+      - run: node --test tests/account-cohorts.test.mjs tests/setka-app-platform-guard.test.mjs tests/pattern-autodiscovery.test.mjs tests/pattern-platform-v2.test.mjs tests/research-replay-integrity-v1.test.mjs tests/standalone-*.test.mjs tests/state-persistence-v1.test.mjs tests/front-cloud-integrity-v1.test.mjs tests/setka-tester-account-ownership.test.mjs
       - run: node tests/pattern-platform-v2-browser.mjs
         env:
           SETKA_BROWSER: ${{ matrix.browser }}
@@ -49,5 +49,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: psql -h 127.0.0.1 -U postgres -d postgres -f tests/pattern-defaults-v2.sql
+        env:
+          PGPASSWORD: isolated-ci-only
+      - run: psql -h 127.0.0.1 -U postgres -d postgres -f tests/account-cohorts-ci.sql
         env:
           PGPASSWORD: isolated-ci-only
