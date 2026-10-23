@@ -125,7 +125,7 @@ Deno.serve(async req=>{
       });
     }
     const [accountsQ,archiveQ]=await Promise.all([
-      db.from("prototype_v40_tester_accounts").select("tester_id,consent_at,consent_version,active,password_set_at").limit(1000),
+      db.from("setka_metric_accounts").select("tester_id,consent_at,consent_version,active,password_set_at").limit(1000),
       db.from("prototype_v37_tester_private_archives").select("tester_id,payload").limit(1000)
     ]);
     for(const q of [accountsQ,archiveQ])if(q.error)throw q.error;

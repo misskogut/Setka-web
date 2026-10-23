@@ -30,6 +30,7 @@ async function read(table:string,select:string,filters:Record<string,string>={},
 async function sha(v:string){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(v));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');}
 async function authorized(key:unknown){if(typeof key!=='string'||!key.trim()||key.length>300)return false;const x=await read('admin_keys','id',{key_hash:`eq.${await sha(key.trim())}`,active:'eq.true'},2);return x.rows.length===1?x.rows[0].id:false;}
 const SOURCES = [
+  ['accountCohorts','setka_account_cohorts','tester_id,cohort,display_name,include_in_metrics,updated_at','Тестовые группы аккаунтов','cohort,display_name'],
   ['patternCatalog','setka_research_v1_pattern_catalog','pattern_id,title,revision,updated_at','Названия паттернов','pattern_id'],
   ['patternNameHistory','setka_research_v1_pattern_names_history','pattern_id,revision,title,created_at','История названий','pattern_id,revision'],
   ['issuedInvites','setka_research_v1_invites','*','Выданные пригласительные ID','created_at,tester_id'],
@@ -72,7 +73,7 @@ async function overview(){
     }));
   }
   // Without these sources no current KPI is admissible.
-  if(['accounts','accountSessions','accountExposures','accountFavorites'].some(k=>statuses.find(s=>s.key===k)?.ok!==true))
+  if(['accountCohorts','accounts','accountSessions','accountExposures','accountFavorites'].some(k=>statuses.find(s=>s.key===k)?.ok!==true))
     return reply({error:'core_data_unavailable',sources:statuses},503);
   return reply({ok:true,data:buildData(raw,statuses)});
 }
@@ -200,6 +201,10 @@ Deno.serve(async(req:Request)=>{
     // Only public display names are released here. No account or research rows.
     if(b.action==='catalog')return reply(await catalog());
     const adminId=await authorized(b.adminKey);if(!adminId)return reply({error:'invalid_admin_key'},403);
+    if(b.action==='set-cohort-state'){
+      if(typeof b.cohort!=='string'||!b.cohort.trim()||b.cohort.length>100||typeof b.active!=='boolean'||typeof b.includeInMetrics!=='boolean')return reply({error:'invalid_cohort_state'},400);
+      return reply({ok:true,...await rpc('setka_set_cohort_state',{p_cohort:b.cohort,p_active:b.active,p_include_in_metrics:b.includeInMetrics})});
+    }
     if(b.action==='save-pattern-defaults')return await savePatternDefaults(b,adminId);
     if(b.action==='rename-pattern')return await renamePattern(b,adminId);
     if(b.action==='issue-invites'){try{return reply(await issueInvites(b,{adminId},rpc));}catch(e){const code=e.message;return reply({error:code},/invalid_|request_already_issued|batch_complete|batch_not_owned/.test(code)?409:503);}}
