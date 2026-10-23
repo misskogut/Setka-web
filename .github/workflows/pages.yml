@@ -31,7 +31,7 @@ jobs:
       - name: Generate canonical SETKA pattern catalog
         run: node scripts/build-pattern-manifest.mjs
       - name: Reject manual SETKA App pattern wiring before publishing
-        run: node --test tests/setka-app-platform-guard.test.mjs tests/account-cohorts.test.mjs
+        run: node --test tests/setka-app-platform-guard.test.mjs tests/account-cohorts.test.mjs tests/setka-tester-account-ownership.test.mjs
       - name: Verify automatic SETKA pattern registration before publishing
         run: node --test tests/pattern-autodiscovery.test.mjs tests/pattern-platform-v2.test.mjs
       - name: Setup Pages
