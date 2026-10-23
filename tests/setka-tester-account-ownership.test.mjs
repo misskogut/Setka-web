@@ -3,6 +3,22 @@ import assert from "node:assert/strict";
 import vm from "node:vm";
 import {readFileSync} from "node:fs";
 const source=readFileSync(new URL("../supabase/functions/setka-tester-account-v40/index.ts",import.meta.url),"utf8");
+test("an unclaimed device can choose existing-account login without claiming another invite",async()=>{
+ const cabinet=readFileSync(new URL("../standalone-tester-cabinet-v40.js",import.meta.url),"utf8");
+ const start=cabinet.indexOf('  async function showClaim()'),end=cabinet.indexOf('  async function showSetPassword()',start);
+ const controls=[];let logins=0,requests=0;
+ const show=vm.runInNewContext(cabinet.slice(start,end)+';showClaim',{
+  screen:()=>({appendChild(){}}),document:{createElement:()=>({})},
+  field(){return{}},msg(){return{}},
+  button(parent,title,sub,callback){const b={title,callback};controls.push(b);return b},
+  showLogin:()=>{logins++},post:()=>{requests++;throw Error('unexpected request')}
+ });
+ await show();
+ const login=controls.find(b=>b.title==='Войти по ID и паролю');
+ assert.ok(login,'a returning user must not be trapped behind invitation claim');
+ await login.callback();assert.equal(logins,1);assert.equal(requests,0);
+ assert.ok(controls.some(b=>b.title==='Подключить Tester ID'),'first-time claim remains available');
+});
 const start=source.indexOf("async function ensureDevice("),end=source.indexOf("async function rate(",start);
 assert.ok(start>=0&&end>start);
 const functionCode=source.slice(start,end).replace("deviceId:string,tid:string,userAgent:any=null,viewport:any=null","deviceId,tid,userAgent=null,viewport=null");

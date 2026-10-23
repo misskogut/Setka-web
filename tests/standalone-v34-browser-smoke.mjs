@@ -36,6 +36,14 @@ async function go(){
   await page.goto(root+"/standalone-v34.html?browser-smoke=41",{waitUntil:"domcontentloaded"});
   await page.waitForFunction(()=>document.querySelectorAll("#allPatternsPanel .pattern-tile").length===window.SetkaPatternRegistryV1.ids().length,{timeout:20000});
   await page.waitForFunction(()=>!!window.SetkaStandaloneV34?.cloudCommunity?.status?.().lastOkAt,{timeout:20000});
+  // Returning users on a fresh device must be able to reach password login.
+  await page.getByRole('button',{name:'Я',exact:true}).click();
+  await page.getByRole('button',{name:'Аккаунт SETKA · вход',exact:true}).click();
+  await page.getByRole('button',{name:'Войти по ID и паролю',exact:false}).click();
+  await page.getByRole('textbox',{name:'Tester ID',exact:true}).waitFor({state:'visible'});
+  await page.getByLabel('Пароль',{exact:true}).waitFor({state:'visible'});
+  assert.equal(await page.getByRole('button',{name:'Войти',exact:true}).count(),1);
+  await page.getByRole('button',{name:'Свернуть открытую карточку',exact:true}).click();
   // Library navigation polish: one common icon baseline, no hint text and a
   // visual gap beneath the community heading (including mobile WebKit).
   assert.equal(await page.locator(".swipe-hint").count(),0,
