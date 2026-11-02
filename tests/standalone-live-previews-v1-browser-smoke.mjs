@@ -1,3 +1,4 @@
+import {installPublicationCatalog} from './publication-fixture.mjs';
 import assert from "node:assert/strict";
 import {spawn} from "node:child_process";
 import {chromium,webkit} from "playwright";
@@ -19,6 +20,7 @@ try {
     headers:{"access-control-allow-origin":"*"},
     body:JSON.stringify({ok:true,items:[],notes:[],sessions:[],profile:{},metrics:{}})
   }));
+  await installPublicationCatalog(page);
   await page.goto(root+"/standalone-v34.html",{waitUntil:"domcontentloaded"});
   await page.waitForFunction(()=>window.SetkaLivePreviewsV1?.status().mode==="code-canvas-2d");
   const info=await page.evaluate(()=>{

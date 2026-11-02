@@ -1,3 +1,4 @@
+import {loadPublishedManifest,activePatternIds} from '../_shared/pattern-catalog.mjs';
 // @ts-nocheck
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { savePendingNote } from "./note-write.mjs";
@@ -28,7 +29,8 @@ async function capsuleMap(keys:string[]){const out=new Map();if(!keys.length)ret
 async function feed(testerId:any,limit=100){
   limit=Math.max(1,Math.min(200,Math.round(Number(limit)||100)));
   const q=await db.from("setka_metric_public_notes").select("id,note_text,pattern_id,pattern_version,config_key,config,preview_frame,visual_snapshot,visual_capsule_key,published_at,created_at").eq("is_public",true).eq("moderation_status","published").not("author_tester_id","is",null).order("published_at",{ascending:false}).limit(limit);if(q.error)throw q.error;
-  const notes=q.data||[],ids=notes.map((x:any)=>x.id),cm=await capsuleMap(notes.map((x:any)=>x.visual_capsule_key).filter(Boolean));
+  const active=activePatternIds(await loadPublishedManifest());
+  const notes=(q.data||[]).filter((x:any)=>!x.pattern_id||active.has(x.pattern_id)),ids=notes.map((x:any)=>x.id),cm=await capsuleMap(notes.map((x:any)=>x.visual_capsule_key).filter(Boolean));
   let saves:any[]=[],mine:any[]=[];
   if(ids.length){
     const s=await db.from("setka_metric_note_saves").select("note_id,saver_tester_id").in("note_id",ids);if(s.error)throw s.error;saves=s.data||[];

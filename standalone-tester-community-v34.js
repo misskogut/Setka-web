@@ -428,7 +428,7 @@
 
   async function loadPublicNotes(limit = 100) {
     const out = await noteApi("feed", {limit});
-    return Array.isArray(out.items) ? out.items : [];
+    return Array.isArray(out.items) ? out.items.filter(note=>!(note.patternId||note.config?.patternId)||window.SetkaPatternRegistryV1?.isActive(note)) : [];
   }
 
   async function savePublicNote(note) {
@@ -459,7 +459,7 @@
     try {
       const out = await noteApi("feed", {limit:100});
       loading.remove();
-      const items = out.items || [];
+      const items = (out.items || []).filter(note=>!(note.patternId||note.config?.patternId)||window.SetkaPatternRegistryV1?.isActive(note));
       if (!items.length) {
         body.insertAdjacentHTML("beforeend", '<div class="st-empty">Пока нет заметок, прошедших модерацию.</div>');
         return;
@@ -467,6 +467,7 @@
       for (const note of items) {
         const card = document.createElement("article");
         card.className = "st34-note-card st37-public-card";
+        card.dataset.publicPattern=note.patternId||note.config?.patternId||"";
         card.innerHTML = `<div class="st34-note-text">${esc(note.text)}</div><div class="st37-community-meta">${esc(C.dt?.(note.createdAt) || "")}${note.saves ? ` · сохранили ${Number(note.saves)}` : ""}</div>`;
         if ((note.patternId||note.config?.patternId)&&note.config&&Object.keys(note.config).length) {
           const canvas = document.createElement("canvas");
@@ -553,6 +554,11 @@
   scan();
 
   C.testerIdentity = {status:refreshTester, claim, syncPrivateArchive:() => syncPrivateArchive(true)};
+  window.addEventListener('setka:publication-updated',()=>{
+    document.querySelectorAll('.st37-public-card[data-public-pattern]').forEach(card=>{
+      if(card.dataset.publicPattern&&!window.SetkaPatternRegistryV1?.isActive(card.dataset.publicPattern))card.remove();
+    });
+  });
   C.publicNotes = {feed:showFeed, load:loadPublicNotes, save:savePublicNote, open:openPublicNote, drawPreview, refresh:() => refreshPub(true)};
   window.__SETKA_TESTER_COMMUNITY_V34__ = 7;
 })();

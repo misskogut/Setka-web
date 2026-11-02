@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {spawn} from "node:child_process";
-import {mkdirSync} from "node:fs";
+import {mkdirSync,readFileSync} from "node:fs";
 import {chromium,webkit} from "playwright";
 
 const port=48372;
@@ -28,7 +28,7 @@ async function go(){
   page.on("console",x=>{if(x.type()==="error")errors.push(String(x.text()))});
   await page.route("**/functions/v1/**",async route=>{
     const url=route.request().url(),b=route.request().postDataJSON?.()||{};
-    const payload=url.includes("setka-community-patterns-v38")?{ok:true,items:[],patternMetrics,metrics:{connectedAccounts:7},patternScenarios:[{patternId:"dandelion",cohortSessions:9,scenarios:[{key:"sleep",count:6,share:2/3},{key:"focus",count:3,share:1/3}]}],historicalPatterns:[{patternId:"tentacle-orbit",devices:6,sessions:12,exposures:395,totalDurationMs:2000000}]}:
+    const payload=b.action==='catalog'?{ok:true,publicationRevision:1,items:JSON.parse(readFileSync('setka-pattern-manifest-v1.json','utf8')).patterns.map(p=>({pattern_id:p.id,title:p.title,revision:1}))}:url.includes("setka-community-patterns-v38")?{ok:true,items:[],patternMetrics,metrics:{connectedAccounts:7},patternScenarios:[{patternId:"dandelion",cohortSessions:9,scenarios:[{key:"sleep",count:6,share:2/3},{key:"focus",count:3,share:1/3}]}],historicalPatterns:[{patternId:"tentacle-orbit",devices:6,sessions:12,exposures:395,totalDurationMs:2000000}]}:
       url.includes("setka-public-notes-v37")?{ok:true,items:[]}:
       {ok:true,items:[],notes:[],sessions:[],status:"private",profile:{},metrics:{}};
     await route.fulfill({status:200,contentType:"application/json",headers:{"access-control-allow-origin":"*"},body:JSON.stringify(payload)});

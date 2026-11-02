@@ -150,9 +150,18 @@
     return item.replaySnapshot?.patternId||item.pattern_id||item.patternId||
       item.baseId||item.config?.patternId||null;
   }
-  function isActive(item){const id=identityOf(item);return typeof id==="string"&&records.has(id)}
+  let publicCatalog=false,publishedIds=new Set(),publicationRevision=-1;
+  function usePublicCatalog(){publicCatalog=true;publishedIds=new Set();publicationRevision=-1;}
+  function applyPublication(items,revision){
+    if(!Array.isArray(items)||!Number.isSafeInteger(revision)||revision<0)throw error("invalid_publication_catalog");
+    if(revision<publicationRevision)return false;
+    const ids=new Set(items.map(item=>typeof item==="string"?item:item?.pattern_id||item?.patternId||item?.id).filter(id=>records.has(id)));
+    const changed=revision!==publicationRevision||ids.size!==publishedIds.size||[...ids].some(id=>!publishedIds.has(id));
+    publicationRevision=revision;publishedIds=ids;if(changed)emit("setka:publication-updated",{revision});return changed;
+  }
+  function isActive(item){const id=identityOf(item);return (!publicCatalog||publishedIds.has(id))&&typeof id==="string"&&records.has(id)}
   function activeItems(rows){return Array.isArray(rows)?rows.filter(isActive):[]}
-  const api={schemaVersion:SCHEMA,register,get,has:id=>records.has(id),isActive,activeItems,identityOf,ids:()=>[...records.keys()],list:()=>[...records.values()].map(copy),
+  const api={schemaVersion:SCHEMA,usePublicCatalog,applyPublication,publicationRevision:()=>publicationRevision,register,get,has:id=>records.has(id),isActive,activeItems,identityOf,ids:()=>[...records.keys()],list:()=>[...records.values()].map(copy),
     controls:id=>copy(get(id)?.controls||[]),inference,resolve,normalize,validate,configKey,snapshot,restore,revision,bindRenderer,render,
     ready:id=>renderers.has(id),supports:(id,feature)=>get(id)?.capabilities?.[feature]===true,
     title:id=>titles.get(id)?.title||get(id)?.title||id||"Неизвестный паттерн",setTitles,

@@ -1,7 +1,7 @@
 // Schema and algorithm versions come from the generated code manifest.
 // Database revisions describe editorial changes, never renderer versions.
 export function parseManifest(value){
-  if(value?.schema!==1||!Array.isArray(value.patterns)||!value.patterns.length||value.patterns.length>500)throw Error('invalid_catalog');
+  if(value?.schema!==1||!Array.isArray(value.patterns)||value.patterns.length>500)throw Error('invalid_catalog');
   const ids=new Set();
   for(const p of value.patterns){
     if(!/^[a-z][a-z0-9-]{2,79}$/.test(p.id)||ids.has(p.id)||!Number.isInteger(p.version)||p.version<1||typeof p.title!=='string'||!p.title.trim()||p.title.length>80)throw Error('invalid_catalog');
@@ -13,6 +13,21 @@ export async function loadManifest(fetcher=fetch){
   const res=await fetcher('https://misskogut.github.io/Setka-web/setka-pattern-manifest-v1.json',{
     cache:'no-store',signal:AbortSignal.timeout(6000),headers:{accept:'application/json'}});
   if(!res.ok)throw Error('catalog_unavailable');return parseManifest(await res.json());
+}
+// Public endpoints must read current publication state on EVERY request.
+// Missing state is testing; transport failure is unavailable, never publish-all.
+export function publishedManifest(manifest,rows){
+  const allowed=new Set(rows.filter(r=>r.state==='published').map(r=>r.pattern_id));
+  return {...parseManifest(manifest),patterns:manifest.patterns.filter(p=>allowed.has(p.id))};
+}
+export async function loadPublishedManifest(fetcher=fetch){
+  const manifest=await loadManifest(fetcher);
+  const base=Deno.env.get('SUPABASE_URL'),key=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  const res=await fetcher(base+'/rest/v1/setka_pattern_publication?select=pattern_id,state,revision&limit=1000',{
+    headers:{apikey:key,Authorization:'Bearer '+key},cache:'no-store',signal:AbortSignal.timeout(6000)});
+  if(!res.ok)throw Error('publication_unavailable');
+  const rows=await res.json();if(!Array.isArray(rows))throw Error('publication_unavailable');
+  return publishedManifest(manifest,rows);
 }
 export function assertConfiguration(descriptor,config){
   if(!descriptor?.schema||!config||typeof config!=='object'||Array.isArray(config)||config.patternId!==descriptor.id)throw Error('invalid_configuration');

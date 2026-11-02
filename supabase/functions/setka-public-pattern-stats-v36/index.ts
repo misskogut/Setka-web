@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import {loadManifest,activePatternIds} from "../_shared/pattern-catalog.mjs";
+import {loadPublishedManifest,activePatternIds} from "../_shared/pattern-catalog.mjs";
 const db=createClient(Deno.env.get("SUPABASE_URL")!,Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,{auth:{persistSession:false,autoRefreshToken:false}});
 const H={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type","Access-Control-Allow-Methods":"POST, OPTIONS","Content-Type":"application/json; charset=utf-8"};
 const J=(d,s=200)=>new Response(JSON.stringify(d),{status:s,headers:H});
@@ -22,7 +22,7 @@ function comment(rows,r){
   return{signals,percentiles:p,primary,secondary};
 }
 async function run(){
-  const active=activePatternIds(await loadManifest());
+  const active=activePatternIds(await loadPublishedManifest());
   const [eQ,fQ]=await Promise.all([db.from("prototype_v35_pattern_exposures").select("pattern_id,device_id,duration_ms"),db.from("prototype_v35_favorites").select("pattern_id,device_id,config_key")]);if(eQ.error)throw eQ.error;if(fQ.error)throw fQ.error;
   const m=new Map();
   for(const e of eQ.data||[]){if(!active.has(e.pattern_id))continue;let x=m.get(e.pattern_id);if(!x){x={patternId:e.pattern_id,totalMs:0,exposures:0,durations:[],users:new Map(),saves:0,savers:new Set()};m.set(e.pattern_id,x)}x.totalMs+=N(e.duration_ms);x.exposures++;x.durations.push(N(e.duration_ms));x.users.set(e.device_id,(x.users.get(e.device_id)||0)+1)}

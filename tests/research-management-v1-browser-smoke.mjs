@@ -15,7 +15,7 @@ const server=createServer(async(req,res)=>{
    if(req.method==='OPTIONS'){res.writeHead(204).end();return}
    let body='';for await(const chunk of req)body+=chunk;const b=body?JSON.parse(body):{};
    let out={ok:true,items:[],notes:[],metrics:{},profile:{}};
-   if(path.endsWith('setka-research-admin-v1'))out={ok:true,items:catalog};
+   if(path.endsWith('setka-research-admin-v1'))out={ok:true,items:catalog,publicationRevision:1,publication:catalog.map(p=>({pattern_id:p.pattern_id,state:'published',revision:1}))};
    if(path.endsWith('setka-tester-account-v40')){
     if(b.action==='status')out={ok:true,claimed:true,authenticated:true,hasPassword:true,consented:true,testerId:'T-OWNERAAA'};
     if(b.action==='my-invites')out={ok:true,items:ownIssued};
@@ -109,7 +109,15 @@ try{
  await front.locator('#st34Nav [data-p="notes"]').click();await front.getByText(plain,{exact:true}).waitFor();assert.equal(await front.locator('.st34-note-card canvas').count(),0);
  await front.evaluate(()=>window.__SETKA_PRIVATE_CORPUS_V40__.sync());const persistedPlain=savedArchive.payload.notes.find(n=>n.text===plain);assert.equal(persistedPlain.noteType,'text');assert.equal(persistedPlain.patternId,null);assert.equal(persistedPlain.config,null);assert.equal(persistedPlain.sessionId,null);
  await other.evaluate(()=>window.__SETKA_PRIVATE_CORPUS_V40__.restore());await other.locator('#st34Nav [data-p="notes"]').click();await other.getByText(plain,{exact:true}).waitFor();
- await other.locator('#st34SheetGrip').click();await other.locator('#st34Layer[aria-hidden="true"]').waitFor();await other.locator('.base-tile[data-pattern-id="stereo-dna"]').click();await other.getByRole('button',{name:'Просто посмотреть',exact:true}).click();await other.locator('#gameScreen.active').waitFor();await other.locator('#favoriteButton').click();await other.waitForFunction(()=>window.SetkaApp.getFavorites().some(x=>x.baseId==='stereo-dna'));await other.locator('#libraryButton').click();await other.locator('#favoritesPagerButton').click();await other.locator('.favorite-tile .st34-info').first().waitFor();
+ await other.locator('#st34SheetGrip').click();await other.locator('#st34Layer[aria-hidden="true"]').waitFor();await other.locator('.base-tile[data-pattern-id="stereo-dna"]').click();await other.getByRole('button',{name:'Просто посмотреть',exact:true}).click();await other.locator('#gameScreen.active').waitFor();
+ const favoriteState=()=>{const S=window.SetkaApp,C=window.SetkaStandaloneV34;return{patternId:S.getState().patternId,button:document.getElementById('favoriteButton').getAttribute('aria-label'),favorites:S.getFavorites().map(f=>({id:f.id,patternId:f.baseId,unavailable:f.unavailable})),durable:C.getData().settings?.favoriteCollection?.rows?.map(f=>({id:f.id,patternId:f.baseId})),authoritative:window.__SETKA_PRIVATE_CORPUS_V40__?.authoritative()}};
+ console.log('FAVORITE BEFORE UI ACTION',await other.evaluate(favoriteState));
+ assert.equal(await other.evaluate(()=>window.SetkaApp.getState().patternId),'stereo-dna','the intended pattern must be open before saving');
+ const alreadySaved=await other.evaluate(()=>window.SetkaApp.getFavorites().some(x=>x.baseId==='stereo-dna'));
+ if(!alreadySaved)await other.getByRole('button',{name:'Сохранить текущую конфигурацию',exact:true}).click();
+ try{await other.waitForFunction(()=>window.SetkaApp.getFavorites().some(x=>x.baseId==='stereo-dna'));}
+ catch(error){console.log('FAVORITE AFTER FAILED ACTION',await other.evaluate(favoriteState));throw error;}
+ await other.locator('#libraryButton').click();await other.locator('#favoritesPagerButton').click();await other.locator('.favorite-tile .st34-info').first().waitFor();
  const heart=await other.locator('.favorite-tile .mini-heart').first().boundingBox(),info=await other.locator('.favorite-tile .st34-info').first().boundingBox();assert.ok(heart.y+heart.height<info.y,'saved heart overlaps the information button');
  console.log('REAL WEB STORAGE QUOTA, INDEXEDDB RETENTION THROUGH STALE TAB/RELOAD, PLAIN NOTES, INLINE MODERATION AND SEPARATE HEART POSITION PASS');
  const admin=await browser.newPage({viewport:{width:1200,height:900}});admin.on('pageerror',e=>errors.push({page:'admin',message:e.message,stack:e.stack}));

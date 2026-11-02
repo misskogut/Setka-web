@@ -1,3 +1,4 @@
+import {installPublicationCatalog} from './publication-fixture.mjs';
 import assert from "node:assert/strict";
 import {spawn} from "node:child_process";
 import {chromium,webkit} from "playwright";
@@ -12,6 +13,7 @@ try{
   const page=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
   const errors=[];page.on("pageerror",e=>errors.push(e.message));
   await page.route("**/functions/v1/**",r=>r.fulfill({status:200,contentType:"application/json",headers:{"access-control-allow-origin":"*"},body:JSON.stringify({ok:true,items:[],metrics:{},patternMetrics:[],notes:[],profile:{}})}));
+  await installPublicationCatalog(page);
   await page.goto(base+"/standalone-v34.html",{waitUntil:"domcontentloaded"});
   await page.waitForFunction(()=>window.SetkaApp?.getPatterns?.().length===window.SetkaPatternRegistryV1?.ids?.().length);
   // The descriptor, mother thumbnail and fullscreen must all open from the
@@ -62,7 +64,7 @@ try{
     const p=S.getPatterns();
     const images=p.map(pattern=>{
       const c=document.createElement("canvas");c.width=220;c.height=290;
-      S.renderPreview(c,{...pattern.defaults,colorModeIndex:0},44,pattern.id);
+      S.renderPreview(c,pattern.defaults,44,pattern.id);
       const rgba=c.getContext("2d").getImageData(0,0,c.width,c.height).data;
       let colored=0,visible=0;
       for(let i=0;i<rgba.length;i+=4){
@@ -80,7 +82,7 @@ try{
     const snapshot=S.cloneConfig({...grid.defaults,cols:27,rows:18,amp:.27,colorModeIndex:3},grid.id);
     return {patterns:p.length,images,changed:before!==after,config:snapshot,hasKey:Boolean(window.SetkaPatternKeyV1)};
   });
-  assert.equal(result.patterns,9,'Spiral Snakes auto-registers as the ninth mother pattern');
+  assert.equal(result.patterns,await page.evaluate(()=>window.SetkaPatternRegistryV1.ids().length),'all installed published modules share the canonical catalog');
   // New real plugin: one canonical configuration and one rendering function
   // for both the actual thumbnail canvas and a game-sized canvas.
   const spiral=await page.evaluate(()=>{
@@ -265,10 +267,11 @@ try{
       controls:[["Размер","size",3,40,1,"Слева ↑↓",1],["Темп","tempo",.05,2,.05,"Снизу ←→",1]],
       render(ctx,w,h,c,frame){ctx.fillStyle="#000";ctx.fillRect(0,0,w,h);ctx.fillStyle=c.colorModeIndex?"cyan":"white";ctx.fillRect(w/2-c.size/2,h/2-c.size/2+Math.sin(frame*c.tempo)*4,c.size,c.size)}
     });
+    R.applyPublication(R.list(),R.publicationRevision()+1);
     const cfg=S.cloneConfig({patternId:"fixture-grid-test",size:27,tempo:.8,colorModeIndex:2},"fixture-grid-test");
     return{number:S.getPatterns().length,registered:R.has("fixture-grid-test"),controls:R.controls("fixture-grid-test").length,cfg};
   });
-  assert.equal(next.number,10,"ninth mother plus one added runtime fixture");
+  assert.equal(next.number,result.patterns+1,"installed catalog plus one explicitly published runtime fixture");
   assert.equal(next.registered,true);
   assert.equal(next.controls,2);
   assert.equal(next.cfg.size,27);

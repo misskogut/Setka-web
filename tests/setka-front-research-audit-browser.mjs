@@ -1,6 +1,8 @@
 // Isolated end-to-end UI audit. Every external API is mocked in the browser,
 // never writes to real accounts, real admin access or production Supabase.
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const publicCatalog=JSON.parse(fs.readFileSync('setka-pattern-manifest-v1.json','utf8')).patterns.map(p=>({pattern_id:p.id,title:p.title,revision:1}));
 import {spawn} from 'node:child_process';
 import {chromium,webkit} from 'playwright';
 import {buildData} from '../research-v1/model.mjs';
@@ -30,9 +32,9 @@ try{
   let payload={ok:true,items:[],metrics:{},notes:[],patternMetrics:[]},status=200;
   if(url.includes('setka-research-admin-v1')){
    if(input.action==='check')payload={ok:true};
-   if(input.action==='catalog'){
+   if(['catalog','manage-catalog'].includes(input.action)){
     if(catalogFail){status=503;payload={error:'audit_catalog_temporarily_unavailable'}}
-    else payload={ok:true,items:[],defaults:[]};
+    else payload={ok:true,items:publicCatalog,defaults:[],publicationRevision:1,publication:publicCatalog.map(p=>({pattern_id:p.pattern_id,state:'published',revision:1}))};
    }
    if(input.action==='overview')payload={ok:true,data:overview};
   }

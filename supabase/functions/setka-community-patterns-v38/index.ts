@@ -1,5 +1,5 @@
 // @ts-nocheck
-import {loadManifest,onlyActivePatterns} from "../_shared/pattern-catalog.mjs";
+import {loadPublishedManifest,onlyActivePatterns} from "../_shared/pattern-catalog.mjs";
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const db=createClient(Deno.env.get("SUPABASE_URL")!,Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,{auth:{persistSession:false,autoRefreshToken:false}});
@@ -21,9 +21,9 @@ const VERSIONS=new Map<string,number>();
 let catalogLast=0,catalogPending:Promise<void>|null=null;
 async function syncPatternCatalog(){
   if(catalogPending)return catalogPending;
-  if(Date.now()-catalogLast<300000&&KNOWN_PATTERNS.size)return;
+  // Publication state is read per request; disabled IDs cannot linger in the warm cache.
   catalogPending=(async()=>{
-    const manifest=await loadManifest();
+    const manifest=await loadPublishedManifest();
     const rows=manifest.patterns.map((p:any)=>({pattern_id:p.id,title:p.title,revision:1}));
     // A name revision never substitutes for the immutable algorithm version.
     const ins=await db.from("setka_research_v1_pattern_catalog").upsert(rows,{onConflict:"pattern_id",ignoreDuplicates:true});
@@ -75,15 +75,16 @@ Deno.serve(async req=>{
     if(action!=="feed")return J({error:"unknown_action"},400);
     await syncPatternCatalog();
     const limit=Math.max(1,Math.min(500,Math.round(N(b.limit,300))));
-    const [svcQ,patQ,cfgQ]=await Promise.all([
+    const [svcQ,patQ,cfgQ,publishedQ]=await Promise.all([
       db.from("prototype_v41_service_metrics_current").select("*").maybeSingle(),
       db.from("prototype_v41_pattern_metrics_current").select("*").order("exposures",{ascending:false}).order("likes",{ascending:false}),
       // This view is computed exclusively from prototype_v41_account_favorites.
       // Never union in prototype_v35_favorites (anonymous device saves).
-      db.from("prototype_v41_config_metrics_current").select("*").order("save_accounts",{ascending:false}).order("last_saved_at",{ascending:false}).limit(1000)
+      db.from("prototype_v41_config_metrics_current").select("*").order("save_accounts",{ascending:false}).order("last_saved_at",{ascending:false}).limit(1000),
+      db.rpc('setka_published_catalog_metrics',{p_pattern_ids:[...KNOWN_PATTERNS]})
     ]);
-    for(const q of [svcQ,patQ,cfgQ])if(q.error)throw q.error;
-    const s=svcQ.data||{};
+    for(const q of [svcQ,patQ,cfgQ,publishedQ])if(q.error)throw q.error;
+    const s={...(svcQ.data||{}),...(publishedQ.data||{})};
     const metrics={
       connectedAccounts:N(s.connected_accounts),
       connectedTesters:N(s.connected_accounts),
@@ -133,7 +134,7 @@ Deno.serve(async req=>{
     // Historical device-based metrics are retained only in their original
     // tables/research views. They are never part of the registered-account feed.
     const historicalPatterns=[];
-    metrics.patterns=patternMetrics.filter(x=>x.exposures>0).length;
+    // Public totals already use all published exposure/favorite facts in SQL.
     const d=day(),now=new Date().toISOString();
     const snap=await db.from("prototype_v40_service_metric_snapshots").upsert({
       day:d,participants:metrics.connectedAccounts,connected_testers:metrics.connectedAccounts,sessions:metrics.sessions,exposures:metrics.exposures,

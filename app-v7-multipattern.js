@@ -151,7 +151,7 @@
   }
   function renderLibrary(){
     stopLibraryPreviews();
-    const available=PATTERNS;
+    const available=PATTERNS.filter(p=>registry.isActive(p.id));
     reconcilePanel(allPatternsPanel,JSON.stringify([available.map(p=>[p.id,p.version,registry.defaults(p.id),registry.ready(p.id)]),[...recommendedPatterns]]),()=>{
       for(const p of available){const tile=makePatternTile({kind:"base",id:p.id,baseId:p.id,patternId:p.id,config:registry.defaults(p.id),previewFrame:BASE_PREVIEW_FRAME,title:p.title,patternVersion:p.version});if(recommendedPatterns.has(p.id))tile.classList.add("recommended");allPatternsPanel.appendChild(tile)}
     });
@@ -160,7 +160,7 @@
       if(!activeCommunity.length){emptyPanel(communityPanel,"◎","Здесь появятся конфигурации,<br>которые сохраняют участники");return}
       for(const raw of activeCommunity){const item=normalizeCommunityItem(raw),tile=makePatternTile({kind:"community",id:String(item.id),baseId:item.baseId,patternId:item.baseId,config:item.config,previewFrame:Number(item.preview_frame??item.previewFrame??BASE_PREVIEW_FRAME),saveCount:Number(item.saveCount)||0,communityId:String(item.id),parentCommunityId:item.parent_config_id||null,unavailable:item.unavailable,patternVersion:Number(item.pattern_version)||patternById(item.baseId)?.version||1});if(recommendedCommunity.has(String(item.id)))tile.classList.add("recommended");communityPanel.appendChild(tile)}
     });
-    reconcilePanel(favoritesPanel,JSON.stringify([favorites,favoriteDisplayLimit,registry.ids().filter(id=>registry.ready(id))]),()=>{
+    reconcilePanel(favoritesPanel,JSON.stringify([favorites,favoriteDisplayLimit,registry.publicationRevision(),registry.ids().filter(id=>registry.ready(id))]),()=>{
       // Archived/retired or unknown algorithms stay in the exact personal
       // collection, but must NOT become huge overlapping placeholder tiles.
       // The gallery is for recipes we can render; an accessible, collapsed
@@ -212,6 +212,7 @@
     try{
       const sourcePattern=source.patternId||source.baseId||(source.type==="base"?source.id:null);
       const nextId=inferPatternId(config,sourcePattern);
+      if(!registry.isActive(nextId))throw new Error("pattern_not_published");
       if(!registry.ready(nextId))throw new Error("renderer_unavailable");
       if(source.patternVersion!=null&&!registry.restore({patternId:nextId,patternVersion:source.patternVersion,config:config||{},schemaVersion:source.schemaVersion}).ok)throw new Error("unsupported_version");
       // A mother/base tile opens its explicit canonical preview config, never the last user edit.
@@ -425,7 +426,8 @@
     // No separate hard-coded ordering for newly registered algorithms.
     const visibleIds=[...allPatternsPanel.querySelectorAll(':scope > .pattern-tile[data-kind="base"]')]
       .map(tile=>tile.dataset.patternId).filter(id=>IDS.has(id));
-    const ids=visibleIds.length===PATTERNS.length?visibleIds:PATTERNS.map(p=>p.id);
+    const available=PATTERNS.filter(p=>registry.isActive(p.id)).map(p=>p.id);
+    const ids=visibleIds.length===available.length?visibleIds:available;if(!ids.length)return;
     let i=ids.indexOf(runtimePatternId);if(i<0)i=0;
     const id=ids[(i+dir+ids.length)%ids.length];
     openConfig(registry.defaults(id),{type:"base",id,patternId:id,communityId:null});
@@ -446,6 +448,7 @@
     favorites=loadFavorites();
     renderLibrary();
   }
+  window.addEventListener("setka:registry-changed",()=>{if(window.SetkaApp)syncRegistry()});
   window.addEventListener("setka:renderer-ready",()=>{if(window.SetkaApp)syncRegistry()});
   // Display metadata is applied to the registry; UI subscribers update labels.
   function refreshPatternTitles(){
@@ -454,7 +457,8 @@
   }
   window.addEventListener("setka:pattern-names",refreshPatternTitles);
   window.SetkaApp={restoreFavorites,setPatternTitles:rows=>registry.setTitles(rows),restorePersonalConfigs,exportPersonalConfigs:()=>JSON.parse(JSON.stringify(lastConfigs)),previewStatus:()=>({...previewStats,registered:previewTiles.size,
-    autonomous:window.SetkaAutoOptimizerV1?.status?.()||null}),registerPattern,getState:()=>statePayload(),getConfig:()=>cloneConfig(runtimeConfig,runtimePatternId),getFavorites:()=>favorites.map(f=>f.unavailable?JSON.parse(JSON.stringify(f)):({...f,config:cloneConfig(f.config,f.baseId)})),setConfigPatch:(patch={})=>{if(!patch||typeof patch!=="object")return cloneConfig(runtimeConfig,runtimePatternId);const before=configKey(runtimeConfig,runtimePatternId);runtimeConfig=cloneConfig({...runtimeConfig,...patch,patternId:runtimePatternId},runtimePatternId);if(before!==configKey(runtimeConfig,runtimePatternId)){updateFavoriteButtonState();updateColorIndicator();emit("gesture-move",{origin:"slider"})}return cloneConfig(runtimeConfig,runtimePatternId)},getPatterns:()=>PATTERNS.map(p=>({id:p.id,title:registry.title(p.id),version:p.version,defaults:registry.defaults(p.id)})),getPatternDefaults:id=>IDS.has(id)?registry.defaults(id):null,getPatternTitle:id=>registry.title(id),cloneConfig,configKey,openConfig,renderPreview,setCommunity(items){communityItems=registry.activeItems(items).map(normalizeCommunityItem);renderLibrary()},setRecommendations(data={}){recommendedCommunity=new Set((data.community||[]).map(String));recommendedPatterns=new Set((data.patterns||[]).filter(id=>registry.has(id)).map(String));renderLibrary()},updateFavoriteMeta,refreshFavorites(){favorites=loadFavorites();renderLibrary();updateFavoriteButtonState()},renderLibrary,setLibraryPage,finishCurrentUsageHint(){return statePayload()},DEFAULT_CONFIG:cloneConfig(TENTACLE_DEFAULT,TENTACLE_ID),DANDELION_DEFAULT:cloneConfig(DANDELION_DEFAULT,DANDELION_ID),FISH_DEFAULT:cloneConfig(FISH_DEFAULT,FISH_ID),BREATHING_FRACTAL_DEFAULT:cloneConfig(BREATH_DEFAULT,BREATH_ID),BREATHING_GROWTH_DEFAULT:cloneConfig(GROWTH_DEFAULT,GROWTH_ID),RGB_RINGS_DEFAULT:cloneConfig(RGB_DEFAULT,RGB_ID),STEREO_DNA_DEFAULT:cloneConfig(DNA_DEFAULT,DNA_ID),BREATHING_GRID_DEFAULT:cloneConfig(GRID_DEFAULT,GRID_ID)};
+    autonomous:window.SetkaAutoOptimizerV1?.status?.()||null}),registerPattern,getState:()=>statePayload(),getConfig:()=>cloneConfig(runtimeConfig,runtimePatternId),getFavorites:()=>favorites.map(f=>f.unavailable?JSON.parse(JSON.stringify(f)):({...f,config:cloneConfig(f.config,f.baseId)})),setConfigPatch:(patch={})=>{if(!patch||typeof patch!=="object")return cloneConfig(runtimeConfig,runtimePatternId);const before=configKey(runtimeConfig,runtimePatternId);runtimeConfig=cloneConfig({...runtimeConfig,...patch,patternId:runtimePatternId},runtimePatternId);if(before!==configKey(runtimeConfig,runtimePatternId)){updateFavoriteButtonState();updateColorIndicator();emit("gesture-move",{origin:"slider"})}return cloneConfig(runtimeConfig,runtimePatternId)},getPatterns:()=>PATTERNS.filter(p=>registry.isActive(p.id)).map(p=>({id:p.id,title:registry.title(p.id),version:p.version,defaults:registry.defaults(p.id)})),getPatternDefaults:id=>IDS.has(id)?registry.defaults(id):null,getPatternTitle:id=>registry.title(id),cloneConfig,configKey,openConfig,renderPreview,setCommunity(items){communityItems=registry.activeItems(items).map(normalizeCommunityItem);renderLibrary()},setRecommendations(data={}){recommendedCommunity=new Set((data.community||[]).map(String));recommendedPatterns=new Set((data.patterns||[]).filter(id=>registry.has(id)).map(String));renderLibrary()},updateFavoriteMeta,refreshFavorites(){favorites=loadFavorites();renderLibrary();updateFavoriteButtonState()},renderLibrary,setLibraryPage,finishCurrentUsageHint(){return statePayload()},DEFAULT_CONFIG:cloneConfig(TENTACLE_DEFAULT,TENTACLE_ID),DANDELION_DEFAULT:cloneConfig(DANDELION_DEFAULT,DANDELION_ID),FISH_DEFAULT:cloneConfig(FISH_DEFAULT,FISH_ID),BREATHING_FRACTAL_DEFAULT:cloneConfig(BREATH_DEFAULT,BREATH_ID),BREATHING_GROWTH_DEFAULT:cloneConfig(GROWTH_DEFAULT,GROWTH_ID),RGB_RINGS_DEFAULT:cloneConfig(RGB_DEFAULT,RGB_ID),STEREO_DNA_DEFAULT:cloneConfig(DNA_DEFAULT,DNA_ID),BREATHING_GRID_DEFAULT:cloneConfig(GRID_DEFAULT,GRID_ID)};
+  window.addEventListener("setka:publication-updated",()=>{if(gameScreen.classList.contains("active")&&!registry.isActive(runtimePatternId))setScreen("library");renderLibrary()});
   window.addEventListener("setka:catalog-updated",()=>{for(const p of PATTERNS)p.defaults=registry.defaults(p.id);renderLibrary()});
   registry?.attachEngine?.(window.SetkaApp);
   // Startup is read-only: do not overwrite saved favorites with a temporary

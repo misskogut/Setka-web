@@ -1,3 +1,4 @@
+import {installPublicationCatalog} from './publication-fixture.mjs';
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
 import {mkdirSync} from 'node:fs';
@@ -16,6 +17,7 @@ try{
     api.push(route.request().url());
     await route.fulfill({status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*'},body:JSON.stringify({ok:true,items:[],metrics:{},notes:[],sessions:[],profile:{}})});
   });
+  await installPublicationCatalog(page);
   await page.goto(base+'/standalone-v34.html',{waitUntil:'domcontentloaded'});
   await page.locator('body.setka-sheet-layout').waitFor();
   const dock=page.locator('#st34Nav'),card=page.locator('#st34Layer');
