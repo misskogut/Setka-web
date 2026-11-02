@@ -344,7 +344,8 @@ try{
  assert.deepEqual(errors,[]);
  fs.mkdirSync('tests/visual-smoke',{recursive:true});await page.screenshot({path:'tests/visual-smoke/platform-'+(process.env.SETKA_BROWSER||'chromium')+'.png'});
  await admin.screenshot({path:'tests/visual-smoke/platform-admin-'+(process.env.SETKA_BROWSER||'chromium')+'.png'});
- await page.evaluate(()=>{const S=window.SetkaApp;S.registerPattern({id:'fixture-readonly',title:'Isolated capabilities',version:1,colorModes:1,defaults:{colorModeIndex:0},controls:[],capabilities:{settings:false,favorites:false,notes:false,audio:false},render(ctx,w,h){ctx.fillStyle='#000';ctx.fillRect(0,0,w,h)}});S.openConfig(S.getPatternDefaults('fixture-readonly'),{type:'exact',patternId:'fixture-readonly'})});
+ await page.evaluate(()=>{const S=window.SetkaApp;S.registerPattern({id:'fixture-readonly',title:'Isolated capabilities',version:1,colorModes:1,defaults:{colorModeIndex:0},controls:[],capabilities:{settings:false,favorites:false,notes:false,audio:false},render(ctx,w,h){ctx.fillStyle='#000';ctx.fillRect(0,0,w,h)}});const R=window.SetkaPatternRegistryV1;R.applyPublication(R.list(),R.publicationRevision()+1);S.openConfig(S.getPatternDefaults('fixture-readonly'),{type:'exact',patternId:'fixture-readonly'})});
+ await page.locator('#gameScreen.active').waitFor();
  for(const selector of ['#favoriteButton','#instructionsButton','#st34AudioButton','#st34Note'])assert.equal(await page.locator(selector).isVisible(),false,'declared capability '+selector);
  assert.deepEqual(errors,[]);
  console.log('PLATFORM A/B/C/D/G/H/I PASS: two initial plugins, saved snapshots, admin name/defaults, identical renderer, third plugin, bounded previews');
