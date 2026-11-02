@@ -1,5 +1,7 @@
 name: Check SETKA Standalone v34
 on:
+  pull_request:
+    paths: ['app-v7-multipattern.js','standalone-*','research-v1/**','supabase/functions/_shared/pattern-catalog.mjs','tests/*publication*','.github/workflows/check-v34.yml']
   push:
     paths:
       - 'app-v3-multipattern.js'
