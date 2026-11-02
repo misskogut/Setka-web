@@ -41,7 +41,7 @@ try{
   let body={};try{body=request.postDataJSON()||{}}catch{}
   if(apiFailure&&['catalog','manage-catalog'].includes(body.action))return route.fulfill({status:503,contentType:'application/json',headers:cors,body:JSON.stringify({error:'isolated_unavailable'})});
   let out={ok:true,items:[],metrics:{},patternMetrics:[],notes:[],profile:{}};
-  if(['catalog','manage-catalog'].includes(body.action))out={ok:true,publicationRevision:1,publication:R.list().map(p=>({pattern_id:p.id,state:'published',revision:1})),registryRevision:outdated?'future-isolated-registry':R.revision(),items:R.list().map(p=>({pattern_id:p.id,title:names.get(p.id)?.title||p.title,revision:names.get(p.id)?.revision||1})),defaults:[...defaults.values()]};
+  if(['catalog','manage-catalog'].includes(body.action))out={ok:true,descriptors:R.list(),publicationRevision:1,publication:R.list().map(p=>({pattern_id:p.id,state:'published',revision:1})),registryRevision:outdated?'future-isolated-registry':R.revision(),items:R.list().map(p=>({pattern_id:p.id,title:names.get(p.id)?.title||p.title,revision:names.get(p.id)?.revision||1})),defaults:[...defaults.values()]};
   if(body.action==='overview')out={ok:true,data:buildData({accounts:observed?[{tester_id:'T-ISOLATED',created_at:observed.createdAt}]:[],archives:observed?[{tester_id:'T-ISOLATED',device_id:'fixture-browser',payload:observed}]:[],patternCatalog:R.list().map(p=>({pattern_id:p.id,title:names.get(p.id)?.title||p.title,revision:names.get(p.id)?.revision||1}))})};
   if(body.action==='rename-pattern'){
    const old=names.get(body.patternId)||{revision:1};assert.equal(body.expectedRevision,old.revision);
@@ -318,7 +318,7 @@ try{
  await context.setOffline(false);await page.reload();await page.locator('#st34Nav [data-p="symptoms"]').click();await page.getByText('Усталость',{exact:true}).waitFor();assert.match(await page.locator('.st34-state-now').innerText(),/6\/10/);
  // I: later addition changes only the descriptor/module fixture source.
  const third=fixture('fixture-later');fixtures.push(third);R.register(third);
- await page.reload();await page.waitForFunction(()=>window.SetkaPatternRegistryV1.ready('fixture-later'));
+ await page.evaluate(()=>window.__SETKA_PATTERN_CATALOG_V1__.refresh());await page.waitForFunction(()=>window.SetkaPatternRegistryV1.ready('fixture-later'));
  assert.equal(await page.locator('.base-tile[data-pattern-id="fixture-later"]').count(),1);
  await admin.reload();await admin.waitForFunction(()=>window.SetkaPatternRegistryV1.ready('fixture-later'));
  await admin.locator('#workspace:not([hidden])').waitFor();

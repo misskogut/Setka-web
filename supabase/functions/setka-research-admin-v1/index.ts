@@ -110,7 +110,7 @@ async function catalog(manage=false){
   publication=(await read('setka_pattern_publication','pattern_id,state,revision,updated_at',{},1000,'pattern_id')).rows;
  }
  const visible=manage?manifest:publishedManifest(manifest,publication),active=new Set(visible.patterns.map((p:any)=>p.id));
- return {ok:true,items:catalogRows(visible,names.rows),defaults:defaults.rows.filter((r:any)=>active.has(r.pattern_id)),
+ return {ok:true,items:catalogRows(visible,names.rows),descriptors:visible.patterns,defaults:defaults.rows.filter((r:any)=>active.has(r.pattern_id)),
   ...(manage?{publication:publication.filter((r:any)=>active.has(r.pattern_id))}:{}),
   publicationRevision:Math.max(0,...publication.map((r:any)=>Number(r.revision))),
   registryRevision:manifest.registryRevision,registryAvailable:true,updatedAt:new Date().toISOString()};

@@ -448,6 +448,7 @@
     favorites=loadFavorites();
     renderLibrary();
   }
+  window.addEventListener("setka:registry-changed",()=>{if(window.SetkaApp)syncRegistry()});
   window.addEventListener("setka:renderer-ready",()=>{if(window.SetkaApp)syncRegistry()});
   // Display metadata is applied to the registry; UI subscribers update labels.
   function refreshPatternTitles(){
