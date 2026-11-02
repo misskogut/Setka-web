@@ -37,3 +37,23 @@ test('all public transports use publication policy and sandbox has no telemetry 
  const sandbox=fs.readFileSync('research-v1/publication.mjs','utf8');
  assert.doesNotMatch(sandbox,/recordEvent|startSession|account-archive|session_id/);
 });
+
+test('editorial order is independent of release chronology and future new badges',()=>{
+ const R=registry(),before=R.revision(),release=plain(R.ids()),id='fixture-future-order';
+ R.register({id,title:'Future order',version:1,colorModes:1,defaults:{radius:5,colorModeIndex:0},controls:[['Radius','radius',1,20,1]],render(){}});
+ const version=R.revision(),all=plain(R.ids()),manual=all.slice().reverse(),seen=new Set(all);
+ assert.notEqual(before,version);
+ R.applyOrder({patternIds:manual,revision:2});
+ assert.deepEqual(plain(R.libraryIds(seen)),manual);
+ assert.deepEqual(plain(R.libraryIds(new Set())),all.slice().reverse(),'unopened: newest first');
+ seen.delete(release[0]);assert.equal(R.libraryIds(seen)[0],release[0],'unopened beats editorial rank');
+ assert.equal(R.applyOrder({patternIds:all,revision:1}),false,'old response is ignored');
+ assert.deepEqual(plain(R.orderedIds()),manual);assert.equal(R.revision(),version,'editorial rank is not a renderer version');
+ R.applyOrder({patternIds:[release[2],release[0]],revision:3});
+ assert.deepEqual(plain(R.orderedIds()),[release[2],release[0],...all.filter(x=>![release[2],release[0]].includes(x))],'unknown new IDs inherit release order automatically');
+ assert.throws(()=>R.applyOrder({patternIds:[id,id],revision:4}));
+ assert.throws(()=>R.applyOrder({patternIds:[null],revision:4}));
+ assert.throws(()=>R.applyOrder({patternIds:[],revision:-1}));
+ R.usePublicCatalog();R.applyPublication([id],10);R.applyOrder({patternIds:manual,revision:4});
+ assert.deepEqual(plain(R.activeItems(R.orderedIds())),[id],'ordering cannot publish hidden modules');
+});

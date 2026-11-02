@@ -17,15 +17,8 @@
   const panel=document.getElementById('allPatternsPanel');if(!panel)return;
   const tiles=[...panel.children].filter(n=>n.matches?.('.pattern-tile[data-kind="base"]'));
   if(tiles.length<2)return;
-  const releaseOrder=new Map(window.SetkaPatternRegistryV1?.list?.().map((p,i)=>[p.id,i])||[]);
-  const sorted=tiles.slice().sort((a,b)=>{
-   const ia=a.dataset.patternId,ib=b.dataset.patternId,va=info.ids.has(ia),vb=info.ids.has(ib);
-   if(va!==vb)return va?1:-1; // unopened ("new") always at the top
-   if(!va)return (releaseOrder.get(ib)??-1)-(releaseOrder.get(ia)??-1); // newest first
-   // Viewed patterns preserve their RELEASE chronology, regardless of
-   // which order the user opened them. Opening time controls only "new".
-   return (releaseOrder.get(ia)??0)-(releaseOrder.get(ib)??0);
-  });
+  const rank=new Map(window.SetkaPatternRegistryV1.libraryIds(info.ids).map((id,i)=>[id,i]));
+  const sorted=tiles.slice().sort((a,b)=>rank.get(a.dataset.patternId)-rank.get(b.dataset.patternId));
   if(sorted.every((tile,i)=>tile===tiles[i]))return; // avoid observer loops / preview resets
   const fragment=document.createDocumentFragment();
   for(const tile of sorted)fragment.append(tile); // reuse exact Canvas nodes, no re-render
@@ -43,7 +36,18 @@
   });
   orderBaseTiles(info);
  }
- window.addEventListener('setka:pattern-open',e=>{const id=e.detail?.state?.patternId||S.getState()?.patternId;if(!id)return;const d=C.getData();d.openedPatterns=Array.isArray(d.openedPatterns)?d.openedPatterns:[];if(!seen().has(id)||!d.openedPatterns.some(x=>x.patternId===id)){if(!d.openedPatterns.some(x=>x.patternId===id))d.openedPatterns.push({id,patternId:id,firstOpenedAt:new Date().toISOString()});C.save();window.dispatchEvent(new CustomEvent('setka:pattern-first-open',{detail:{patternId:id}}))}decorate();});
+ function markViewed(id){
+  const R=window.SetkaPatternRegistryV1;if(!id||!R.isActive(id)||!R.ready(id))return false;
+  const d=C.getData();d.openedPatterns=Array.isArray(d.openedPatterns)?d.openedPatterns:[];
+  if(!d.openedPatterns.some(x=>x.patternId===id)){
+   d.openedPatterns.push({id,patternId:id,firstOpenedAt:new Date().toISOString()});C.save();
+   window.dispatchEvent(new CustomEvent('setka:pattern-first-open',{detail:{patternId:id}}));
+  }
+  decorate();return true;
+ }
+ window.addEventListener('setka:pattern-open',e=>markViewed(e.detail?.patternId||e.detail?.state?.patternId));
+ window.addEventListener('setka:pattern-preview-open',e=>markViewed(e.detail?.patternId));
+ window.addEventListener('setka:pattern-order-updated',decorate);
  const lib=document.getElementById('libraryScreen');if(lib)new MutationObserver(records=>{if(records.some(r=>[...r.addedNodes].some(n=>n.nodeType===1&&(n.matches?.('.pattern-tile')||n.querySelector?.('.pattern-tile')))))decorate()}).observe(lib,{childList:true,subtree:true});
  // Reconcile after asynchronous local/private archive hydration as well as
  // another tab saving the first opening. Never discard earlier opening history.
@@ -56,7 +60,7 @@
   update.onclick=async()=>{update.disabled=true;try{const immediate=C.save(),durable=immediate||await C.whenSaved?.();if(!durable)throw Error('not_saved');location.reload()}catch(_){update.textContent='Сохранение не подтверждено. Повторить';update.disabled=false}};
   document.getElementById('libraryTitle')?.insertAdjacentElement('afterend',update);return false;
  }
- function refresh(force=false){if(refreshTask)return force?refreshTask.then(()=>refresh(false)):refreshTask;refreshTask=(async()=>{busy=true;try{const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json',apikey:KEY},body:JSON.stringify({action:'catalog'}),cache:'no-store'});if(!r.ok)throw Error('catalog_unavailable');const out=await r.json();if(!Array.isArray(out.items)||!Number.isSafeInteger(out.publicationRevision)||out.registryAvailable===false)throw Error('catalog_invalid');for(const descriptor of out.descriptors||[]){const R=window.SetkaPatternRegistryV1;if(!R.has(descriptor.id))R.register(descriptor)}window.SetkaPatternRegistryV1?.applyPublication(out.items,out.publicationRevision);window.SetkaPatternRegistryV1?.setTitles?.(out.items);window.SetkaPatternRegistryV1?.applyDefaults?.(out.defaults||[]);
+ function refresh(force=false){if(refreshTask)return force?refreshTask.then(()=>refresh(false)):refreshTask;refreshTask=(async()=>{busy=true;try{const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json',apikey:KEY},body:JSON.stringify({action:'catalog'}),cache:'no-store'});if(!r.ok)throw Error('catalog_unavailable');const out=await r.json();if(!Array.isArray(out.items)||!Number.isSafeInteger(out.publicationRevision)||out.registryAvailable===false)throw Error('catalog_invalid');for(const descriptor of out.descriptors||[]){const R=window.SetkaPatternRegistryV1;if(!R.has(descriptor.id))R.register(descriptor)}window.SetkaPatternRegistryV1?.applyPublication(out.items,out.publicationRevision);if(out.order)window.SetkaPatternRegistryV1.applyOrder(out.order);window.SetkaPatternRegistryV1?.setTitles?.(out.items);window.SetkaPatternRegistryV1?.applyDefaults?.(out.defaults||[]);
  if(out.registryRevision&&out.registryRevision!==window.SetkaPatternRegistryV1?.revision?.())window.dispatchEvent(new CustomEvent("setka:catalog-version-mismatch",{detail:{local:window.SetkaPatternRegistryV1?.revision?.(),remote:out.registryRevision}}));last=Date.now();lastStatus={ok:true,updatedAt:last,registryRevision:out.registryRevision||null,compatible:versionNotice(out.registryRevision)};decorate()}catch(error){lastStatus={ok:false,error:String(error?.message||error)};/* Keep the last confirmed names and settings while offline. */}finally{busy=false;refreshTask=null;decorate()}})();return refreshTask}
  window.addEventListener("setka:publication-updated",()=>{C.cloudCommunity?.refresh?.()});
  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&Date.now()-last>30000)refresh()});window.addEventListener('online',()=>refresh());window.addEventListener('focus',()=>{if(Date.now()-last>30000)refresh()});setInterval(()=>{if(!document.hidden)refresh()},30000);
