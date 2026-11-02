@@ -29,19 +29,19 @@ export function mountPatternOrder(root,{registry,order,api,draft,onCommitted}){
  }
  reset.onclick=()=>{draft.dirty=false;draft.ids=registry.orderedIds();draft.revision=order.revision;render()};
  save.onclick=async()=>{
-  saving=true;root.querySelectorAll('button,select').forEach(b=>b.disabled=true);status.textContent='Сохраняем порядок…';
+  saving=true;draft.saving=true;root.querySelectorAll('button,select').forEach(b=>b.disabled=true);status.textContent='Сохраняем порядок…';
   const requested=draft.ids.slice();
   try{
    const out=await api('set-pattern-order',{patternIds:requested,expectedRevision:draft.revision});
    if(out.ok!==true||JSON.stringify(out.order?.patternIds)!==JSON.stringify(requested)||!Number.isSafeInteger(out.order?.revision)||out.order.revision<draft.revision)throw Error('order_not_confirmed');
    const confirmed=await api('manage-catalog');
    if(confirmed.order?.revision!==out.order.revision||JSON.stringify(confirmed.order.patternIds)!==JSON.stringify(requested))throw Error('order_readback_changed');
-   registry.applyOrder(confirmed.order);draft.dirty=false;draft.revision=confirmed.order.revision;await onCommitted();
+   registry.applyOrder(confirmed.order);draft.dirty=false;draft.saving=false;draft.revision=confirmed.order.revision;status.textContent='Порядок подтверждён сервером.';await onCommitted();
   }catch(e){
    status.textContent=e.message.includes('revision_conflict')||e.message==='order_readback_changed'?'Порядок уже изменён в другом окне. Нажмите «Загрузить текущий порядок» и повторите изменения.':'Сохранение не подтверждено. Черновик сохранён; проверьте связь и повторите.';
    save.disabled=false;reset.disabled=false;reset.textContent='Загрузить текущий порядок';
    reset.onclick=async()=>{reset.disabled=true;try{const out=await api('manage-catalog');registry.applyOrder(out.order);draft.dirty=false;await onCommitted()}catch(_){status.textContent='Не удалось загрузить порядок. Черновик сохранён.';reset.disabled=false}};
-  }finally{saving=false;}
+  }finally{saving=false;draft.saving=false;}
  };
  render();
 }

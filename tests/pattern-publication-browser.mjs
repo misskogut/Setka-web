@@ -91,6 +91,7 @@ try{
  orderFailure=false;await editor.getByRole('button',{name:'Сохранить порядок',exact:true}).click();
  await editor.getByRole('status').filter({hasText:'Порядок подтверждён сервером'}).waitFor();
  assert.equal(order.patternIds[0],id);assert.equal(order.revision,1);
+ fs.mkdirSync('tests/visual-smoke',{recursive:true});await admin.screenshot({path:'tests/visual-smoke/platform-order-'+(process.env.SETKA_BROWSER||'chromium')+'.png',fullPage:true});
  await front.evaluate(()=>window.__SETKA_PATTERN_CATALOG_V1__.refresh());
  const baseIds=()=>front.locator('#allPatternsPanel > .base-tile').evaluateAll(ts=>ts.map(t=>t.dataset.patternId));
  const newestUnseen=R.ids().filter(x=>x!==id).at(-1);
