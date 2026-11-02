@@ -75,15 +75,16 @@ Deno.serve(async req=>{
     if(action!=="feed")return J({error:"unknown_action"},400);
     await syncPatternCatalog();
     const limit=Math.max(1,Math.min(500,Math.round(N(b.limit,300))));
-    const [svcQ,patQ,cfgQ]=await Promise.all([
+    const [svcQ,patQ,cfgQ,publishedQ]=await Promise.all([
       db.from("prototype_v41_service_metrics_current").select("*").maybeSingle(),
       db.from("prototype_v41_pattern_metrics_current").select("*").order("exposures",{ascending:false}).order("likes",{ascending:false}),
       // This view is computed exclusively from prototype_v41_account_favorites.
       // Never union in prototype_v35_favorites (anonymous device saves).
-      db.from("prototype_v41_config_metrics_current").select("*").order("save_accounts",{ascending:false}).order("last_saved_at",{ascending:false}).limit(1000)
+      db.from("prototype_v41_config_metrics_current").select("*").order("save_accounts",{ascending:false}).order("last_saved_at",{ascending:false}).limit(1000),
+      db.rpc('setka_published_catalog_metrics',{p_pattern_ids:[...KNOWN_PATTERNS]})
     ]);
-    for(const q of [svcQ,patQ,cfgQ])if(q.error)throw q.error;
-    const s=svcQ.data||{};
+    for(const q of [svcQ,patQ,cfgQ,publishedQ])if(q.error)throw q.error;
+    const s={...(svcQ.data||{}),...(publishedQ.data||{})};
     const metrics={
       connectedAccounts:N(s.connected_accounts),
       connectedTesters:N(s.connected_accounts),
@@ -126,7 +127,8 @@ Deno.serve(async req=>{
     }
     const [accountsQ,archiveQ]=await Promise.all([
       db.from("setka_metric_accounts").select("tester_id,consent_at,consent_version,active,password_set_at").limit(1000),
-      db.from("prototype_v37_tester_private_archives").select("tester_id,payload").limit(1000)
+      db.from("prototype_v37_tester_private_archives").select("tester_id,payload").limit(1000),
+      db.rpc('setka_published_catalog_metrics',{p_pattern_ids:[...KNOWN_PATTERNS]})
     ]);
     for(const q of [accountsQ,archiveQ])if(q.error)throw q.error;
     const patternScenarios=communityIntentSummary(accountsQ.data||[],archiveQ.data||[]);

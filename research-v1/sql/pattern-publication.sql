@@ -60,3 +60,23 @@ begin
 end $$;
 revoke all on function public.setka_set_pattern_publication(text,text,bigint,uuid) from public,anon,authenticated;
 grant execute on function public.setka_set_pattern_publication(text,text,bigint,uuid) to service_role;
+
+-- Public totals are computed from the same eligible-account facts and the
+-- published installed IDs; hiding a pattern never rewrites research facts.
+create function public.setka_published_catalog_metrics(p_pattern_ids text[])
+returns jsonb language sql stable security invoker set search_path='' as $$
+ with allowed as (
+  select pattern_id from public.setka_pattern_publication
+  where state='published' and pattern_id=any(p_pattern_ids)
+ ), e as (select e.* from public.setka_metric_exposures e join allowed a using(pattern_id)),
+ f as (select f.* from public.setka_metric_favorites f join allowed a using(pattern_id))
+ select jsonb_build_object(
+  'sessions',(select count(distinct (tester_id,session_id)) from e where session_id is not null),
+  'exposures',(select count(*) from e),
+  'patterns',(select count(*) from (select pattern_id from e union select pattern_id from f) x),
+  'saved_configurations',(select count(distinct (pattern_id,config_key)) from f),
+  'configuration_saves',(select count(*) from f)
+ );
+$$;
+revoke all on function public.setka_published_catalog_metrics(text[]) from public,anon,authenticated;
+grant execute on function public.setka_published_catalog_metrics(text[]) to service_role;
