@@ -15,7 +15,7 @@ const server=createServer(async(req,res)=>{
    if(req.method==='OPTIONS'){res.writeHead(204).end();return}
    let body='';for await(const chunk of req)body+=chunk;const b=body?JSON.parse(body):{};
    let out={ok:true,items:[],notes:[],metrics:{},profile:{}};
-   if(path.endsWith('setka-research-admin-v1'))out={ok:true,items:catalog};
+   if(path.endsWith('setka-research-admin-v1'))out={ok:true,items:catalog,publicationRevision:1,publication:catalog.map(p=>({pattern_id:p.pattern_id,state:'published',revision:1}))};
    if(path.endsWith('setka-tester-account-v40')){
     if(b.action==='status')out={ok:true,claimed:true,authenticated:true,hasPassword:true,consented:true,testerId:'T-OWNERAAA'};
     if(b.action==='my-invites')out={ok:true,items:ownIssued};

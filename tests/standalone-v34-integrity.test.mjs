@@ -345,7 +345,7 @@ test("every mother pattern reads the same canonical registry defaults for previe
   assert.ok(app.includes('config:registry.defaults(p.id),previewFrame:BASE_PREVIEW_FRAME'));
   assert.ok(app.includes('openConfig(cloneConfig(item.config||registry.defaults(patternId),patternId)'));
   assert.ok(app.includes('const cfg=item.kind==="base"?registry.defaults(patternId):item.config'));
-  assert.ok(app.includes('getPatterns:()=>PATTERNS.map(p=>({id:p.id,title:registry.title(p.id),version:p.version,defaults:registry.defaults(p.id)}))'));
+  assert.ok(app.includes('getPatterns:()=>PATTERNS.filter(p=>registry.isActive(p.id)).map(p=>({id:p.id,title:registry.title(p.id),version:p.version,defaults:registry.defaults(p.id)}))'));
   assert.doesNotMatch(app,/const remembered=source.type==="base"/);
 });
 

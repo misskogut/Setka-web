@@ -1,3 +1,4 @@
+import {installPublicationCatalog} from './publication-fixture.mjs';
 import assert from "node:assert/strict";
 import {spawn} from "node:child_process";
 import {chromium,webkit} from "playwright";
@@ -47,6 +48,7 @@ try{
     }
     try{await route.fulfill(common)}catch(_){/* aborted read is expected after back */}
   });
+  await installPublicationCatalog(page);
   await page.goto(root+"/standalone-v34.html",{waitUntil:"domcontentloaded"});
   await page.waitForFunction(()=>window.__SETKA_TESTER_CABINET_V40__?.state?.()?.authenticated===true);
   await page.evaluate(()=>window.__SETKA_TESTER_CABINET_V40__.show());

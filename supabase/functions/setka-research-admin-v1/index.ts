@@ -3,7 +3,7 @@
 // Moderation is delegated to the existing API; no experiment assigns real participants.
 import { buildData, replayCoverage, ARRAY, num, time } from './model.mjs';
 import { recordedStates } from './replay-model.mjs';
-import {loadManifest,catalogRows,assertConfiguration} from '../_shared/pattern-catalog.mjs';
+import {loadManifest,catalogRows,assertConfiguration,publishedManifest} from '../_shared/pattern-catalog.mjs';
 import {issueInvites} from './invites.mjs';
 const URL_BASE = Deno.env.get('SUPABASE_URL') || '';
 const SERVICE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
@@ -96,16 +96,30 @@ async function catalogManifest(){
   manifestCache=manifest;manifestAt=Date.now();return manifest;
  })().finally(()=>{manifestTask=null});return manifestTask;
 }
-async function catalog(){
- let manifest=null;try{manifest=await catalogManifest()}catch(_){}
+async function catalog(manage=false){
+ const manifest=await catalogManifest();
  const names=await read('setka_research_v1_pattern_catalog','pattern_id,title,revision,updated_at',{},1000,'pattern_id');
  const defaults=await read('setka_pattern_defaults_v2','pattern_id,pattern_version,schema_version,config,revision,updated_at',{},1000,'pattern_id');
- // DB catalogue retains retired titles for forensic history; public/editable
- // selectors must never resurrect them when the active manifest is missing.
- const active=new Set((manifest?.patterns||[]).map((p:any)=>p.id));
- return {ok:true,items:manifest?catalogRows(manifest,names.rows):[],
-  defaults:defaults.rows.filter((row:any)=>active.has(row.pattern_id)),
-  registryRevision:manifest?.registryRevision||null,registryAvailable:!!manifest,updatedAt:new Date().toISOString()};
+ let publication=(await read('setka_pattern_publication','pattern_id,state,revision,updated_at',{},1000,'pattern_id')).rows;
+ const known=new Set(publication.map((r:any)=>r.pattern_id));
+ const missing=manifest.patterns.filter((p:any)=>!known.has(p.id)).map((p:any)=>({pattern_id:p.id}));
+ if(missing.length){
+  const res=await fetch(`${URL_BASE}/rest/v1/setka_pattern_publication?on_conflict=pattern_id`,{
+   method:'POST',headers:{apikey:SERVICE,Authorization:`Bearer ${SERVICE}`,'Content-Type':'application/json',Prefer:'resolution=ignore-duplicates,return=minimal'},body:JSON.stringify(missing)});
+  if(!res.ok)throw Error('publication_registration_failed');
+  publication=(await read('setka_pattern_publication','pattern_id,state,revision,updated_at',{},1000,'pattern_id')).rows;
+ }
+ const visible=manage?manifest:publishedManifest(manifest,publication),active=new Set(visible.patterns.map((p:any)=>p.id));
+ return {ok:true,items:catalogRows(visible,names.rows),defaults:defaults.rows.filter((r:any)=>active.has(r.pattern_id)),
+  ...(manage?{publication:publication.filter((r:any)=>active.has(r.pattern_id))}:{}),
+  publicationRevision:Math.max(0,...publication.map((r:any)=>Number(r.revision))),
+  registryRevision:manifest.registryRevision,registryAvailable:true,updatedAt:new Date().toISOString()};
+}
+async function setPublication(b:any,adminId:string){
+ if(!['testing','published','disabled'].includes(b.state)||!Number.isSafeInteger(b.expectedRevision)||b.expectedRevision<1)return reply({error:'invalid_publication'},400);
+ if(!await isRegisteredPattern(b.patternId))return reply({error:'unknown_pattern'},400);
+ try{return reply({ok:true,item:await rpc('setka_set_pattern_publication',{p_pattern_id:b.patternId,p_state:b.state,p_expected_revision:b.expectedRevision,p_admin_key_id:adminId})});}
+ catch(e){const code=e instanceof Error?e.message:'publication_unavailable';return reply({error:code},code.includes('revision_conflict')?409:503);}
 }
 async function savePatternDefaults(b:any,adminId:string){
  try{
@@ -201,6 +215,8 @@ Deno.serve(async(req:Request)=>{
     // Only public display names are released here. No account or research rows.
     if(b.action==='catalog')return reply(await catalog());
     const adminId=await authorized(b.adminKey);if(!adminId)return reply({error:'invalid_admin_key'},403);
+    if(b.action==='manage-catalog')return reply(await catalog(true));
+    if(b.action==='set-pattern-publication')return await setPublication(b,adminId);
     if(b.action==='set-cohort-state'){
       if(typeof b.cohort!=='string'||!b.cohort.trim()||b.cohort.length>100||typeof b.active!=='boolean'||typeof b.includeInMetrics!=='boolean')return reply({error:'invalid_cohort_state'},400);
       return reply({ok:true,...await rpc('setka_set_cohort_state',{p_cohort:b.cohort,p_active:b.active,p_include_in_metrics:b.includeInMetrics})});

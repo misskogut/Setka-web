@@ -32,6 +32,9 @@
   panel.append(fragment);
  }
  function decorate(){
+  const R=window.SetkaPatternRegistryV1;let status=document.getElementById("setkaCatalogStatus");
+  if(!status){status=document.createElement("p");status.id="setkaCatalogStatus";status.setAttribute("role","status");status.style.cssText="text-align:center;color:#aaa;font:12px Arial";document.getElementById("libraryTitle")?.insertAdjacentElement("afterend",status)}
+  status.textContent=lastStatus?.ok?(!S.getPatterns().length?"Опубликованных паттернов пока нет":""):R.publicationRevision()<0?(lastStatus?"Каталог недоступен. Повторите при восстановлении связи.":"Проверяем доступные паттерны…"):"Каталог не обновлён: показана последняя подтверждённая версия";
   const info=seenInfo();
   document.querySelectorAll('.pattern-tile[data-kind="base"]').forEach(tile=>{
    const badge=tile.querySelector('.setka-new-pattern');
@@ -53,8 +56,9 @@
   update.onclick=async()=>{update.disabled=true;try{const immediate=C.save(),durable=immediate||await C.whenSaved?.();if(!durable)throw Error('not_saved');location.reload()}catch(_){update.textContent='Сохранение не подтверждено. Повторить';update.disabled=false}};
   document.getElementById('libraryTitle')?.insertAdjacentElement('afterend',update);return false;
  }
- function refresh(force=false){if(refreshTask)return force?refreshTask.then(()=>refresh(false)):refreshTask;refreshTask=(async()=>{busy=true;try{const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json',apikey:KEY},body:JSON.stringify({action:'catalog'}),cache:'no-store'});if(!r.ok)throw Error('catalog_unavailable');const out=await r.json();if(!Array.isArray(out.items))throw Error('catalog_invalid');window.SetkaPatternRegistryV1?.setTitles?.(out.items);window.SetkaPatternRegistryV1?.applyDefaults?.(out.defaults||[]);
- if(out.registryRevision&&out.registryRevision!==window.SetkaPatternRegistryV1?.revision?.())window.dispatchEvent(new CustomEvent("setka:catalog-version-mismatch",{detail:{local:window.SetkaPatternRegistryV1?.revision?.(),remote:out.registryRevision}}));last=Date.now();lastStatus={ok:true,updatedAt:last,registryRevision:out.registryRevision||null,compatible:versionNotice(out.registryRevision)};decorate()}catch(error){lastStatus={ok:false,error:String(error?.message||error)};/* Keep the last confirmed names and settings while offline. */}finally{busy=false;refreshTask=null}})();return refreshTask}
- document.addEventListener('visibilitychange',()=>{if(!document.hidden&&Date.now()-last>30000)refresh()});window.addEventListener('focus',()=>{if(Date.now()-last>30000)refresh()});setInterval(()=>{if(!document.hidden)refresh()},30000);
+ function refresh(force=false){if(refreshTask)return force?refreshTask.then(()=>refresh(false)):refreshTask;refreshTask=(async()=>{busy=true;try{const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json',apikey:KEY},body:JSON.stringify({action:'catalog'}),cache:'no-store'});if(!r.ok)throw Error('catalog_unavailable');const out=await r.json();if(!Array.isArray(out.items)||!Number.isSafeInteger(out.publicationRevision)||out.registryAvailable===false)throw Error('catalog_invalid');window.SetkaPatternRegistryV1?.applyPublication(out.items,out.publicationRevision);window.SetkaPatternRegistryV1?.setTitles?.(out.items);window.SetkaPatternRegistryV1?.applyDefaults?.(out.defaults||[]);
+ if(out.registryRevision&&out.registryRevision!==window.SetkaPatternRegistryV1?.revision?.())window.dispatchEvent(new CustomEvent("setka:catalog-version-mismatch",{detail:{local:window.SetkaPatternRegistryV1?.revision?.(),remote:out.registryRevision}}));last=Date.now();lastStatus={ok:true,updatedAt:last,registryRevision:out.registryRevision||null,compatible:versionNotice(out.registryRevision)};decorate()}catch(error){lastStatus={ok:false,error:String(error?.message||error)};/* Keep the last confirmed names and settings while offline. */}finally{busy=false;refreshTask=null;decorate()}})();return refreshTask}
+ window.addEventListener("setka:publication-updated",()=>{C.cloudCommunity?.refresh?.()});
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&Date.now()-last>30000)refresh()});window.addEventListener('online',()=>refresh());window.addEventListener('focus',()=>{if(Date.now()-last>30000)refresh()});setInterval(()=>{if(!document.hidden)refresh()},30000);
  window.__SETKA_PATTERN_CATALOG_V1__={refresh:()=>refresh(true),status:()=>lastStatus,decorate,seen};decorate();refresh();
 })();

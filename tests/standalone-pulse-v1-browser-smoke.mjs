@@ -1,3 +1,4 @@
+import {installPublicationCatalog} from './publication-fixture.mjs';
 // Isolated protocol fixture. No hardware PASS is claimed and no records reach Supabase.
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
@@ -17,6 +18,7 @@ try{
     Object.defineProperty(navigator,'bluetooth',{configurable:true,value:{requestDevice:async options=>{if(cancel){cancel=false;throw new DOMException('fixture cancelled','NotFoundError')}if(options.filters[0].services[0]!=='heart_rate')throw Error('incorrect service');return device}}});
     window.__isolatedPulse={send(bytes){characteristic.value=new DataView(new Uint8Array(bytes).buffer);characteristic.dispatchEvent(new Event('characteristicvaluechanged'))},drop(){device.dispatchEvent(new Event('gattserverdisconnected'))},cancel(){cancel=true}};
   });
+  await installPublicationCatalog(page);
   await page.goto(base+'/standalone-v34.html',{waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>!!window.SetkaStandaloneV34.pulse);
   const tab=key=>page.locator(`#st34Nav button[data-p="${key}"]`),card=page.locator('#st34Layer');

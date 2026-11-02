@@ -204,6 +204,7 @@ jobs:
           node-version: '22'
       - run: npm install --no-save --ignore-scripts playwright esbuild
       - run: npx playwright install --with-deps chromium webkit
+      - run: node scripts/build-pattern-manifest.mjs
       # Fail fast on cross-surface contract issues before slower visual suites.
       - run: node tests/setka-front-research-audit-browser.mjs
       - run: SETKA_BROWSER=webkit node tests/setka-front-research-audit-browser.mjs

@@ -1,3 +1,4 @@
+import {installPublicationCatalog} from './publication-fixture.mjs';
 import assert from "node:assert/strict";
 import {spawn} from "node:child_process";
 import {chromium,webkit} from "playwright";
@@ -12,6 +13,7 @@ try{
   const page=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
   const errors=[];page.on("pageerror",e=>errors.push(e.message));
   await page.route("**/functions/v1/**",r=>r.fulfill({status:200,contentType:"application/json",headers:{"access-control-allow-origin":"*"},body:JSON.stringify({ok:true,items:[],metrics:{},patternMetrics:[],notes:[],profile:{}})}));
+  await installPublicationCatalog(page);
   await page.goto(base+"/standalone-v34.html",{waitUntil:"domcontentloaded"});
   await page.waitForFunction(()=>window.SetkaApp?.getPatterns?.().length===window.SetkaPatternRegistryV1?.ids?.().length);
   // The descriptor, mother thumbnail and fullscreen must all open from the

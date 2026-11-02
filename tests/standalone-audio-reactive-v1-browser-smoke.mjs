@@ -1,3 +1,4 @@
+import {installPublicationCatalog} from './publication-fixture.mjs';
 // Isolated microphone fixture: no physical microphone or private data is used.
 import assert from "node:assert/strict";
 import {spawn} from "node:child_process";
@@ -40,6 +41,7 @@ try{
     }
     Object.defineProperty(window,"AudioContext",{configurable:true,value:FakeAudioContext});
   });
+  await installPublicationCatalog(page);
   await page.goto(base+"/standalone-v34.html",{waitUntil:"domcontentloaded"});
   // Enter gameplay through its real public API. A tile click can open the
   // optional start-session choice sheet instead of gameplay.

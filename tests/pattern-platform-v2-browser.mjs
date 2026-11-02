@@ -39,9 +39,9 @@ try{
   };
   if(request.method()==='OPTIONS')return route.fulfill({status:204,headers:cors,body:''});
   let body={};try{body=request.postDataJSON()||{}}catch{}
-  if(apiFailure&&body.action==='catalog')return route.fulfill({status:503,contentType:'application/json',headers:cors,body:JSON.stringify({error:'isolated_unavailable'})});
+  if(apiFailure&&['catalog','manage-catalog'].includes(body.action))return route.fulfill({status:503,contentType:'application/json',headers:cors,body:JSON.stringify({error:'isolated_unavailable'})});
   let out={ok:true,items:[],metrics:{},patternMetrics:[],notes:[],profile:{}};
-  if(body.action==='catalog')out={ok:true,registryRevision:outdated?'future-isolated-registry':R.revision(),items:R.list().map(p=>({pattern_id:p.id,title:names.get(p.id)?.title||p.title,revision:names.get(p.id)?.revision||1})),defaults:[...defaults.values()]};
+  if(['catalog','manage-catalog'].includes(body.action))out={ok:true,publicationRevision:1,publication:R.list().map(p=>({pattern_id:p.id,state:'published',revision:1})),registryRevision:outdated?'future-isolated-registry':R.revision(),items:R.list().map(p=>({pattern_id:p.id,title:names.get(p.id)?.title||p.title,revision:names.get(p.id)?.revision||1})),defaults:[...defaults.values()]};
   if(body.action==='overview')out={ok:true,data:buildData({accounts:observed?[{tester_id:'T-ISOLATED',created_at:observed.createdAt}]:[],archives:observed?[{tester_id:'T-ISOLATED',device_id:'fixture-browser',payload:observed}]:[],patternCatalog:R.list().map(p=>({pattern_id:p.id,title:names.get(p.id)?.title||p.title,revision:names.get(p.id)?.revision||1}))})};
   if(body.action==='rename-pattern'){
    const old=names.get(body.patternId)||{revision:1};assert.equal(body.expectedRevision,old.revision);

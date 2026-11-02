@@ -1,5 +1,5 @@
 // @ts-nocheck
-import {loadManifest,onlyActivePatterns} from "../_shared/pattern-catalog.mjs";
+import {loadPublishedManifest,onlyActivePatterns} from "../_shared/pattern-catalog.mjs";
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const db=createClient(Deno.env.get("SUPABASE_URL")!,Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,{auth:{persistSession:false,autoRefreshToken:false}});
@@ -21,9 +21,9 @@ const VERSIONS=new Map<string,number>();
 let catalogLast=0,catalogPending:Promise<void>|null=null;
 async function syncPatternCatalog(){
   if(catalogPending)return catalogPending;
-  if(Date.now()-catalogLast<300000&&KNOWN_PATTERNS.size)return;
+  // Publication state is read per request; disabled IDs cannot linger in the warm cache.
   catalogPending=(async()=>{
-    const manifest=await loadManifest();
+    const manifest=await loadPublishedManifest();
     const rows=manifest.patterns.map((p:any)=>({pattern_id:p.id,title:p.title,revision:1}));
     // A name revision never substitutes for the immutable algorithm version.
     const ins=await db.from("setka_research_v1_pattern_catalog").upsert(rows,{onConflict:"pattern_id",ignoreDuplicates:true});

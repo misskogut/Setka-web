@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import {spawn} from 'node:child_process';
 import {chromium,webkit} from 'playwright';
 const port=49742,base='http://127.0.0.1:'+port;
@@ -17,6 +18,7 @@ try{
   let b={};try{b=route.request().postDataJSON()||{}}catch{}
   requests.push(b.action);
   let out={ok:true,items:[],notes:[],metrics:{},patternMetrics:[]};
+  if(b.action==='catalog')out={ok:true,publicationRevision:1,items:JSON.parse(fs.readFileSync('setka-pattern-manifest-v1.json','utf8')).patterns.map(p=>({pattern_id:p.id,title:p.title,revision:1}))};
   if(route.request().url().includes('setka-tester-account-v40')){
    const authenticated=b.action==='recover-password'||b.action==='login'||b.sessionToken==='isolated-token';
    out={ok:true,testerId:authenticated?'T-ISOLATED':null,authenticated,claimed:authenticated,hasPassword:authenticated,consented:true};
@@ -47,7 +49,7 @@ try{
  await page.evaluate(()=>window.SetkaStandaloneV34.whenSaved());
  offlineArchive=true;
  await page.reload();await page.evaluate(async()=>{await window.SetkaStandaloneV34.ready;window.SetkaApp.setLibraryPage('favorites')});
- await page.waitForFunction(()=>window.SetkaApp.getFavorites().length===4);
+ await page.waitForFunction(()=>window.SetkaApp.getFavorites().length===4&&window.__SETKA_PATTERN_CATALOG_V1__?.status()?.ok);
  assert.equal(await page.locator('#favoritesPanel .favorite-tile').count(),4);
  offlineArchive=false;
  await page.reload();await page.waitForFunction(()=>window.__SETKA_TESTER_CABINET_V40__?.state()?.authenticated===true);

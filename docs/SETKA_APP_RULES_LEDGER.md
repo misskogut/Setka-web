@@ -51,6 +51,8 @@ These facts are stored *only* as `introducedAt` inside their descriptors. Any fu
 | APP-025 | По явному разрешению владельца test01–test10 являются настоящими зарегистрированными аккаунтами в production с серверной меткой группы. Включённая группа учитывается обычным способом; отключение отзывает входы и исключает все её текущие метрики/публичные публикации, сохраняя сырую историю. Не полагаться только на active=false или на удаление аккаунтов. | **Реализовано в SQL/API/research; rollback SQL regression и Node tests; полные браузерные циклы остаются отдельной приёмкой.** |
 | APP-026 | Existing accounts can reach ID/password login from the unclaimed-device invitation screen, without another invite. Device ownership and private-archive isolation remain enforced by the existing server guards. | **Navigation regression added:** ownership tests and Chromium/WebKit v34 smoke; production verification tracked separately. |
 
+| APP-027 | Новые ID автоматически получают «На проверке». Только владелец публикует/выключает через ревизионную запись. Один статус управляет публичными каталогами, активными галереями и открытием. Админская проба не пишет пользовательские метрики; история сохраняется. | Код + Node/SQL/двухклиентные Chromium/WebKit regression; факт CI и production deployment фиксируется отдельно. |
+
 **Vocabulary:** `CI enforceable` means an executable guard runs on repository code; `CI partial` means some scenarios are automated but not all devices/accounts; `TARGET` means a required capability is not yet demonstrated. **Never convert TARGET to DONE merely by changing this document.**
 
 ## Rule intake: how every future conversation decision becomes a feature of SETKA
