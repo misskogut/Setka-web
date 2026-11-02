@@ -127,15 +127,14 @@ Deno.serve(async req=>{
     }
     const [accountsQ,archiveQ]=await Promise.all([
       db.from("setka_metric_accounts").select("tester_id,consent_at,consent_version,active,password_set_at").limit(1000),
-      db.from("prototype_v37_tester_private_archives").select("tester_id,payload").limit(1000),
-      db.rpc('setka_published_catalog_metrics',{p_pattern_ids:[...KNOWN_PATTERNS]})
+      db.from("prototype_v37_tester_private_archives").select("tester_id,payload").limit(1000)
     ]);
     for(const q of [accountsQ,archiveQ])if(q.error)throw q.error;
     const patternScenarios=communityIntentSummary(accountsQ.data||[],archiveQ.data||[]);
     // Historical device-based metrics are retained only in their original
     // tables/research views. They are never part of the registered-account feed.
     const historicalPatterns=[];
-    metrics.patterns=patternMetrics.filter(x=>x.exposures>0).length;
+    // Public totals already use all published exposure/favorite facts in SQL.
     const d=day(),now=new Date().toISOString();
     const snap=await db.from("prototype_v40_service_metric_snapshots").upsert({
       day:d,participants:metrics.connectedAccounts,connected_testers:metrics.connectedAccounts,sessions:metrics.sessions,exposures:metrics.exposures,
