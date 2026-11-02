@@ -207,6 +207,8 @@ jobs:
       - run: npm install --no-save --ignore-scripts playwright esbuild
       - run: npx playwright install --with-deps chromium webkit
       - run: node scripts/build-pattern-manifest.mjs
+      - run: node tests/research-management-v1-browser-smoke.mjs
+      - run: SETKA_BROWSER=webkit node tests/research-management-v1-browser-smoke.mjs
       # Fail fast on cross-surface contract issues before slower visual suites.
       - run: node tests/setka-front-research-audit-browser.mjs
       - run: SETKA_BROWSER=webkit node tests/setka-front-research-audit-browser.mjs
@@ -221,7 +223,6 @@ jobs:
       - run: node tests/standalone-live-previews-v1-browser-smoke.mjs
       - run: node tests/standalone-invites-autosync-browser-smoke.mjs
       - run: node tests/standalone-pulse-v1-browser-smoke.mjs
-      - run: node tests/research-management-v1-browser-smoke.mjs
       - run: node tests/research-admin-v1-access-browser-smoke.mjs
       - run: node tests/standalone-v34-admin-browser-smoke.mjs
       - run: node tests/standalone-v34-open-admin-browser-smoke.mjs
@@ -230,7 +231,6 @@ jobs:
       - run: SETKA_BROWSER=webkit node tests/standalone-live-previews-v1-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/standalone-invites-autosync-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/standalone-pulse-v1-browser-smoke.mjs
-      - run: SETKA_BROWSER=webkit node tests/research-management-v1-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/research-admin-v1-access-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/standalone-v34-admin-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/standalone-v34-open-admin-browser-smoke.mjs
