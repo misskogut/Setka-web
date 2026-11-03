@@ -150,11 +150,13 @@ test('research transport retains new scalar and array parameters without a rende
 test('future unknown modules may register pure gesture and slider reducers without host ID branches',()=>{
  const R=registry(),id='fixture-navigation-reducer';
  const def={id,title:id,version:1,module:'standalone-pattern-'+id+'.js',
+  gestureHints:[['Сдвиг камеры','2 пальца ←→↑↓']],
   defaults:{movement:2,heading:0,colorModeIndex:0},
   colorModes:2,palettes:[[255,255,255],[255,0,0]],
   controls:[['Движение','movement',0,10,.1,'В центре ←→',1],
             ['Курс','heading',-4,4,.1,'2 пальца ←→',2]]};
  R.register(def);
+ assert.deepEqual(plain(R.get(id).gestureHints),def.gestureHints);
  const initial=plain(R.defaults(id));
  assert.equal(R.interact(id,initial,{type:'gesture',frame:20,fingers:1,zone:'center',dx:10}),null);
  R.bindInteraction(id,(config,event)=>{
