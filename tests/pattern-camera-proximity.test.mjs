@@ -75,6 +75,42 @@ test("every packaged camera-proximity slider changes the roadway projection and 
       render({...base,randomness:1.2,routeSeed:2}),"procedural randomness remains replay-deterministic");
     assert.equal(R.restore(R.snapshot({patternId:p.id,config:{...base,randomness:1.2,routeSeed:2,climbs:4,dropDepth:4,turnSharpness:2,growthPosition:.9,lanePosition:-.7},frame:73})).ok,true);
    }
+   if(p.id==="neurobridge"){
+    // Stars are a genuine camera-relative projection of a persistent 3D sky,
+    // not an incidental screen-space particle animation. Existing road
+    // regression checks above continue to cover all roadway controls.
+    const names=["starCount","starBrightness","starSize","starTwinkle","starBokeh"];
+    for(const key of names){
+     const field=p.controls.find(row=>row[1]===key);
+     assert.ok(field,key+" must be an actual user-visible slider");
+     assert.equal(field[6],0,key+" must not masquerade as an interactive mode");
+     assert.ok(Number.isFinite(base[key]),key+" must be stored in config");
+    }
+    const stars=(settings={},atFrame=73)=>{
+     const spots=[];
+     const ctx={save(){},restore(){},beginPath(){},moveTo(){},lineTo(){},stroke(){},fillRect(){},
+      arc(x,y,r){this.circle=[x,y,r]},
+      fill(){if(this.circle){spots.push({coords:this.circle,style:this.fillStyle});this.circle=null}}};
+     R.render(ctx,320,320,{...base,pulse:0,glow:0,starBokeh:0,...settings},atFrame,false,p.id);
+     return spots;
+    };
+    assert.equal(stars({starCount:0}).length,0,"zero stars actually clears the sky");
+    assert.ok(stars({starCount:1}).length>15,"full density creates visible stars");
+    assert.equal(stars({starBrightness:0}).length,0,"zero brightness clears the stars");
+    assert.notDeepEqual(stars({starCount:1,lookYaw:0}),stars({starCount:1,lookYaw:.7}),
+     "turning the observer reveals a different region of 3D star space");
+    assert.notDeepEqual(stars({starSize:.4}),stars({starSize:2.8}),
+     "size slider changes actual projected radii");
+    assert.ok(stars({starBokeh:1}).length>stars({starBokeh:0}).length,
+     "bokeh adds luminous halos beyond the star centers");
+    assert.notDeepEqual(stars({starTwinkle:1},73),stars({starTwinkle:1},116),
+     "twinkling changes actual star light over time");
+    assert.deepEqual(stars({starTwinkle:1},116),stars({starTwinkle:1},116),
+     "sky appearance is frame+config deterministic for Replay");
+    const snap=R.snapshot({patternId:p.id,config:{...base,starCount:.9,starBrightness:.6,starSize:2.4,starTwinkle:.8,starBokeh:.6},frame:73});
+    const restored=R.restore(snap);
+    assert.equal(restored.ok,true,"new star settings survive an immutable snapshot");
+   }
    assert.equal(R.restore(R.snapshot({patternId:p.id,config:close,frame:73})).ok,true);
    const look=R.interact(p.id,base,{type:"gesture",frame:73,fingers:2,zone:"center",dx:40,dy:-30,width:320,height:320});
    assert.notDeepEqual(render(look),render(base),"head movement changes what observer sees");
