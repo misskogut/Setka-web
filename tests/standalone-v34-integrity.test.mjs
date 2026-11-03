@@ -345,7 +345,11 @@ test("every mother pattern reads the same canonical registry defaults for previe
   assert.ok(app.includes('config:registry.defaults(p.id),previewFrame:BASE_PREVIEW_FRAME'));
   assert.ok(app.includes('openConfig(cloneConfig(item.config||registry.defaults(patternId),patternId)'));
   assert.ok(app.includes('const cfg=item.kind==="base"?registry.defaults(patternId):item.config'));
-  assert.ok(app.includes('getPatterns:()=>PATTERNS.filter(p=>registry.isActive(p.id)).map(p=>({id:p.id,title:registry.title(p.id),version:p.version,defaults:registry.defaults(p.id)}))'));
+  const getter=app.match(/getPatterns:(\(\)=>.*?),getPatternDefaults:/)?.[1];assert.ok(getter);
+  R.applyOrder({patternIds:R.ids().slice().reverse(),revision:1});
+  const rows=new Function('registry','IDS','patternById','return ('+getter+')()')(R,new Set(R.ids()),id=>R.get(id));
+  assert.deepEqual(Array.from(rows,p=>p.id),Array.from(R.orderedIds()),'public catalog follows owner order');
+  for(const p of rows)assert.equal(JSON.stringify(p.defaults),JSON.stringify(R.defaults(p.id)),'canonical defaults remain intact: '+p.id);
   assert.doesNotMatch(app,/const remembered=source.type==="base"/);
 });
 

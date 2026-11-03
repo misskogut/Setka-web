@@ -130,8 +130,7 @@
     }catch(e){return {ok:false,reason:e.code||"invalid_configuration",snapshot:copy(raw)}}
   }
   function bindRenderer(id,render){requirePattern(id);if(typeof render!=="function")throw error("invalid_renderer",id);renderers.set(id,render);emit("setka:renderer-ready",{patternId:id})}
-  // Optional package-defined gesture/config transition. The host stays
-  // ignorant of concrete pattern IDs while the renderer remains pure.
+  // Optional module-owned controller; no hardcoded new pattern IDs in hosts.
   function bindInteraction(id,handler){
     requirePattern(id);
     if(typeof handler!=="function")throw error("invalid_interaction",id);
@@ -140,7 +139,7 @@
   function interact(id,config,event){
     requirePattern(id);
     const handler=interactions.get(id);
-    if(!handler)return null; // Existing packages use shared default gestures.
+    if(!handler)return null;
     const output=handler(copy(config),copy(event));
     if(!output||typeof output!=="object"||Array.isArray(output))throw error("invalid_interaction_result",id);
     return normalize(output,id);
@@ -174,9 +173,28 @@
     const changed=revision!==publicationRevision||ids.size!==publishedIds.size||[...ids].some(id=>!publishedIds.has(id));
     publicationRevision=revision;publishedIds=ids;if(changed)emit("setka:publication-updated",{revision});return changed;
   }
+  // Editorial order never changes immutable release chronology or renderer versions.
+  let editorialIds=[],orderRevision=-1;
+  function applyOrder(value){
+    if(!value||!Array.isArray(value.patternIds)||value.patternIds.length>500||
+      value.patternIds.some(id=>typeof id!=="string"||!/^[a-z][a-z0-9-]{2,79}$/.test(id))||
+      new Set(value.patternIds).size!==value.patternIds.length||!Number.isSafeInteger(value.revision)||value.revision<0)throw error("invalid_pattern_order");
+    if(value.revision<orderRevision)return false;
+    const changed=value.revision!==orderRevision||JSON.stringify(editorialIds)!==JSON.stringify(value.patternIds);
+    editorialIds=value.patternIds.slice();orderRevision=value.revision;
+    if(changed)emit("setka:pattern-order-updated",{revision:orderRevision});return changed;
+  }
+  function orderedIds(){return [...editorialIds.filter(id=>records.has(id)),...[...records.keys()].filter(id=>!editorialIds.includes(id))]}
+  function libraryIds(seen=new Set()){
+    const release=[...records.keys()],rank=new Map(orderedIds().map((id,i)=>[id,i]));
+    return release.slice().sort((a,b)=>{
+      const va=seen.has(a),vb=seen.has(b);if(va!==vb)return va?1:-1;
+      return va?rank.get(a)-rank.get(b):release.indexOf(b)-release.indexOf(a);
+    });
+  }
   function isActive(item){const id=identityOf(item);return (!publicCatalog||publishedIds.has(id))&&typeof id==="string"&&records.has(id)}
   function activeItems(rows){return Array.isArray(rows)?rows.filter(isActive):[]}
-  const api={schemaVersion:SCHEMA,usePublicCatalog,applyPublication,publicationRevision:()=>publicationRevision,register,get,has:id=>records.has(id),isActive,activeItems,identityOf,ids:()=>[...records.keys()],list:()=>[...records.values()].map(copy),
+  const api={schemaVersion:SCHEMA,applyOrder,orderedIds,libraryIds,orderRevision:()=>orderRevision,usePublicCatalog,applyPublication,publicationRevision:()=>publicationRevision,register,get,has:id=>records.has(id),isActive,activeItems,identityOf,ids:()=>[...records.keys()],list:()=>[...records.values()].map(copy),
     controls:id=>copy(get(id)?.controls||[]),inference,resolve,normalize,validate,configKey,snapshot,restore,revision,bindRenderer,bindInteraction,interact,render,
     ready:id=>renderers.has(id),supports:(id,feature)=>get(id)?.capabilities?.[feature]===true,
     title:id=>titles.get(id)?.title||get(id)?.title||id||"Неизвестный паттерн",setTitles,

@@ -109,8 +109,10 @@ async function catalog(manage=false){
   if(!res.ok)throw Error('publication_registration_failed');
   publication=(await read('setka_pattern_publication','pattern_id,state,revision,updated_at',{},1000,'pattern_id')).rows;
  }
+ const orderRows=await read('setka_pattern_order','pattern_ids,revision',{singleton:'eq.true'},1);
+ const orderRow=orderRows.rows[0];if(!orderRow||!Array.isArray(orderRow.pattern_ids))throw Error('pattern_order_unavailable');
  const visible=manage?manifest:publishedManifest(manifest,publication),active=new Set(visible.patterns.map((p:any)=>p.id));
- return {ok:true,items:catalogRows(visible,names.rows),descriptors:visible.patterns,defaults:defaults.rows.filter((r:any)=>active.has(r.pattern_id)),
+ return {ok:true,order:{patternIds:orderRow.pattern_ids.filter((id:string)=>active.has(id)),revision:Number(orderRow.revision)},items:catalogRows(visible,names.rows),descriptors:visible.patterns,defaults:defaults.rows.filter((r:any)=>active.has(r.pattern_id)),
   ...(manage?{publication:publication.filter((r:any)=>active.has(r.pattern_id))}:{}),
   publicationRevision:Math.max(0,...publication.map((r:any)=>Number(r.revision))),
   registryRevision:manifest.registryRevision,registryAvailable:true,updatedAt:new Date().toISOString()};
@@ -120,6 +122,15 @@ async function setPublication(b:any,adminId:string){
  if(!await isRegisteredPattern(b.patternId))return reply({error:'unknown_pattern'},400);
  try{return reply({ok:true,item:await rpc('setka_set_pattern_publication',{p_pattern_id:b.patternId,p_state:b.state,p_expected_revision:b.expectedRevision,p_admin_key_id:adminId})});}
  catch(e){const code=e instanceof Error?e.message:'publication_unavailable';return reply({error:code},code.includes('revision_conflict')?409:503);}
+}
+async function setPatternOrder(b:any,adminId:string){
+ if(!Array.isArray(b.patternIds)||b.patternIds.length>500||!Number.isSafeInteger(b.expectedRevision)||b.expectedRevision<0||
+   b.patternIds.some((id:unknown)=>typeof id!=='string'||!/^[a-z][a-z0-9-]{2,79}$/.test(id as string))||new Set(b.patternIds).size!==b.patternIds.length)return reply({error:'invalid_pattern_order'},400);
+ const manifest=await catalogManifest(),ids=new Set(manifest.patterns.map((p:any)=>p.id));
+ if(b.patternIds.some((id:string)=>!ids.has(id)))return reply({error:'unknown_pattern'},400);
+ try{const item=await rpc('setka_set_pattern_order',{p_pattern_ids:b.patternIds,p_expected_revision:b.expectedRevision,p_admin_key_id:adminId});
+  return reply({ok:true,order:{patternIds:item.pattern_ids,revision:Number(item.revision)}});
+ }catch(e){const code=e instanceof Error?e.message:'pattern_order_unavailable';return reply({error:code},code.includes('revision_conflict')?409:503);}
 }
 async function savePatternDefaults(b:any,adminId:string){
  try{
@@ -216,6 +227,7 @@ Deno.serve(async(req:Request)=>{
     if(b.action==='catalog')return reply(await catalog());
     const adminId=await authorized(b.adminKey);if(!adminId)return reply({error:'invalid_admin_key'},403);
     if(b.action==='manage-catalog')return reply(await catalog(true));
+    if(b.action==='set-pattern-order')return await setPatternOrder(b,adminId);
     if(b.action==='set-pattern-publication')return await setPublication(b,adminId);
     if(b.action==='set-cohort-state'){
       if(typeof b.cohort!=='string'||!b.cohort.trim()||b.cohort.length>100||typeof b.active!=='boolean'||typeof b.includeInMetrics!=='boolean')return reply({error:'invalid_cohort_state'},400);

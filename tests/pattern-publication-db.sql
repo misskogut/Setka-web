@@ -27,3 +27,23 @@ begin
  if (select title from public.setka_research_v1_pattern_catalog where pattern_id='future-publication-fixture')<>'Future' then raise exception 'history_changed';end if;
 end $$;
 rollback;
+
+-- Separate editorial order transaction, preserving publication and user data.
+\ir ../research-v1/sql/pattern-order.sql
+begin;
+insert into public.admin_keys values('00000000-0000-4000-8000-000000000021',true);
+insert into public.setka_research_v1_pattern_catalog values('future-order-fixture','Future order',1);
+do $$
+declare r jsonb;
+begin
+ r=public.setka_set_pattern_order(array['future-order-fixture'],0,'00000000-0000-4000-8000-000000000021');
+ if r->>'revision'<>'1' or r ? 'admin_key_id' or r->'pattern_ids'->>0<>'future-order-fixture' then raise exception 'order_not_saved';end if;
+ begin perform public.setka_set_pattern_order(array[]::text[],0,'00000000-0000-4000-8000-000000000021');raise exception 'stale_order_accepted';exception when others then if sqlerrm<>'revision_conflict' then raise;end if;end;
+ begin perform public.setka_set_pattern_order(array[]::text[],1,'00000000-0000-4000-8000-000000000099');raise exception 'unauthorized_order';exception when others then if sqlerrm<>'admin_required' then raise;end if;end;
+ begin perform public.setka_set_pattern_order(array['future-order-fixture','future-order-fixture'],1,'00000000-0000-4000-8000-000000000021');raise exception 'duplicate_order_accepted';exception when others then if sqlerrm<>'invalid_pattern_order' then raise;end if;end;
+ begin perform public.setka_set_pattern_order(array['missing-order-fixture'],1,'00000000-0000-4000-8000-000000000021');raise exception 'unknown_order_accepted';exception when others then if sqlerrm<>'invalid_pattern_order' then raise;end if;end;
+ if has_table_privilege('anon','public.setka_pattern_order','SELECT') or has_table_privilege('authenticated','public.setka_pattern_order','UPDATE') or has_function_privilege('authenticated','public.setka_set_pattern_order(text[],bigint,uuid)','EXECUTE') then raise exception 'public_order_access';end if;
+ if (select count(*) from public.setka_pattern_order_history)<>1 then raise exception 'order_history_missing';end if;
+ if exists(select 1 from public.setka_pattern_publication where pattern_id='future-order-fixture') then raise exception 'ordering_published_pattern';end if;
+end $$;
+rollback;
