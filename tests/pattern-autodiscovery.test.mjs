@@ -147,8 +147,8 @@ test('release chronology, not alphabetical filenames, drives front and research 
  try{
   const {source,manifest}=build(dir),R=loadRegistry(source);
   const ids=R.list().map(p=>p.id);
-  const descriptors=fs.readdirSync(dir).filter(name=>/^standalone-pattern-[a-z0-9-]+\\.js$/.test(name))
-    .map(name=>fs.readFileSync(path.join(dir,name),'utf8').match(/^\\/\\* SETKA_PATTERN_DESCRIPTOR\\n([\\s\\S]*?)\\nEND_SETKA_PATTERN_DESCRIPTOR/))
+  const descriptors=fs.readdirSync(dir).filter(name=>/^standalone-pattern-[a-z0-9-]+\.js$/.test(name))
+    .map(name=>fs.readFileSync(path.join(dir,name),'utf8').match(/^\/\* SETKA_PATTERN_DESCRIPTOR\n([\s\S]*?)\nEND_SETKA_PATTERN_DESCRIPTOR/))
     .filter(Boolean).map(match=>JSON.parse(match[1]));
   const expected=descriptors.sort((a,b)=>Date.parse(a.introducedAt)-Date.parse(b.introducedAt)).at(-1).id;
   assert.equal(ids.at(-1),expected,'newest descriptor is last by release time');
