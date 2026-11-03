@@ -75,6 +75,8 @@ try{
   });
   await ownerPage.goto(base+"/standalone-admin-v34.html#access="+fakeOwner,{waitUntil:"domcontentloaded"});
   await ownerPage.waitForFunction(()=>!document.getElementById("dashboard")?.classList.contains("hidden"),{timeout:12000});
+  // Wait for the credential storage write after WebKit makes the admin visible.
+  await ownerPage.waitForFunction(key=>localStorage.getItem("setka-research:admin-key:v1")===key,fakeOwner,{timeout:12000});
   assert.equal(await ownerPage.evaluate(()=>location.hash),"","secret fragment must be removed from address bar");
   assert.equal(await ownerPage.evaluate(()=>localStorage.getItem("setka-research:admin-key:v1")),fakeOwner);
   assert.ok(ownerRequests.some(x=>x.action==="admin-overview"&&x.adminKey===fakeOwner));
