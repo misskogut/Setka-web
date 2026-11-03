@@ -163,7 +163,7 @@ test('future unknown modules may register pure gesture and slider reducers witho
   return config;
  });
  const steered=R.interact(id,initial,{type:'gesture',frame:20,dx:7});
- assert.equal(steered.heading,.7);
+ assert.ok(Math.abs(steered.heading-.7)<1e-10);
  assert.equal(initial.heading,0,'the host must not mutate saved input configurations');
  const patched=R.interact(id,steered,{type:'patch',frame:20,patch:{movement:5}});
  assert.equal(patched.movement,5);
