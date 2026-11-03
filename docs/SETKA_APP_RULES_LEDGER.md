@@ -62,6 +62,9 @@ These facts are stored *only* as `introducedAt` inside their descriptors. Any fu
 
 | APP-032 | Для объёмных батутных паттернов приземление происходит у ближней границы решётки; после контакта смещение **камеры вдоль оси глубины ОТ фигур** (больший cameraZ), а не сдвиг куба вверх или полёт к нему с батутом сзади. Дальность, частота и упругость независимы и детерминированы от frame/config: один renderer служит геймплею, превью, сохранениям и Replay. Новый модуль начинается белым по чёрному, а публикацией/выключением управляет общий server-state, без исключений по ID. | **Реализовано в однофайловом `standalone-pattern-matrix-trampoline.js` и regression `tests/standalone-matrix-trampoline.test.mjs`; CI/Pages/серверный `published`/физический iPhone — отдельные доказательства.** |
 
+
+| APP-033 | Каждый новый визуальный паттерн сначала согласуется в действующем интерактивном превью прямо в чате. Только после явного одобрения пакет подключается через один модуль с дескриптором, без ручных ID в экранах. Для «Ветвящегося импульса» тонкие и толстые линии, вращение вокруг оси, выбор и изгиб конкретной ветки и её дочерних ветвей, движущийся неон и радиальная радуга должны детерминированно воспроизводиться по frame/config. Не больше 9 палитр, белый рисунок на чёрном фоне по умолчанию; включение в public требует подтверждённого server-state и read-back. | **Код + Node регрессии:** `standalone-pattern-branching-impulse.js`, `tests/standalone-branching-impulse.test.mjs`. CI, Pages, сервер и устройство проверяются отдельно. |
+
 **Vocabulary:** `CI enforceable` means an executable guard runs on repository code; `CI partial` means some scenarios are automated but not all devices/accounts; `TARGET` means a required capability is not yet demonstrated. **Never convert TARGET to DONE merely by changing this document.**
 
 ## Rule intake: how every future conversation decision becomes a feature of SETKA
