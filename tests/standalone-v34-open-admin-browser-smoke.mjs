@@ -75,7 +75,8 @@ try{
       return route.fulfill({status:200,contentType:"application/json",headers:cors,
         body:JSON.stringify({ok:true,adminKey:freshAdminKey})});
     }
-    if(body.adminKey!=="stale-invalid-key"&&body.adminKey!==freshAdminKey)
+    // Public catalog/telemetry requests need no key. Only reject a *present* rogue admin key.
+    if(body.adminKey&&body.adminKey!=="stale-invalid-key"&&body.adminKey!==freshAdminKey)
       throw Error("An unexpected admin key was sent to the fixture");
     if(body.adminKey==="stale-invalid-key")return route.fulfill({status:403,contentType:"application/json",headers:cors,
       body:JSON.stringify({error:"invalid_admin_key"})});
