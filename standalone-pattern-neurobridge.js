@@ -461,6 +461,53 @@ function road(c,s,here){
  return [(c.turns*(xBase+xRandom))+c.steerX*4.3*approach,
          rawY*verticalAmplitude+c.steerY*3.6*approach,s];
 }
+
+// Arc-length parameterization. The visual centerline is defined in world Z,
+// but our train and the sleepers must advance in METRES ALONG THE 3D CURVE.
+// Equal Z intervals look stretched on steep hills; advancing Z at constant
+// rate also causes a sudden real-world speed-up on steep climbs and descents.
+// This monotone inverse arc-length table fixes both defects together.
+//
+// It is purely derived from route config and never relies on animation frame
+// order; saved snapshots and research Replay reproduce the same geometry.
+// The live finger-steering onset is local to the rider. Its derivative is
+// zero at the current rail point, so the stable base route gives exactly the
+// physical speed at the carriage without reparameterization jumps on touch.
+const ARC_STEP=.22,ARC_CACHE_LIMIT=5,arcCache=new Map();
+function arcMap(c){
+ const key=[c.turns,c.turnSharpness,c.climbs,c.dropDepth,
+            c.hillSharpness,c.randomness,c.routeSeed].join("|");
+ if(arcCache.has(key)){
+  const hit=arcCache.get(key);arcCache.delete(key);arcCache.set(key,hit);
+  return hit;
+ }
+ const metricConfig={...c,steerX:0,steerY:0};
+ const makeSide=sign=>({sign,ss:[0],dd:[0],last:road(metricConfig,0,0)});
+ const positive=makeSide(1),negative=makeSide(-1);
+ function at(distance){
+  if(!Number.isFinite(distance))return 0;
+  if(distance===0)return 0;
+  const target=Math.abs(distance),side=distance>=0?positive:negative;
+  while(side.dd[side.dd.length-1]<target){
+   const s=side.sign*side.ss.length*ARC_STEP,p=road(metricConfig,s,0);
+   side.ss.push(s);
+   side.dd.push(side.dd[side.dd.length-1]+Math.hypot(
+    p[0]-side.last[0],p[1]-side.last[1],p[2]-side.last[2]));
+   side.last=p;
+  }
+  let low=0,high=side.dd.length-1;
+  while(high-low>1){
+   const mid=(low+high)>>>1;
+   if(side.dd[mid]<target)low=mid;else high=mid;
+  }
+  return lerp(side.ss[low],side.ss[high],
+    (target-side.dd[low])/(side.dd[high]-side.dd[low]));
+ }
+ const result={at};
+ arcCache.set(key,result);
+ if(arcCache.size>ARC_CACHE_LIMIT)arcCache.delete(arcCache.keys().next().value);
+ return result;
+}
 function color(c,s,a){
  const mode=c.colorModeIndex,alpha=clamp(a,0,1);
  if(mode===0)return "rgba(255,255,255,"+alpha+")";
@@ -493,7 +540,7 @@ const sky=Array.from({length:950},(_,i)=>{
 // actual 3D rails. It never falls through a rising or descending section.
 // Looking around rotates the head, not the carriage.
 function cameraPose(c,frame){
- const here=travel(c,frame);
+ const hereDistance=travel(c,frame),map=arcMap(c),here=map.at(hereDistance);
  const rail=road(c,here,here);
  const span=.12+(1-c.follow)*1.2;
  const tangent=norm(sub(road(c,here+span,here),road(c,here-span,here)));
@@ -514,7 +561,7 @@ function cameraPose(c,frame){
  const side=[Math.cos(yaw),0,-Math.sin(yaw)],up=norm(cross(forward,side));
  const right=add(mul(side,Math.cos(bank)),mul(up,Math.sin(bank)));
  const vertical=sub(mul(up,Math.cos(bank)),mul(side,Math.sin(bank)));
- return {here,rail,tangent,carriageUp,carriageRight,heightAboveRail,eye,forward,right,vertical,bank,basePitch};
+ return {here,hereDistance,map,rail,tangent,carriageUp,carriageRight,heightAboveRail,eye,forward,right,vertical,bank,basePitch};
 }
 // Geometric near-plane clipping (not throwing away an entire rib when just
 // one of its endpoints passes the observer). Both endpoints are continuous
@@ -534,13 +581,14 @@ function projectSegment(a,b,view,focal,w,h){
  if(!Number.isFinite(pa.x+pa.y+pb.x+pb.y))return null;
  return [pa,pb];
 }
-function railExtent(c,here,spacing){
- const frontier=here+10.5+(1-c.growthPosition)*106;
- return {frontier,first:Math.floor((here-22)/spacing)*spacing,last:Math.min(here+113,frontier)};
+function railExtent(c,hereDistance,spacing){
+ const frontier=hereDistance+10.5+(1-c.growthPosition)*106;
+ return {frontier,first:Math.floor((hereDistance-22)/spacing)*spacing,
+  last:Math.min(hereDistance+113,frontier)};
 }
 function render(ctx,width,height,c,frame,preview){
  const w=Math.max(1,width),h=Math.max(1,height),m=Math.min(w,h),f=Math.max(0,Number(frame)||0);
- const view=cameraPose(c,f),{here,eye,forward,right,vertical}=view;
+ const view=cameraPose(c,f),{here,hereDistance,map,eye,forward,right,vertical}=view;
  const focal=m*.5/Math.tan(c.fov*Math.PI/360);
  ctx.save();ctx.globalAlpha=1;ctx.fillStyle="#000";ctx.fillRect(0,0,w,h);
  // True directional 3D star field, projected through the SAME observer camera.
@@ -575,12 +623,12 @@ function render(ctx,width,height,c,frame,preview){
 // No proximity-dependent start, no fading away just before crossing under
 // the camera, and no dropped ribs for partially clipped projections.
  const spacing=clamp(1.32/c.density,.48,2.9);
- const {first,last,frontier}=railExtent(c,here,spacing);
+ const {first,last,frontier}=railExtent(c,hereDistance,spacing);
  const count=Math.min(preview?290:350,Math.ceil((last-first)/spacing)+1);
  const ribs=[];
  for(let i=0;i<count;i++){
-  const s=first+i*spacing;if(s>last+1e-6)break;
-  const center=road(c,s,here);
+  const d=first+i*spacing;if(d>last+1e-6)break;
+  const s=map.at(d),center=road(c,s,here);
   const tangent=norm(sub(road(c,s+.25,here),road(c,s-.25,here)));
   const lateral=norm(cross([0,1,0],tangent)),normal=norm(cross(tangent,lateral));
   const curve=road(c,s+2,here)[0]-road(c,s-2,here)[0];
@@ -589,7 +637,7 @@ function render(ctx,width,height,c,frame,preview){
   const uu=sub(mul(normal,Math.cos(tilt)),mul(lateral,Math.sin(tilt)));
   const widthScale=1.92*c.width*(1+c.pulse*.035*Math.sin(s*.34-here*.62));
   const point=(dx,dy)=>add(center,add(mul(rr,dx*widthScale),mul(uu,dy*widthScale)));
-  ribs.push({s,C:center,L:point(-1,0),R:point(1,0),
+  ribs.push({s,d,C:center,L:point(-1,0),R:point(1,0),
    BL:point(-1.2,0),BR:point(1.2,0),
    TL:point(-1.2,.52),TR:point(1.2,.52),
    DL:point(.82,-.12),DR:point(-.82,-.12)});
@@ -609,14 +657,14 @@ function render(ctx,width,height,c,frame,preview){
  // clip them when they genuinely pass out of the CAMERA frustum.
  for(let i=ribs.length-1;i>0;i--){
   const a=ribs[i-1],b=ribs[i],z=(depth(a.C)+depth(b.C))*.5;
-  const born=Math.min(smooth((frontier-a.s)/5),smooth((frontier-b.s)/5));
+  const born=Math.min(smooth((frontier-a.d)/5),smooth((frontier-b.d)/5));
   const far=smooth((113-z)/48);
   const alpha=.36*born*far;
   for(const edge of ["BL","BR"])stroke(a[edge],b[edge],b.s,alpha,1);
  }
  for(let i=ribs.length-1;i>=0;i--){
   const p=ribs[i],z=depth(p.C),close=clamp(8/Math.max(.24,z),.08,1);
-  const born=smooth((frontier-p.s)/5);
+  const born=smooth((frontier-p.d)/5);
   const far=smooth((113-z)/48);
   // No near-front cutout: a crossbar stays in the picture until the car
   // actually crosses it, then exits by correct perspective near clipping.
