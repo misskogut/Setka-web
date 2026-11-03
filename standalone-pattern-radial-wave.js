@@ -75,13 +75,6 @@ function centerAt(c,f){
  return {x:c.fromX+(c.centerX-c.fromX)*blend,y:c.fromY+(c.centerY-c.fromY)*blend};
 }
 function phaseAt(c,f){return c.phase-TAU/180*c.speed*(f-c.phaseFrame)}
-function color(mode,d,p,f){
- if(mode===0)return "#fff";
- if(mode===7)return "hsl("+(((d*.66+phaseAt(p.config,f)*110)%360+360)%360)+" 95% 70%)";
- if(mode===8)return "hsl("+(155+145*(.5+.5*Math.sin(d*.019+p.phase)))+" 95% 74%)";
- const rgb=palettes[mode]||palettes[0];
- return "rgb("+rgb.join(",")+")";
-}
 function paint(ctx,w,h,c,f,shadow=false,preview=false){
  const unit=w/c.density,maxD=Math.hypot(w/2,h/2);
  const waveCenter=centerAt(c,f),ox=waveCenter.x*w,oy=waveCenter.y*h;
