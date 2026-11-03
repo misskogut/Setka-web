@@ -59,29 +59,37 @@ try{
   assert.equal(await privatePage.locator('#dashboard .tab[data-tab="pattern-knowledge"]').count(),1);
   console.log("FULL MAIN ADMIN ALL 11 SECTIONS PRESENT PASS");
 
-  // A private owner link must override any stale invalid stored password.
-  // The fragment is removed immediately, never hardcoded into public JS.
+  // Query recovery tickets are captured before application scripts, scrubbed
+  // from the address bar, and NEVER treated as reusable admin passwords.
+  // Invalid previous admin keys must not authenticate or override a new login.
   const ownerPage=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
-  const fakeOwner="SKA-"+"a".repeat(48),ownerRequests=[];
+  const ticket="SETKA1-"+"a".repeat(64),freshAdminKey="SKA-"+"b".repeat(48),ownerRequests=[];
   await ownerPage.addInitScript(()=>{
     localStorage.setItem("setka-research:admin-key:v1","stale-invalid-key");
   });
   await ownerPage.route("**/functions/v1/**",async route=>{
     const req=route.request(),body=req.postDataJSON();
     ownerRequests.push({action:body.action,adminKey:body.adminKey});
+    if(body.adminKey==="stale-invalid-key")return route.fulfill({
+      status:403,contentType:"application/json",
+      headers:{"access-control-allow-origin":"*"},body:JSON.stringify({error:"invalid_admin_key"})
+    });
     await route.fulfill({status:200,contentType:"application/json",
       headers:{"access-control-allow-origin":"*"},
       body:JSON.stringify(body.action==="admin-overview"?{devices:[]}:{ok:true,devices:[],items:[],participants:[],sessions:[],symptoms:[],invites:[],insights:[]})});
   });
-  await ownerPage.goto(base+"/standalone-admin-v34.html#access="+fakeOwner,{waitUntil:"domcontentloaded"});
+  await ownerPage.goto(base+"/standalone-admin-v34.html?owner_ticket="+ticket,{waitUntil:"domcontentloaded"});
+  await ownerPage.waitForFunction(ticket=>window.__SETKA_OWNER_TICKET===ticket,ticket,{timeout:12000});
+  assert.equal(new URL(ownerPage.url()).searchParams.has("owner_ticket"),false,"recovery ticket must be removed immediately");
+  assert.equal(await ownerPage.evaluate(()=>location.hash),"");
+  assert.equal(await ownerPage.evaluate(()=>localStorage.getItem("setka-research:admin-key:v1")),"stale-invalid-key",
+    "recovery tickets may not be stored as administrator passwords");
+  await ownerPage.locator("#keyInput").fill(freshAdminKey);
+  await ownerPage.locator("#loginBtn").click();
   await ownerPage.waitForFunction(()=>!document.getElementById("dashboard")?.classList.contains("hidden"),{timeout:12000});
-  // Wait for the credential storage write after WebKit makes the admin visible.
-  await ownerPage.waitForFunction(key=>localStorage.getItem("setka-research:admin-key:v1")===key,fakeOwner,{timeout:12000});
-  assert.equal(await ownerPage.evaluate(()=>location.hash),"","secret fragment must be removed from address bar");
-  assert.equal(await ownerPage.evaluate(()=>localStorage.getItem("setka-research:admin-key:v1")),fakeOwner);
-  assert.ok(ownerRequests.some(x=>x.action==="admin-overview"&&x.adminKey===fakeOwner));
-  assert.ok(ownerRequests.filter(x=>x.adminKey).every(x=>x.adminKey===fakeOwner),"all authenticated admin calls must use new owner credential");
+  await ownerPage.waitForFunction(key=>localStorage.getItem("setka-research:admin-key:v1")===key,freshAdminKey,{timeout:12000});
+  assert.ok(ownerRequests.some(x=>x.action==="admin-overview"&&x.adminKey===freshAdminKey));
+  assert.ok(ownerRequests.every(x=>x.adminKey!==ticket),"one-time recovery ticket must never leak into legacy API calls");
   assert.ok((await ownerPage.locator("#dashboard .tab[data-tab]").count())>=11);
-  console.log("ONE-CLICK OWNER LOGIN WITH STALE PREVIOUS KEY PASS");
-  console.log("PRIVATE ADMIN REMAINS AUTHENTICATED PASS");
+  console.log("RECOVERY TICKET SCRUB / STALE KEY REJECTION / PRIVATE ADMIN LOGIN PASS");
 }finally{await browser?.close();server.kill("SIGTERM")}
