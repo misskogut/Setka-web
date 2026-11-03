@@ -19,7 +19,7 @@ function draw(c,f=70,preview=false){
   fillStyle:"#000",strokeStyle:"#fff",globalAlpha:1,
   save(){},restore(){},beginPath(){},arc(x,y,r){this.arcValues=[x,y,r]},
   fillRect(x,y,w,h){if(this.fillStyle==="#000")commands.push(["black",x,y,w,h])},
-  fill(){if(this.arcValues&&commands.length<150)commands.push(["dot",...this.arcValues,this.fillStyle,this.globalAlpha])},
+  fill(){if(this.arcValues&&commands.length<10000)commands.push(["dot",...this.arcValues,this.fillStyle,this.globalAlpha])},
   stroke(){if(this.arcValues&&commands.length<150)commands.push(["trail",...this.arcValues,this.strokeStyle,this.globalAlpha])}
  };
  R.render(ctx,250,300,c,f,preview,descriptor.id);
@@ -72,11 +72,12 @@ test("double tap resets wave center; simultaneous impulse/twist/magnet use one r
  let c=conf();
  c={...c,pulse:80,twist:60,magnet:45};
  c=gesture(c,"start",40,340,600);
- assert.equal(c.pulses.length,1);
+ assert.equal(c.pulses.length,3);
  c=gesture(c,"move",49,330,590,-10,-10);
- assert.equal(c.pulses.length,2);
+ assert.equal(c.pulses.length,6);
  assert.notEqual(c.spin,0);
  assert.deepEqual(draw(c,53),draw(c,53),"combined effects are replayable");
+ assert.notEqual(R.configKey(c,descriptor.id),R.configKey({...c,pulses:[]},descriptor.id),"pulse position must contribute to canonical configuration identity");
  c=gesture(c,"end",55,330,590);
  assert.equal(c.touchActive,false);
  c=gesture(c,"start",57,340,600);
