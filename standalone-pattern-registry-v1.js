@@ -116,7 +116,7 @@
     }catch(e){return {ok:false,config:null,issues:[e.code||e.message]}}
   }
   function configKey(c,hint=null){const x=normalize(c,hint),p=requirePattern(x.patternId);
-    if(p.keyFields)return [p.id,...p.keyFields.map(k=>typeof x[k]==="boolean"?(x[k]?1:0):Math.round(Number(x[k])*100000)/100000)].join("|");
+    if(p.keyFields)return [p.id,...p.keyFields.map(k=>Array.isArray(x[k])?JSON.stringify(x[k]):typeof x[k]==="boolean"?(x[k]?1:0):Math.round(Number(x[k])*100000)/100000)].join("|");
     return p.id+"|"+Object.keys(x).sort().map(k=>k+":"+JSON.stringify(x[k])).join("|");
   }
   function revision(){let h=2166136261;for(const ch of JSON.stringify([...records.values()]))h=Math.imul(h^ch.charCodeAt(0),16777619);return "registry-2-"+(h>>>0).toString(16)}
