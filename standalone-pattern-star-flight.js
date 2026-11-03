@@ -92,7 +92,10 @@ function position(c,f,b){
  return {x:wrap(c.originX+b.fx*dist),y:wrap(c.originY+b.fy*dist),z:wrap(c.originZ+b.fz*dist)};
 }
 function rebase(c,patch,frame){
- if(!["speed","rollRate","yaw","pitch"].some(k=>Object.hasOwn(patch,k)))return {...c,...patch};
+ // A complete defaults/restoration patch explicitly supplies its own anchor.
+ // Never preserve an old camera position when the user presses Reset.
+ if(["anchorFrame","originX","originY","originZ","rollOffset"].every(k=>Object.hasOwn(patch,k)))return {...c,...patch};
+ if(!["speed","rollRate","yaw","pitch"].some(k=>Object.hasOwn(patch,k)&&patch[k]!==c[k]))return {...c,...patch};
  const f=clamp(frame,0,1e9),old=basis(c,f),p=position(c,f,old);
  return {...c,...patch,anchorFrame:f,originX:p.x,originY:p.y,originZ:p.z,rollOffset:positive(old.roll+Math.PI,TAU)-Math.PI};
 }
@@ -140,7 +143,7 @@ function render(ctx,width,height,c,frame){
  const mode=Math.round(clamp(c.colorModeIndex,0,8));
  const staticColor=mode<4?"rgb("+fixed[mode].join(",")+")":mode===4?hsb(f*.6,.9,1):null;
  const lut=mode>=5?rainbowLut(mode,f):null;
- ctx.save();ctx.fillStyle="#000";ctx.fillRect(0,0,w,h);ctx.translate(w/2,h/2);
+ ctx.save();ctx.globalAlpha=1;ctx.fillStyle="#000";ctx.fillRect(0,0,w,h);ctx.translate(w/2,h/2);
  if(staticColor)ctx.fillStyle=staticColor;
  for(let i=0,j=0;i<count;i++,j+=3){
   const dx=wrap(xyz[j]-p.x),dy=wrap(xyz[j+1]-p.y),dz=wrap(xyz[j+2]-p.z);
