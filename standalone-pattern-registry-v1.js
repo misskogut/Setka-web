@@ -2,7 +2,7 @@
   "use strict";
   const root=typeof window==="object"?window:globalThis;
   if(root.SetkaPatternRegistryV1)return;
-  const SCHEMA=2, records=new Map(),renderers=new Map(),titles=new Map(),overrides=new Map();
+  const SCHEMA=2, records=new Map(),renderers=new Map(),interactions=new Map(),titles=new Map(),overrides=new Map();
   const copy=v=>v==null?v:JSON.parse(JSON.stringify(v));
   const freeze=v=>{if(v&&typeof v==="object"){Object.values(v).forEach(freeze);Object.freeze(v)}return v};
   const safeId=id=>typeof id==="string"&&/^[a-z][a-z0-9-]{2,79}$/.test(id);
@@ -130,6 +130,20 @@
     }catch(e){return {ok:false,reason:e.code||"invalid_configuration",snapshot:copy(raw)}}
   }
   function bindRenderer(id,render){requirePattern(id);if(typeof render!=="function")throw error("invalid_renderer",id);renderers.set(id,render);emit("setka:renderer-ready",{patternId:id})}
+  // Optional module-owned controller; no hardcoded new pattern IDs in hosts.
+  function bindInteraction(id,handler){
+    requirePattern(id);
+    if(typeof handler!=="function")throw error("invalid_interaction",id);
+    interactions.set(id,handler);
+  }
+  function interact(id,config,event){
+    requirePattern(id);
+    const handler=interactions.get(id);
+    if(!handler)return null;
+    const output=handler(copy(config),copy(event));
+    if(!output||typeof output!=="object"||Array.isArray(output))throw error("invalid_interaction_result",id);
+    return normalize(output,id);
+  }
   function applyDefaults(rows=[]){
     let changed=false;
     for(const row of rows){const p=get(row.pattern_id||row.patternId);if(!p||row.pattern_version!==p.version||row.schema_version!==p.schemaVersion)continue;
@@ -181,7 +195,7 @@
   function isActive(item){const id=identityOf(item);return (!publicCatalog||publishedIds.has(id))&&typeof id==="string"&&records.has(id)}
   function activeItems(rows){return Array.isArray(rows)?rows.filter(isActive):[]}
   const api={schemaVersion:SCHEMA,applyOrder,orderedIds,libraryIds,orderRevision:()=>orderRevision,usePublicCatalog,applyPublication,publicationRevision:()=>publicationRevision,register,get,has:id=>records.has(id),isActive,activeItems,identityOf,ids:()=>[...records.keys()],list:()=>[...records.values()].map(copy),
-    controls:id=>copy(get(id)?.controls||[]),inference,resolve,normalize,validate,configKey,snapshot,restore,revision,bindRenderer,render,
+    controls:id=>copy(get(id)?.controls||[]),inference,resolve,normalize,validate,configKey,snapshot,restore,revision,bindRenderer,bindInteraction,interact,render,
     ready:id=>renderers.has(id),supports:(id,feature)=>get(id)?.capabilities?.[feature]===true,
     title:id=>titles.get(id)?.title||get(id)?.title||id||"Неизвестный паттерн",setTitles,
     defaults:id=>copy(overrides.get(id)?.config||get(id)?.defaults||null),applyDefaults,

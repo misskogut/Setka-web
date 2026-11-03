@@ -59,18 +59,21 @@ test('every automatically discovered pattern renders its real white-on-black sta
    assert.equal(registry.restore(snap).ok,true,'immutable snapshot '+pattern.id);
    assert.ok(manifest.patterns.some(p=>p.id===pattern.id),'same manifest '+pattern.id);
    function trace(config,frame){
-     const strokes=[],fills=[],gradientStops=[];
-     let start,end,totalStrokes=0;
+     const strokes=[],fills=[],gradientStops=[],shapes=[];
+     let start,end,totalStrokes=0,lastArc=null;
      const ctx={
        save(){},restore(){},translate(){},scale(){},rotate(){},beginPath(){},
-       fillRect(){fills.push(this.fillStyle)},
+       fillRect(x,y,w,h){fills.push(this.fillStyle);
+         if(this.fillStyle!=='#000'&&shapes.length<24)shapes.push({kind:'rect',x,y,w,h,color:this.fillStyle})},
+       arc(x,y,r){lastArc={x,y,r}},
+       fill(){if(lastArc&&shapes.length<24)shapes.push({kind:'circle',...lastArc,color:this.fillStyle});lastArc=null},
        createLinearGradient(){const stops=[];gradientStops.push(stops);return {__stops:stops,addColorStop(_,v){stops.push(v)}}},
        moveTo(x,y){start=[x,y]},
        lineTo(x,y){end=[x,y]},
        stroke(){totalStrokes++;if(strokes.length<20)strokes.push({start,end,color:typeof this.strokeStyle==='string'?this.strokeStyle:this.strokeStyle.__stops.slice()});}
      };
      registry.render(ctx,250,250,config,frame,true,pattern.id);
-     return {strokes,fills,gradientStops,totalStrokes};
+     return {strokes,fills,gradientStops,totalStrokes,shapes};
    }
    // A future unknown package declaring a trail control must show a visibly
    // different, deterministic exposure at a fixed replay frame. This is
@@ -86,12 +89,12 @@ test('every automatically discovered pattern renders its real white-on-black sta
    }
    const a=trace(c,44),b=trace(c,44);
    assert.ok(a.fills.includes('#000'),'real black canvas '+pattern.id);
-   assert.ok(a.strokes.length>4,'actual dynamic line drawing '+pattern.id);
+   assert.ok(a.strokes.length>4||a.shapes.length>4,'actual dynamic art '+pattern.id);
    assert.deepEqual(a,b,'deterministic replay '+pattern.id);
-   assert.notDeepEqual(a.strokes,trace(c,65).strokes,'the animation actually moves '+pattern.id);
-   const paint=[...a.strokes.map(st=>st.color).filter(x=>typeof x==='string'),...a.gradientStops.flat()];
+   assert.notDeepEqual({strokes:a.strokes,shapes:a.shapes},{strokes:trace(c,65).strokes,shapes:trace(c,65).shapes},'the animation actually moves '+pattern.id);
+   const paint=[...a.strokes.map(st=>st.color).filter(x=>typeof x==='string'),...a.gradientStops.flat(),...a.shapes.map(item=>item.color)];
    assert.ok(paint.length>0,'visible stroke colors '+pattern.id);
-   assert.ok(paint.every(color=>/rgba\(255,255,255,/.test(color)),'first frame monochrome '+pattern.id);
+   assert.ok(paint.every(color=>/rgba\(255,255,255,/.test(color)||color==='rgb(255,255,255)'||color==='#fff'),'first frame monochrome '+pattern.id);
  }
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
@@ -144,12 +147,16 @@ test('release chronology, not alphabetical filenames, drives front and research 
  try{
   const {source,manifest}=build(dir),R=loadRegistry(source);
   const ids=R.list().map(p=>p.id);
-  assert.equal(ids.at(-1),'rain','Rain is the newest remaining active module');
-  assert.equal(manifest.patterns.at(-1).id,'rain',
-   'front/research manifest agrees on newest surviving active pattern');
+  const descriptors=fs.readdirSync(dir).filter(name=>/^standalone-pattern-[a-z0-9-]+\.js$/.test(name))
+    .map(name=>fs.readFileSync(path.join(dir,name),'utf8').match(/^\/\* SETKA_PATTERN_DESCRIPTOR\n([\s\S]*?)\nEND_SETKA_PATTERN_DESCRIPTOR/))
+    .filter(Boolean).map(match=>JSON.parse(match[1]));
+  const expected=descriptors.sort((a,b)=>Date.parse(a.introducedAt)-Date.parse(b.introducedAt)).at(-1).id;
+  assert.equal(ids.at(-1),expected,'newest descriptor is last by release time');
+  assert.equal(manifest.patterns.at(-1).id,expected,
+   'front/research manifest agrees on newest active pattern');
   // A future ID sorts by introducedAt even when its filename comes first.
   fs.writeFileSync(path.join(dir,'standalone-pattern-aaa-future.js'),
-    packageContent(mini('aaa-future',{introducedAt:'2026-10-23T12:00:00.000Z'})));
+    packageContent(mini('aaa-future',{introducedAt:'2026-11-05T12:00:00.000Z'})));
   const next=build(dir),after=loadRegistry(next.source).list().map(p=>p.id);
   assert.equal(after.at(-1),'aaa-future','newly released algorithm follows Rain by date');
   assert.equal(next.manifest.patterns.at(-1).id,'aaa-future');

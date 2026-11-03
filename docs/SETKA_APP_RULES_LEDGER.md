@@ -55,6 +55,8 @@ These facts are stored *only* as `introducedAt` inside their descriptors. Any fu
 
 | APP-028 | Владелец меняет порядок всех установленных паттернов в админке кнопками/выбором позиции и явно сохраняет. Один сервисный RPC с ожидаемой ревизией, историей и read-back; публичная выдача фильтрует скрытые ID. Порядок не меняет публикацию, версии, даты выпуска, сохранения или статистику. Будущие ID дополняются автоматически; черновик не теряется при автообновлении. | Код + Node/SQL/Chromium/WebKit сценарии в publication suite; поставка и устройство проверяются отдельно. |
 
+| APP-029 | Существующие и будущие однофайловые паттерны поддерживают до 9 устойчивых по индексу цветовых режимов (первый старт — белая графика на чёрном). Сложные параметры камеры/двухпальцевые жесты обрабатываются через опциональный типизированный редьюсер модуля в общем реестре, а не через проверки конкретного ID во фронте. Обновление ориентации и скорости сохраняет якорную позицию камеры и воспроизводимо по frame/config в заметке, сохранении и Replay. | **Код + тесты:** `bindInteraction/interact`, общая передача центра двух пальцев, 9 палитр Star Flight, Node regressions. **TARGET / UNVERIFIED:** full CI, iPhone performance, cross-device and production publication. |
+
 **Vocabulary:** `CI enforceable` means an executable guard runs on repository code; `CI partial` means some scenarios are automated but not all devices/accounts; `TARGET` means a required capability is not yet demonstrated. **Never convert TARGET to DONE merely by changing this document.**
 
 ## Rule intake: how every future conversation decision becomes a feature of SETKA
