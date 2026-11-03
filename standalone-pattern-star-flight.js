@@ -3,7 +3,7 @@
   "id": "star-flight",
   "title": "Полёт среди звёзд",
   "version": 1,
-  "introducedAt": "2026-11-04T00:00:00.000Z",
+  "introducedAt": "2026-11-03T20:58:00.000Z",
   "schemaVersion": 1,
   "module": "standalone-pattern-star-flight.js",
   "colorModes": 9,
@@ -82,13 +82,13 @@ function basis(c,frame){
  const sy=Math.sin(yaw),cy=Math.cos(yaw),sp=Math.sin(pitch),cp=Math.cos(pitch);
  const fx=sy*cp,fy=-sp,fz=cy*cp;
  const r0x=cy,r0z=-sy,u0x=sy*sp,u0y=cp,u0z=cy*sp;
- const roll=clamp(c.rollOffset,-1e6,1e6)+clamp(c.rollRate,0,.06)*Math.max(0,frame-c.anchorFrame);
+ const roll=clamp(c.rollOffset,-1e6,1e6)+clamp(c.rollRate,0,.06)*(frame-c.anchorFrame);
  const cr=Math.cos(roll),sr=Math.sin(roll);
  return {fx,fy,fz,roll,rx:r0x*cr+u0x*sr,ry:u0y*sr,rz:r0z*cr+u0z*sr,
   ux:u0x*cr-r0x*sr,uy:u0y*cr,uz:u0z*cr-r0z*sr};
 }
 function position(c,f,b){
- const dist=Math.max(0,f-c.anchorFrame)*c.speed;
+ const dist=(f-c.anchorFrame)*c.speed;
  return {x:wrap(c.originX+b.fx*dist),y:wrap(c.originY+b.fy*dist),z:wrap(c.originZ+b.fz*dist)};
 }
 function rebase(c,patch,frame){
