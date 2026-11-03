@@ -203,7 +203,11 @@ function render(ctx,width,height,c,frame,preview=false){
    if(size*scale<.42)continue;
    ctx.fillStyle=color(mode,i,1-j/len,target);
    ctx.beginPath();
-   for(const p of b.arms)ctx.arc(p[j*2],p[j*2+1],size/2,0,TAU);
+   for(const p of b.arms){
+    const x=p[j*2],y=p[j*2+1],r=size/2;
+    ctx.moveTo(x+r,y);
+    ctx.arc(x,y,r,0,TAU);
+   }
    ctx.fill();
   }
  }
