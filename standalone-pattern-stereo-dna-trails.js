@@ -112,7 +112,7 @@ END_SETKA_PATTERN_DESCRIPTOR */
     ctx.globalAlpha=1;
     if(s.needsClear){ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);s.needsClear=false;}
     // The original uses background(0,20), NOT an opaque black fill each frame.
-    ctx.fillStyle='rgba(0,0,0,0.0784313725)';ctx.fillRect(0,0,w,h);
+    ctx.globalAlpha=20/255;ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);ctx.globalAlpha=1;
     ctx.translate(w/2,h/2);
     let scale=clamp(c.zoom,.3,5);
     if(thumbnail){
