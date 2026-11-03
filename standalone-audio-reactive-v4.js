@@ -426,7 +426,13 @@
         !Number.isFinite(step)||step>=1||staticTopology.has(key)||key==="zoom"||
         /(?:count|number|depth|layers|branches|num|points|rings|cols|rows)/i.test(key))continue;
       const channel=mix[(count+modeNumber-1)%3];
-      out[key]=[channel,.10,modeNumber%2===0?"swing":"grow",min,max];
+      // Multiplicative responses cannot animate a control whose neutral
+      // default is zero (e.g. 3D roll, blur or camera pitch). Use a bounded
+      // absolute increment scaled by the control's own range instead.
+      const neutral=Math.abs(Number(pattern.defaults?.[key])||0)<Math.max(step,1e-8);
+      const response=neutral?"add":modeNumber%2===0?"swing":"grow";
+      const strength=neutral?Math.min(max-min,Math.max(step*20,(max-min)*.015)):.10;
+      out[key]=[channel,strength,response,min,max];
       if(++count>=3)break;
     }
     return count?out:null;
