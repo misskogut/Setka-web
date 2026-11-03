@@ -395,7 +395,7 @@
       sx<=r.width*e?"left":sx>=r.width*(1-e)?"right":"center";
     const result=registry.interact?.(runtimePatternId,runtimeConfig,{
       type:"gesture",phase:"move",frame:currentFrame,zone,x,y,dx,dy,fingers,
-      width:r.width,height:r.height,pinch,
+      startX:sx,startY:sy,width:r.width,height:r.height,pinch,
       pinchDistance:currentDist,previousPinchDistance:touch.lastDist
     });
     if(result)runtimeConfig=result;
