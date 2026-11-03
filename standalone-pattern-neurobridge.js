@@ -488,28 +488,56 @@ const sky=Array.from({length:950},(_,i)=>{
   phase:frac(Math.sin(i*31.37+6)*8319)*TAU,
   rate:.5+frac(Math.sin(i*21.19)*7331)*2.2};
 });
-function render(ctx,width,height,c,frame,preview){
- const w=Math.max(1,width),h=Math.max(1,height),m=Math.min(w,h),f=Math.max(0,Number(frame)||0);
- const here=travel(c,f),near=road(c,here,here);
- const ahead=road(c,here+6.5+3*c.follow,here);
- const direction=norm(sub(ahead,near));
- const eyeHeight=.35+(1-c.proximity)*3.15;
- const backward=(1-c.proximity)*2.1;
- const trackSide=norm(cross([0,1,0],direction));
- const eye=add(add(sub(near,mul(direction,backward)),[0,eyeHeight,0]),mul(trackSide,c.lanePosition*1.75*c.width));
- const baseYaw=Math.atan2(direction[0],direction[2]),basePitch=Math.atan2(direction[1],Math.hypot(direction[0],direction[2]));
- const yaw=baseYaw+c.lookYaw,pitch=basePitch+c.lookPitch-.095;
+
+// Track-bound vehicle: the camera is mounted at the CURRENT point on the
+// actual 3D rails. It never falls through a rising or descending section.
+// Looking around rotates the head, not the carriage.
+function cameraPose(c,frame){
+ const here=travel(c,frame);
+ const rail=road(c,here,here);
+ const span=.12+(1-c.follow)*1.2;
+ const tangent=norm(sub(road(c,here+span,here),road(c,here-span,here)));
+ const trackRight=norm(cross([0,1,0],tangent));
+ const trackUp=norm(cross(tangent,trackRight));
+ const curve=road(c,here+5,here)[0]-road(c,here-5,here)[0];
+ const bank=clamp(curve*.02,-.26,.26)*c.bank;
+ const carriageRight=add(mul(trackRight,Math.cos(bank)),mul(trackUp,Math.sin(bank)));
+ const carriageUp=sub(mul(trackUp,Math.cos(bank)),mul(trackRight,Math.sin(bank)));
+ const heightAboveRail=.30+(1-c.proximity)*3.15;
+ // No backwards pull: adjusting height changes only height, NEVER which
+ // piece of road is generated or where the carriage sits longitudinally.
+ const eye=add(add(rail,mul(carriageUp,heightAboveRail)),mul(carriageRight,c.lanePosition*1.75*c.width));
+ const baseYaw=Math.atan2(tangent[0],tangent[2]);
+ const basePitch=Math.atan2(tangent[1],Math.hypot(tangent[0],tangent[2]));
+ const yaw=baseYaw+c.lookYaw,pitch=basePitch+c.lookPitch-.075;
  const forward=[Math.sin(yaw)*Math.cos(pitch),Math.sin(pitch),Math.cos(yaw)*Math.cos(pitch)];
  const side=[Math.cos(yaw),0,-Math.sin(yaw)],up=norm(cross(forward,side));
- const roll=clamp((road(c,here+5,here)[0]-road(c,here-5,here)[0])*.02,-.26,.26)*c.bank;
- const right=add(mul(side,Math.cos(roll)),mul(up,Math.sin(roll)));
- const vertical=sub(mul(up,Math.cos(roll)),mul(side,Math.sin(roll)));
+ const right=add(mul(side,Math.cos(bank)),mul(up,Math.sin(bank)));
+ const vertical=sub(mul(up,Math.cos(bank)),mul(side,Math.sin(bank)));
+ return {here,rail,tangent,carriageUp,carriageRight,heightAboveRail,eye,forward,right,vertical,bank,basePitch};
+}
+// Geometric near-plane clipping (not throwing away an entire rib when just
+// one of its endpoints passes the observer). Both endpoints are continuous
+// in world coordinates, so rails pass beneath and BEHIND the camera.
+function projectSegment(a,b,view,focal,w,h){
+ const clipping=.24;
+ let av=sub(a,view.eye),bv=sub(b,view.eye);
+ let az=dot(av,view.forward),bz=dot(bv,view.forward);
+ if(az<clipping&&bz<clipping)return null;
+ if(az<clipping){
+  av=add(av,mul(sub(bv,av),(clipping-az)/(bz-az)));az=clipping;
+ }else if(bz<clipping){
+  bv=add(bv,mul(sub(av,bv),(clipping-bz)/(az-bz)));bz=clipping;
+ }
+ const point=(v,z)=>({x:w*.5+dot(v,view.right)*focal/z,y:h*.5-dot(v,view.vertical)*focal/z,z});
+ const pa=point(av,az),pb=point(bv,bz);
+ if(!Number.isFinite(pa.x+pa.y+pb.x+pb.y))return null;
+ return [pa,pb];
+}
+function render(ctx,width,height,c,frame,preview){
+ const w=Math.max(1,width),h=Math.max(1,height),m=Math.min(w,h),f=Math.max(0,Number(frame)||0);
+ const view=cameraPose(c,f),{here,eye,forward,right,vertical}=view;
  const focal=m*.5/Math.tan(c.fov*Math.PI/360);
- const project=p=>{
-  const v=sub(p,eye),z=dot(v,forward);
-  if(z<=.3)return null;
-  return {x:w*.5+dot(v,right)*focal/z,y:h*.5-dot(v,vertical)*focal/z,z};
- };
  ctx.save();ctx.globalAlpha=1;ctx.fillStyle="#000";ctx.fillRect(0,0,w,h);
  // True directional 3D star field, projected through the SAME observer camera.
  // Quantity, brightness, size, twinkle and soft bokeh are independent sliders.
@@ -538,58 +566,74 @@ function render(ctx,width,height,c,frame,preview){
    ctx.moveTo(x,y-size*1.5);ctx.lineTo(x,y+size*1.5);ctx.stroke();
   }
  }
- // Restore the original approved bridge proportions and clean crossbars,
- // posts, transverse diagonals, two uninterrupted side rails and perspective.
+
+// Full-length track exists BOTH ahead and behind the moving carriage.
+// No proximity-dependent start, no fading away just before crossing under
+// the camera, and no dropped ribs for partially clipped projections.
  const spacing=clamp(1.32/c.density,.48,2.9);
  const frontier=here+10.5+(1-c.growthPosition)*106;
- const first=Math.ceil((here+.22+(1-c.proximity)*3.5)/spacing)*spacing;
+ const first=Math.floor((here-22)/spacing)*spacing;
+ const last=Math.min(here+113,frontier);
+ const count=Math.min(preview?290:350,Math.ceil((last-first)/spacing)+1);
  const ribs=[];
- const count=Math.min(preview?85:165,Math.ceil(113/spacing));
  for(let i=0;i<count;i++){
-  const s=first+i*spacing;if(s>frontier)break;
+  const s=first+i*spacing;if(s>last+1e-6)break;
   const center=road(c,s,here);
   const tangent=norm(sub(road(c,s+.25,here),road(c,s-.25,here)));
-  const r=norm(cross([0,1,0],tangent)),u=norm(cross(tangent,r));
-  const curvature=road(c,s+2,here)[0]-road(c,s-2,here)[0];
-  const tilt=c.bank*clamp(curvature*.027,-.32,.32);
-  const rr=add(mul(r,Math.cos(tilt)),mul(u,Math.sin(tilt)));
-  const uu=sub(mul(u,Math.cos(tilt)),mul(r,Math.sin(tilt)));
+  const lateral=norm(cross([0,1,0],tangent)),normal=norm(cross(tangent,lateral));
+  const curve=road(c,s+2,here)[0]-road(c,s-2,here)[0];
+  const tilt=c.bank*clamp(curve*.027,-.32,.32);
+  const rr=add(mul(lateral,Math.cos(tilt)),mul(normal,Math.sin(tilt)));
+  const uu=sub(mul(normal,Math.cos(tilt)),mul(lateral,Math.sin(tilt)));
   const widthScale=1.92*c.width*(1+c.pulse*.035*Math.sin(s*.34-here*.62));
-  const point=(dx,dy)=>project(add(center,add(mul(rr,dx*widthScale),mul(uu,dy*widthScale))));
-  const p={s,C:project(center),L:point(-1,0),R:point(1,0),
+  const point=(dx,dy)=>add(center,add(mul(rr,dx*widthScale),mul(uu,dy*widthScale)));
+  ribs.push({s,C:center,L:point(-1,0),R:point(1,0),
    BL:point(-1.2,0),BR:point(1.2,0),
    TL:point(-1.2,.52),TR:point(1.2,.52),
-   DL:point(.82,-.12),DR:point(-.82,-.12)};
-  if(Object.keys(p).some(k=>k!=="s"&&(!p[k]||!Number.isFinite(p[k].x))))continue;
-  ribs.push(p);
+   DL:point(.82,-.12),DR:point(-.82,-.12)});
  }
- for(const edge of ["BL","BR"]){
-  ctx.beginPath();let started=false;
-  for(let i=ribs.length-1;i>=0;i--){
-   const p=ribs[i][edge];if(!started){ctx.moveTo(p.x,p.y);started=true}else ctx.lineTo(p.x,p.y);
-  }
-  ctx.lineWidth=1;ctx.strokeStyle=color(c,here+5,.36);ctx.stroke();
+ function stroke(a,b,s,alpha,width,glow=false){
+  if(alpha<.01)return;
+  const points=projectSegment(a,b,view,focal,w,h);
+  if(!points)return;
+  ctx.lineWidth=width;ctx.strokeStyle=color(c,s,alpha);
+  ctx.lineCap="round";ctx.lineJoin="round";
+  if(glow&&c.glow>0){ctx.shadowColor=color(c,s,.9);ctx.shadowBlur=c.glow*11}
+  ctx.beginPath();ctx.moveTo(points[0].x,points[0].y);
+  ctx.lineTo(points[1].x,points[1].y);ctx.stroke();ctx.shadowBlur=0;
+ }
+ const depth=p=>dot(sub(p,eye),forward);
+ // Side rails also extend behind the rider. Render back-to-front, and only
+ // clip them when they genuinely pass out of the CAMERA frustum.
+ for(let i=ribs.length-1;i>0;i--){
+  const a=ribs[i-1],b=ribs[i],z=(depth(a.C)+depth(b.C))*.5;
+  const born=Math.min(smooth((frontier-a.s)/5),smooth((frontier-b.s)/5));
+  const far=smooth((113-z)/48);
+  const alpha=.36*born*far;
+  for(const edge of ["BL","BR"])stroke(a[edge],b[edge],b.s,alpha,1);
  }
  for(let i=ribs.length-1;i>=0;i--){
-  const p=ribs[i],close=clamp(8/p.C.z,.08,1);
-  const fade=smooth((113-p.C.z)/48)*smooth((p.s-here-.12)/2)*smooth((frontier-p.s)/5);
-  const alpha=fade*(.24+.76*close);
+  const p=ribs[i],z=depth(p.C),close=clamp(8/Math.max(.24,z),.08,1);
+  const born=smooth((frontier-p.s)/5);
+  const far=smooth((113-z)/48);
+  // No near-front cutout: a crossbar stays in the picture until the car
+  // actually crosses it, then exits by correct perspective near clipping.
+  const alpha=born*far*(.24+.76*close);
   if(alpha<.015)continue;
-  ctx.lineCap="round";ctx.lineJoin="round";ctx.strokeStyle=color(c,p.s,alpha);
-  ctx.lineWidth=.7+1.25*close;
-  if(c.glow>0&&i%3===0){ctx.shadowColor=color(c,p.s,.9);ctx.shadowBlur=c.glow*11}
-  ctx.beginPath();ctx.moveTo(p.L.x,p.L.y);ctx.lineTo(p.R.x,p.R.y);ctx.stroke();
-  ctx.lineWidth=.5+1.22*close;
-  ctx.beginPath();
-  ctx.moveTo(p.TL.x,p.TL.y);ctx.lineTo(p.BL.x,p.BL.y);
-  ctx.moveTo(p.TR.x,p.TR.y);ctx.lineTo(p.BR.x,p.BR.y);
-  ctx.moveTo(p.BL.x,p.BL.y);ctx.lineTo(p.DL.x,p.DL.y);
-  ctx.moveTo(p.BR.x,p.BR.y);ctx.lineTo(p.DR.x,p.DR.y);
-  ctx.stroke();ctx.shadowBlur=0;
+  const glow=i%3===0;
+  stroke(p.L,p.R,p.s,alpha,.7+1.25*close,glow);
+  stroke(p.TL,p.BL,p.s,alpha,.5+1.22*close);
+  stroke(p.TR,p.BR,p.s,alpha,.5+1.22*close);
+  stroke(p.BL,p.DL,p.s,alpha,.5+1.22*close);
+  stroke(p.BR,p.DR,p.s,alpha,.5+1.22*close);
   if(c.pulse>0&&i%8===0){
    const q=(1+Math.sin(here*.31-p.s*.46))*.5;
-   ctx.beginPath();ctx.arc(lerp(p.L.x,p.R.x,q),lerp(p.L.y,p.R.y,q),.45+2.1*close,0,TAU);
-   ctx.fillStyle=color(c,p.s,alpha*c.pulse);ctx.fill();
+   const spark=add(p.L,mul(sub(p.R,p.L),q));
+   const points=projectSegment(spark,add(spark,mul(view.forward,.001)),view,focal,w,h);
+   if(points){
+    ctx.beginPath();ctx.arc(points[0].x,points[0].y,.45+2.1*close,0,TAU);
+    ctx.fillStyle=color(c,p.s,alpha*c.pulse);ctx.fill();
+   }
   }
  }
  ctx.restore();
