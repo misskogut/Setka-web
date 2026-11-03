@@ -67,7 +67,7 @@ test("camera rebase preserves position at interaction frame and moving saved pre
  assert.equal(moved.rollOffset,0);
  assert.deepEqual(draw(c,55).commands,draw(moved,55).commands,"speed change cannot teleport camera");
  c=moved;
- moved=R.interact(descriptor.id,c,{type:"gesture",frame:81,fingers:2,zone:"center",dx:20,dy:15});
+ moved=R.interact(descriptor.id,c,{type:"gesture",frame:81,fingers:1,zone:"center",dx:20,dy:-15,width:390,height:844});
  assert.ok(moved.yaw>0&&moved.pitch>0);
  assert.equal(moved.anchorFrame,81);
  assert.ok(Math.abs(moved.originZ-(1100+26*110))<1e-6);
@@ -75,14 +75,65 @@ test("camera rebase preserves position at interaction frame and moving saved pre
  const old=conf();
  assert.deepEqual(old,descriptor.defaults,"hooks never mutate caller's configuration");
 });
-test("one-finger zones map to their own values and two-finger controls combine axes",()=>{
- const c=conf();
- for(const [zone,dx,dy,key] of [["top",40,0,"rollRate"],["left",0,-40,"starCount"],
-   ["right",0,-30,"bokeh"],["center",40,0,"speed"]]){
-  const next=R.interact(descriptor.id,c,{type:"gesture",frame:40,fingers:1,zone,dx,dy});
-  assert.notEqual(next[key],c[key],zone+" responds");
-  for(const other of ["starCount","speed","rollRate","bokeh"].filter(x=>x!==key))assert.equal(next[other],c[other]);
+test("one-finger nose steering follows the finger on both axes and never alters speed",()=>{
+ const c=conf(),f=50;
+ for(const [dx,dy,yawSign,pitchSign] of [[50,0,1,0],[-50,0,-1,0],[0,-50,0,1],
+   [0,50,0,-1],[50,-50,1,1],[-50,50,-1,-1]]){
+  const steered=R.interact(descriptor.id,c,{type:"gesture",frame:f,fingers:1,zone:"center",dx,dy,width:390,height:844});
+  assert.equal(Math.sign(steered.yaw),yawSign, "course follows X sign");
+  assert.equal(Math.sign(steered.pitch),pitchSign, "nose follows inverted pixel Y sign");
+  for(const key of ["speed","starCount","bokeh","rollRate","colorModeIndex"])
+    assert.equal(steered[key],c[key],"course must not touch "+key);
+  assert.equal(steered.anchorFrame,f);
+  assert.equal(steered.originZ,1000,"position is anchored when rotating");
+  const snap=R.snapshot({patternId:descriptor.id,config:steered,frame:f});
+  assert.equal(R.restore(snap).ok,true,"steering persists across exact replay");
  }
- const steered=R.interact(descriptor.id,c,{type:"gesture",frame:40,fingers:2,zone:"center",dx:20,dy:20});
- assert.ok(steered.yaw>0&&steered.pitch>0);
+});
+
+test("edge zones are exclusive, signed roll works both directions, and bottom owns speed",()=>{
+ const c=conf(), zones=[
+  ["top",40,20,"rollRate"],
+  ["left",30,-40,"starCount"],
+  ["right",30,-30,"bokeh"],
+  ["bottom",40,20,"speed"]
+ ];
+ for(const [zone,dx,dy,key] of zones){
+  const next=R.interact(descriptor.id,c,{type:"gesture",frame:40,fingers:1,zone,dx,dy,width:390,height:844});
+  assert.notEqual(next[key],c[key],zone+" responds");
+  for(const other of ["starCount","speed","rollRate","bokeh","yaw","pitch"].filter(x=>x!==key))
+   assert.equal(next[other],c[other],zone+" must not alter "+other);
+ }
+ const left=R.interact(descriptor.id,c,{type:"gesture",frame:40,fingers:1,zone:"top",dx:-40,dy:10});
+ assert.ok(left.rollRate<0,"roll left is as responsive as roll right");
+ assert.equal(R.validate(left,descriptor.id).ok,true);
+});
+
+test("two fingers strafe in camera space, not yaw/pitch or settings",()=>{
+ const c=conf(),f=40, scale=390*.045;
+ for(const zone of ["center","top","bottom","left","right"]){
+  const next=R.interact(descriptor.id,c,{type:"gesture",frame:f,fingers:2,zone,dx:32,dy:-48,width:390,height:844});
+  assert.ok(Math.abs(next.originX-32*scale)<.001,"rightward pan moves ship right");
+  assert.ok(Math.abs(next.originY+48*scale)<.001,"upward pan moves ship up");
+  assert.equal(next.originZ,f*c.speed,"continuous forward movement is anchored");
+  assert.equal(next.anchorFrame,f);
+  for(const key of ["yaw","pitch","speed","rollRate","starCount","bokeh","colorModeIndex"])
+   assert.equal(next[key],c[key],"pan cannot modify "+key);
+  const snap=R.snapshot({patternId:descriptor.id,config:next,frame:f});
+  assert.equal(R.restore(snap).ok,true);
+  assert.deepEqual(draw(next,f).commands,draw(next,f).commands,"pan is deterministic");
+ }
+ const pinch=R.interact(descriptor.id,c,{type:"gesture",frame:f,fingers:2,zone:"center",dx:0,dy:0});
+ assert.equal(R.configKey(pinch,descriptor.id),R.configKey(c,descriptor.id),"pinch without centroid displacement cannot steer");
+ const one=R.interact(descriptor.id,c,{type:"gesture",frame:f,fingers:1,zone:"center",dx:50,dy:-50,width:390,height:844});
+ assert.notDeepEqual(draw(one,80).commands,draw(c,80).commands,"orientation changes starfield visually");
+});
+
+test("gesture hints and all nine colour modes remain in one descriptor",()=>{
+ const d=R.get(descriptor.id);
+ assert.ok(d.gestureHints.some(row=>row[1].includes("2 пальца")));
+ assert.equal(d.controls.filter(row=>row[1]==="yaw")[0][6],1);
+ assert.equal(d.controls.filter(row=>row[1]==="pitch")[0][6],1);
+ assert.ok(d.controls.find(row=>row[1]==="speed")[5].includes("Снизу"));
+ assert.equal(d.colorModes,9);
 });
