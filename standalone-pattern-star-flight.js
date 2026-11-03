@@ -25,13 +25,14 @@
     "colorModeIndex": 0
   },
   "controls": [
-    ["Скорость полёта", "speed", 1, 320, 0.1, "В центре ←→", 1],
-    ["Автовращение", "rollRate", 0, 0.06, 0.0005, "Сверху ←→", 1],
+    ["Скорость полёта", "speed", 1, 320, 0.1, "Снизу ←→", 1],
+    ["Вращение звездолёта", "rollRate", -0.06, 0.06, 0.0005, "Сверху ←→", 1],
     ["Количество звёзд", "starCount", 1000, 30000, 1, "Слева ↑↓", 1],
     ["Боке", "bokeh", 0, 1, 0.01, "Справа ↑↓", 1],
-    ["Поворот камеры", "yaw", -3.1416, 3.1416, 0.001, "2 пальца ←→", 2],
-    ["Наклон камеры", "pitch", -1.48, 1.48, 0.001, "2 пальца ↑↓", 2]
+    ["Курс звездолёта", "yaw", -3.1416, 3.1416, 0.001, "В центре ←→", 1],
+    ["Набор высоты / снижение", "pitch", -1.48, 1.48, 0.001, "В центре ↑↓", 1]
   ],
+  "gestureHints": [["Перемещение звездолёта в пространстве", "2 пальца ←→↑↓ — в сторону движения"]],
   "schema": {
     "anchorFrame": {"type":"number","min":0,"max":1000000000},
     "originX": {"type":"number","min":-20000,"max":20000},
@@ -82,7 +83,7 @@ function basis(c,frame){
  const sy=Math.sin(yaw),cy=Math.cos(yaw),sp=Math.sin(pitch),cp=Math.cos(pitch);
  const fx=sy*cp,fy=-sp,fz=cy*cp;
  const r0x=cy,r0z=-sy,u0x=sy*sp,u0y=cp,u0z=cy*sp;
- const roll=clamp(c.rollOffset,-1e6,1e6)+clamp(c.rollRate,0,.06)*(frame-c.anchorFrame);
+ const roll=clamp(c.rollOffset,-1e6,1e6)+clamp(c.rollRate,-.06,.06)*(frame-c.anchorFrame);
  const cr=Math.cos(roll),sr=Math.sin(roll);
  return {fx,fy,fz,roll,rx:r0x*cr+u0x*sr,ry:u0y*sr,rz:r0z*cr+u0z*sr,
   ux:u0x*cr-r0x*sr,uy:u0y*cr,uz:u0z*cr-r0z*sr};
@@ -106,15 +107,32 @@ function interact(c,event){
  if(e.type==="patch")return rebase(c,e.patch||{},f);
  if(e.type!=="gesture")return c;
  const dx=Number.isFinite(e.dx)?e.dx:0,dy=Number.isFinite(e.dy)?e.dy:0;
- let patch={};
+ if(dx===0&&dy===0)return c;
+ // Two fingers TRANSLATE the ship in the camera plane. Never rotate,
+ // alter speed or accidentally adjust a setting during a two-finger pan.
  if(e.fingers>=2){
-  patch={yaw:positive(c.yaw+dx*.0035+Math.PI,TAU)-Math.PI,
-    pitch:clamp(c.pitch+dy*.0035,-1.48,1.48)};
- }else if(e.fingers===1){
-  if(e.zone==="top")patch.rollRate=clamp(c.rollRate+dx*.0005,0,.06);
-  else if(e.zone==="left")patch.starCount=Math.round(clamp(c.starCount-dy*20,1000,30000));
-  else if(e.zone==="right")patch.bokeh=clamp(c.bokeh-dy*.003,0,1);
-  else if(e.zone==="center")patch.speed=clamp(c.speed+dx*.4,1,320);
+  const b=basis(c,f),p=position(c,f,b);
+  const shortSide=Math.max(1,Math.min(Number(e.width)||390,Number(e.height)||844));
+  const step=clamp(shortSide*.045,8,26);
+  return {...c,anchorFrame:f,
+   originX:wrap(p.x+(b.rx*dx+b.ux*dy)*step),
+   originY:wrap(p.y+(b.ry*dx+b.uy*dy)*step),
+   originZ:wrap(p.z+(b.rz*dx+b.uz*dy)*step),
+   rollOffset:positive(b.roll+Math.PI,TAU)-Math.PI};
+ }
+ if(e.fingers!==1)return c;
+ let patch={};
+ if(e.zone==="top")patch.rollRate=clamp(c.rollRate+dx*.0005,-.06,.06);
+ else if(e.zone==="left")patch.starCount=Math.round(clamp(c.starCount-dy*20,1000,30000));
+ else if(e.zone==="right")patch.bokeh=clamp(c.bokeh-dy*.003,0,1);
+ else if(e.zone==="bottom")patch.speed=clamp(c.speed+dx*.4,1,320);
+ else if(e.zone==="center"){
+  // Direct, camera-space pilot steering: swipe right = nose right,
+  // swipe UP = nose UP. Both axes respond together to diagonal motions.
+  const shortSide=Math.max(1,Math.min(Number(e.width)||390,Number(e.height)||844));
+  const sensitivity=.85/(shortSide*.55);
+  patch.yaw=positive(c.yaw+dx*sensitivity+Math.PI,TAU)-Math.PI;
+  patch.pitch=clamp(c.pitch-dy*sensitivity,-1.48,1.48);
  }
  return Object.keys(patch).length?rebase(c,patch,f):c;
 }
