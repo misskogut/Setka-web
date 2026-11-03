@@ -435,7 +435,7 @@ function interact(c,event){
  const scale=c.sensitivity;
  let steer=false;
  if(e.fingers>=2)steer=c.mode===1;
- else if(e.fingers===1)steer=c.mode===0||(c.mode===2&&e.zone!=="right");
+ else if(e.fingers===1)steer=c.mode===0||(c.mode===2&&(Number.isFinite(e.startX)?e.startX<width/2:e.zone!=="right"));
  else return c;
  const x=dx/width*2.55*scale,y=-dy/height*2.55*scale;
  if(steer)return {...c,steerX:clamp(c.steerX+x,-1,1),steerY:clamp(c.steerY+y,-1,1)};
