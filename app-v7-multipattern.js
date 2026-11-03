@@ -410,7 +410,8 @@
     const tap=registry.controls(runtimePatternId).find(row=>row[5]==="Тап"&&row[6]===1);
     if(!tap)return;
     const [,key,min,max,step]=tap,now=Number(runtimeConfig[key]);
-    const next=Number.isFinite(now)&&now+step<=max+1e-9?now+step:min;
+    const overflow=registry.get(runtimePatternId)?.tapOverflow||"wrap";
+    const next=Number.isFinite(now)&&now+step<=max+1e-9?now+step:overflow==="clamp"?max:min;
     runtimeConfig=cloneConfig({...runtimeConfig,[key]:next},runtimePatternId);
     updateFavoriteButtonState();
     emit("gesture-move",{origin:"tap",key});
