@@ -117,9 +117,7 @@ try{
  if(!alreadySaved)await other.getByRole('button',{name:'Сохранить текущую конфигурацию',exact:true}).click();
  try{await other.waitForFunction(()=>window.SetkaApp.getFavorites().some(x=>x.baseId==='stereo-dna'));}
  catch(error){console.log('FAVORITE AFTER FAILED ACTION',await other.evaluate(favoriteState));throw error;}
- console.log('FAV AFTER CLICK',await other.evaluate(()=>({inMemory:window.SetkaApp.getFavorites().map(f=>({id:f.id,pid:f.baseId})),durable:window.SetkaStandaloneV34.getData().settings?.favoriteCollection?.rows?.map(f=>({id:f.id,pid:f.baseId})),active:window.SetkaPatternRegistryV1.isActive('stereo-dna'),storage:window.SetkaStandaloneV34.storageStatus()})));
-await other.locator('#libraryButton').click();await other.locator('#favoritesPagerButton').click();console.log('FAV AFTER NAV',await other.evaluate(()=>({inMemory:window.SetkaApp.getFavorites().map(f=>({id:f.id,pid:f.baseId})),durable:window.SetkaStandaloneV34.getData().settings?.favoriteCollection?.rows?.map(f=>({id:f.id,pid:f.baseId})),active:window.SetkaPatternRegistryV1.isActive('stereo-dna'),tiles:document.querySelectorAll('.favorite-tile').length})));
-await other.locator('.favorite-tile .st34-info').first().waitFor();
+ await other.locator('#libraryButton').click();await other.locator('#favoritesPagerButton').click();await other.locator('.favorite-tile .st34-info').first().waitFor();
  const heart=await other.locator('.favorite-tile .mini-heart').first().boundingBox(),info=await other.locator('.favorite-tile .st34-info').first().boundingBox();assert.ok(heart.y+heart.height<info.y,'saved heart overlaps the information button');
  console.log('REAL WEB STORAGE QUOTA, INDEXEDDB RETENTION THROUGH STALE TAB/RELOAD, PLAIN NOTES, INLINE MODERATION AND SEPARATE HEART POSITION PASS');
  const admin=await browser.newPage({viewport:{width:1200,height:900}});admin.on('pageerror',e=>errors.push({page:'admin',message:e.message,stack:e.stack}));
