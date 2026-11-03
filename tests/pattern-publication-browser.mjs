@@ -117,7 +117,9 @@ try{
  assert.equal(await front.locator('#allPatternsPanel .setka-new-pattern').count(),0,'seen survives reload/archive hydration');
  assert.deepEqual(await baseIds(),order.patternIds);
  // A concurrent owner edit must produce an explicit revision conflict, never a silent overwrite.
- await editor.locator('li[data-pattern-id="'+id+'"] select').selectOption('1');
+ await admin.locator('#refresh').click();await admin.locator('#refresh').waitFor({state:'visible'});
+ await editor.getByRole('button',{name:'Вниз: '+fixture.title,exact:true}).click();
+ await editor.getByRole('status').filter({hasText:'Порядок изменён.'}).waitFor();
  order={patternIds:order.patternIds.slice().reverse(),revision:2};
  await editor.getByRole('button',{name:'Сохранить порядок',exact:true}).click();
  await editor.getByRole('status').filter({hasText:'другом окне'}).waitFor();
