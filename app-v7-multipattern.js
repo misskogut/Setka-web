@@ -108,10 +108,22 @@
     // Favorites need the same durable fallback as notes and states. A successful
     // login alone does not prove that localStorage can hold the collection.
     if(core){
+      // Stage the exact collection into the canonical archive synchronously.
+      // The first await used to leave a gap in WebKit under localStorage quota:
+      // a registry/recovery read could see the old empty collection and hide a
+      // freshly saved favorite before IndexedDB committed it.
+      const stage=()=>{
+        const d=core.getData();d.settings=d.settings||{};
+        d.settings.favoriteCollection={rows,updatedAt:new Date().toISOString()};
+        core.save();
+      };
+      stage();
       await core.ready;
-      const d=core.getData();d.settings=d.settings||{};
-      d.settings.favoriteCollection={rows,updatedAt:new Date().toISOString()};
-      core.save();const durable=core.whenSaved?await core.whenSaved():core.storageStatus?.().ok;
+      // Read-back may have replaced the archive during bootstrap; restage
+      // the user's already accepted in-memory transaction before durability.
+      const current=core.getData().settings?.favoriteCollection?.rows;
+      if(JSON.stringify(current)!==JSON.stringify(rows))stage();
+      const durable=core.whenSaved?await core.whenSaved():core.storageStatus?.().ok;
       stored=stored||durable===true;
     }
     if(!stored)showToast("Коллекция открыта, но пока не сохранена на устройстве");
