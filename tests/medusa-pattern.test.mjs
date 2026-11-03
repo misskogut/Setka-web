@@ -18,7 +18,7 @@ function sample(R,config,frame) {
   const ctx={
     save(){},restore(){},translate(){},scale(){},beginPath(){},
     fillRect(x,y,w,h){fills.push(this.fillStyle);},
-    arc(x,y,r){if(shapes.length<800)shapes.push([Math.round(x*1000),Math.round(y*1000),Math.round(r*1000),this.fillStyle]);},
+    arc(x,y,r){if(shapes.length<2000)shapes.push([Math.round(x*1000),Math.round(y*1000),Math.round(r*1000),this.fillStyle]);},
     fill(){}
   };
   R.render(ctx,600,600,config,frame,false,'medusa');
