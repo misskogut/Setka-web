@@ -15,6 +15,13 @@
     if(!raw||!safeId(raw.id)||records.has(raw.id))throw error("invalid_or_duplicate_pattern",raw?.id);
     if(!raw.defaults||!Array.isArray(raw.controls))throw error("pattern_contract_required",raw.id);
     if(!Number.isInteger(raw.version)||raw.version<1)throw error("invalid_pattern_version",raw.id);
+    // Optional display-only hints for multi-axis gestures that cannot be
+    // represented as a single parameter slider (e.g. free camera panning).
+    const gestureHints=raw.gestureHints??[];
+    if(!Array.isArray(gestureHints)||gestureHints.length>8||
+       gestureHints.some(x=>!Array.isArray(x)||x.length!==2||
+         x.some(v=>typeof v!=="string"||!v.trim()||v.length>140)))
+      throw error("invalid_gesture_hints",raw.id);
     const colorModes=raw.colorModes??9;
     if(!Number.isInteger(colorModes)||colorModes<1||colorModes>9)throw error("invalid_palette_count",raw.id);
     // A newly packaged algorithm declares actual RGB palettes in the shared
@@ -58,7 +65,7 @@
       if(rule.type==="number"&&(!Number.isFinite(value)||!Number.isFinite(rule.min)||!Number.isFinite(rule.max)||rule.min>rule.max||value<rule.min||value>rule.max||rule.integer&&!Number.isInteger(value)))throw error("invalid_parameter_default",raw.id+"/"+key);
     }
     const p=freeze({id:raw.id,title:String(raw.title||raw.id).trim().slice(0,80),version:raw.version,schemaVersion:raw.schemaVersion||1,
-      defaults,schema,controls:copy(raw.controls),colorModes,capabilities:{...standard,...copy(raw.capabilities||{})},
+      defaults,schema,controls:copy(raw.controls),gestureHints:copy(gestureHints),colorModes,capabilities:{...standard,...copy(raw.capabilities||{})},
       aliases:copy(raw.aliases||{}),keyFields:copy(raw.keyFields||null),legacyVersions:copy(raw.legacyVersions||[]),
       ...(raw.palettes?{palettes:copy(raw.palettes)}:{}),
       module:raw.module||null});
@@ -195,7 +202,7 @@
   function isActive(item){const id=identityOf(item);return (!publicCatalog||publishedIds.has(id))&&typeof id==="string"&&records.has(id)}
   function activeItems(rows){return Array.isArray(rows)?rows.filter(isActive):[]}
   const api={schemaVersion:SCHEMA,applyOrder,orderedIds,libraryIds,orderRevision:()=>orderRevision,usePublicCatalog,applyPublication,publicationRevision:()=>publicationRevision,register,get,has:id=>records.has(id),isActive,activeItems,identityOf,ids:()=>[...records.keys()],list:()=>[...records.values()].map(copy),
-    controls:id=>copy(get(id)?.controls||[]),inference,resolve,normalize,validate,configKey,snapshot,restore,revision,bindRenderer,bindInteraction,interact,render,
+    controls:id=>copy(get(id)?.controls||[]),inference,resolve,normalize,validate,configKey,snapshot,restore,revision,bindRenderer,bindInteraction,interact,hasInteraction:id=>interactions.has(id),render,
     ready:id=>renderers.has(id),supports:(id,feature)=>get(id)?.capabilities?.[feature]===true,
     title:id=>titles.get(id)?.title||get(id)?.title||id||"Неизвестный паттерн",setTitles,
     defaults:id=>copy(overrides.get(id)?.config||get(id)?.defaults||null),applyDefaults,
