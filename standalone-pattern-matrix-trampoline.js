@@ -199,6 +199,8 @@ function displacement(c,frame){
 }
 function interact(c,event){
  const e=event||{};
+ // The shared controls use this canonical patch event for every slider.
+ if(e.type==="patch")return {...c,...(e.patch||{})};
  if(e.type!=="gesture"||e.fingers!==1||e.zone!=="center")return c;
  const dx=Number.isFinite(e.dx)?e.dx:0,dy=Number.isFinite(e.dy)?e.dy:0;
  if(!dx&&!dy)return c;
