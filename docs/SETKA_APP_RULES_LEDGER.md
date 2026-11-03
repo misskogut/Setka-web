@@ -53,6 +53,8 @@ These facts are stored *only* as `introducedAt` inside their descriptors. Any fu
 
 | APP-027 | Новые ID автоматически получают «На проверке». Только владелец публикует/выключает через ревизионную запись. Один статус управляет публичными каталогами, активными галереями и открытием. Админская проба не пишет пользовательские метрики; история сохраняется. | Код + Node/SQL/двухклиентные Chromium/WebKit regression; факт CI и production deployment фиксируется отдельно. |
 
+| APP-028 | Существующие и будущие однофайловые паттерны поддерживают до 9 устойчивых по индексу цветовых режимов (первый старт — белая графика на чёрном). Сложные параметры камеры/двухпальцевые жесты обрабатываются через опциональный типизированный редьюсер модуля в общем реестре, а не через проверки конкретного ID во фронте. Обновление ориентации и скорости сохраняет якорную позицию камеры и воспроизводимо по frame/config в заметке, сохранении и Replay. | **Код + тесты:** `bindInteraction/interact`, общая передача центра двух пальцев, 9 палитр Star Flight, Node regressions. **TARGET / UNVERIFIED:** full CI, iPhone performance, cross-device and production publication. |
+
 **Vocabulary:** `CI enforceable` means an executable guard runs on repository code; `CI partial` means some scenarios are automated but not all devices/accounts; `TARGET` means a required capability is not yet demonstrated. **Never convert TARGET to DONE merely by changing this document.**
 
 ## Rule intake: how every future conversation decision becomes a feature of SETKA
