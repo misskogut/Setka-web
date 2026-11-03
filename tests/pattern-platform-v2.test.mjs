@@ -173,3 +173,30 @@ test('future unknown modules may register pure gesture and slider reducers witho
  assert.throws(()=>R.bindInteraction(id,5),/invalid_interaction/);
  assert.equal(R.interact('rain',R.defaults('rain'),{type:'gesture'}),null,'legacy modules retain default behavior');
 });
+
+
+// Generic versioned migration proof: this must work for any new descriptor,
+// not just the current matrix, and must not weaken validation of new versions.
+test('additive pattern upgrades restore prior-version captures without falsifying new snapshots',()=>{
+ const R=registry();
+ const id='fixture-upgraded-next';
+ R.register({
+  id,title:'Fixture upgraded',version:2,schemaVersion:2,legacyVersions:[1],
+  defaults:{patternId:id,speed:1,newDepth:0,colorModeIndex:0},
+  controls:[['Скорость','speed',0,4,.1,'Ползунок',0],['Погружение','newDepth',0,6,.1,'Ползунок',0]],
+  render(){}
+ });
+ const original={version:3,schemaVersion:2,configSchemaVersion:1,patternId:id,patternVersion:1,frame:99,
+  config:{patternId:id,speed:2,colorModeIndex:0}};
+ const before=plain(original),old=R.restore(original);
+ assert.equal(old.ok,true,old.reason);
+ assert.equal(old.snapshot.config.speed,2);
+ assert.equal(old.snapshot.config.newDepth,0,'only missing NEW fields defaulted');
+ assert.deepEqual(original,before,'legacy source untouched');
+ const broken=plain(original);broken.config.speed=100;
+ assert.equal(R.restore(broken).reason,'invalid_configuration','invalid old values never silently repaired');
+ const current=plain(original);current.patternVersion=2;
+ assert.equal(R.restore(current).reason,'invalid_configuration','current-version snapshot must have every field');
+ const fresh=plain(R.snapshot({patternId:id,config:R.defaults(id),frame:123}));
+ assert.equal(R.restore(fresh).ok,true,'upgraded snapshots round trip');
+});
