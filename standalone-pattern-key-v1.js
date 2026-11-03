@@ -64,7 +64,8 @@ function rebuild(){
    const head=document.createElement("div");head.className="sk-section";
    head.textContent="СВОБОДНОЕ УПРАВЛЕНИЕ";list.append(head);
    for(const [name,gesture] of hints){
-     const box=document.createElement("div");box.className="sk-setting";
+     const box=document.createElement("div");box.className="sk-gesture-info";
+     box.style.cssText="border-bottom:1px solid #2b2b2b;padding:10px 0";
      const line=document.createElement("div");line.className="sk-setting-row";
      const badge=document.createElement("span");badge.className="sk-gesture";
      badge.textContent=gesture;
