@@ -145,3 +145,29 @@ test('research transport retains new scalar and array parameters without a rende
  assert.deepEqual(researchConfig(input),{patternId:'fixture-future',seed:'repeatable-seed',curve:[0,.5,1],flag:false,offset:0});
  assert.equal(researchConfig({patternId:'fixture-future',curve:Array(100).fill(1)}).curve.length,64);
 });
+
+
+test('future unknown modules may register pure gesture and slider reducers without host ID branches',()=>{
+ const R=registry(),id='fixture-navigation-reducer';
+ const def={id,title:id,version:1,module:'standalone-pattern-'+id+'.js',
+  defaults:{movement:2,heading:0,colorModeIndex:0},
+  colorModes:2,palettes:[[255,255,255],[255,0,0]],
+  controls:[['Движение','movement',0,10,.1,'В центре ←→',1],
+            ['Курс','heading',-4,4,.1,'2 пальца ←→',2]]};
+ R.register(def);
+ const initial=plain(R.defaults(id));
+ assert.equal(R.interact(id,initial,{type:'gesture',frame:20,fingers:1,zone:'center',dx:10}),null);
+ R.bindInteraction(id,(config,event)=>{
+  if(event.type==='patch')return {...config,...event.patch};
+  if(event.type==='gesture')return {...config,heading:config.heading+event.dx*.1};
+  return config;
+ });
+ const steered=R.interact(id,initial,{type:'gesture',frame:20,dx:7});
+ assert.equal(steered.heading,.7);
+ assert.equal(initial.heading,0,'the host must not mutate saved input configurations');
+ const patched=R.interact(id,steered,{type:'patch',frame:20,patch:{movement:5}});
+ assert.equal(patched.movement,5);
+ assert.equal(R.restore(R.snapshot({patternId:id,config:patched,frame:20})).ok,true);
+ assert.throws(()=>R.bindInteraction(id,5),/invalid_interaction/);
+ assert.equal(R.interact('rain',R.defaults('rain'),{type:'gesture'}),null,'legacy modules retain default behavior');
+});
