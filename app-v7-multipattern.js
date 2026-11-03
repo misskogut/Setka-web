@@ -389,7 +389,8 @@
       sx>=r.width*(1-e)&&sy<r.height*(1-e)?"right":"center";
     const result=registry.interact?.(runtimePatternId,runtimeConfig,{
       type:"gesture",frame:currentFrame,zone,dx,dy,fingers,
-      width:r.width,height:r.height,pinch
+      width:r.width,height:r.height,pinch,
+      pinchDistance:currentDist,previousPinchDistance:touch.lastDist
     });
     if(result)runtimeConfig=result;
     else applyCustomGesture(x,y,dx,dy,fingers,pinch);
