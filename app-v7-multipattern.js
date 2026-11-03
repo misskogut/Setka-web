@@ -99,46 +99,19 @@
         unavailableReason:error?.code||error?.message||"unavailable"};
     }
   }
-  // A saved ♥ is a pending user transaction until an account archive read-back
-  // catches up. Registry changes/cloud hydration may read an older empty
-  // collection in that interval, especially in WebKit at Web Storage quota.
-  // Keep the transaction visible without inventing a favorite or dropping
-  // a verified delete. Scope it strictly to the current signed-in session.
-  const pendingFavoriteAdds=new Map(),pendingFavoriteDeletes=new Set();
-  let favoriteWriteEpoch=0;
-  const overlayFavoriteTransactions=rows=>{
-    const result=new Map();
-    for(const row of rows||[])if(row?.id&&!pendingFavoriteDeletes.has(row.id))result.set(String(row.id),row);
-    for(const row of pendingFavoriteAdds.values())if(!pendingFavoriteDeletes.has(row.id))result.set(String(row.id),row);
-    return [...result.values()];
-  };
-  window.addEventListener("setka:account-switch-start",()=>{pendingFavoriteAdds.clear();pendingFavoriteDeletes.clear()});
-  window.addEventListener("setka:local-reset-started",()=>{pendingFavoriteAdds.clear();pendingFavoriteDeletes.clear()});
-  function loadFavorites(){const out=[],seen=new Set(),push=f=>{const sig=f.unavailable?JSON.stringify(f):`${f.id}|${configKey(f.config,f.baseId)}`;if(!seen.has(sig)){seen.add(sig);out.push(f)}};const durable=window.SetkaStandaloneV34?.getData?.()?.settings?.favoriteCollection?.rows;if(Array.isArray(durable)){durable.forEach((x,i)=>push(normalizeFavorite(x,i)));return overlayFavoriteTransactions(out)}const main=readJSON(STORAGE_FAVORITES,[]);if(Array.isArray(main))main.forEach((x,i)=>push(normalizeFavorite(x,i)));const fish=readJSON(LEGACY_FISH_KEY,[]);if(Array.isArray(fish))fish.forEach((x,i)=>push(normalizeFavorite(x,1000+i,FISH_ID)));const breath=readJSON(LEGACY_BREATH_KEY,[]);if(Array.isArray(breath))breath.forEach((x,i)=>push(normalizeFavorite(x,2000+i,BREATH_ID)));const growth=readJSON(LEGACY_GROWTH_KEY,[]);if(Array.isArray(growth))growth.forEach((x,i)=>push(normalizeFavorite(x,3000+i,GROWTH_ID)));return overlayFavoriteTransactions(out)}
+  function loadFavorites(){const out=[],seen=new Set(),push=f=>{const sig=f.unavailable?JSON.stringify(f):`${f.id}|${configKey(f.config,f.baseId)}`;if(!seen.has(sig)){seen.add(sig);out.push(f)}};const durable=window.SetkaStandaloneV34?.getData?.()?.settings?.favoriteCollection?.rows;if(Array.isArray(durable)){durable.forEach((x,i)=>push(normalizeFavorite(x,i)));return out}const main=readJSON(STORAGE_FAVORITES,[]);if(Array.isArray(main))main.forEach((x,i)=>push(normalizeFavorite(x,i)));const fish=readJSON(LEGACY_FISH_KEY,[]);if(Array.isArray(fish))fish.forEach((x,i)=>push(normalizeFavorite(x,1000+i,FISH_ID)));const breath=readJSON(LEGACY_BREATH_KEY,[]);if(Array.isArray(breath))breath.forEach((x,i)=>push(normalizeFavorite(x,2000+i,BREATH_ID)));const growth=readJSON(LEGACY_GROWTH_KEY,[]);if(Array.isArray(growth))growth.forEach((x,i)=>push(normalizeFavorite(x,3000+i,GROWTH_ID)));return out}
   let favorites=loadFavorites();
   async function persistFavorites(){
-    const epoch=++favoriteWriteEpoch,rows=JSON.parse(JSON.stringify(favorites)),core=window.SetkaStandaloneV34;
+    const rows=JSON.parse(JSON.stringify(favorites)),core=window.SetkaStandaloneV34;
     let stored=false;
     try{const storage=window.SetkaDataScopeV1?.storage||localStorage,raw=JSON.stringify(rows);storage.setItem(STORAGE_FAVORITES,raw);stored=storage.getItem(STORAGE_FAVORITES)===raw}catch(_){}
     // Favorites need the same durable fallback as notes and states. A successful
     // login alone does not prove that localStorage can hold the collection.
     if(core){
-      // Stage the exact collection into the canonical archive synchronously.
-      // The first await used to leave a gap in WebKit under localStorage quota:
-      // a registry/recovery read could see the old empty collection and hide a
-      // freshly saved favorite before IndexedDB committed it.
-      const stage=()=>{
-        const d=core.getData();d.settings=d.settings||{};
-        d.settings.favoriteCollection={rows,updatedAt:new Date().toISOString()};
-        core.save();
-      };
-      stage();
       await core.ready;
-      // Read-back may have replaced the archive during bootstrap; restage
-      // the user's already accepted in-memory transaction before durability.
-      const current=core.getData().settings?.favoriteCollection?.rows;
-      if(epoch===favoriteWriteEpoch&&JSON.stringify(current)!==JSON.stringify(rows))stage();
-      const durable=core.whenSaved?await core.whenSaved():core.storageStatus?.().ok;
+      const d=core.getData();d.settings=d.settings||{};
+      d.settings.favoriteCollection={rows,updatedAt:new Date().toISOString()};
+      core.save();const durable=core.whenSaved?await core.whenSaved():core.storageStatus?.().ok;
       stored=stored||durable===true;
     }
     if(!stored)showToast("Коллекция открыта, но пока не сохранена на устройстве");
@@ -146,7 +119,7 @@
   }
   async function restoreFavorites(rows){
     if(!Array.isArray(rows))throw new Error("invalid_favorite_collection");
-    favorites=overlayFavoriteTransactions(rows.map((row,i)=>normalizeFavorite(row,i)));
+    favorites=rows.map((row,i)=>normalizeFavorite(row,i));
     renderLibrary();updateFavoriteButtonState();
     if(!await persistFavorites())throw new Error("favorites_storage_unavailable");
     return favorites.length;
@@ -353,8 +326,8 @@
   function buildColorDots(){colorDots.replaceChildren();const r=42;for(let i=0;i<9;i++){const d=document.createElement("span");d.className="color-dot";const a=-90+i*40;d.style.transform=`translate(${Math.cos(rad(a))*r}px,${Math.sin(rad(a))*r}px)`;colorDots.appendChild(d)}}
   function updateColorIndicator(){instructionsButton.style.display=registry.supports(runtimePatternId,"settings")?"":"none";const n=(runtimeConfig.colorModeIndex||0)+1;[...colorDots.children].forEach((d,i)=>d.classList.toggle("visible",i<n&&i<colorModeCount()))}
   function updateFavoriteButtonState(){favoriteButton.style.display=registry.supports(runtimePatternId,"favorites")?"":"none";favoriteButton.hidden=!registry.supports(runtimePatternId,"favorites");const m=matchingFavorite();favoriteButton.textContent=m?"♥":"♡";favoriteButton.classList.toggle("saved",!!m);favoriteButton.setAttribute("aria-label",m?"Снять лайк с этой конфигурации":"Сохранить текущую конфигурацию")}
-  function saveFavorite(c,f=currentFrame,meta={}){const pid=inferPatternId(c,meta.baseId||runtimePatternId);if(!registry.supports(pid,"favorites"))return null;const old=matchingFavorite(c,pid);if(old){updateFavoriteButtonState();showToast("♥ Уже сохранено");return old}const x={id:`favorite-${Date.now()}-${Math.random().toString(36).slice(2,8)}`,baseId:pid,patternId:pid,config:cloneConfig(c,pid),previewFrame:Number.isFinite(Number(f))?Number(f):BASE_PREVIEW_FRAME,createdAt:Date.now(),communityId:meta.communityId||null,parentCommunityId:meta.parentCommunityId||activeSource.communityId||null,patternVersion:meta.patternVersion||patternById(pid).version};favorites.unshift(x);pendingFavoriteDeletes.delete(x.id);pendingFavoriteAdds.set(x.id,x);persistFavorites();updateFavoriteButtonState();renderLibrary();showToast("♥ Конфигурация сохранена");emit("favorite-saved",{favorite:{...x},origin:meta.origin||"game"});return x}
-  function removeFavorite(f,origin="game"){const i=favorites.findIndex(x=>x.id===f.id);if(i<0)return false;const r=favorites.splice(i,1)[0];pendingFavoriteAdds.delete(r.id);pendingFavoriteDeletes.add(r.id);persistFavorites();updateFavoriteButtonState();renderLibrary();showToast("♡ Лайк снят");emit("favorite-removed",{favorite:{...r},origin});return true}
+  function saveFavorite(c,f=currentFrame,meta={}){const pid=inferPatternId(c,meta.baseId||runtimePatternId);if(!registry.supports(pid,"favorites"))return null;const old=matchingFavorite(c,pid);if(old){updateFavoriteButtonState();showToast("♥ Уже сохранено");return old}const x={id:`favorite-${Date.now()}-${Math.random().toString(36).slice(2,8)}`,baseId:pid,patternId:pid,config:cloneConfig(c,pid),previewFrame:Number.isFinite(Number(f))?Number(f):BASE_PREVIEW_FRAME,createdAt:Date.now(),communityId:meta.communityId||null,parentCommunityId:meta.parentCommunityId||activeSource.communityId||null,patternVersion:meta.patternVersion||patternById(pid).version};favorites.unshift(x);persistFavorites();updateFavoriteButtonState();renderLibrary();showToast("♥ Конфигурация сохранена");emit("favorite-saved",{favorite:{...x},origin:meta.origin||"game"});return x}
+  function removeFavorite(f,origin="game"){const i=favorites.findIndex(x=>x.id===f.id);if(i<0)return false;const r=favorites.splice(i,1)[0];persistFavorites();updateFavoriteButtonState();renderLibrary();showToast("♡ Лайк снят");emit("favorite-removed",{favorite:{...r},origin});return true}
   function updateFavoriteMeta(id,patch={}){const f=favorites.find(x=>x.id===id);if(!f)return null;Object.assign(f,patch);persistFavorites();renderLibrary();updateFavoriteButtonState();return{...f}}
   function showToast(m){toast.textContent=m;toast.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.remove("show"),1400)}
 
