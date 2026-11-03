@@ -22,6 +22,7 @@
        gestureHints.some(x=>!Array.isArray(x)||x.length!==2||
          x.some(v=>typeof v!=="string"||!v.trim()||v.length>140)))
       throw error("invalid_gesture_hints",raw.id);
+    if(raw.tapOverflow!==undefined&&!["clamp","wrap"].includes(raw.tapOverflow))throw error("invalid_tap_overflow",raw.id);
     const colorModes=raw.colorModes??9;
     if(!Number.isInteger(colorModes)||colorModes<1||colorModes>9)throw error("invalid_palette_count",raw.id);
     // A newly packaged algorithm declares actual RGB palettes in the shared
@@ -68,7 +69,8 @@
       defaults,schema,controls:copy(raw.controls),gestureHints:copy(gestureHints),colorModes,capabilities:{...standard,...copy(raw.capabilities||{})},
       aliases:copy(raw.aliases||{}),keyFields:copy(raw.keyFields||null),legacyVersions:copy(raw.legacyVersions||[]),
       ...(raw.palettes?{palettes:copy(raw.palettes)}:{}),
-      module:raw.module||null});
+      module:raw.module||null,
+      ...(raw.tapOverflow?{tapOverflow:raw.tapOverflow}:{})});
     records.set(p.id,p);
     if(typeof raw.render==="function")renderers.set(p.id,raw.render);
     emit("setka:registry-changed",{patternId:p.id,revision:revision()});return p;
