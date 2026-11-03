@@ -19,6 +19,8 @@
     "tentacleCount": 10,
     "tentacleLength": 50,
     "speed": 1,
+    "sizeFactor": 1,
+    "swayStrength": 1,
     "seed": 2011,
     "colorModeIndex": 0
   },
@@ -26,12 +28,14 @@
     ["Медузы · тап = добавить", "medusaCount", 1, 30, 1, "Тап", 1],
     ["Щупальца", "tentacleCount", 6, 16, 1, "Справа ↑↓", 1],
     ["Длина щупалец", "tentacleLength", 20, 70, 1, "Слева ↑↓", 1],
-    ["Скорость", "speed", 0.4, 2, 0.1, "Сверху ←→", 1]
+    ["Скорость", "speed", 0.4, 2, 0.1, "Сверху ←→", 1],
+    ["Размер медузы", "sizeFactor", 0.5, 2, 0.01, "Ползунок", 0],
+    ["Покачивание", "swayStrength", 0.2, 2, 0.01, "Ползунок", 0]
   ],
   "schema": {
     "seed": {"type":"number","min":0,"max":4294967295,"integer":true}
   },
-  "keyFields": ["medusaCount","tentacleCount","tentacleLength","speed","seed","colorModeIndex"]
+  "keyFields": ["medusaCount","tentacleCount","tentacleLength","speed","sizeFactor","swayStrength","seed","colorModeIndex"]
 }
 END_SETKA_PATTERN_DESCRIPTOR */
 /*
@@ -108,15 +112,15 @@ function positionAt(b,t){
  const p=b.paths[left],factor=expo(t-p.start,p.duration);
  return {x:p.x+factor*p.dx,y:p.y+factor*p.dy};
 }
-function stepBody(b,frame){
+function stepBody(b,frame,c){
  const head=positionAt(b,frame);
  const n=b.arms.length;
  // The source drifts angularly by tiny stochastic increments. A seeded
  // smooth drift avoids non-reproducible random() calls between snapshots.
- const drift=.055*Math.sin(frame*.017+b.index*.77)+.032*Math.sin(frame*.039+b.index);
+ const drift=(.055*Math.sin(frame*.017+b.index*.77)+.032*Math.sin(frame*.039+b.index))*c.swayStrength;
  for(let a=0;a<n;a++){
   const angle=a*TAU/n+drift;
-  const px=head.x+Math.cos(angle)*HEAD/2,py=head.y+Math.sin(angle)*HEAD/2;
+  const px=head.x+Math.cos(angle)*HEAD*c.sizeFactor/2,py=head.y+Math.sin(angle)*HEAD*c.sizeFactor/2;
   const p=b.arms[a];
   p[0]=px;p[1]=py;
   p[2]=px+SPACE*Math.cos(angle);p[3]=py+SPACE*Math.sin(angle);
@@ -128,7 +132,7 @@ function stepBody(b,frame){
   }
  }
 }
-function warm(body,target){
+function warm(body,target,c){
  // A direct-open note may seek thousands of frames forward: reconstruct
  // head path analytically, then warm all physical tentacle links locally.
  // Live playback steps every frame without dropping any intermediate states.
@@ -137,7 +141,7 @@ function warm(body,target){
   const head=positionAt(body,begin);
   for(let a=0;a<body.arms.length;a++){
    const angle=a*TAU/body.arms.length,coords=body.arms[a];
-   const px=head.x+Math.cos(angle)*HEAD/2,py=head.y+Math.sin(angle)*HEAD/2;
+   const px=head.x+Math.cos(angle)*HEAD*c.sizeFactor/2,py=head.y+Math.sin(angle)*HEAD*c.sizeFactor/2;
    for(let k=0;k<body.len;k++){
     const o=k*2;
     coords[o]=px+SPACE*k*Math.cos(angle);
@@ -145,16 +149,16 @@ function warm(body,target){
    }
   }
  }
- for(let k=begin;k<=target;k++)stepBody(body,k);
+ for(let k=begin;k<=target;k++)stepBody(body,k,c);
 }
 function stateFor(ctx,c,target){
- const signature=[c.seed,c.tentacleCount,c.tentacleLength,c.speed].join("|");
+ const signature=[c.seed,c.tentacleCount,c.tentacleLength].join("|");
  let s=states.get(ctx);
  if(!s||s.signature!==signature||s.frame>target||target-s.frame>500){
   s={signature,frame:target,bodies:[]};
   for(let i=0;i<c.medusaCount;i++){
    const b=newCreature(i,c);
-   warm(b,target);
+   warm(b,target,c);
    s.bodies.push(b);
   }
   states.set(ctx,s);
@@ -163,11 +167,11 @@ function stateFor(ctx,c,target){
  // Adding one or many medusae retains all old trajectories in-place.
  while(s.bodies.length<c.medusaCount){
   const b=newCreature(s.bodies.length,c);
-  warm(b,s.frame);
+  warm(b,s.frame,c);
   s.bodies.push(b);
  }
  if(s.bodies.length>c.medusaCount)s.bodies.length=c.medusaCount;
- for(let k=s.frame+1;k<=target;k++)for(const b of s.bodies)stepBody(b,k);
+ for(let k=s.frame+1;k<=target;k++)for(const b of s.bodies)stepBody(b,k,c);
  s.frame=target;
  return s;
 }
@@ -195,7 +199,7 @@ function render(ctx,width,height,c,frame,preview=false){
  for(let i=0;i<state.bodies.length;i++){
   const b=state.bodies[i],len=b.len;
   for(let j=len-1;j>=0;j-=skip){
-   const size=PART_SIZE*(len-j)/len;
+   const size=PART_SIZE*c.sizeFactor*(len-j)/len;
    if(size*scale<.42)continue;
    ctx.fillStyle=color(mode,i,1-j/len,target);
    ctx.beginPath();
