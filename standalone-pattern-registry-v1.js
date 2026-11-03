@@ -15,7 +15,8 @@
     if(!raw||!safeId(raw.id)||records.has(raw.id))throw error("invalid_or_duplicate_pattern",raw?.id);
     if(!raw.defaults||!Array.isArray(raw.controls))throw error("pattern_contract_required",raw.id);
     if(!Number.isInteger(raw.version)||raw.version<1)throw error("invalid_pattern_version",raw.id);
-    if(raw.tapOverflow!==undefined&&!["clamp","wrap"].includes(raw.tapOverflow))throw error("invalid_tap_overflow",raw.id);\n    const colorModes=raw.colorModes??9;
+    if(raw.tapOverflow!==undefined&&!["clamp","wrap"].includes(raw.tapOverflow))throw error("invalid_tap_overflow",raw.id);
+    const colorModes=raw.colorModes??9;
     if(!Number.isInteger(colorModes)||colorModes<1||colorModes>9)throw error("invalid_palette_count",raw.id);
     // A newly packaged algorithm declares actual RGB palettes in the shared
     // contract. The chosen initial mode must render white on black.
@@ -61,7 +62,8 @@
       defaults,schema,controls:copy(raw.controls),colorModes,capabilities:{...standard,...copy(raw.capabilities||{})},
       aliases:copy(raw.aliases||{}),keyFields:copy(raw.keyFields||null),legacyVersions:copy(raw.legacyVersions||[]),
       ...(raw.palettes?{palettes:copy(raw.palettes)}:{}),
-      module:raw.module||null,\n       ...(raw.tapOverflow?{tapOverflow:raw.tapOverflow}:{})});
+      module:raw.module||null,
+       ...(raw.tapOverflow?{tapOverflow:raw.tapOverflow}:{})});
     records.set(p.id,p);
     if(typeof raw.render==="function")renderers.set(p.id,raw.render);
     emit("setka:registry-changed",{patternId:p.id,revision:revision()});return p;
