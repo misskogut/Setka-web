@@ -52,6 +52,14 @@ test("every packaged camera-proximity slider changes the roadway projection and 
    if(Object.hasOwn(base,"mode")){
     const alternate=R.interact(p.id,{...base,mode:1},{type:"gesture",frame:73,fingers:1,zone:"center",dx:40,dy:-30,width:320,height:320});
     assert.ok(alternate.lookYaw!==base.lookYaw||alternate.lookPitch!==base.lookPitch,"single finger can look around");
+    const shared={...base,mode:2};
+    const gesture={type:"gesture",frame:73,fingers:1,zone:"center",dx:36,dy:-20,width:320,height:320};
+    const left=R.interact(p.id,shared,{...gesture,startX:110,startY:160});
+    const right=R.interact(p.id,shared,{...gesture,startX:210,startY:160});
+    assert.notEqual(left.steerX,shared.steerX,"left half controls road steering");
+    assert.equal(left.lookYaw,shared.lookYaw,"left steering does not rotate head");
+    assert.notEqual(right.lookYaw,shared.lookYaw,"right half rotates observer head");
+    assert.equal(right.steerX,shared.steerX,"right look does not steer road");
    }
    assert.deepEqual(JSON.parse(JSON.stringify(p.palettes[base.colorModeIndex])),[255,255,255],"white-on-black start");
   }
