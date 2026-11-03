@@ -45,7 +45,7 @@
     "spin":{"type":"number","min":-2,"max":2},
     "spinFrame":{"type":"number","min":0,"max":1000000000},
     "spinX":{"type":"number","min":0,"max":1},"spinY":{"type":"number","min":0,"max":1},
-    "pulses":{"type":"array","maxItems":12},
+    "pulses":{"type":"array","maxItems":36},
     "lastPulseFrame":{"type":"number","min":-1000,"max":1000000000},
     "lastTapFrame":{"type":"number","min":-1000,"max":1000000000},
     "lastTapX":{"type":"number","min":0,"max":1},"lastTapY":{"type":"number","min":0,"max":1},
@@ -96,10 +96,11 @@ function paint(ctx,w,h,c,f,shadow=false,preview=false){
    const shift=(v+1)*.5*(w*.1)*c.amplitude;
    let X=x+(d>1e-8?dx/d:1)*shift;
    let Y=y+(d>1e-8?dy/d:0)*shift;
-   for(const p of pulseItems){
-    const age=elapsed(f,p.frame);
-    if(f<p.frame||age>2.2)continue;
-    const qx=X-p.x*w,qy=Y-p.y*h,dist=Math.hypot(qx,qy);
+   for(let k=0;k+2<pulseItems.length;k+=3){
+    const px=pulseItems[k],py=pulseItems[k+1],at=pulseItems[k+2];
+    const age=elapsed(f,at);
+    if(f<at||age>2.2)continue;
+    const qx=X-px*w,qy=Y-py*h,dist=Math.hypot(qx,qy);
     const front=age*unit*8,spread=Math.max(1,unit*2.2);
     const envelope=Math.exp(-.5*((dist-front)/spread)**2)*Math.pow(1-age/2.2,1.25);
     const force=unit*4*envelope*(c.pulse/100)*c.amplitude;
@@ -175,7 +176,12 @@ function interaction(c,event){
   next.spinFrame=f;next.spinX=x;next.spinY=y;
  }else{next.spinX=x;next.spinY=y;}
  if(c.pulse>0&&(phase==="start"||f-c.lastPulseFrame>=7)){
-  next.pulses=[...c.pulses.filter(p=>f-p.frame<132),{x,y,frame:f}].slice(-12);
+  // Numeric triples are the canonical serializable array representation.
+  // Keep the latest 12 pulses, preserving exact coordinates and frame.
+  const kept=[];
+  for(let k=0;k+2<c.pulses.length;k+=3)
+   if(f-c.pulses[k+2]<132)kept.push(c.pulses[k],c.pulses[k+1],c.pulses[k+2]);
+  next.pulses=[...kept,x,y,f].slice(-36);
   next.lastPulseFrame=f;
  }
  return next;
