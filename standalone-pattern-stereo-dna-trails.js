@@ -158,6 +158,9 @@ END_SETKA_PATTERN_DESCRIPTOR */
   }
   // Original p5 gestures handled by the module, not by a hardcoded host ID.
   registry.bindInteraction(id,(config,event)=>{
+    // Slider / key-sheet patches must be applied before gesture handling.
+    // Returning an unchanged config here would silently disable all sliders.
+    if(event?.type==='patch')return {...config,...(event.patch||{})};
     if(event?.type!=='gesture')return config;
     const dx=Number.isFinite(event.dx)?event.dx:0;
     const dy=Number.isFinite(event.dy)?event.dy:0;
