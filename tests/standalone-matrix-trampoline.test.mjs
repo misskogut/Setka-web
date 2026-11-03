@@ -59,6 +59,8 @@ test("spring, speed, zoom, geometry, palette and camera gesture independently af
  }
  const spheres=capture({...config,shapeIndex:1},24);
  assert.ok(spheres.dots.length>50&&spheres.edges.length===0);
+ const patched=engines.interact({...config},{type:"patch",patch:{bounceDistance:230}});
+ assert.equal(patched.bounceDistance,230,"shared slider patch must take effect");
  const moved=engines.interact({...config},{type:"gesture",fingers:1,zone:"center",dx:60,dy:-30,width:390,height:844});
  assert.ok(moved.yaw>config.yaw&&moved.pitch>config.pitch);
  const two=engines.interact({...config},{type:"gesture",fingers:2,zone:"center",dx:60,dy:0});
