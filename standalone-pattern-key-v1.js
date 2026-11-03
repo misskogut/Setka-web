@@ -57,6 +57,22 @@ function rebuild(){
    line.append(badge,title,val);box.append(line,input);list.append(box);
    entries.push({k,step,input,val});
  }
+ // Informational multi-axis gestures have no misleading numeric slider.
+ // Every module may declare these in its descriptor; no pattern ID checks.
+ const hints=registry?.get(id)?.gestureHints||[];
+ if(hints.length){
+   const head=document.createElement("div");head.className="sk-section";
+   head.textContent="СВОБОДНОЕ УПРАВЛЕНИЕ";list.append(head);
+   for(const [name,gesture] of hints){
+     const box=document.createElement("div");box.className="sk-gesture-info";
+     box.style.cssText="border-bottom:1px solid #2b2b2b;padding:10px 0";
+     const line=document.createElement("div");line.className="sk-setting-row";
+     const badge=document.createElement("span");badge.className="sk-gesture";
+     badge.textContent=gesture;
+     const title=document.createElement("span");title.className="sk-label";
+     title.textContent=name;line.append(badge,title);box.append(line);list.append(box);
+   }
+ }
  sync();
 }
 function sync(){
