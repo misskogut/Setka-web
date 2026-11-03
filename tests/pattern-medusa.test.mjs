@@ -16,7 +16,7 @@ function setup() {
 function sample(R,config,frame) {
   const shapes=[],fills=[];
   const ctx={
-    save(){},restore(){},translate(){},scale(){},beginPath(){},
+    save(){},restore(){},translate(){},scale(){},beginPath(){},moveTo(){},
     fillRect(x,y,w,h){fills.push(this.fillStyle);},
     arc(x,y,r){if(shapes.length<2000)shapes.push([Math.round(x*1000),Math.round(y*1000),Math.round(r*1000),this.fillStyle]);},
     fill(){}
