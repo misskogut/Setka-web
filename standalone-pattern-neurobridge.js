@@ -534,6 +534,10 @@ function projectSegment(a,b,view,focal,w,h){
  if(!Number.isFinite(pa.x+pa.y+pb.x+pb.y))return null;
  return [pa,pb];
 }
+function railExtent(c,here,spacing){
+ const frontier=here+10.5+(1-c.growthPosition)*106;
+ return {frontier,first:Math.floor((here-22)/spacing)*spacing,last:Math.min(here+113,frontier)};
+}
 function render(ctx,width,height,c,frame,preview){
  const w=Math.max(1,width),h=Math.max(1,height),m=Math.min(w,h),f=Math.max(0,Number(frame)||0);
  const view=cameraPose(c,f),{here,eye,forward,right,vertical}=view;
@@ -571,9 +575,7 @@ function render(ctx,width,height,c,frame,preview){
 // No proximity-dependent start, no fading away just before crossing under
 // the camera, and no dropped ribs for partially clipped projections.
  const spacing=clamp(1.32/c.density,.48,2.9);
- const frontier=here+10.5+(1-c.growthPosition)*106;
- const first=Math.floor((here-22)/spacing)*spacing;
- const last=Math.min(here+113,frontier);
+ const {first,last,frontier}=railExtent(c,here,spacing);
  const count=Math.min(preview?290:350,Math.ceil((last-first)/spacing)+1);
  const ribs=[];
  for(let i=0;i<count;i++){
