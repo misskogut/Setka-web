@@ -61,14 +61,14 @@
     "climbs": 1,
     "bank": 0.45,
     "proximity": 0.72,
-    "fov": 78,
+    "fov": 77,
     "sensitivity": 1,
-    "follow": 0.62,
+    "follow": 0.66,
     "width": 1,
     "density": 1,
-    "glow": 0.62,
+    "glow": 0.46,
     "particles": 0.43,
-    "pulse": 0.35,
+    "pulse": 0.2,
     "mode": 0,
     "steerX": 0,
     "steerY": 0,
@@ -80,10 +80,15 @@
     "turnSharpness": 1,
     "dropDepth": 1,
     "hillSharpness": 1,
-    "growthPosition": 0.25,
+    "growthPosition": 0.16,
     "lanePosition": 0,
-    "randomness": 0.7,
-    "routeSeed": 1
+    "randomness": 0.45,
+    "routeSeed": 1,
+    "starCount": 0.68,
+    "starBrightness": 0.78,
+    "starSize": 1.3,
+    "starTwinkle": 0.42,
+    "starBokeh": 0.17
   },
   "controls": [
     [
@@ -249,8 +254,44 @@
       0
     ],
     [
-      "Частицы",
-      "particles",
+      "Количество звёзд",
+      "starCount",
+      0,
+      1,
+      0.02,
+      "Ползунок",
+      0
+    ],
+    [
+      "Яркость звёзд",
+      "starBrightness",
+      0,
+      1,
+      0.02,
+      "Ползунок",
+      0
+    ],
+    [
+      "Размер звёзд",
+      "starSize",
+      0.4,
+      2.8,
+      0.1,
+      "Ползунок",
+      0
+    ],
+    [
+      "Мерцание звёзд",
+      "starTwinkle",
+      0,
+      1,
+      0.05,
+      "Ползунок",
+      0
+    ],
+    [
+      "Мягкое свечение звёзд",
+      "starBokeh",
       0,
       1,
       0.05,
@@ -366,7 +407,12 @@
     "growthPosition",
     "lanePosition",
     "randomness",
-    "routeSeed"
+    "routeSeed",
+    "starCount",
+    "starBrightness",
+    "starSize",
+    "starTwinkle",
+    "starBokeh"
   ]
 }
 END_SETKA_PATTERN_DESCRIPTOR */
@@ -430,91 +476,120 @@ function color(c,s,a){
 function frameColor(c,s,frame){
  return color(c,s,.5+.5*Math.sin(frame*.035+s*.24));
 }
+
+// Star directions are fixed in world space; looking around reveals different
+// stars without their drifting with the screen or becoming non-replayable.
+const sky=Array.from({length:950},(_,i)=>{
+ const a=frac(Math.sin((i+1)*127.1)*43758.5453);
+ const b=frac(Math.sin((i+1)*311.7+1.6)*22319.753);
+ const zz=2*b-1,r=Math.sqrt(Math.max(0,1-zz*zz)),theta=a*TAU;
+ return {dir:[r*Math.sin(theta),zz,r*Math.cos(theta)],
+  power:frac(Math.sin(i*91.17+7)*18531),
+  phase:frac(Math.sin(i*31.37+6)*8319)*TAU,
+  rate:.5+frac(Math.sin(i*21.19)*7331)*2.2};
+});
 function render(ctx,width,height,c,frame,preview){
  const w=Math.max(1,width),h=Math.max(1,height),m=Math.min(w,h),f=Math.max(0,Number(frame)||0);
  const here=travel(c,f),near=road(c,here,here);
- const ahead=road(c,here+3.5+c.follow*6,here);
+ const ahead=road(c,here+6.5+3*c.follow,here);
  const direction=norm(sub(ahead,near));
  const eyeHeight=.35+(1-c.proximity)*3.15;
  const backward=(1-c.proximity)*2.1;
  const trackSide=norm(cross([0,1,0],direction));
- const eye=add(add(sub(near,mul(direction,backward)),[0,eyeHeight,0]),mul(trackSide,c.lanePosition*1.8*c.width*.98));
- // Follow tangent naturally, then rotate the observer's HEAD independently.
- const baseYaw=Math.atan2(direction[0],direction[2]);
- const basePitch=Math.atan2(direction[1],Math.hypot(direction[0],direction[2]));
- const yaw=baseYaw+c.lookYaw,pitch=basePitch+c.lookPitch-.07;
+ const eye=add(add(sub(near,mul(direction,backward)),[0,eyeHeight,0]),mul(trackSide,c.lanePosition*1.75*c.width));
+ const baseYaw=Math.atan2(direction[0],direction[2]),basePitch=Math.atan2(direction[1],Math.hypot(direction[0],direction[2]));
+ const yaw=baseYaw+c.lookYaw,pitch=basePitch+c.lookPitch-.095;
  const forward=[Math.sin(yaw)*Math.cos(pitch),Math.sin(pitch),Math.cos(yaw)*Math.cos(pitch)];
  const side=[Math.cos(yaw),0,-Math.sin(yaw)],up=norm(cross(forward,side));
- const tilt=clamp((Math.atan2((road(c,here+4,here)[0]-near[0]),4)-baseYaw)*c.bank,-.32,.32);
- const right=add(mul(side,Math.cos(tilt)),mul(up,Math.sin(tilt)));
- const vertical=sub(mul(up,Math.cos(tilt)),mul(side,Math.sin(tilt)));
+ const roll=clamp((road(c,here+5,here)[0]-road(c,here-5,here)[0])*.02,-.26,.26)*c.bank;
+ const right=add(mul(side,Math.cos(roll)),mul(up,Math.sin(roll)));
+ const vertical=sub(mul(up,Math.cos(roll)),mul(side,Math.sin(roll)));
  const focal=m*.5/Math.tan(c.fov*Math.PI/360);
  const project=p=>{
   const v=sub(p,eye),z=dot(v,forward);
-  if(z<=.28)return null;
+  if(z<=.3)return null;
   return {x:w*.5+dot(v,right)*focal/z,y:h*.5-dot(v,vertical)*focal/z,z};
  };
  ctx.save();ctx.globalAlpha=1;ctx.fillStyle="#000";ctx.fillRect(0,0,w,h);
- const stars=Math.round((preview?38:105)*c.particles);
- for(let i=0;i<stars;i++){
-  const sx=frac(Math.sin((i+7)*17.317)*43758.7),sy=frac(Math.sin((i+19)*8.729)*16389.6);
-  const x=frac(sx+here*.00015*(1+i%7))*w,y=sy*h;
-  ctx.fillStyle=color(c,i*7,.09+.23*(i%8)/8*c.particles);
-  ctx.fillRect(x,y,.55+(i%4)*.18,.55+(i%4)*.18);
+ // True directional 3D star field, projected through the SAME observer camera.
+ // Quantity, brightness, size, twinkle and soft bokeh are independent sliders.
+ const starCount=Math.round(sky.length*c.starCount*(preview?.78:1));
+ const baseRgb=palette[c.colorModeIndex]||palette[0];
+ const cr=Math.round(lerp(baseRgb[0],255,.35)),cg=Math.round(lerp(baseRgb[1],255,.35)),cb=Math.round(lerp(baseRgb[2],255,.35));
+ for(let i=0;i<starCount;i++){
+  const star=sky[i],v=star.dir,z=dot(v,forward);
+  if(z<=.02)continue;
+  const x=w*.5+dot(v,right)*focal/z,y=h*.5-dot(v,vertical)*focal/z;
+  if(x<-12||x>w+12||y<-12||y>h+12)continue;
+  const glitter=(1-c.starTwinkle*.38)+c.starTwinkle*.38*(1+Math.sin(f*.024*star.rate*2+star.phase))*.5;
+  const intensity=clamp(c.starBrightness*(.4+star.power*.6)*glitter,0,1);
+  if(intensity<=.001)continue;
+  const size=(.7+star.power*1.1)*c.starSize;
+  if(c.starBokeh>0&&star.power>.69){
+   ctx.beginPath();ctx.arc(x,y,size*(2.4+3*c.starBokeh),0,TAU);
+   ctx.fillStyle="rgba("+cr+","+cg+","+cb+","+(intensity*c.starBokeh*.12)+")";ctx.fill();
+  }
+  ctx.beginPath();ctx.arc(x,y,size*.5,0,TAU);
+  ctx.fillStyle="rgba("+cr+","+cg+","+cb+","+intensity+")";ctx.fill();
+  if(star.power>.972){
+   ctx.strokeStyle="rgba("+cr+","+cg+","+cb+","+(intensity*.45)+")";
+   ctx.lineWidth=.55;ctx.beginPath();
+   ctx.moveTo(x-size*1.5,y);ctx.lineTo(x+size*1.5,y);
+   ctx.moveTo(x,y-size*1.5);ctx.lineTo(x,y+size*1.5);ctx.stroke();
+  }
  }
- const spacing=clamp(1.45/c.density,.5,3);
- // The emergence frontier follows the observer. At 100% position, new
- // crossbars are born just ahead; at 0% they grow far down the track.
- const growthAhead=10.5+93.5*(1-c.growthPosition);
- const frontier=here+growthAhead;
+ // Restore the original approved bridge proportions and clean crossbars,
+ // posts, transverse diagonals, two uninterrupted side rails and perspective.
+ const spacing=clamp(1.32/c.density,.48,2.9);
+ const frontier=here+10.5+(1-c.growthPosition)*106;
  const first=Math.ceil((here+.22+(1-c.proximity)*3.5)/spacing)*spacing;
- const count=Math.min(preview?76:155,Math.ceil(95/spacing));
  const ribs=[];
+ const count=Math.min(preview?85:165,Math.ceil(113/spacing));
  for(let i=0;i<count;i++){
-  const s=first+i*spacing;
-  if(s>frontier)break;
-  const center=road(c,s,here),tangent=norm(sub(road(c,s+.2,here),road(c,s-.2,here)));
+  const s=first+i*spacing;if(s>frontier)break;
+  const center=road(c,s,here);
+  const tangent=norm(sub(road(c,s+.25,here),road(c,s-.25,here)));
   const r=norm(cross([0,1,0],tangent)),u=norm(cross(tangent,r));
   const curvature=road(c,s+2,here)[0]-road(c,s-2,here)[0];
-  const roll=c.bank*clamp(curvature*.035,-.33,.33);
-  const rr=add(mul(r,Math.cos(roll)),mul(u,Math.sin(roll)));
-  const uu=sub(mul(u,Math.cos(roll)),mul(r,Math.sin(roll)));
-  const widthScale=1.8*c.width*(1+c.pulse*.10*Math.sin(s*.43-here*.65));
+  const tilt=c.bank*clamp(curvature*.027,-.32,.32);
+  const rr=add(mul(r,Math.cos(tilt)),mul(u,Math.sin(tilt)));
+  const uu=sub(mul(u,Math.cos(tilt)),mul(r,Math.sin(tilt)));
+  const widthScale=1.92*c.width*(1+c.pulse*.035*Math.sin(s*.34-here*.62));
   const point=(dx,dy)=>project(add(center,add(mul(rr,dx*widthScale),mul(uu,dy*widthScale))));
   const p={s,C:project(center),L:point(-1,0),R:point(1,0),
-    BL:point(-1.15,0),BR:point(1.15,0),
-    TL:point(-1.15,.65),TR:point(1.15,.65),
-    DL:point(-.82,-.18),DR:point(.82,-.18)};
+   BL:point(-1.2,0),BR:point(1.2,0),
+   TL:point(-1.2,.52),TR:point(1.2,.52),
+   DL:point(.82,-.12),DR:point(-.82,-.12)};
   if(Object.keys(p).some(k=>k!=="s"&&(!p[k]||!Number.isFinite(p[k].x))))continue;
   ribs.push(p);
  }
- // The far end is drawn first, so close new sections visibly appear UNDER
- // the observer rather than forming a wall across eye level.
- for(const sideName of ["BL","BR"]){
+ for(const edge of ["BL","BR"]){
   ctx.beginPath();let started=false;
   for(let i=ribs.length-1;i>=0;i--){
-   const v=ribs[i][sideName];
-   if(!started){ctx.moveTo(v.x,v.y);started=true}else ctx.lineTo(v.x,v.y);
+   const p=ribs[i][edge];if(!started){ctx.moveTo(p.x,p.y);started=true}else ctx.lineTo(p.x,p.y);
   }
-  ctx.strokeStyle=color(c,here+11,.29);ctx.lineWidth=1.1;ctx.stroke();
+  ctx.lineWidth=1;ctx.strokeStyle=color(c,here+5,.36);ctx.stroke();
  }
  for(let i=ribs.length-1;i>=0;i--){
-  const p=ribs[i],z=p.C.z,close=clamp(7/z,.08,1);
-  const fade=smooth((95-z)/38)*smooth((p.s-here-.2)/2)*smooth((frontier-p.s)/4);
-  const opacity=fade*(.17+.78*close);
-  if(opacity<.015)continue;
+  const p=ribs[i],close=clamp(8/p.C.z,.08,1);
+  const fade=smooth((113-p.C.z)/48)*smooth((p.s-here-.12)/2)*smooth((frontier-p.s)/5);
+  const alpha=fade*(.24+.76*close);
+  if(alpha<.015)continue;
+  ctx.lineCap="round";ctx.lineJoin="round";ctx.strokeStyle=color(c,p.s,alpha);
+  ctx.lineWidth=.7+1.25*close;
+  if(c.glow>0&&i%3===0){ctx.shadowColor=color(c,p.s,.9);ctx.shadowBlur=c.glow*11}
+  ctx.beginPath();ctx.moveTo(p.L.x,p.L.y);ctx.lineTo(p.R.x,p.R.y);ctx.stroke();
+  ctx.lineWidth=.5+1.22*close;
   ctx.beginPath();
-  ctx.moveTo(p.L.x,p.L.y);ctx.lineTo(p.R.x,p.R.y);
-  ctx.moveTo(p.TL.x,p.TL.y);ctx.lineTo(p.BL.x,p.BL.y);ctx.lineTo(p.DR.x,p.DR.y);
-  ctx.moveTo(p.TR.x,p.TR.y);ctx.lineTo(p.BR.x,p.BR.y);ctx.lineTo(p.DL.x,p.DL.y);
-  ctx.lineWidth=.55+1.55*close;
-  ctx.strokeStyle=color(c,p.s,opacity);
-  if(c.glow>0&&i%3===0){ctx.shadowBlur=12*c.glow;ctx.shadowColor=color(c,p.s,.7)}
+  ctx.moveTo(p.TL.x,p.TL.y);ctx.lineTo(p.BL.x,p.BL.y);
+  ctx.moveTo(p.TR.x,p.TR.y);ctx.lineTo(p.BR.x,p.BR.y);
+  ctx.moveTo(p.BL.x,p.BL.y);ctx.lineTo(p.DL.x,p.DL.y);
+  ctx.moveTo(p.BR.x,p.BR.y);ctx.lineTo(p.DR.x,p.DR.y);
   ctx.stroke();ctx.shadowBlur=0;
-  if(c.pulse>0&&i%7===0){
-   const q=(1+Math.sin(here*.35-p.s*.55))*.5;
-   ctx.beginPath();ctx.arc(lerp(p.L.x,p.R.x,q),lerp(p.L.y,p.R.y,.5),.5+2*close,0,TAU);
-   ctx.fillStyle=frameColor(c,p.s,f);ctx.globalAlpha=opacity*c.pulse;ctx.fill();ctx.globalAlpha=1;
+  if(c.pulse>0&&i%8===0){
+   const q=(1+Math.sin(here*.31-p.s*.46))*.5;
+   ctx.beginPath();ctx.arc(lerp(p.L.x,p.R.x,q),lerp(p.L.y,p.R.y,q),.45+2.1*close,0,TAU);
+   ctx.fillStyle=color(c,p.s,alpha*c.pulse);ctx.fill();
   }
  }
  ctx.restore();
