@@ -27,7 +27,8 @@ function sample(R,config,frame) {
 test('Medusa joins the generic registry, starts monochrome, retains all nine palettes and 30-body control',()=>{
   const R=setup(),d=R.get('medusa');
   assert.ok(R.ready('medusa'));
-  assert.equal(d.colorModes,9);\n  assert.equal(d.tapOverflow,'clamp','new patterns can opt into non-wrapping tap without ID conditions');
+  assert.equal(d.colorModes,9);
+  assert.equal(d.tapOverflow,'clamp','new patterns can opt into non-wrapping tap without ID conditions');
   assert.deepEqual(Array.from(d.palettes[0]),[255,255,255]);
   assert.equal(d.defaults.medusaCount,3);
   assert.equal(d.controls.find(c=>c[1]==='medusaCount')[3],30);
