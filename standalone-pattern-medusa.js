@@ -6,7 +6,7 @@
   "introducedAt": "2026-11-03T21:47:43.000Z",
   "schemaVersion": 1,
   "module": "standalone-pattern-medusa.js",
-  "colorModes": 9,
+  "colorModes": 9,\n  "tapOverflow": "clamp",
   "palettes": [
     [255,255,255], [80,242,221], [98,139,255],
     [195,140,255], [255,131,187], [255,209,118],
