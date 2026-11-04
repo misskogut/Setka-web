@@ -97,3 +97,5 @@ A product build is not "Swiss-clock stable" on declaration. It needs:
 Until each row is proven, report the remaining failures and work against the shared platform, not against individual pattern names.
 
 **No automatic memory claims:** ChatGPT conversational memory may not update synchronously. Repository rules are durable, versioned and can be inspected by every future developer or agent.
+
+| APP-037 | Быстрые публикация/выключение, позиция и стартовая конфигурация с живым превью находятся непосредственно на карточке в списке. Статистика открывается отдельно; второй список названий/позиций сверху запрещён. | Общие UI-компоненты + browser lifecycle; CI/deploy проверяются отдельно. |
