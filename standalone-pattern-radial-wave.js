@@ -7,52 +7,332 @@
   "schemaVersion": 1,
   "module": "standalone-pattern-radial-wave.js",
   "colorModes": 9,
-  "palettes": [[255,255,255],[109,238,255],[107,141,255],[199,136,255],[255,139,206],[255,208,100],[103,242,167],[255,255,255],[255,255,255]],
+  "palettes": [
+    [
+      255,
+      255,
+      255
+    ],
+    [
+      109,
+      238,
+      255
+    ],
+    [
+      107,
+      141,
+      255
+    ],
+    [
+      199,
+      136,
+      255
+    ],
+    [
+      255,
+      139,
+      206
+    ],
+    [
+      255,
+      208,
+      100
+    ],
+    [
+      103,
+      242,
+      167
+    ],
+    [
+      255,
+      255,
+      255
+    ],
+    [
+      255,
+      255,
+      255
+    ]
+  ],
   "defaults": {
     "patternId": "radial-wave",
-    "speed": 1, "amplitude": 1, "frequency": 1, "density": 25,
-    "size": 1, "trail": 35, "follow": 1, "pulse": 0, "twist": 0, "magnet": 0,
-    "centerX": 0.5, "centerY": 0.5, "fromX": 0.5, "fromY": 0.5, "centerFrame": 0,
-    "pointerX": 0.5, "pointerY": 0.5, "touchActive": false, "releaseFrame": 0,
-    "spin": 0, "spinFrame": 0, "spinX": 0.5, "spinY": 0.5,
-    "pulses": [], "lastPulseFrame": -1000, "lastTapFrame": -1000,
-    "lastTapX": 0.5, "lastTapY": 0.5, "phase": 0, "phaseFrame": 0,
+    "speed": 1,
+    "amplitude": 1,
+    "frequency": 1,
+    "density": 25,
+    "size": 1,
+    "trail": 35,
+    "follow": 1,
+    "pulse": 0,
+    "twist": 0,
+    "magnet": 0,
+    "centerX": 0.5,
+    "centerY": 0.5,
+    "fromX": 0.5,
+    "fromY": 0.5,
+    "centerFrame": 0,
+    "pointerX": 0.5,
+    "pointerY": 0.5,
+    "touchActive": false,
+    "releaseFrame": 0,
+    "spin": 0,
+    "spinFrame": 0,
+    "spinX": 0.5,
+    "spinY": 0.5,
+    "pulses": [],
+    "lastPulseFrame": -1000,
+    "lastTapFrame": -1000,
+    "lastTapX": 0.5,
+    "lastTapY": 0.5,
+    "phase": 0,
+    "phaseFrame": 0,
     "colorModeIndex": 0
   },
   "controls": [
-    ["Скорость", "speed", 0.1, 3, 0.1, "Бегунок", 0],
-    ["Размах волны", "amplitude", 0, 2.5, 0.1, "Бегунок", 0],
-    ["Частота колец", "frequency", 0.3, 4, 0.1, "Бегунок", 0],
-    ["Плотность точек", "density", 12, 48, 1, "Бегунок", 0],
-    ["Размер точек", "size", 0.4, 2.5, 0.1, "Бегунок", 0],
-    ["Шлейф", "trail", 0, 100, 1, "Бегунок", 0],
-    ["Следование", "follow", 0.1, 3, 0.1, "Бегунок", 0],
-    ["Импульс касания", "pulse", 0, 100, 1, "Бегунок", 0],
-    ["Закручивание", "twist", 0, 100, 1, "Бегунок", 0],
-    ["Магнит (− / +)", "magnet", -100, 100, 5, "Бегунок", 0]
+    [
+      "Скорость",
+      "speed",
+      0.1,
+      3,
+      0.1,
+      "Бегунок",
+      0,
+      "Темп движения волн: влево медленнее, вправо быстрее."
+    ],
+    [
+      "Размах волны",
+      "amplitude",
+      0,
+      2.5,
+      0.1,
+      "Бегунок",
+      0,
+      "Насколько далеко точки смещаются от своих мест. При 0 основная волна и импульсы не видны."
+    ],
+    [
+      "Частота колец",
+      "frequency",
+      0.3,
+      4,
+      0.1,
+      "Бегунок",
+      0,
+      "Число концентрических колец: вправо больше колец. Не меняет скорость движения."
+    ],
+    [
+      "Плотность точек",
+      "density",
+      12,
+      48,
+      1,
+      "Бегунок",
+      0,
+      "Количество точек в сетке: вправо точек больше, расстояние между ними меньше."
+    ],
+    [
+      "Размер точек",
+      "size",
+      0.4,
+      2.5,
+      0.1,
+      "Бегунок",
+      0,
+      "Диаметр каждой точки: мелкие или крупные, всегда без боке и размытия."
+    ],
+    [
+      "Шлейф",
+      "trail",
+      0,
+      100,
+      1,
+      "Бегунок",
+      0,
+      "Короткий след от предыдущих положений точек. 0 — след выключен."
+    ],
+    [
+      "Следование",
+      "follow",
+      0.1,
+      3,
+      0.1,
+      "Бегунок",
+      0,
+      "Как быстро центр волны догоняет палец: влево плавнее и медленнее, вправо быстрее."
+    ],
+    [
+      "Импульс касания",
+      "pulse",
+      0,
+      100,
+      1,
+      "Бегунок",
+      0,
+      "Установи выше 0 и коснись полотна: от пальца пойдёт дополнительная расходящаяся волна. При проведении появляются новые импульсы."
+    ],
+    [
+      "Закручивание",
+      "twist",
+      0,
+      100,
+      1,
+      "Бегунок",
+      0,
+      "Установи выше 0 и проведи пальцем: точки вокруг него закрутятся. Чем выше значение, тем сильнее вращение."
+    ],
+    [
+      "Магнит (− / +)",
+      "magnet",
+      -100,
+      100,
+      5,
+      "Бегунок",
+      0,
+      "Удерживай или веди палец. Плюс притягивает точки, минус отталкивает, 0 отключает эффект."
+    ]
   ],
   "gestureHints": [
-    ["Центр волны", "1 палец: коснись или веди — волна следует за пальцем"],
-    ["Сброс центра", "Два быстрых касания по одной точке — вернуть центр"],
-    ["Дополнительное движение", "Импульс, вихрь и магнит работают вместе; сила задаётся бегунками"]
+    [
+      "Центр волны",
+      "1 палец: коснись или веди — волна следует за пальцем"
+    ],
+    [
+      "Сброс центра",
+      "Два быстрых касания в одном месте — центр вернётся в середину"
+    ]
   ],
   "schema": {
-    "centerX":{"type":"number","min":0,"max":1},"centerY":{"type":"number","min":0,"max":1},
-    "fromX":{"type":"number","min":0,"max":1},"fromY":{"type":"number","min":0,"max":1},
-    "centerFrame":{"type":"number","min":0,"max":1000000000},
-    "pointerX":{"type":"number","min":0,"max":1},"pointerY":{"type":"number","min":0,"max":1},
-    "touchActive":{"type":"boolean"},"releaseFrame":{"type":"number","min":0,"max":1000000000},
-    "spin":{"type":"number","min":-2,"max":2},
-    "spinFrame":{"type":"number","min":0,"max":1000000000},
-    "spinX":{"type":"number","min":0,"max":1},"spinY":{"type":"number","min":0,"max":1},
-    "pulses":{"type":"array","maxItems":36},
-    "lastPulseFrame":{"type":"number","min":-1000,"max":1000000000},
-    "lastTapFrame":{"type":"number","min":-1000,"max":1000000000},
-    "lastTapX":{"type":"number","min":0,"max":1},"lastTapY":{"type":"number","min":0,"max":1},
-    "phase":{"type":"number","min":-1000000000,"max":1000000000},
-    "phaseFrame":{"type":"number","min":0,"max":1000000000}
+    "centerX": {
+      "type": "number",
+      "min": 0,
+      "max": 1
+    },
+    "centerY": {
+      "type": "number",
+      "min": 0,
+      "max": 1
+    },
+    "fromX": {
+      "type": "number",
+      "min": 0,
+      "max": 1
+    },
+    "fromY": {
+      "type": "number",
+      "min": 0,
+      "max": 1
+    },
+    "centerFrame": {
+      "type": "number",
+      "min": 0,
+      "max": 1000000000
+    },
+    "pointerX": {
+      "type": "number",
+      "min": 0,
+      "max": 1
+    },
+    "pointerY": {
+      "type": "number",
+      "min": 0,
+      "max": 1
+    },
+    "touchActive": {
+      "type": "boolean"
+    },
+    "releaseFrame": {
+      "type": "number",
+      "min": 0,
+      "max": 1000000000
+    },
+    "spin": {
+      "type": "number",
+      "min": -2,
+      "max": 2
+    },
+    "spinFrame": {
+      "type": "number",
+      "min": 0,
+      "max": 1000000000
+    },
+    "spinX": {
+      "type": "number",
+      "min": 0,
+      "max": 1
+    },
+    "spinY": {
+      "type": "number",
+      "min": 0,
+      "max": 1
+    },
+    "pulses": {
+      "type": "array",
+      "maxItems": 36
+    },
+    "lastPulseFrame": {
+      "type": "number",
+      "min": -1000,
+      "max": 1000000000
+    },
+    "lastTapFrame": {
+      "type": "number",
+      "min": -1000,
+      "max": 1000000000
+    },
+    "lastTapX": {
+      "type": "number",
+      "min": 0,
+      "max": 1
+    },
+    "lastTapY": {
+      "type": "number",
+      "min": 0,
+      "max": 1
+    },
+    "phase": {
+      "type": "number",
+      "min": -1000000000,
+      "max": 1000000000
+    },
+    "phaseFrame": {
+      "type": "number",
+      "min": 0,
+      "max": 1000000000
+    }
   },
-  "keyFields": ["speed","amplitude","frequency","density","size","trail","follow","pulse","twist","magnet","centerX","centerY","fromX","fromY","centerFrame","pointerX","pointerY","touchActive","releaseFrame","spin","spinFrame","spinX","spinY","pulses","lastPulseFrame","lastTapFrame","lastTapX","lastTapY","phase","phaseFrame","colorModeIndex"]
+  "keyFields": [
+    "speed",
+    "amplitude",
+    "frequency",
+    "density",
+    "size",
+    "trail",
+    "follow",
+    "pulse",
+    "twist",
+    "magnet",
+    "centerX",
+    "centerY",
+    "fromX",
+    "fromY",
+    "centerFrame",
+    "pointerX",
+    "pointerY",
+    "touchActive",
+    "releaseFrame",
+    "spin",
+    "spinFrame",
+    "spinX",
+    "spinY",
+    "pulses",
+    "lastPulseFrame",
+    "lastTapFrame",
+    "lastTapX",
+    "lastTapY",
+    "phase",
+    "phaseFrame",
+    "colorModeIndex"
+  ],
+  "tapColorCycle": false
 }
 END_SETKA_PATTERN_DESCRIPTOR */
 (()=>{
@@ -170,6 +450,10 @@ function interaction(c,event){
    lastTapFrame:phase==="start"?(doubleTap?-1000:f):c.lastTapFrame,
    lastTapX:phase==="start"?x:c.lastTapX,lastTapY:phase==="start"?y:c.lastTapY};
  if(phase==="move"){
+  // A drag is not the first tap of a future double-tap reset.
+  // Ignore tiny finger jitter; startX/startY are provided by the generic host.
+  if(Number.isFinite(e.startX)&&Number.isFinite(e.startY)&&
+    Math.hypot(Number(e.x)-e.startX,Number(e.y)-e.startY)>12)next.lastTapFrame=-1000;
   const deltaX=clamp(Number(e.dx)||0,-200,200),deltaY=clamp(Number(e.dy)||0,-200,200);
   const momentum=c.spin*Math.exp(-2.3*elapsed(f,c.spinFrame));
   next.spin=clamp(momentum+(deltaX+deltaY*.32)/Math.max(150,width)*5,-1.4,1.4);

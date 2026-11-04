@@ -205,8 +205,8 @@ try{
     "key must not launch the old floating instructions modal");
   assert.equal(await page.locator("#st34KeySheet .sk-setting").count(),10);
   const desc=await page.locator("#st34KeySheet").innerText();
-  assert.match(desc,/Каждый параметр можно менять бегунком/);
-   assert.match(desc,/ТОЛЬКО БЕГУНКОМ/);
+  assert.match(desc,/Настройки/);
+   assert.equal(await page.locator("#st34KeySheet input[type=range]").count(),10,"all settings retain their sliders");
    assert.doesNotMatch(desc,/ТОЧНАЯ НАСТРОЙКА/);
   assert.match(desc,/Волна по горизонтали/);
   assert.match(desc,/Волна по вертикали/);

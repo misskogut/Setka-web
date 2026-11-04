@@ -119,8 +119,8 @@ try{
   const result=await page.evaluate(id=>{
    const registry=window.SetkaPatternRegistryV1,rows=registry.controls(id),host=document.getElementById('st34KeySheet');
    const panels=[...host.querySelectorAll('.sk-setting')],headings=[...host.querySelectorAll('.sk-section')].map(x=>x.textContent);
-   const badges=panels.map(x=>x.querySelector('.sk-gesture').textContent);
-   const expected=rows.map(row=>row[6]===0?'Бегунок':row[5]==='Тап'?'Тап по паттерну':row[5]==='Пинч'?'Свести / развести':row[5]);
+   const badges=panels.map(x=>x.querySelector('.sk-gesture')?.textContent??null);
+   const expected=rows.map(row=>row[6]===0?null:row[5]==='Тап'?'Касание':row[5]==='Пинч'?'Свести / развести':row[5]);
    const changed=[];
    for(let i=0;i<rows.length;i++){
     const [label,key,min,max]=rows[i],input=panels[i].querySelector('input');
@@ -132,16 +132,17 @@ try{
     if(current===initial)throw Error('Slider failed to change '+id+'/'+key);
     changed.push(key);
    }
-   return {count:panels.length,expected,badges,headings,changed,description:host.querySelector('.sk-description')?.textContent};
+   return {count:panels.length,expected,badges,headings,changed,description:host.querySelector('.sk-description')?.textContent,visibleValues:host.querySelectorAll('output,.sk-value').length};
   },pattern.id);
   assert.equal(result.count,pattern.controls.length,'every control has a live slider '+pattern.id);
-  assert.deepEqual(result.badges,result.expected,'accurate control gesture names '+pattern.id);
+  assert.deepEqual(result.badges,result.expected,'gestures only for settings with real gestures '+pattern.id);
+  assert.equal(result.visibleValues,0,'no visible decimal/noisy numeric readouts '+pattern.id);
   assert.equal(result.changed.length,pattern.controls.length,'sliders change every parameter '+pattern.id);
   assert.ok(!result.headings.some(x=>/ТОЧНАЯ НАСТРОЙКА/.test(x)));
   assert.ok(!/точной настройкой/i.test(result.description||''));
   for(const control of pattern.controls){
    const [,key,,,,gesture,fingers]=control;
-   const title=fingers===0?'ТОЛЬКО БЕГУНКОМ':gesture==='Тап'?'КАСАНИЕ':fingers===2?'ЖЕСТЫ · 2 ПАЛЬЦАМИ':'СВАЙП · 1 ПАЛЬЦЕМ';
+   const title=fingers===0?'НАСТРОЙКИ':gesture==='Тап'?'КАСАНИЕ':fingers===2?'2 ПАЛЬЦА':'1 ПАЛЕЦ';
    assert.ok(result.headings.includes(title),'gesture title '+pattern.id+'/'+key);
   }
   await page.locator('#st34KeySheet [data-action="close"]').click();
