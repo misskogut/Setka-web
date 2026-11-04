@@ -439,9 +439,14 @@ function interact(c,event){
  const e=event||{},f=clamp(Number(e.frame)||0,0,1000000000);
  if(e.type==="patch"){
   const patch=e.patch||{};
-  let next={...c,...patch};
+  const next={...c,...patch};
   for(const key of ["turn","num","lineW","pitch"]){
-   if(Object.hasOwn(patch,key))next=updateTarget(c,key,patch[key],f),next={...next,...Object.fromEntries(Object.entries(patch).filter(([k])=>!["turn","num","lineW","pitch"].includes(k)))};
+   if(!Object.hasOwn(patch,key))continue;
+   const updated=updateTarget(c,key,patch[key],f);
+   next[key]=updated[key];
+   next[key+"From"]=updated[key+"From"];
+   next[key+"Frame"]=updated[key+"Frame"];
+   if(key==="pitch"){next.zFrom=updated.zFrom;next.zFrame=updated.zFrame}
   }
   if(Object.hasOwn(patch,"colorSpeed")&&!Object.hasOwn(patch,"colorFrame")){
    next.colorPhase=clamp(phaseAt(c,f),0,10000000);next.colorFrame=f;
