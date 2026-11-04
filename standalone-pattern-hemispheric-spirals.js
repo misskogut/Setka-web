@@ -243,8 +243,8 @@ END_SETKA_PATTERN_DESCRIPTOR */
 // One deterministic Canvas2D renderer for SETKA front, previews, notes,
 // favorites, admin and replay. The two halves and all layer wave phases are
 // the user's original Processing/p5 mathematical construction.
-const R=window.SetkaPatternRegistryV1,id=document.currentScript?.dataset.patternId;
-if(!id||!R?.has(id))return;
+const registry=window.SetkaPatternRegistryV1,id=document.currentScript?.dataset.patternId;
+if(!id||!registry?.has(id))return;
 const TAU=2*Math.PI,clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
 const c01=v=>clamp(v,0,1),P=(r,g,b)=>[r,g,b];
 const mix=(a,b,f)=>{const t=c01(f);return a.map((v,i)=>v+(b[i]-v)*t)};
@@ -264,7 +264,7 @@ function color(m,aK,k,arm,L,t){
  const d=c01(.65*k+.25*Math.sin(t*.22+arm*.7));
  const p=c01(.55*aK+.25*Math.sin(t*.18+L*.4));
  switch(m){
- case 0:{const v=250-110*k;return rgb(P(v,v,v));}
+ case 0:return "#fff";
  case 1:return rgb(mix(P(60,230,255),P(180,90,255),d));
  case 2:return rgb(tri(P(255,190,90),P(210,90,255),P(80,230,255),d));
  case 3:return hsv(t*.05+aK*.18+k*.55,.85,1);
@@ -313,7 +313,11 @@ function render(ctx,width,height,c,frame,preview){
  function half(){
   for(let arm=0;arm<arms;arm++)for(let L=0;L<layers;L++){
    const k=L/(layers-1),aK=arm/(arms-1);
-   ctx.globalAlpha=(mode===5?205-75*k:220-85*k)/255;
+   // White is an exact white stroke to honor the universal initial palette.
+   // Preserve the ORIGINAL composite depth tint through alpha instead:
+   // source white intensity (250-110k)/255 * original layer alpha.
+   ctx.globalAlpha=mode===0?((250-110*k)*(220-85*k))/(255*255):
+     (mode===5?205-75*k:220-85*k)/255;
    ctx.lineWidth=(1.25-.35*k)*c.thickness;
    ctx.strokeStyle=color(mode,aK,k,arm,L,t);
    const mix=(.18+.82*(1-k))*c.waveIntensity;
@@ -398,6 +402,6 @@ function interact(c,event){
    {...next,colorModeIndex:(c.colorModeIndex+1)%9,outsideTapCount:0,lastOutsideTapFrame:-1000}:
    {...next,outsideTapCount:count,lastOutsideTapFrame:f};
 }
-R.bindRenderer(id,render);
-R.bindInteraction?.(id,interact);
+registry.bindRenderer(id,render);
+registry.bindInteraction?.(id,interact);
 })();
