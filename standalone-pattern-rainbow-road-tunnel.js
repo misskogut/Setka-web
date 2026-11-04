@@ -281,7 +281,11 @@
     1,
     2,
     3
-  ]
+  ],
+  "capabilities": {
+    "paintedRoadDashes": true,
+    "stableEmitterLayering": true
+  }
 }
 END_SETKA_PATTERN_DESCRIPTOR */
 
