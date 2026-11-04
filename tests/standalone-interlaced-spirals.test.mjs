@@ -10,7 +10,7 @@ assert.ok(match,"new pattern auto-discoverable without hardcoded consumer change
 const d=JSON.parse(match[1]);
 const scope={window:{dispatchEvent(){}},CustomEvent:class{}};
 vm.runInNewContext(fs.readFileSync("standalone-pattern-registry-v1.js","utf8"),scope);
-const R=scope.window.SetkaPatternRegistryV1;R.register(d);
+const R=scope.window.SetkaPatternRegistryV1;if(!R.has(id))R.register(d);
 vm.runInNewContext(source,{window:{SetkaPatternRegistryV1:R},document:{currentScript:{dataset:{patternId:id}}}}, {timeout:4000});
 const conf=()=>structuredClone(d.defaults);
 function trace(c=conf(),f=94,preview=true){
