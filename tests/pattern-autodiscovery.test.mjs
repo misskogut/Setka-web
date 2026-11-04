@@ -96,8 +96,11 @@ test('every automatically discovered pattern renders its real white-on-black sta
    // while the default must remain static, exactly as the preview showed.
    const rotation=pattern.controls.find(row=>row[1]==='omega');
    const paused=rotation&&Number(c.omega)===0;
-   const motion=paused?{...c,omega:Math.max(rotation[4],Math.min(rotation[3],.018))}:c;
-   if(paused)assert.deepEqual(trace(c,44),trace(c,65),'zero angular velocity stays still '+pattern.id);
+   const waveDriven=Array.isArray(c.waves)&&c.waves.length===0;
+   const motion=paused?{...c,omega:Math.max(rotation[4],Math.min(rotation[3],.018))}:
+     waveDriven?{...c,waves:[.5,.5,0]}:c;
+   if(paused||waveDriven)assert.deepEqual(trace(c,44),trace(c,65),
+     'stationary initial state remains static until requested interaction '+pattern.id);
    assert.notDeepEqual(
      {strokes:trace(motion,44).strokes,shapes:trace(motion,44).shapes},
      {strokes:trace(motion,65).strokes,shapes:trace(motion,65).shapes},
@@ -388,5 +391,98 @@ test('approved Hex Wheel Buddha renders pointy-top XY hexagons and isolated one-
   const snap=R.snapshot({patternId:id,config:{...patched,colorModeIndex:8,hexSize:5,strokeW:4},frame:220});
   assert.ok(R.restore(snap).ok,'all wheel controls replay from saved favorites/notes');
   assert.equal(R.validate(R.defaults(id),id).ok,true);
+ }finally{fs.rmSync(dir,{recursive:true,force:true});}
+});
+
+
+test('HexWave 3D supports touch-launched propagating waves, isolated gestures and durable 9-color replay',()=>{
+ const dir=workspace();
+ try{
+  const {source,manifest}=build(dir),R=loadRegistry(source),id='hexwave-3d';
+  const p=R.get(id);
+  assert.ok(p&&manifest.patterns.some(x=>x.id===id),'new module is auto-discovered in front and research');
+  const c=R.defaults(id),window={SetkaPatternRegistryV1:R},
+   document={currentScript:{dataset:{patternId:id}}};
+  vm.runInNewContext(fs.readFileSync(path.join(dir,p.module),'utf8'),{window,document,Math});
+  assert.ok(R.ready(id)&&R.hasInteraction(id),'same renderer/reducer powers gameplay and Replay');
+  assert.equal(p.controls.length,6,'all six approved preview sliders are real');
+  assert.deepEqual(JSON.parse(JSON.stringify([c.hexCount,c.lineW,c.colorSpeed,c.spinRate,c.waveSpeed,c.perspective])),
+   [14,1.4,1,2,250,900],'original user default values remain intact');
+  assert.deepEqual(JSON.parse(JSON.stringify(c.waves)),[],'no wave until a double-tap');
+  assert.equal(p.colorModes,9);
+  assert.equal(p.tapColorCycle,true,'host triple-tap continues to change color');
+  assert.deepEqual(JSON.parse(JSON.stringify(p.palettes[0])),[255,255,255]);
+  function trace(config,frame=0,w=390,h=460){
+   const lines=[],fills=[],transforms=[];
+   let start=null,end=null;
+   const ctx={save(){},restore(){},beginPath(){},closePath(){},
+    fillRect(){fills.push(this.fillStyle)},
+    translate(x,y){transforms.push([x,y])},moveTo(x,y){start=[x,y]},
+    lineTo(x,y){end=[x,y]},
+    stroke(){if(lines.length<50)lines.push({start,end,color:this.strokeStyle,width:this.lineWidth})}};
+   R.render(ctx,w,h,config,frame,false,id);
+   return {lines,fills,transforms};
+  }
+  const initial=trace(c,0);
+  assert.ok(initial.lines.length>4,'first canvas frame must show the real mesh, never black-only');
+  assert.equal(initial.fills[0],'#000');
+  assert.deepEqual(initial.transforms[0],[195,230]);
+  assert.ok(initial.lines.every(x=>x.color==='#fff'),'first mode is white lines');
+  assert.deepEqual(trace(c,0),trace(c,200),'unactivated pattern stays geometrically static');
+  function event(config,phase,frame,x=195,y=230,extra={}){
+   return R.interact(id,config,{type:'gesture',phase,frame,x,y,width:390,height:460,fingers:1,
+    dx:0,dy:0,startX:x,startY:y,...extra});
+  }
+  let state=event(c,'start',3,195,230);
+  assert.equal(state.tapCount,1);
+  assert.equal(state.waves.length,0);
+  state=event(state,'end',7,195,230);
+  state=event(state,'start',11,195,230);
+  assert.equal(state.waves.length,3,'second tap adds precisely one wave at finger');
+  assert.deepEqual(JSON.parse(JSON.stringify(state.waves)),[.5,.5,11]);
+  assert.deepEqual(trace(state,11),trace(c,11),'wave starts without teleporting entire grid');
+  const atFront=trace(state,55);
+  assert.notDeepEqual(atFront,trace(state,95),'hexagonal wave rotates each cell independently');
+  assert.deepEqual(trace(state,95),trace(state,95),'research frame seek yields same art');
+  assert.notDeepEqual(trace({...state,waveSpeed:50},85),trace({...state,waveSpeed:800},85),
+   'front speed slider changes actual arrival timing');
+  assert.notDeepEqual(trace({...state,perspective:200},85),trace({...state,perspective:1800},85),
+   'perspective slider modifies 3D projected vertices');
+  assert.notDeepEqual(trace({...state,lineW:.3},85),trace({...state,lineW:10},85),
+   'line width slider changes drawn strokes');
+  assert.notDeepEqual(trace({...state,hexCount:2},85),trace({...state,hexCount:100},85),
+   'density changes cell count and geometry');
+  for(let i=0;i<9;i++){
+   const pcolor=trace({...state,colorModeIndex:i},85);
+   assert.ok(pcolor.lines.length>0,'palette '+i+' visibly renders');
+  }
+  assert.notDeepEqual(trace({...state,colorModeIndex:1,colorSpeed:1},85),
+   trace({...state,colorModeIndex:1,colorSpeed:9},85),'rainbow tempo has real effect');
+  const moved=event(state,'move',115,20,140,{startX:20,startY:140,dx:0,dy:-100});
+  assert.equal(moved.hexCount,19,'one-finger left upward swipe increases density');
+  assert.equal(moved.spinRate,state.spinRate,'density swipe never changes rotation');
+  const top=event(state,'move',115,190,30,{startX:190,startY:30,dx:70,dy:0});
+  assert.ok(top.lineW>state.lineW,'top horizontal swipe thickens edges');
+  const bottom=event(state,'move',115,190,430,{startX:190,startY:430,dx:-200,dy:0});
+  assert.ok(bottom.spinRate<state.spinRate,'bottom swipe slows 3D turn');
+  const two=event(state,'move',115,190,430,{fingers:2,startY:430,dx:80,dy:0});
+  assert.ok(two.colorSpeed>state.colorSpeed,'two-finger bottom changes only color tempo');
+  assert.equal(two.spinRate,state.spinRate,'two-finger color gesture must not also turn');
+  const center=event(state,'move',115,195,240,{startX:195,startY:240,dx:100,dy:100});
+  assert.equal(center.spinRate,state.spinRate,'center not accidentally a bottom speed swipe');
+  const stopped=event(event(state,'start',120,195,230),'end',166,195,230);
+  assert.equal(stopped.spinRate,0,'long-press 700ms stops 3D rotation');
+  assert.deepEqual(JSON.parse(JSON.stringify(stopped.waves)),[],'hold clears all cumulative waves');
+  assert.equal(stopped.savedSpin,state.spinRate);
+  const restored=event(event(stopped,'start',180,100,170),'start',190,100,170);
+  assert.ok(restored.spinRate>0&&restored.waves.length===3,'double tap restores last working speed');
+  const aborted=event(event(state,'start',120,100,130),'end',180,100,130,{cancelled:true});
+  assert.equal(aborted.spinRate,state.spinRate,'touch cancellation cannot pause a live wave');
+  const reset=R.interact(id,state,{type:'patch',frame:200,patch:c});
+  assert.deepEqual(JSON.parse(JSON.stringify(reset)),JSON.parse(JSON.stringify(c)),
+   'native RESET clears waves, tap state and all settings');
+  const snap=R.snapshot({patternId:id,config:state,frame:85});
+  assert.equal(R.restore(snap).ok,true,'published snapshots remain valid in notes, favorites and admin');
+  assert.equal(R.validate(state,id).ok,true,'all wave history is a typed, valid config');
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
