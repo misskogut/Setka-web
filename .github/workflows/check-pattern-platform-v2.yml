@@ -30,6 +30,9 @@ jobs:
       - run: node tests/standalone-star-flight-browser-smoke.mjs
         env:
           SETKA_BROWSER: ${{ matrix.browser }}
+      - run: node tests/standalone-radial-wave-browser-smoke.mjs
+        env:
+          SETKA_BROWSER: ${{ matrix.browser }}
       - run: node tests/pattern-publication-browser.mjs
         env:
           SETKA_BROWSER: ${{ matrix.browser }}
