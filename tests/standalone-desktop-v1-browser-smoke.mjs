@@ -23,7 +23,7 @@ try {
     const g=await geometry();
     assert.equal(g.app.width,width);assert.equal(g.app.height,height);
     assert.equal(g.overflow,false);assert.ok(Math.abs(g.tile.width-g.tile.height)<1);
-    assert.ok(width>=768?g.cols>4:g.cols===4,JSON.stringify(g));
+    assert.ok(width>=1024?g.cols>4:g.cols===4,JSON.stringify(g));
     console.log('LAYOUT PASS',width,height,g.cols);
   }
   await page.setViewportSize({width:1366,height:768});
