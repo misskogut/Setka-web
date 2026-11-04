@@ -115,7 +115,7 @@ try{
   assert.equal(ended.completed,true);assert.equal(ended.preState,3);assert.equal(ended.postState,4);
   assert.equal(await dock.isVisible(),true);
   await page.setViewportSize({width:1280,height:900});
-  await page.waitForFunction(()=>document.querySelector('#st34Layer').getBoundingClientRect().width<600);
+  await page.waitForFunction(()=>{const r=document.querySelector('#st34Layer').getBoundingClientRect();return r.width>520&&r.width<=920&&r.left>=0&&r.right<=innerWidth});
   await page.screenshot({path:'tests/visual-smoke/bottom-card-desktop.png'});
   const beforeReset=await page.evaluate(()=>window.SetkaStandaloneV34.getData().createdAt);
   await tab('me').click();await page.getByRole('button',{name:/^Очистить мою историю/}).click();await card.locator('.st-inline-confirm').waitFor();
