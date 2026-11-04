@@ -313,7 +313,7 @@ try{
  await admin.locator('.pattern-card[data-id="fixture-shapes"]').click();
  await admin.locator('#detail-content').getByText('saved-fixture-shapes',{exact:true}).waitFor();
  await admin.locator('#pattern-settings input').first().waitFor();
- await admin.getByRole('button',{name:'Изменить название',exact:true}).click();
+ await admin.locator('#detail-content').getByRole('button',{name:'Изменить название',exact:true}).click();
  await admin.locator('#pattern-title').fill('Исследовательский новый паттерн');
  await admin.getByRole('button',{name:'Сохранить для всех',exact:true}).click();
  await admin.locator('#pattern-settings input').first().waitFor();

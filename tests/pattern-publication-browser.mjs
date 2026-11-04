@@ -12,7 +12,7 @@ R.register(fixture);
 const port=49745,base='http://127.0.0.1:'+port;
 const server=spawn('python3',['-m','http.server',String(port),'--bind','127.0.0.1'],{stdio:'ignore'});
 let browser,revision=1,failed=false,order={patternIds:[],revision:0},orderFailure=false;
-const startupDefaults=[];
+const startupDefaults=[],names=new Map();
 const rows=R.list().map(p=>({pattern_id:p.id,state:p.id===id?'testing':'published',revision:1})),writes=[];
 const archive={notes:[{id:'retained-note',text:'Retained original',patternId:id,config:R.defaults(id)}]};
 const original=JSON.stringify(archive);
@@ -32,7 +32,7 @@ try{
   if(['catalog','manage-catalog'].includes(b.action)){
    if(failed&&b.action==='catalog'){status=503;out={error:'publication_unavailable'};}
    else out={ok:true,order,registryAvailable:true,registryRevision:R.revision(),publicationRevision:revision,publication:rows,
-    items:R.list().filter(p=>b.action==='manage-catalog'||rows.find(r=>r.pattern_id===p.id)?.state==='published').map(p=>({pattern_id:p.id,title:p.title,revision:1})),defaults:startupDefaults};
+    items:R.list().filter(p=>b.action==='manage-catalog'||rows.find(r=>r.pattern_id===p.id)?.state==='published').map(p=>({pattern_id:p.id,title:names.get(p.id)?.title||p.title,revision:names.get(p.id)?.revision||1})),defaults:startupDefaults};
   }
   if(b.action==='set-pattern-order'){
    if(orderFailure){status=503;out={error:'isolated_order_unavailable'};}
@@ -44,6 +44,7 @@ try{
    row.state=b.state;row.revision=++revision;writes.push(b);out={ok:true,item:row};
   }
   if(b.action==='save-pattern-defaults'){const item={pattern_id:b.patternId,pattern_version:b.patternVersion,schema_version:b.schemaVersion,config:b.config,revision:1};startupDefaults.push(item);out={ok:true,item};}
+  if(b.action==='rename-pattern'){const item={pattern_id:b.patternId,title:b.title,revision:2};names.set(b.patternId,item);out={ok:true,item};}
   if(b.action==='overview')out={ok:true,data};
   await route.fulfill({status,headers:cors,contentType:'application/json',body:JSON.stringify(out)});
  });
@@ -84,6 +85,23 @@ try{
  // The real admin editor changes one server-owned order, independently of publication.
  await admin.locator('#close-dialog').click();
  const editor=admin.locator('#pattern-order');
+ await admin.setViewportSize({width:390,height:844});
+ const mini=admin.locator('#pattern-mini-order'),miniIds=()=>mini.locator('.pattern-mini-tile').evaluateAll(ts=>ts.map(t=>t.dataset.patternId));
+ assert.equal(await mini.locator('.pattern-mini-tile').count(),R.list().length,'four-column grid includes future unknown module');
+ await mini.locator('.pattern-mini-tile').first().scrollIntoViewIfNeeded();
+ const boxes=await mini.locator('.pattern-mini-tile').evaluateAll(ts=>ts.slice(0,5).map(t=>{const r=t.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height}}));
+ assert.ok(boxes.slice(0,4).every(r=>Math.abs(r.y-boxes[0].y)<2),'four miniature cards in a row on mobile');
+ assert.ok(boxes[4].y>boxes[0].y,'fifth card starts next row');
+ const beforeMini=await miniIds();
+ await admin.mouse.move(boxes[0].x+boxes[0].w/2,boxes[0].y+boxes[0].h/2);await admin.mouse.down();
+ await admin.mouse.move(boxes[1].x+boxes[1].w/2,boxes[1].y+boxes[1].h/2,{steps:10});await admin.mouse.up();
+ assert.deepEqual((await miniIds()).slice(0,2),[beforeMini[1],beforeMini[0]],'pointer drag changes only draft');
+ assert.equal(order.revision,0,'drag does not publish order before Save');
+ await mini.getByRole('button',{name:'Отменить изменения',exact:true}).click();assert.deepEqual(await miniIds(),beforeMini);
+ await mini.locator('.pattern-mini-tile').first().focus();await admin.keyboard.press('ArrowRight');await admin.keyboard.press('ArrowLeft');
+ assert.deepEqual(await miniIds(),beforeMini,'keyboard has equivalent accessible control');
+ await mini.getByRole('button',{name:'Отменить изменения',exact:true}).click();
+
  assert.equal(await editor.locator('.pattern-manage-card').count(),R.list().length,'every algorithm has a real card');
  assert.equal(await editor.locator('.pattern-manage-card .pattern-order-controls select').count(),R.list().length,'positions live on cards');
  assert.equal(await editor.locator('.pattern-manage-card .pattern-quick-publication').count(),R.list().length,'publication lives on cards');
@@ -109,6 +127,7 @@ try{
  await quickCard.locator('summary').click();
  await editor.locator('.pattern-manage-card[data-pattern-id="'+id+'"] .pattern-order-controls select').selectOption('0');
  await admin.locator('#refresh').click();
+ await admin.waitForFunction(()=>!document.getElementById('refresh').disabled);
  assert.equal(await editor.locator('.pattern-order-controls select').first().getAttribute('aria-label'),'Позиция: '+fixture.title,'routine refresh keeps unsaved draft');
  orderFailure=true;await editor.getByRole('button',{name:'Сохранить порядок',exact:true}).first().click();
  await editor.getByRole('status').filter({hasText:'Сохранение не подтверждено'}).first().waitFor();
@@ -142,7 +161,7 @@ try{
  assert.equal(await front.locator('#allPatternsPanel .setka-new-pattern').count(),0,'seen survives reload/archive hydration');
  assert.deepEqual(await baseIds(),order.patternIds);
  // A concurrent owner edit must produce an explicit revision conflict, never a silent overwrite.
- await admin.locator('#refresh').click();await admin.locator('#refresh').waitFor({state:'visible'});
+ await admin.locator('#refresh').click();await admin.waitForFunction(()=>!document.getElementById('refresh').disabled);
  await editor.getByRole('button',{name:'Вниз: '+fixture.title,exact:true}).click();
  await editor.getByRole('status').filter({hasText:'Порядок изменён.'}).first().waitFor();
  order={patternIds:order.patternIds.slice().reverse(),revision:2};
@@ -155,6 +174,18 @@ try{
  assert.deepEqual(await baseIds(),order.patternIds,'second client sees concurrent confirmed order');
  await front.evaluate(()=>{window.SetkaPatternRegistryV1.applyOrder({patternIds:[],revision:1});window.__SETKA_PATTERN_CATALOG_V1__.decorate()});
  assert.deepEqual(await baseIds(),order.patternIds,'late order response is ignored');
+
+ await admin.locator('.pattern-manage-card[data-pattern-id="'+id+'"]').getByRole('button',{name:'Изменить название',exact:true}).click();
+ await admin.locator('#pattern-title').fill('Новое название <тест>');
+ await admin.getByRole('button',{name:'Сохранить для всех',exact:true}).click();
+ await admin.locator('#detail-dialog[open]').waitFor({state:'hidden'});
+ assert.equal(await admin.locator('.pattern-manage-card[data-pattern-id="'+id+'"] h2').innerText(),'Новое название <тест>');
+ assert.equal(await mini.locator('[data-pattern-id="'+id+'"] .mini-pattern-label').innerText(),'Новое название <тест>');
+ await front.evaluate(()=>window.__SETKA_PATTERN_CATALOG_V1__.refresh());
+ assert.equal(await front.getByRole('button',{name:'Открыть паттерн Новое название <тест>. Удерживай, чтобы сохранить',exact:true}).count(),1,'rename reaches second client safely');
+ await admin.locator('.pattern-manage-card[data-pattern-id="'+id+'"]').getByRole('button',{name:'Изменить название',exact:true}).click();
+ await admin.getByRole('button',{name:'Сохранить для всех',exact:true}).click();
+ await admin.locator('#detail-dialog[open]').waitFor({state:'hidden'});
  assert.equal(JSON.stringify(archive),original);assert.deepEqual(errors,[]);
  console.log('ORDER: ADMIN → SAVE/READBACK → TWO CLIENTS → PREVIEW/NEW → RELOAD → CONFLICT → STALE PASS; PUBLICATION: DRAFT → SANDBOX → PUBLISH → SECOND CLIENT → DISABLE → DIRECT-OPEN GUARD → REPUBLISH → OUTAGE/RECOVERY PASS');
 }finally{await browser?.close();server.kill('SIGTERM');}
