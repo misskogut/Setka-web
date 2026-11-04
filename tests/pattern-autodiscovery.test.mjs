@@ -104,7 +104,15 @@ test('every automatically discovered pattern renders its real white-on-black sta
      'the animation moves at nonzero speed '+pattern.id);
    const paint=[...a.strokes.map(st=>st.color).filter(x=>typeof x==='string'),...a.gradientStops.flat(),...a.shapes.map(item=>item.color)];
    assert.ok(paint.length>0,'visible stroke colors '+pattern.id);
-   assert.ok(paint.every(color=>/rgba\(255,255,255,/.test(color)||color==='rgb(255,255,255)'||color==='#fff'),'first frame monochrome '+pattern.id);
+   const mono=color=>/rgba\(255,255,255,/.test(color)||color==='rgb(255,255,255)'||color==='#fff';
+   // A declared RGB displacement halo is not a colored main pattern. Keep the
+   // initial WHITE geometric dots and allow only the three RGB overlay channels.
+   // This generic capability is available to future unknown pattern modules.
+   if(pattern.capabilities?.rgbGlitchOverlay===true&&c.glitchAlpha>0){
+     assert.ok(paint.some(mono),'initial primary dots remain white '+pattern.id);
+     assert.ok(paint.every(color=>mono(color)||['#ff0000','#00ff00','#0000ff'].includes(color)),
+       'only RGB displacement channels may accompany white dots '+pattern.id);
+   }else assert.ok(paint.every(mono),'first frame monochrome '+pattern.id);
  }
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
