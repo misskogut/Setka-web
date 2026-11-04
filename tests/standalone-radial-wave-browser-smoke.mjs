@@ -73,7 +73,7 @@ try{
  assert.ok(controls.gestures[0].outcome.includes("центр волн"));
  assert.ok(controls.gestures[1].outcome.includes("центр вернётся"));
  assert.ok(controls.gestureHeading.includes("ЖЕСТЫ НА ПАТТЕРНЕ"));
- assert.ok(controls.gestureHeading.includes("НАСТРОЙКИ · БЕГУНКИ"));
+ assert.ok(controls.gestureHeading.includes("ТОЛЬКО БЕГУНКОМ"));
  const help=controls.explanations.join(" ");
  assert.ok(help.includes("Установи выше 0 и коснись"));
  assert.ok(help.includes("Плюс притягивает точки"));
