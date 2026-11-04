@@ -113,7 +113,7 @@ test("solid-sphere material is a saved slider rather than new particles or a sep
     .slice(0,25).map(c=>c.coords[2]);
   const a=radii(bokeh),b=radii(solid);
   assert.ok(a.length>5&&b.length>5);
-  assert.ok(b.every((r,i)=>r>a[i]),"same emitters grow into crisp solid cores");
+  assert.ok(b.every((r,i)=>r>=a[i])&&b.some((r,i)=>r>a[i]),"same emitters preserve tiny subpixel cores and grow larger cores");
   const snap=registry.snapshot({patternId:d.id,config:{...base,sphereSolidity:.85},frame:120});
   const restored=registry.restore(snap);
   assert.equal(restored.ok,true);
