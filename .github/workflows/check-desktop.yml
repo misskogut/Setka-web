@@ -7,6 +7,8 @@ on:
 jobs:
   responsive:
     runs-on: ubuntu-latest
+    container: mcr.microsoft.com/playwright:v1.58.2-noble
+    timeout-minutes: 10
     strategy:
       matrix:
         browser: [chromium, webkit]
@@ -15,8 +17,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm install --no-save playwright
-      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - run: npm install --no-save playwright@1.58.2
       - run: node scripts/build-pattern-manifest.mjs
       - run: node tests/standalone-desktop-v1-browser-smoke.mjs
         env:
