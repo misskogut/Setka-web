@@ -129,6 +129,7 @@ jobs:
       - run: node --check standalone-pattern-registry-v1.js
       - run: node --check standalone-pattern-plugins-v1.js
       - run: node scripts/build-pattern-manifest.mjs
+      - run: node --test tests/standalone-rainbow-road-tunnel.test.mjs
       - run: node --check standalone-live-previews-v1.js
       - run: node --check standalone-auto-optimizer-v1.js
       - run: node --test tests/autonomous-render-optimizer-v1.test.mjs

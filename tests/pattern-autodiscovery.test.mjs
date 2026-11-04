@@ -534,11 +534,14 @@ test('future 3D road packages can hide only the road while preserving visible ma
    assert.equal(restored.ok,true,'transparent road survives a saved snapshot');
    assert.equal(restored.snapshot.config.roadOpacity,0);
    const trace=(c)=>{
-    const result={roadPolygons:0,artDots:0,frames:0};
-    const ctx={fillStyle:'#000',globalAlpha:1,
-     save(){},restore(){},beginPath(){},closePath(){},moveTo(){},lineTo(){},translate(){},rotate(){},
-     fillRect(){result.frames++},arc(){result.artDots++},
-     fill(){if(this.fillStyle==='#000')result.roadPolygons++}};
+    const result={roadPolygons:0,artDots:0,markPaint:0,frames:0};
+    const ctx={fillStyle:'#000',globalAlpha:1,_polygon:false,
+     save(){},restore(){},beginPath(){this._polygon=false},closePath(){},
+     moveTo(){this._polygon=true},lineTo(){},translate(){},rotate(){},
+     fillRect(){result.frames++;if(this.fillStyle!=='#000')result.markPaint++},
+     arc(){result.artDots++},
+     fill(){if(this.fillStyle==='#000')result.roadPolygons++;
+       else if(this._polygon)result.markPaint++}};
     registry.render(ctx,390,700,c,44,true,pattern.id);
     return result;
    };
@@ -547,7 +550,8 @@ test('future 3D road packages can hide only the road while preserving visible ma
    const a=trace(transparent),b=trace(opaque);
    assert.equal(a.roadPolygons,0,'transparent floor must not draw a black occlusion polygon');
    assert.ok(b.roadPolygons>0,'opaque floor draws solid black occlusion geometry');
-   assert.ok(a.artDots>0&&b.artDots>0,'the same independent road markings remain visible');
+   assert.ok(a.artDots>0&&b.artDots>0,'wall emitters survive transparent walls and floor');
+   assert.ok(a.markPaint>0&&b.markPaint>0,'independent coplanar road paint remains visible');
    assert.deepEqual(trace(transparent),a,'transparent state is deterministic in replay');
    assert.deepEqual(trace(opaque),b,'opaque state is deterministic in replay');
   }
@@ -570,17 +574,27 @@ test('any future continuous road tunnel keeps camera, wall spheres and distant m
     const metrics={spheres:0,marks:0,blackSurfaces:0,nonFinite:0,farMarks:0,markLocations:[],artPixels:0};
     const h=844,w=390,horizon=h*.551;
     const finite=(...a)=>{if(a.some(v=>!Number.isFinite(v)))metrics.nonFinite++};
+    const countMark=(x,y)=>{
+     metrics.marks++;finite(x,y);
+     if(Math.abs(y-horizon)<7)metrics.farMarks++;
+     if(metrics.markLocations.length<8)metrics.markLocations.push([x,y]);
+    };
     const ctx={
-     fillStyle:'#000',globalAlpha:1,
-     save(){},restore(){},beginPath(){},closePath(){},rotate(){},
-     translate(x,y){metrics.marks++;finite(x,y);
-      if(Math.abs(y-horizon)<7)metrics.farMarks++;
-      if(metrics.markLocations.length<8)metrics.markLocations.push([x,y]);},
-     moveTo(x,y){finite(x,y)},lineTo(x,y){finite(x,y)},
-     fill(){if(this.fillStyle==='#000')metrics.blackSurfaces++},
-     arc(x,y,r){metrics.spheres++;finite(x,y,r)},
+     fillStyle:'#000',globalAlpha:1,_path:[],_shape:'none',
+     save(){},restore(){},beginPath(){this._path=[];this._shape='none'},closePath(){},rotate(){},
+     translate(x,y){finite(x,y)},
+     moveTo(x,y){finite(x,y);this._shape='polygon';this._path.push([x,y])},
+     lineTo(x,y){finite(x,y);this._path.push([x,y])},
+     fill(){
+      if(this.fillStyle==='#000')metrics.blackSurfaces++;
+      else if(this._shape==='polygon'&&this._path.length>=3)
+       countMark(this._path.reduce((a,p)=>a+p[0],0)/this._path.length,
+         this._path.reduce((a,p)=>a+p[1],0)/this._path.length);
+     },
+     arc(x,y,r){metrics.spheres++;this._shape='sphere';finite(x,y,r)},
      ellipse(x,y,rx,ry){finite(x,y,rx,ry)},
-     fillRect(x,y,r,h){metrics.artPixels++;finite(x,y,r,h)}
+     fillRect(x,y,r,h){metrics.artPixels++;finite(x,y,r,h);
+      if(this.fillStyle!=='#000')countMark(x+r*.5,y+h*.5)}
     };
     registry.render(ctx,w,h,config,frame,true,pattern.id);
     return metrics;
@@ -644,12 +658,28 @@ test('unknown steerable 3D tunnels bend the physical road under touch and keep e
    function paint(c,frame){
     const output={white:0,marks:0,dots:0,black:0,errors:0,positions:[]};
     const finite=(...xs)=>{if(xs.some(v=>!Number.isFinite(v)))output.errors++};
-    const ctx={fillStyle:'#000',save(){},restore(){},beginPath(){},closePath(){},
-     translate(x,y){finite(x,y);output.marks++;if(output.positions.length<14)output.positions.push([x,y])},
-     rotate(x){finite(x)},moveTo(x,y){finite(x,y)},lineTo(x,y){finite(x,y)},
-     fillRect(){},arc(x,y,r){finite(x,y,r);output.dots++},
+    const recordMark=(x,y)=>{
+      finite(x,y);output.marks++;
+      if(output.positions.length<14)output.positions.push([x,y]);
+    };
+    const ctx={fillStyle:'#000',_path:[],_shape:'none',save(){},restore(){},
+     beginPath(){this._path=[];this._shape='none'},closePath(){},
+     translate(x,y){finite(x,y)},rotate(x){finite(x)},
+     moveTo(x,y){finite(x,y);this._shape='polygon';this._path.push([x,y])},
+     lineTo(x,y){finite(x,y);this._path.push([x,y])},
+     fillRect(x,y,w,h){finite(x,y,w,h);
+       if(this.fillStyle!=='#000')recordMark(x+w*.5,y+h*.5)},
+     arc(x,y,r){finite(x,y,r);this._shape='sphere';output.dots++},
      ellipse(x,y,rx,ry){finite(x,y,rx,ry)},
-     fill(){if(this.fillStyle==='#000')output.black++;else output.white++}};
+     fill(){
+      if(this.fillStyle==='#000')output.black++;
+      else{
+       output.white++;
+       if(this._shape==='polygon'&&this._path.length>=3)
+        recordMark(this._path.reduce((a,p)=>a+p[0],0)/this._path.length,
+         this._path.reduce((a,p)=>a+p[1],0)/this._path.length);
+      }
+     }};
     R.render(ctx,390,844,c,frame,true,p.id);
     return output;
    }
