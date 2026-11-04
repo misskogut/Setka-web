@@ -64,6 +64,41 @@ try{
  await page.waitForFunction(()=>window.SetkaPatternRegistryV1.ready('fixture-fields'));
  await page.evaluate(async()=>{await window.SetkaPatternPluginsV1.ready();await window.SetkaStandaloneV34.ready;await window.__SETKA_PATTERN_CATALOG_V1__.refresh()});
  assert.deepEqual(errors,[],'front startup must complete before testing integration');
+
+ // Generic long-session 3D road contract: exercise a real Canvas and pixels
+ // after the old finite route would have ended, in both Chromium and WebKit.
+ const continuousRoads=await page.evaluate(()=>{
+  const R=window.SetkaPatternRegistryV1;
+  const roads=R.list().filter(p=>p.module&&p.controls.some(row=>row[1]==='roadOpacity'));
+  const results=[];
+  for(const p of roads){
+   const canvas=document.createElement('canvas');canvas.width=390;canvas.height=844;
+   const ctx=canvas.getContext('2d',{willReadFrequently:true});
+   const c={...R.defaults(p.id),speed:3,turns:5,randomness:1,hills:3,roadOpacity:1,opacity:1};
+   const sample=(f)=>{
+    R.render(ctx,canvas.width,canvas.height,c,f,false,p.id);
+    const {data}=ctx.getImageData(0,0,canvas.width,canvas.height);
+    let visible=0,checksum=0;
+    for(let i=0;i<data.length;i+=32){
+     const r=data[i],g=data[i+1],b=data[i+2];
+     if(Math.max(r,g,b)>24)visible++;
+     checksum=(Math.imul(checksum,33)+r+g*3+b*7)>>>0;
+    }
+    return {frame:f,visible,checksum};
+   };
+   const views=[44,22000,80000,180000].map(sample);
+   const replay=sample(180000);
+   results.push({id:p.id,views,replay});
+  }
+  return results;
+ });
+ for(const p of continuousRoads){
+  assert.ok(p.views.every(x=>x.visible>25),
+    'road tunnel must remain visibly non-black after repeated route cycles: '+p.id+' '+JSON.stringify(p.views));
+  assert.deepEqual(p.replay,p.views.at(-1),
+    'long-journey Canvas frame stays deterministic in gameplay and saved replay: '+p.id);
+ }
+
  // Release order is NOT the library order: every unviewed new module appears
  // first, then its first successful opening places it last, persistently.
  await page.waitForFunction(()=>document.querySelector('#allPatternsPanel > .pattern-tile')?.dataset.patternId==='fixture-fields');
