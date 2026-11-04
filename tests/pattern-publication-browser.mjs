@@ -12,6 +12,7 @@ R.register(fixture);
 const port=49745,base='http://127.0.0.1:'+port;
 const server=spawn('python3',['-m','http.server',String(port),'--bind','127.0.0.1'],{stdio:'ignore'});
 let browser,revision=1,failed=false,order={patternIds:[],revision:0},orderFailure=false;
+const startupDefaults=[];
 const rows=R.list().map(p=>({pattern_id:p.id,state:p.id===id?'testing':'published',revision:1})),writes=[];
 const archive={notes:[{id:'retained-note',text:'Retained original',patternId:id,config:R.defaults(id)}]};
 const original=JSON.stringify(archive);
@@ -31,7 +32,7 @@ try{
   if(['catalog','manage-catalog'].includes(b.action)){
    if(failed&&b.action==='catalog'){status=503;out={error:'publication_unavailable'};}
    else out={ok:true,order,registryAvailable:true,registryRevision:R.revision(),publicationRevision:revision,publication:rows,
-    items:R.list().filter(p=>b.action==='manage-catalog'||rows.find(r=>r.pattern_id===p.id)?.state==='published').map(p=>({pattern_id:p.id,title:p.title,revision:1})),defaults:[]};
+    items:R.list().filter(p=>b.action==='manage-catalog'||rows.find(r=>r.pattern_id===p.id)?.state==='published').map(p=>({pattern_id:p.id,title:p.title,revision:1})),defaults:startupDefaults};
   }
   if(b.action==='set-pattern-order'){
    if(orderFailure){status=503;out={error:'isolated_order_unavailable'};}
@@ -42,6 +43,7 @@ try{
    const row=rows.find(r=>r.pattern_id===b.patternId);assert.equal(b.expectedRevision,row.revision);
    row.state=b.state;row.revision=++revision;writes.push(b);out={ok:true,item:row};
   }
+  if(b.action==='save-pattern-defaults'){const item={pattern_id:b.patternId,pattern_version:b.patternVersion,schema_version:b.schemaVersion,config:b.config,revision:1};startupDefaults.push(item);out={ok:true,item};}
   if(b.action==='overview')out={ok:true,data};
   await route.fulfill({status,headers:cors,contentType:'application/json',body:JSON.stringify(out)});
  });
@@ -60,19 +62,19 @@ try{
  assert.equal(writes.length,0,'sandbox cannot publish or record a participant');
  assert.equal(await tile.count(),0,'sandbox edits stay private');
  await publication.getByRole('button',{name:'Опубликовать',exact:true}).click();
- await admin.getByRole('button',{name:'Выключить',exact:true}).waitFor();
+ await admin.locator('#pattern-publication').getByRole('button',{name:'Выключить',exact:true}).waitFor();
  await front.evaluate(()=>window.__SETKA_PATTERN_CATALOG_V1__.refresh());
  assert.equal(await tile.count(),1,'publication reaches a second client');
  await front.evaluate(id=>window.SetkaApp.openConfig(window.SetkaApp.getPatternDefaults(id),{type:'base',id,patternId:id}),id);
  await front.locator('#gameScreen.active').waitFor();
  await admin.locator('#pattern-publication').getByRole('button',{name:'Выключить',exact:true}).click();
- await admin.getByRole('button',{name:'Опубликовать',exact:true}).waitFor();
+ await admin.locator('#pattern-publication').getByRole('button',{name:'Опубликовать',exact:true}).waitFor();
  await front.evaluate(()=>window.__SETKA_PATTERN_CATALOG_V1__.refresh());
  assert.equal(await tile.count(),0,'disable removes public tile');
  assert.equal(await front.locator('#gameScreen.active').count(),0,'open disabled pattern returns to library');
  assert.equal(await front.evaluate(id=>window.SetkaApp.openConfig(window.SetkaApp.getPatternDefaults(id),{type:'base',id,patternId:id}),id),false,'direct-open cannot bypass publication');
  await admin.locator('#pattern-publication').getByRole('button',{name:'Опубликовать',exact:true}).click();
- await admin.getByRole('button',{name:'Выключить',exact:true}).waitFor();
+ await admin.locator('#pattern-publication').getByRole('button',{name:'Выключить',exact:true}).waitFor();
  await front.evaluate(()=>window.__SETKA_PATTERN_CATALOG_V1__.refresh());
  assert.equal(await tile.count(),1,'same algorithm can be republished without replacing its identity');
  failed=true;await front.reload();
@@ -82,14 +84,37 @@ try{
  // The real admin editor changes one server-owned order, independently of publication.
  await admin.locator('#close-dialog').click();
  const editor=admin.locator('#pattern-order');
- await editor.locator('li[data-pattern-id="'+id+'"] select').selectOption('0');
+ assert.equal(await editor.locator('.pattern-manage-card').count(),R.list().length,'every algorithm has a real card');
+ assert.equal(await editor.locator('.pattern-manage-card .pattern-order-controls select').count(),R.list().length,'positions live on cards');
+ assert.equal(await editor.locator('.pattern-manage-card .pattern-quick-publication').count(),R.list().length,'publication lives on cards');
+ const quickCard=editor.locator('.pattern-manage-card[data-pattern-id="'+id+'"]');
+ await quickCard.getByRole('button',{name:'Выключить',exact:true}).click();
+ await quickCard.getByRole('button',{name:'Опубликовать',exact:true}).waitFor();
+ await front.evaluate(()=>window.__SETKA_PATTERN_CATALOG_V1__.refresh());assert.equal(await tile.count(),0);
+ await quickCard.getByRole('button',{name:'Опубликовать',exact:true}).click();
+ await quickCard.getByRole('button',{name:'Выключить',exact:true}).waitFor();
+ await front.evaluate(()=>window.__SETKA_PATTERN_CATALOG_V1__.refresh());assert.equal(await tile.count(),1);
+ await quickCard.locator('summary').click();
+ await quickCard.getByRole('slider',{name:'Радиус',exact:true}).waitFor();
+ assert.equal(await admin.locator('#detail-dialog[open]').count(),0,'startup editor stays inline');
+ await quickCard.getByRole('slider',{name:'Радиус',exact:true}).press('End');
+ assert.equal(await quickCard.getByRole('slider',{name:'Радиус',exact:true}).inputValue(),'20');
  await admin.locator('#refresh').click();
- assert.equal(await editor.locator('li select').first().getAttribute('aria-label'),'Позиция: '+fixture.title,'routine refresh keeps unsaved draft');
- orderFailure=true;await editor.getByRole('button',{name:'Сохранить порядок',exact:true}).click();
- await editor.getByRole('status').filter({hasText:'Сохранение не подтверждено'}).waitFor();
+ assert.equal(await quickCard.getByRole('slider',{name:'Радиус',exact:true}).inputValue(),'20','refresh preserves inline draft');
+ await quickCard.getByRole('button',{name:'Сохранить стартовые настройки',exact:true}).click();
+ await quickCard.getByRole('status').filter({hasText:'Настройки сохранены.'}).waitFor();
+ await front.evaluate(()=>window.__SETKA_PATTERN_CATALOG_V1__.refresh());
+ assert.equal(await front.evaluate(id=>window.SetkaApp.getPatternDefaults(id).radius,id),20,'inline startup reaches front defaults');
+ assert.equal(await tile.locator('canvas').count(),1,'updated shared preview remains available');
+ await quickCard.locator('summary').click();
+ await editor.locator('.pattern-manage-card[data-pattern-id="'+id+'"] .pattern-order-controls select').selectOption('0');
+ await admin.locator('#refresh').click();
+ assert.equal(await editor.locator('.pattern-order-controls select').first().getAttribute('aria-label'),'Позиция: '+fixture.title,'routine refresh keeps unsaved draft');
+ orderFailure=true;await editor.getByRole('button',{name:'Сохранить порядок',exact:true}).first().click();
+ await editor.getByRole('status').filter({hasText:'Сохранение не подтверждено'}).first().waitFor();
  assert.equal(order.revision,0,'network failure cannot claim a commit');
- orderFailure=false;await editor.getByRole('button',{name:'Сохранить порядок',exact:true}).click();
- await editor.getByRole('status').filter({hasText:'Порядок подтверждён сервером'}).waitFor();
+ orderFailure=false;await editor.getByRole('button',{name:'Сохранить порядок',exact:true}).first().click();
+ await editor.getByRole('status').filter({hasText:'Порядок подтверждён сервером'}).first().waitFor();
  assert.equal(order.patternIds[0],id);assert.equal(order.revision,1);
  fs.mkdirSync('tests/visual-smoke',{recursive:true});await admin.screenshot({path:'tests/visual-smoke/platform-order-'+(process.env.SETKA_BROWSER||'chromium')+'.png',fullPage:true});
  await front.evaluate(()=>window.__SETKA_PATTERN_CATALOG_V1__.refresh());
@@ -119,13 +144,13 @@ try{
  // A concurrent owner edit must produce an explicit revision conflict, never a silent overwrite.
  await admin.locator('#refresh').click();await admin.locator('#refresh').waitFor({state:'visible'});
  await editor.getByRole('button',{name:'Вниз: '+fixture.title,exact:true}).click();
- await editor.getByRole('status').filter({hasText:'Порядок изменён.'}).waitFor();
+ await editor.getByRole('status').filter({hasText:'Порядок изменён.'}).first().waitFor();
  order={patternIds:order.patternIds.slice().reverse(),revision:2};
- await editor.getByRole('button',{name:'Сохранить порядок',exact:true}).click();
- await editor.getByRole('status').filter({hasText:'другом окне'}).waitFor();
+ await editor.getByRole('button',{name:'Сохранить порядок',exact:true}).first().click();
+ await editor.getByRole('status').filter({hasText:'другом окне'}).first().waitFor();
  assert.equal(order.revision,2);
- await editor.getByRole('button',{name:'Загрузить текущий порядок',exact:true}).click();
- await editor.getByRole('status').filter({hasText:'Порядок подтверждён сервером'}).waitFor();
+ await editor.getByRole('button',{name:'Загрузить текущий порядок',exact:true}).first().click();
+ await editor.getByRole('status').filter({hasText:'Порядок подтверждён сервером'}).first().waitFor();
  await front.evaluate(()=>window.__SETKA_PATTERN_CATALOG_V1__.refresh());
  assert.deepEqual(await baseIds(),order.patternIds,'second client sees concurrent confirmed order');
  await front.evaluate(()=>{window.SetkaPatternRegistryV1.applyOrder({patternIds:[],revision:1});window.__SETKA_PATTERN_CATALOG_V1__.decorate()});

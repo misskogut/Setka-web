@@ -25,7 +25,9 @@ const server=createServer(async(req,res)=>{
     if(b.action==='sync'){
      // Production combines archives from multiple devices. A late isolated
      // device upload must not erase another device's already persisted notes.
-     savedArchive={payload:{...b.archive,notes:fixtureMerge(savedArchive.payload.notes,b.archive.notes),symptoms:fixtureMerge(savedArchive.payload.symptoms,b.archive.symptoms),checkins:fixtureMerge(savedArchive.payload.checkins,b.archive.checkins)},favorites:b.favorites||[],updatedAt:new Date().toISOString()};
+     const prior=savedArchive.payload.settings?.favoriteCollection,next=b.archive.settings?.favoriteCollection;
+     const collection=(Date.parse(prior?.updatedAt)||0)>(Date.parse(next?.updatedAt)||0)?prior:next;
+     savedArchive={payload:{...b.archive,settings:{...b.archive.settings,...(collection?{favoriteCollection:collection}:{})},notes:fixtureMerge(savedArchive.payload.notes,b.archive.notes),symptoms:fixtureMerge(savedArchive.payload.symptoms,b.archive.symptoms),checkins:fixtureMerge(savedArchive.payload.checkins,b.archive.checkins)},favorites:collection?.rows||b.favorites||[],updatedAt:new Date().toISOString()};
      out={ok:true,updatedAt:savedArchive.updatedAt,stateHistory:{symptoms:savedArchive.payload.symptoms,checkins:savedArchive.payload.checkins},counts:{symptoms:savedArchive.payload.symptoms.length,checkins:savedArchive.payload.checkins.length}};
     }else out={ok:true,archive:{...savedArchive,sourceDevices:1}};
    }
@@ -117,6 +119,7 @@ try{
  if(!alreadySaved)await other.getByRole('button',{name:'Сохранить текущую конфигурацию',exact:true}).click();
  try{await other.waitForFunction(()=>window.SetkaApp.getFavorites().some(x=>x.baseId==='stereo-dna'));}
  catch(error){console.log('FAVORITE AFTER FAILED ACTION',await other.evaluate(favoriteState));throw error;}
+ await other.waitForFunction(()=>window.SetkaStandaloneV34.getData().settings?.favoriteCollection?.rows?.some(x=>x.baseId==='stereo-dna'||x.patternId==='stereo-dna'));
  await other.locator('#libraryButton').click();await other.locator('#favoritesPagerButton').click();await other.locator('.favorite-tile .st34-info').first().waitFor();
  const heart=await other.locator('.favorite-tile .mini-heart').first().boundingBox(),info=await other.locator('.favorite-tile .st34-info').first().boundingBox();assert.ok(heart.y+heart.height<info.y,'saved heart overlaps the information button');
  console.log('REAL WEB STORAGE QUOTA, INDEXEDDB RETENTION THROUGH STALE TAB/RELOAD, PLAIN NOTES, INLINE MODERATION AND SEPARATE HEART POSITION PASS');

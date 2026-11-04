@@ -20,6 +20,13 @@ try{
  for(let n=0;n<45;n++){try{if((await fetch(base+'/standalone-v34.html')).ok)break}catch{}await sleep(100)}
  browser=await (process.env.SETKA_BROWSER==='webkit'?webkit:chromium).launch({headless:true});
  const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+ // Keep product API requests in the isolated origin in WebKit. Routing still
+ // verifies the actual request/response contract without browser CORS timing races.
+ await context.addInitScript(()=>{
+  if(location.pathname.endsWith('/standalone-research-admin-v1.html'))return;
+  const original=window.fetch.bind(window);
+  window.fetch=(input,init)=>original(typeof input==='string'&&input.startsWith('https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/')?location.origin+new URL(input).pathname:input,init);
+ });
  const errors=[];context.on('page',page=>page.on('pageerror',e=>errors.push(e.stack||e.message)));
  await context.route('**/standalone-pattern-registry-v1.js*',route=>route.fulfill({contentType:'text/javascript',body:
   fs.readFileSync('standalone-pattern-registry-v1.js','utf8')+'\n'+fixtures.map(p=>'window.SetkaPatternRegistryV1.register('+JSON.stringify(p)+');').join('\n')}));

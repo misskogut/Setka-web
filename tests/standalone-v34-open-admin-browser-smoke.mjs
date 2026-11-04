@@ -64,11 +64,11 @@ try{
   const ownerPage=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
   const fakeOwner="SKA-"+"a".repeat(48),ownerRequests=[];
   await ownerPage.addInitScript(()=>{
-    localStorage.setItem("setka-research:admin-key:v1","stale-invalid-key");
+    if(window.top===window)localStorage.setItem("setka-research:admin-key:v1","stale-invalid-key");
   });
   await ownerPage.route("**/functions/v1/**",async route=>{
     const req=route.request(),body=req.postDataJSON();
-    ownerRequests.push({action:body.action,adminKey:body.adminKey});
+    ownerRequests.push({action:body.action,path:new URL(req.url()).pathname,adminKey:body.adminKey});
     await route.fulfill({status:200,contentType:"application/json",
       headers:{"access-control-allow-origin":"*"},
       body:JSON.stringify(body.action==="admin-overview"?{devices:[]}:{ok:true,devices:[],items:[],participants:[],sessions:[],symptoms:[],invites:[],insights:[]})});
@@ -78,6 +78,7 @@ try{
   assert.equal(await ownerPage.evaluate(()=>location.hash),"","secret fragment must be removed from address bar");
   assert.equal(await ownerPage.evaluate(()=>localStorage.getItem("setka-research:admin-key:v1")),fakeOwner);
   assert.ok(ownerRequests.some(x=>x.action==="admin-overview"&&x.adminKey===fakeOwner));
+  console.log('OWNER CREDENTIAL ROUTING',ownerRequests.map(x=>({action:x.action,path:x.path,credential:x.adminKey===fakeOwner?'current':x.adminKey==='stale-invalid-key'?'stale':x.adminKey?'other':'none'})));
   assert.ok(ownerRequests.filter(x=>x.adminKey).every(x=>x.adminKey===fakeOwner),"all authenticated admin calls must use new owner credential");
   assert.ok((await ownerPage.locator("#dashboard .tab[data-tab]").count())>=11);
   console.log("ONE-CLICK OWNER LOGIN WITH STALE PREVIOUS KEY PASS");
