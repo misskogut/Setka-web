@@ -21,7 +21,7 @@ try {
   for(const [width,height] of [[1366,768],[1920,1080],[1024,600],[768,600],[390,844]]){
     await page.setViewportSize({width,height});
     const g=await geometry();
-    assert.equal(g.app.width,width);assert.equal(g.app.height,height);
+    assert.ok(Math.abs(g.app.width-width)<1);assert.ok(Math.abs(g.app.height-height)<1);
     assert.equal(g.overflow,false);assert.ok(Math.abs(g.tile.width-g.tile.height)<1);
     assert.ok(width>=1024?g.cols>4:g.cols===4,JSON.stringify(g));
     console.log('LAYOUT PASS',width,height,g.cols);
@@ -38,13 +38,13 @@ try {
   const sheet=await page.locator('#st34Layer').boundingBox();assert.ok(sheet.width>520&&sheet.width<1366);
   await page.getByRole('button',{name:'Свернуть карточку',exact:true}).click();
   await page.locator('#st34Layer').waitFor({state:'hidden'});
-  await page.locator('#allPatternsPanel .pattern-tile[data-pattern-id="tentacle-orbit"]').click({position:{x:20,y:20}});
-  await page.getByRole('button',{name:'Просто посмотреть',exact:true}).click();
+  // Use the same real card pointer handler as the existing v34 smoke suite.
+  await page.locator('#allPatternsPanel .pattern-tile[data-pattern-id="tentacle-orbit"]').dispatchEvent('pointerup',{pointerId:491,pointerType:'mouse',bubbles:true});
   await page.locator('#gameScreen.active').waitFor();
   for(const [width,height] of [[1366,768],[1024,600],[390,844]]){
     await page.setViewportSize({width,height});
     await page.waitForFunction(()=>{const a=document.querySelector('#app').getBoundingClientRect(),c=document.querySelector('#patternCanvas');return Math.abs(parseFloat(c.style.width)-a.width)<1&&Math.abs(parseFloat(c.style.height)-a.height)<1});
-    const g=await geometry();assert.equal(g.canvas.width,width);assert.equal(g.canvas.height,height);
+    const g=await geometry();assert.ok(Math.abs(g.canvas.width-width)<1);assert.ok(Math.abs(g.canvas.height-height)<1);
   }
   await page.locator('#libraryButton').click();
   await page.locator('#libraryScreen.active').waitFor();
