@@ -38,7 +38,7 @@ try {
   const sheet=await page.locator('#st34Layer').boundingBox();assert.ok(sheet.width>520&&sheet.width<1366);
   await page.getByRole('button',{name:'Свернуть карточку',exact:true}).click();
   await page.locator('#st34Layer').waitFor({state:'hidden'});
-  await page.locator('#allPatternsPanel .pattern-tile').first().click();
+  await page.locator('#allPatternsPanel .pattern-tile[data-pattern-id="tentacle-orbit"]').click({position:{x:20,y:20}});
   await page.locator('#gameScreen.active').waitFor();
   for(const [width,height] of [[1366,768],[1024,600],[390,844]]){
     await page.setViewportSize({width,height});
