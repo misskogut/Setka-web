@@ -2,8 +2,8 @@
 {
   "id": "rainbow-road-tunnel",
   "title": "Радужный тоннель · 3DFP",
-  "version": 1,
-  "schemaVersion": 1,
+  "version": 2,
+  "schemaVersion": 2,
   "introducedAt": "2026-11-04T20:44:00.000Z",
   "module": "standalone-pattern-rainbow-road-tunnel.js",
   "colorModes": 9,
@@ -226,6 +226,9 @@
     "yawOffset",
     "seed",
     "colorModeIndex"
+  ],
+  "legacyVersions": [
+    1
   ]
 }
 END_SETKA_PATTERN_DESCRIPTOR */
@@ -234,7 +237,7 @@ END_SETKA_PATTERN_DESCRIPTOR */
 "use strict";
 const registry=window.SetkaPatternRegistryV1,id=document.currentScript?.dataset.patternId;
 if(!id||!registry?.has(id))return;
-const PI=Math.PI,TAU=PI*2,DS=.7,COUNT=12500,MAX_PARTICLES=14500,L=175;
+const PI=Math.PI,TAU=PI*2,DS=.7,COUNT=12500,SLAB=2.5,SLAB_CAP=220,SLAB_CACHE=170;
 const CLIP=.46,ARC=22;
 const clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
 const smooth=x=>{x=clamp(x,0,1);return x*x*(3-2*x)};
@@ -276,37 +279,52 @@ function buildModel(c){
   const next=straight?angle:clamp(angle+dir*between(.23,long?.88:.62),-1.05,1.05);
   secs.push([dist,dist+len,angle,next]);dist+=len;angle=next;
  }
- const X=new Float32Array(COUNT),Y=new Float32Array(COUNT),Z=new Float32Array(COUNT),A=new Float32Array(COUNT),G=new Float32Array(COUNT);
+ const X=new Float64Array(COUNT),Y=new Float64Array(COUNT),Z=new Float64Array(COUNT),A=new Float64Array(COUNT),G=new Float64Array(COUNT);
+ const period=(COUNT-1)*DS,blendStart=period-320;
+ const angleStart=strength*((1-c.randomness)*Math.sin(.20)+c.randomness*secs[0][2]);
+ const gradeStart=c.hills*(.14*Math.sin(.52)+.065*Math.sin(-1.15));
  const strength=1.24*Math.tanh(c.turns*.32);
  let segment=0,prev=0;
  for(let i=0;i<COUNT;i++){
   const s=i*DS;
   while(segment<secs.length-1&&s>=secs[segment][1])segment++;
   const row=secs[segment],randomAngle=row[2]+(row[3]-row[2])*smooth((s-row[0])/(row[1]-row[0]));
-  const turn=strength*((1-c.randomness)*Math.sin(s*.085+.20)+c.randomness*randomAngle);
-  const grade=c.hills*(.14*Math.sin(s*.045+.52)+.065*Math.sin(s*.088-1.15));
+  let turn=strength*((1-c.randomness)*Math.sin(s*.085+.20)+c.randomness*randomAngle);
+  let grade=c.hills*(.14*Math.sin(s*.045+.52)+.065*Math.sin(s*.088-1.15));
+  // Seamless procedural tiles: the last 320 m ease back to the exact
+  // heading and slope of the first sample. No empty end-of-track, no camera jump.
+  if(s>blendStart){const t=smooth((s-blendStart)/(period-blendStart));turn+=(angleStart-turn)*t;grade+=(gradeStart-grade)*t;}
   A[i]=turn;G[i]=grade;
   if(i){const mid=(turn+prev)*.5;X[i]=X[i-1]+DS*Math.sin(mid);Z[i]=Z[i-1]+DS*Math.cos(mid);Y[i]=Y[i-1]+DS*(grade+G[i-1])*.5;}
   prev=turn;
  }
  function at(s){
-  const q=clamp(s/DS,0,COUNT-1.001),i=Math.floor(q),t=q-i;
-  return {x:X[i]+(X[i+1]-X[i])*t,y:Y[i]+(Y[i+1]-Y[i])*t,z:Z[i]+(Z[i+1]-Z[i])*t,
+  // Translate the same deterministic road tile in 3D; do not clamp to its end.
+  // Float64 world coordinates prevent camera jitter over long sessions.
+  const tile=Math.floor(s/period),q=clamp((s-tile*period)/DS,0,COUNT-1),i=Math.min(COUNT-2,Math.floor(q)),t=q-i;
+  return {x:X[i]+(X[i+1]-X[i])*t+tile*X[COUNT-1],
+   y:Y[i]+(Y[i+1]-Y[i])*t+tile*Y[COUNT-1],
+   z:Z[i]+(Z[i+1]-Z[i])*t+tile*Z[COUNT-1],
    a:A[i]+(A[i+1]-A[i])*t,g:G[i]+(G[i+1]-G[i])*t};
  }
  const m={at};modelCache.set(key,m);if(modelCache.size>3)modelCache.delete(modelCache.keys().next().value);return m;
 }
+// Each sphere is permanently fixed to a world-space road slab. Unlike a
+// modulo-recycled cloud, dots never teleport through the near/far planes.
 const particleCache=new Map();
-function particles(seed){
- if(particleCache.has(seed))return particleCache.get(seed);
- const arr=[];
- for(let i=0;i<MAX_PARTICLES;i++){
-  const base=(seed^Math.imul(i+1,0x9e3779b1))>>>0;
-  arr.push({s:hash(base^0x13d758bd)*L,a:(.018+hash(base^0x49fbd340)*.964)*PI,
+function particles(seed,cell){
+ const key=seed+"|"+cell;
+ if(particleCache.has(key))return particleCache.get(key);
+ const arr=new Array(SLAB_CAP);
+ for(let i=0;i<SLAB_CAP;i++){
+  const base=((seed>>>0)^Math.imul(cell,0x9e3779b1)^Math.imul(i+1,0x85ebca6b))>>>0;
+  arr[i]={s:(cell+hash(base^0x13d758bd))*SLAB,a:(.018+hash(base^0x49fbd340)*.964)*PI,
    r:(.019+.052*hash(base^0x3f81fa07))*(.7+.55*hash(base^0x5fb27819)),
-   alpha:.48+.45*hash(base^0x82bd401c),j:-.025+.07*hash(base^0x1748bacf)});
+   alpha:.48+.45*hash(base^0x82bd401c),j:-.025+.07*hash(base^0x1748bacf)};
  }
- particleCache.set(seed,arr);if(particleCache.size>3)particleCache.delete(particleCache.keys().next().value);return arr;
+ particleCache.set(key,arr);
+ if(particleCache.size>SLAB_CACHE)particleCache.delete(particleCache.keys().next().value);
+ return arr;
 }
 const spriteCache=new Map();
 function sprites(mode){
@@ -328,7 +346,7 @@ function render(ctx,w,h,c,frame,preview=false){
  const width=Math.max(1,w),height=Math.max(1,h),f=Math.max(0,Number(frame)||0);
  const model=buildModel(c),at=model.at;
  const camS=48+f*12.8*c.speed/60;
- const camera=at(camS),behind=at(camS-1.4),ahead=at(camS+1.4),farAhead=at(camS+8);
+ const camera=at(camS),ahead=at(camS+1.4),farAhead=at(camS+8);
  const yaw=c.follow*ahead.a+c.yawOffset,pitch=c.follow*Math.atan(ahead.g);
  const roll=clamp(-(farAhead.a-camera.a)*.095*c.follow,-.026,.026);
  const cy=Math.cos(yaw),sy=Math.sin(yaw),cp=Math.cos(pitch),sp=Math.sin(pitch),cb=Math.cos(roll),sb=Math.sin(roll);
@@ -377,38 +395,55 @@ function render(ctx,w,h,c,frame,preview=false){
     xyz(a,-roofWidth*Math.cos(v),roofHeight*Math.sin(v)),xyz(a,-roofWidth*Math.cos(u),roofHeight*Math.sin(u))]);
   }
  }
- const ss=(typeof document.createElement==='function'&&typeof ctx.drawImage==='function')?sprites(c.colorModeIndex|0):null,dots=particles(c.seed>>>0),maxDot=Math.min(dots.length,Math.floor((preview?2900:10200)*c.density));
+ const ss=(typeof document.createElement==='function'&&typeof ctx.drawImage==='function')?sprites(c.colorModeIndex|0):null;
+ const seed=c.seed>>>0;
  function dot(o,s){
   const radius=1+o.j,p=proj(s,-roofWidth*Math.cos(o.a)*radius,roofHeight*Math.sin(o.a)*radius);
   if(!p||p.x<-24||p.x>width+24||p.y<-24||p.y>height+24)return;
-  const size=clamp(focal*o.r/p.z,.2,8.8)*1.65,i=clamp(Math.floor(o.a/PI*59),0,59);
-  ctx.globalAlpha=clamp(o.alpha*c.glow*(p.z>74?.82:1),0,1);
-  const col=color(o.a/PI,c.colorModeIndex|0);
+  const size=clamp(focal*o.r/p.z,.16,8.8)*1.65,i=clamp(Math.floor(o.a/PI*59),0,59);
+  const alpha=clamp(o.alpha*c.glow,0,1),col=color(o.a/PI,c.colorModeIndex|0);
   ctx.fillStyle=(c.colorModeIndex|0)===0?"#fff":"hsl("+col[0]+","+col[1]+"%,"+col[2]+"%)";
-  if(size<.65)ctx.fillRect(p.x,p.y,1,1);
-  else if(ss)ctx.drawImage(ss[i],p.x-size,p.y-size,size*2,size*2);
-  else{ctx.beginPath();ctx.arc(p.x,p.y,size*.52,0,TAU);ctx.fill();}
+  // A continuously visible subpixel core eliminates the hard 0.65px
+  // bitmap-to-sprite switch that made moving spheres shimmer.
+  ctx.globalAlpha=alpha*clamp(.48+size*.2,.45,1);
+  ctx.beginPath();ctx.arc(p.x,p.y,Math.max(.30,size*.34),0,TAU);ctx.fill();
+  if(ss&&size>.5){
+   ctx.globalAlpha=alpha*.76*smooth((size-.5)/1.25);
+   ctx.drawImage(ss[i],p.x-size,p.y-size,size*2,size*2);
+  }
  }
  function marker(s,x,track){
   const p=proj(s,x,.012),prev=proj(s-.10,x,.012),next=proj(s+.10,x,.012);
   if(!p||!prev||!next||p.x<-30||p.x>width+30||p.y<-30||p.y>height+30)return;
   const angle=Math.atan2(next.y-prev.y,next.x-prev.x);
   const wave=Math.max(.50,1+c.pulse*(.20*Math.sin(s*.81+track*1.3)+.09*Math.sin(s*1.38+track)));
-  const natural=(track===1?.028:.051)*focal/p.z*wave;
-  const radius=clamp(natural,.05,13),length=clamp(radius*(track===1?1.45:1.13),.05,15);
+  const natural=(track===1?.060:.082)*focal/p.z*wave;
+  // Distant marks appear with the tunnel, not only just before the camera.
+  // Soft minimum pixel footprint keeps them readable without a sudden jump.
+  const minimum=Math.max(.28,Math.min(width,height)*.00090);
+  const radius=clamp(Math.max(natural,minimum),minimum,13),length=clamp(radius*(track===1?1.45:1.13),minimum,16);
   const col=c.colorModeIndex===0?[0,0,75]:color(track===0?.08:track===1?.3:.93,c.colorModeIndex|0);
-  ctx.save();ctx.globalAlpha=clamp(natural*2.5,.10,1)*clamp(1-p.z/230,.35,1);
+  ctx.save();ctx.globalAlpha=clamp(.63+natural*.55,.68,1);
   ctx.translate(p.x,p.y);ctx.rotate(angle);ctx.fillStyle=(c.colorModeIndex|0)===0?"#fff":"hsl("+col[0]+","+col[1]+"%,"+col[2]+"%)";
-  ctx.beginPath();ctx.arc(0,0,Math.max(.05,radius*.92),0,TAU);ctx.fill();ctx.restore();
+  ctx.beginPath();
+  if(typeof ctx.ellipse==='function')ctx.ellipse(0,0,length,radius*.92,0,0,TAU);
+  else ctx.arc(0,0,Math.max(.05,radius*.92),0,TAU);
+  ctx.fill();ctx.restore();
  }
  ctx.save();ctx.fillStyle="#000";ctx.globalAlpha=1;ctx.fillRect(0,0,width,height);
  const near=.62,far=preview?108:145,step=preview?2.1:1.3,nSeg=Math.ceil((far-near)/step);
  const buckets=Array.from({length:nSeg},()=>[]),marks=Array.from({length:nSeg},()=>[]);
- const start=((camS%L)+L)%L;
- for(let i=0;i<maxDot;i++){
-  const ob=dots[i],d=(ob.s-start+L)%L+near;
-  if(d>=far)continue;
-  buckets[Math.min(nSeg-1,Math.floor((d-near)/step))].push([ob,camS+d]);
+ const firstCell=Math.floor((camS+near)/SLAB),lastCell=Math.floor((camS+far)/SLAB);
+ // The cloud is seeded by absolute slab index, never by camera position.
+ // Stable sphere identities are shared by gameplay/preview/replay/notes.
+ const perCell=Math.min(SLAB_CAP,Math.floor((preview?42:148)*c.density));
+ for(let cell=firstCell;cell<=lastCell;cell++){
+  const cellDots=particles(seed,cell);
+  for(let i=0;i<perCell;i++){
+   const ob=cellDots[i],distance=ob.s-camS;
+   if(distance<near||distance>=far)continue;
+   buckets[Math.min(nSeg-1,Math.floor((distance-near)/step))].push(ob);
+  }
  }
  const gap=.45;
  for(let n=Math.ceil((camS+near)/gap);n<=Math.floor((camS+far)/gap);n++){
@@ -418,7 +453,7 @@ function render(ctx,w,h,c,frame,preview=false){
  for(let k=nSeg-1;k>=0;k--){
   const a=camS+near+k*step,b=a+step;
   shell(a,b);floor(a,b);
-  for(const [o,s] of buckets[k])dot(o,s);
+  for(const o of buckets[k])dot(o,o.s);
   for(const s of marks[k]){marker(s,-3.08,0);marker(s,0,1);marker(s,3.08,2);}
  }
  ctx.restore();
