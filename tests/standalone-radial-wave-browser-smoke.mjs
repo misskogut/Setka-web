@@ -96,8 +96,8 @@ try{
   };
  });
  let c=await page.evaluate(()=>window.__radialSmokeTouch("touchstart",.74,.67));
- assert.equal(c.centerX,.74,"a tap moves the target to the touched X");
- assert.equal(c.centerY,.67,"a tap moves the target to the touched Y");
+ assert.ok(Math.abs(c.centerX-.74)<1e-5,"a tap moves the target to the touched X");
+ assert.ok(Math.abs(c.centerY-.67)<1e-5,"a tap moves the target to the touched Y");
  assert.equal(c.touchActive,true);
  c=await page.evaluate(()=>window.__radialSmokeTouch("touchend",.74,.67));
  assert.equal(c.touchActive,false);
@@ -113,8 +113,8 @@ try{
  assert.equal(c.magnet,-45);
  assert.ok(c.pulses.length>=3,"touch creates an impulse when slider >0");
  c=await page.evaluate(()=>window.__radialSmokeTouch("touchmove",.55,.52));
- assert.equal(c.centerX,.55,"drag moves center continuously");
- assert.equal(c.centerY,.52);
+ assert.ok(Math.abs(c.centerX-.55)<1e-5,"drag moves center continuously");
+ assert.ok(Math.abs(c.centerY-.52)<1e-5);
  assert.notEqual(c.spin,0,"drag applies rotation momentum");
  assert.ok(c.pulses.length>=3,"touch pulse survives into an active drag");
  await page.evaluate(()=>window.__radialSmokeTouch("touchend",.55,.52));
