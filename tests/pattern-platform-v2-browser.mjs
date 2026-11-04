@@ -406,6 +406,34 @@ try{
  fs.mkdirSync('tests/visual-smoke',{recursive:true});await page.screenshot({path:'tests/visual-smoke/platform-'+(process.env.SETKA_BROWSER||'chromium')+'.png'});
  await admin.screenshot({path:'tests/visual-smoke/platform-admin-'+(process.env.SETKA_BROWSER||'chromium')+'.png'});
 
+
+ // Real touch-equivalent host dispatch for each future road with steer controls.
+ // This checks the gameplay canvas end-to-end, not just its module reducer.
+ const bendableRoad=await page.evaluate(()=>{
+  const R=window.SetkaPatternRegistryV1,S=window.SetkaApp;
+  const pattern=R.list().find(p=>p.module&&p.controls.some(row=>row[1]==='steerX')&&
+   p.controls.some(row=>row[1]==='steerY'));
+  if(!pattern)return null;
+  if(!S.openConfig(R.defaults(pattern.id),{type:'exact',patternId:pattern.id}))
+   throw new Error('Published steerable road failed to open');
+  return pattern.id;
+ });
+ if(bendableRoad){
+  await page.locator('#gameScreen.active').waitFor();
+  await page.waitForFunction(id=>window.SetkaPatternRegistryV1.ready(id),bendableRoad);
+  const target=page.locator('#patternCanvas'),b=await target.boundingBox();
+  const start=await page.evaluate(()=>window.SetkaApp.getConfig());
+  await page.mouse.move(b.x+b.width*.49,b.y+b.height*.56);
+  await page.mouse.down();
+  await page.mouse.move(b.x+b.width*.49+84,b.y+b.height*.56-74,{steps:9});
+  await page.mouse.up();
+  const after=await page.evaluate(()=>window.SetkaApp.getConfig());
+  assert.ok(after.steerX>start.steerX&&after.steerY>start.steerY,
+   'one real canvas drag physically bends 3D route on both axes');
+  assert.equal(after.yawOffset,start.yawOffset,'road dragging does not secretly steer the head');
+  console.log('REAL STEERABLE TUNNEL GESTURES PASS',bendableRoad);
+ }
+
  // Live host proof: do not simulate the controller directly. Mouse down/up
  // on the real gameplay Canvas must enter the module via generic gesture
  // dispatch and obey single/double/triple tap and 700ms hold semantics.
