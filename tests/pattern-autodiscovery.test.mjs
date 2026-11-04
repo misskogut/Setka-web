@@ -58,22 +58,29 @@ test('every automatically discovered pattern renders its real white-on-black sta
    const snap=JSON.parse(JSON.stringify(registry.snapshot({patternId:pattern.id,config:c,frame:44})));
    assert.equal(registry.restore(snap).ok,true,'immutable snapshot '+pattern.id);
    assert.ok(manifest.patterns.some(p=>p.id===pattern.id),'same manifest '+pattern.id);
-   function trace(config,frame){
+   function trace(config,frame,w=250,h=250){
      const strokes=[],fills=[],gradientStops=[],shapes=[];
      let start,end,totalStrokes=0,lastArc=null,rotation=0,totalArcs=0;
+     const arcExtent={minX:Infinity,maxX:-Infinity,minY:Infinity,maxY:-Infinity};
      const ctx={
        save(){},restore(){},translate(){},scale(){},rotate(a){rotation=a},beginPath(){},closePath(){},
        fillRect(x,y,w,h){fills.push(this.fillStyle);
          if(this.fillStyle!=='#000'&&shapes.length<24)shapes.push({kind:'rect',x,y,w,h,color:this.fillStyle})},
-       arc(x,y,r){totalArcs++;lastArc={x,y,r}}, 
+       arc(x,y,r){
+         totalArcs++;lastArc={x,y,r};
+         arcExtent.minX=Math.min(arcExtent.minX,x-r);
+         arcExtent.maxX=Math.max(arcExtent.maxX,x+r);
+         arcExtent.minY=Math.min(arcExtent.minY,y-r);
+         arcExtent.maxY=Math.max(arcExtent.maxY,y+r);
+       }, 
        fill(){if(lastArc&&shapes.length<24)shapes.push({kind:'circle',...lastArc,color:this.fillStyle});lastArc=null},
        createLinearGradient(){const stops=[];gradientStops.push(stops);return {__stops:stops,addColorStop(_,v){stops.push(v)}}},
        moveTo(x,y){start=[x,y]},
        lineTo(x,y){end=[x,y]},
        stroke(){totalStrokes++;if(strokes.length<20)strokes.push({start,end,rotation,color:typeof this.strokeStyle==='string'?this.strokeStyle:this.strokeStyle.__stops.slice()});}
      };
-     registry.render(ctx,250,250,config,frame,true,pattern.id);
-     return {strokes,fills,gradientStops,totalStrokes,totalArcs,shapes};
+     registry.render(ctx,w,h,config,frame,true,pattern.id);
+     return {strokes,fills,gradientStops,totalStrokes,totalArcs,shapes,arcExtent};
    }
    // A future unknown package declaring a trail control must show a visibly
    // different, deterministic exposure at a fixed replay frame. This is
@@ -86,6 +93,19 @@ test('every automatically discovered pattern renders its real white-on-black sta
        'trail visually changes the same replay frame: '+pattern.id);
      assert.deepEqual(trailed,trace({...c,trail:100},220),
        'trail remains deterministic on direct-open notes/research: '+pattern.id);
+   }
+   // Future unknown continuous lattices opt in to a generic aspect-ratio
+   // contract. Both tall mobile and wide landscape canvases must contain
+   // geometry all the way to each physical edge, not just a centered square.
+   if(pattern.capabilities?.fullViewportLattice===true){
+     for(const [w,h] of [[390,844],[844,390],[320,768],[768,320]]){
+       const bounds=trace(c,44,w,h).arcExtent;
+       assert.ok(bounds.minX<=w*.06&&bounds.maxX>=w*.94&&
+         bounds.minY<=h*.06&&bounds.maxY>=h*.94,
+         'full viewport geometry '+pattern.id+' '+w+'x'+h+': '+JSON.stringify(bounds));
+       assert.deepEqual(trace(c,44,w,h).arcExtent,bounds,
+         'full viewport replay is deterministic at '+w+'x'+h);
+     }
    }
    const a=trace(c,44),b=trace(c,44);
    assert.ok(a.fills.includes('#000'),'real black canvas '+pattern.id);

@@ -2,7 +2,7 @@
 {
   "id": "hexwave",
   "title": "Волновая гексасетка",
-  "version": 1,
+  "version": 2,
   "introducedAt": "2026-11-04T02:38:00.000Z",
   "schemaVersion": 1,
   "module": "standalone-pattern-hexwave.js",
@@ -36,7 +36,8 @@
   ],
   "tapColorCycle": false,
   "capabilities": {
-    "rgbGlitchOverlay": true
+    "rgbGlitchOverlay": true,
+    "fullViewportLattice": true
   },
   "defaults": {
     "patternId": "hexwave",
@@ -235,6 +236,9 @@
     "gestureHexStart",
     "lastTapFrame",
     "tapCount"
+  ],
+  "legacyVersions": [
+    1
   ]
 }
 END_SETKA_PATTERN_DESCRIPTOR */
@@ -271,16 +275,19 @@ function drawDots(ctx,points,radius,sx,sy,fill,alpha=1){
 function render(ctx,width,height,c,frame,preview=false){
  const w=Math.max(1,Number(width)||1),h=Math.max(1,Number(height)||1);
  const f=Math.max(0,Number(frame)||0);
+ // Keep circles round and their size unchanged, but cover the actual viewport
+ // rather than limiting all sample cells to a centered BASE x BASE square.
+ // Tall phones extend logicalHeight; landscape screens extend logicalWidth.
  const scale=Math.min(w,h)/BASE;
- const shiftX=(w-BASE*scale)/2,shiftY=(h-BASE*scale)/2;
+ const logicalWidth=w/scale,logicalHeight=h/scale;
  ctx.save();ctx.fillStyle="#000";ctx.globalAlpha=1;ctx.fillRect(0,0,w,h);
  const r=c.hexRadius,cellH=SQRT3*r,step=1.5*r;
  const time=phaseAt(c,f),amp=c.waveAmplitude;
  const margin=amp+c.dotSize+c.glitchOffset+8;
  const iMin=Math.floor((-c.panX-margin+2*r)/step)-1;
- const iMax=Math.ceil((BASE-c.panX+margin+2*r)/step)+1;
+ const iMax=Math.ceil((logicalWidth-c.panX+margin+2*r)/step)+1;
  const jMin=Math.floor((-c.panY-margin+cellH)/cellH)-1;
- const jMax=Math.ceil((BASE-c.panY+margin+cellH)/cellH)+1;
+ const jMax=Math.ceil((logicalHeight-c.panY+margin+cellH)/cellH)+1;
  const points=[],rainbow=c.colorModeIndex===4;
  const buckets=rainbow?Array.from({length:60},()=>[]):null;
  // The same 0.75*cellWidth staggered hex lattice as the original p5 sketch.
@@ -288,11 +295,11 @@ function render(ctx,width,height,c,frame,preview=false){
   const x=i*step-2*r,stagger=((i%2)+2)%2;
   for(let j=jMin;j<=jMax;j++){
    const y=j*cellH+stagger*cellH/2-cellH;
-   const d=Math.hypot(x-BASE/2,y-BASE/2);
+   const d=Math.hypot(x-logicalWidth/2,y-logicalHeight/2);
    const px=x+Math.sin(time+d*.02)*amp+c.panX;
    const py=y+c.panY;
-   if(px< -margin||px>BASE+margin||py< -margin||py>BASE+margin)continue;
-   const point=[shiftX+px*scale,shiftY+py*scale];
+   if(px< -margin||px>logicalWidth+margin||py< -margin||py>logicalHeight+margin)continue;
+   const point=[px*scale,py*scale];
    points.push(point);
    if(rainbow){
     const ph=f*.015+.10*i+.12*j;

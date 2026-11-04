@@ -35,7 +35,8 @@ function swipe(c,x,y,dx,dy){
 test("correct standalone descriptor and five original palettes; RGB halo and black/white default",()=>{
  assert.equal(d.id,"hexwave");
  assert.equal(d.colorModes,5);
- assert.equal(d.version,1);
+ assert.equal(d.version,2);
+ assert.deepEqual(d.legacyVersions,[1],"published v1 snapshots remain compatible");
  assert.equal(d.palettes.length,5);
  assert.deepEqual(d.palettes[0],[255,255,255]);
  assert.equal(R.ready(d.id),true);
@@ -159,6 +160,62 @@ test("glitch sliders modify actual drawn RGB channels, can disable halo; all fie
  assert.notDeepEqual(capture(speed,101),capture(c,101));
  assert.ok(!Object.hasOwn(d.defaults,"showParams"),"original numeric HUD is never in app");
 });
+
+function primaryDotBounds(config,w,h,frame=90){
+ let path={minX:Infinity,maxX:-Infinity,minY:Infinity,maxY:-Infinity,count:0};
+ const result={minX:Infinity,maxX:-Infinity,minY:Infinity,maxY:-Infinity,count:0};
+ const ctx={
+  fillStyle:"#000",globalAlpha:1,
+  save(){},restore(){},fillRect(){},moveTo(){},
+  beginPath(){path={minX:Infinity,maxX:-Infinity,minY:Infinity,maxY:-Infinity,count:0}},
+  arc(x,y,r){
+   path.minX=Math.min(path.minX,x-r);path.maxX=Math.max(path.maxX,x+r);
+   path.minY=Math.min(path.minY,y-r);path.maxY=Math.max(path.maxY,y+r);
+   path.count++;
+  },
+  fill(){
+   if(this.fillStyle!=="rgb(255,255,255)")return;
+   result.minX=Math.min(result.minX,path.minX);
+   result.maxX=Math.max(result.maxX,path.maxX);
+   result.minY=Math.min(result.minY,path.minY);
+   result.maxY=Math.max(result.maxY,path.maxY);
+   result.count+=path.count;
+  }
+ };
+ R.render(ctx,w,h,config,frame,false,d.id);
+ return result;
+}
+test("HexWave fills every edge of tall phones and wide landscape without deforming circles",()=>{
+ assert.equal(d.version,2);
+ assert.deepEqual(d.legacyVersions,[1]);
+ assert.equal(d.capabilities.fullViewportLattice,true);
+ const base=defaults();
+ const bounds={};
+ for(const [w,h] of [[390,844],[844,390],[320,768],[768,320]]){
+  const label=w+"x"+h,extent=primaryDotBounds(base,w,h);
+  assert.ok(extent.count>2000,"still draws dense original hex points "+label);
+  assert.ok(extent.minX<15&&extent.maxX>w-15&&extent.minY<15&&extent.maxY>h-15,
+   "main white dots extend to all viewport edges "+label+": "+JSON.stringify(extent));
+  assert.deepEqual(primaryDotBounds(base,w,h),extent,"deterministic across frames "+label);
+  bounds[label]=extent;
+ }
+ // The same short edge must preserve cell/dot proportions across rotations.
+ assert.ok(Math.abs(bounds["390x844"].count-bounds["844x390"].count)<1000,
+  "portrait/landscape sampling grows along the long axis, not a centered square");
+ const moved={...base,panX:240,panY:-320,waveAmplitude:50};
+ for(const [w,h] of [[390,844],[844,390]]){
+  const extent=primaryDotBounds(moved,w,h);
+  assert.ok(extent.minX<15&&extent.maxX>w-15&&extent.minY<15&&extent.maxY>h-15,
+   "full-screen resampling survives a large two-finger pan and maximum wave "+w+"x"+h);
+ }
+ const snapshot=JSON.parse(JSON.stringify(R.snapshot({patternId:d.id,config:base,frame:44})));
+ snapshot.patternVersion=1;
+ const restored=R.restore(snapshot);
+ assert.equal(restored.ok,true,"historical v1 HexWave records remain readable");
+ assert.equal(restored.snapshot.config.panY,base.panY);
+ assert.equal(restored.snapshot.config.colorModeIndex,base.colorModeIndex);
+});
+
 test("shared platform owns frontend/notes/research, no hardcoded new IDs in host",()=>{
  const host=fs.readFileSync("app-v7-multipattern.js","utf8");
  assert.ok(!host.includes('"hexwave"'));

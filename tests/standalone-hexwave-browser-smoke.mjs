@@ -61,6 +61,28 @@ try{
  assert.ok(!/ТОЛЬКО БЕГУНКОМ/.test(controls.text));
  assert.ok(controls.rows.every(x=>x.help&&x.help.length>20));
  await page.evaluate(()=>window.SetkaPatternKeyV1.close());
+ // Read actual on-screen pixels: the canvas is already full-size; the pattern
+ // must be populated at its four edges, both portrait and landscape.
+ await page.evaluate(()=>{
+  window.__hxCoverage=(canvas=document.getElementById("patternCanvas"))=>{
+   const r=canvas.getBoundingClientRect(),w=canvas.width,h=canvas.height;
+   const data=canvas.getContext("2d").getImageData(0,0,w,h).data;
+   const bright=[0,0,0,0],band=.09;
+   for(let y=2;y<h-2;y+=4)for(let x=2;x<w-2;x+=4){
+    const idx=4*(y*w+x),sum=data[idx]+data[idx+1]+data[idx+2];
+    if(sum<250)continue;
+    if(y<h*band)bright[0]++;
+    if(y>h*(1-band))bright[1]++;
+    if(x<w*band)bright[2]++;
+    if(x>w*(1-band))bright[3]++;
+   }
+   return {bright,width:r.width||w,height:r.height||h,pixelsW:w,pixelsH:h};
+  };
+ });
+ await page.waitForTimeout(220);
+ const tall=await page.evaluate(()=>window.__hxCoverage());
+ assert.ok(tall.height>tall.width*1.45,"real mobile canvas spans a tall viewport");
+ assert.ok(tall.bright.every(v=>v>20),"live HexWave reaches all portrait edges: "+JSON.stringify(tall));
  await page.evaluate(()=>{
   const canvas=document.getElementById("patternCanvas");
   const point=(id,x,y)=>{
@@ -123,6 +145,25 @@ try{
  for(let i=0;i<3;i++)await page.evaluate(()=>window.__hxTouch.tap());
  const changed=await page.evaluate(()=>window.SetkaApp.getConfig());
  assert.equal(changed.colorModeIndex,1,"three short taps change the palette once");
+ // Large two-finger pan must re-tile the whole visible viewport, not expose a
+ // missing square below/above the original 640x640 source scene.
+ await page.waitForTimeout(180);
+ const tallAfterPan=await page.evaluate(()=>window.__hxCoverage());
+ assert.ok(tallAfterPan.bright.every(v=>v>20),
+  "panning keeps all long-phone edges populated: "+JSON.stringify(tallAfterPan));
+ // The SETKA shell has max-width:520px and min-height:560px. Validate the
+ // same registered renderer in a true wide buffer without changing global
+ // layout rules or imposing a special-case CSS override for this pattern.
+ const wide=await page.evaluate(()=>{
+  const canvas=document.createElement("canvas");
+  canvas.width=844;canvas.height=390;
+  window.SetkaPatternRegistryV1.render(
+   canvas.getContext("2d"),844,390,window.SetkaApp.getConfig(),120,false,"hexwave");
+  return window.__hxCoverage(canvas);
+ });
+ assert.ok(wide.width>wide.height*1.45,"landscape test buffer is wide");
+ assert.ok(wide.bright.every(v=>v>20),
+  "registered HexWave renderer reaches all landscape edges: "+JSON.stringify(wide));
  const stored=await page.evaluate(()=>{
   const r=window.SetkaPatternRegistryV1,config=window.SetkaApp.getConfig();
   const snap=r.snapshot({patternId:"hexwave",config,frame:75});
