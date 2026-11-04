@@ -36,6 +36,9 @@ jobs:
       - run: node tests/standalone-hemispheric-spirals-browser-smoke.mjs
         env:
           SETKA_BROWSER: ${{ matrix.browser }}
+      - run: node tests/standalone-interlaced-spirals-browser-smoke.mjs
+        env:
+          SETKA_BROWSER: ${{ matrix.browser }}
       - run: node tests/standalone-genuary-16x16-browser-smoke.mjs
         env:
           SETKA_BROWSER: ${{ matrix.browser }}
