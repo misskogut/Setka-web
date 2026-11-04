@@ -57,3 +57,17 @@ test('editorial order is independent of release chronology and future new badges
  R.usePublicCatalog();R.applyPublication([id],10);R.applyOrder({patternIds:manual,revision:4});
  assert.deepEqual(plain(R.activeItems(R.orderedIds())),[id],'ordering cannot publish hidden modules');
 });
+
+test('mini order shows published IDs only and moves visible slots without losing hidden future modules',async()=>{
+ const {publishedOrderIds,reorderPublishedPatterns}=await import('../research-v1/pattern-order.mjs');
+ const ids=['first','future-hidden','second','future-testing','third','future-unknown'];
+ const publication=ids.slice(0,-1).map(id=>({pattern_id:id,state:id==='future-hidden'?'disabled':id==='future-testing'?'testing':'published'}));
+ assert.deepEqual(publishedOrderIds(ids,publication),['first','second','third']);
+ const next=reorderPublishedPatterns(ids,publication,'first','third');
+ assert.deepEqual(next,['second','future-hidden','third','future-testing','first','future-unknown']);
+ assert.deepEqual(ids,['first','future-hidden','second','future-testing','third','future-unknown'],'input remains intact');
+ assert.deepEqual(reorderPublishedPatterns(ids,publication,'future-hidden','first'),ids);
+ publication.find(p=>p.pattern_id==='future-hidden').state='published';
+ assert.deepEqual(publishedOrderIds(next,publication),['second','future-hidden','third','first'],'republish restores the retained position');
+ assert.deepEqual(publishedOrderIds(ids,[]),[],'unknown publication is not treated as enabled');
+});

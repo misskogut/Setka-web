@@ -1,6 +1,17 @@
 // One editor for the installed catalog, including testing/disabled modules.
 // Draft survives routine research refreshes; only a confirmed revision is public.
-export function mountPatternOrder(root,{registry,order,api,draft,onCommitted,miniRoot=null}){
+export function publishedOrderIds(ids,publication=[]){
+ const published=new Set(publication.filter(row=>row.state==='published').map(row=>row.pattern_id));
+ return ids.filter(id=>published.has(id));
+}
+// Reorder the public projection while preserving every hidden slot in the full order.
+export function reorderPublishedPatterns(ids,publication,fromId,toId){
+ const visible=publishedOrderIds(ids,publication),from=visible.indexOf(fromId),to=visible.indexOf(toId);
+ if(from<0||to<0||from===to)return ids.slice();
+ const slots=new Set(visible),[id]=visible.splice(from,1);visible.splice(to,0,id);
+ let index=0;return ids.map(id=>slots.has(id)?visible[index++]:id);
+}
+export function mountPatternOrder(root,{registry,order,api,draft,onCommitted,miniRoot=null,publication=[]}){
  const status=document.createElement('p');status.setAttribute('role','status');
  if(!order||!Number.isSafeInteger(order.revision)){root.querySelectorAll('.pattern-order-controls').forEach(slot=>slot.textContent='Порядок не загружен. Обновите данные.');return;}
  if(!draft.dirty){draft.ids=registry.orderedIds();draft.revision=order.revision;}
@@ -11,19 +22,23 @@ export function mountPatternOrder(root,{registry,order,api,draft,onCommitted,min
  const state=message=>{root.querySelectorAll('.pattern-order-status').forEach(el=>el.textContent=message);miniRoot?.querySelectorAll('.pattern-order-status').forEach(el=>el.textContent=message)};
  let saving=false;
  const move=(from,to)=>{if(saving||from===to||to<0||to>=draft.ids.length)return;const [id]=draft.ids.splice(from,1);draft.ids.splice(to,0,id);draft.dirty=true;render();};
+ const moveMini=(fromId,toId)=>{if(saving||draft.saving)return;const next=reorderPublishedPatterns(draft.ids,publication,fromId,toId);if(next.every((id,i)=>id===draft.ids[i]))return;draft.ids=next;draft.dirty=true;render()};
  function render(){
   status.textContent=draft.dirty?'Порядок изменён. Нажмите «Сохранить порядок», чтобы применить его у всех.':'Порядок подтверждён сервером.';
   if(miniRoot){
    let grid=miniRoot.querySelector('.pattern-mini-grid');
    if(!grid){grid=document.createElement('div');grid.className='pattern-mini-grid';grid.setAttribute('aria-label','Перетаскивание порядка паттернов');miniRoot.append(grid)}
    const previous=new Map([...grid.children].map(el=>[el.dataset.patternId,el]));
-   for(const id of draft.ids){
+   const visible=publishedOrderIds(draft.ids,publication),visibleSet=new Set(visible);
+   for(const tile of [...grid.children])if(!visibleSet.has(tile.dataset.patternId))tile.remove();
+   for(const id of visible){
     let tile=previous.get(id);if(!tile){tile=document.createElement('button');tile.type='button';tile.className='pattern-mini-tile';tile.dataset.patternId=id;
      const canvas=document.createElement('canvas');canvas.width=120;canvas.height=120;canvas.dataset.preview='';canvas.dataset.pattern=id;canvas.dataset.frame='44';
      const label=document.createElement('span');label.className='mini-pattern-label';tile.append(canvas,label);
     }
     tile.setAttribute('aria-label','Переместить: '+registry.title(id));tile.querySelector('.mini-pattern-label').textContent=registry.title(id);grid.append(tile);
    }
+   let empty=miniRoot.querySelector('.pattern-mini-empty');if(!empty){empty=document.createElement('p');empty.className='pattern-mini-empty muted small';empty.textContent='Нет включённых паттернов. Включите нужные в подробных карточках ниже.';miniRoot.append(empty)}empty.hidden=visible.length>0;
    let actions=miniRoot.querySelector('.pattern-mini-actions');if(!actions){actions=document.createElement('div');actions.className='pattern-mini-actions';miniRoot.append(actions)}actions.replaceChildren();
    for(const control of [save,reset]){const button=document.createElement('button');button.type='button';button.textContent=control.textContent;button.disabled=!draft.dirty;button.onclick=()=>control.onclick?.();actions.append(button)}
    const receipt=document.createElement('p');receipt.className='pattern-order-status small';receipt.setAttribute('role','status');receipt.textContent=status.textContent;actions.append(receipt);
@@ -40,11 +55,11 @@ export function mountPatternOrder(root,{registry,order,api,draft,onCommitted,min
     drag.target=target&&grid.contains(target)?target.dataset.patternId:null;if(drag.target!==drag.id)target?.classList.add('drop-target');
    };
    grid.onpointerup=e=>{if(!drag||e.pointerId!==drag.pointerId)return;const {id,target,moved}=drag;clean();if(grid.hasPointerCapture(e.pointerId))grid.releasePointerCapture(e.pointerId);
-    if(moved&&target&&target!==id)move(draft.ids.indexOf(id),draft.ids.indexOf(target));
+    if(moved&&target&&target!==id)moveMini(id,target);
     else if(!moved)[...root.querySelectorAll('.pattern-manage-card')].find(el=>el.dataset.patternId===id)?.scrollIntoView({behavior:'smooth',block:'center'});
    };
    grid.onpointercancel=clean;grid.onlostpointercapture=clean;
-   grid.onkeydown=e=>{const tile=e.target.closest('.pattern-mini-tile'),delta={ArrowLeft:-1,ArrowRight:1,ArrowUp:-4,ArrowDown:4}[e.key];if(!tile||delta===undefined)return;e.preventDefault();const id=tile.dataset.patternId,index=draft.ids.indexOf(id);move(index,index+delta);grid.querySelector(`[data-pattern-id="${id}"]`)?.focus()};
+   grid.onkeydown=e=>{const tile=e.target.closest('.pattern-mini-tile'),delta={ArrowLeft:-1,ArrowRight:1,ArrowUp:-4,ArrowDown:4}[e.key];if(!tile||delta===undefined)return;e.preventDefault();const id=tile.dataset.patternId,index=visible.indexOf(id);moveMini(id,visible[index+delta]);grid.querySelector(`[data-pattern-id="${id}"]`)?.focus()};
   }
   draft.ids.forEach((id,index)=>{
    const card=[...root.querySelectorAll('.pattern-manage-card')].find(el=>el.dataset.patternId===id);if(!card)return;root.append(card);

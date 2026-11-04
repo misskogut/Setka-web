@@ -124,7 +124,9 @@ try{
  // Back restores the origin panel on its next animation frame. Finish that
  // navigation before the next user action selects another library page.
  await other.evaluate(()=>new Promise(requestAnimationFrame));
- await other.locator('#favoritesPagerButton').click();await other.locator('.favorite-tile .st34-info').first().waitFor();
+ await other.locator('#favoritesPagerButton').click();
+ try{await other.locator('.favorite-tile .st34-info').first().waitFor();}
+ catch(error){console.log('FAVORITE AFTER BACK',await other.evaluate(favoriteState));console.log('FAVORITE GALLERY STATE',await other.evaluate(()=>({state:window.SetkaApp.getState(),active:window.SetkaPatternRegistryV1.isActive('stereo-dna'),ready:window.SetkaPatternRegistryV1.ready('stereo-dna'),html:document.getElementById('favoritesPanel').innerHTML,origin:window.SetkaStandaloneNavigationV34?.getOrigin()})));throw error;}
  const heart=await other.locator('.favorite-tile .mini-heart').first().boundingBox(),info=await other.locator('.favorite-tile .st34-info').first().boundingBox();assert.ok(heart.y+heart.height<info.y,'saved heart overlaps the information button');
  console.log('REAL WEB STORAGE QUOTA, INDEXEDDB RETENTION THROUGH STALE TAB/RELOAD, PLAIN NOTES, INLINE MODERATION AND SEPARATE HEART POSITION PASS');
  const admin=await browser.newPage({viewport:{width:1200,height:900}});admin.on('pageerror',e=>errors.push({page:'admin',message:e.message,stack:e.stack}));
