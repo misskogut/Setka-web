@@ -84,7 +84,8 @@
     "gestureStartFrame": 0,
     "lastTapFrame": -1000,
     "tapCount": 0,
-    "colorModeIndex": 0
+    "colorModeIndex": 0,
+    "autoTurn": 0.15
   },
   "controls": [
     [
@@ -156,6 +157,16 @@
       "Ползунок",
       0,
       "Для монохромной палитры: чёрные линии на белом фоне вместо белых на чёрном."
+    ],
+    [
+      "Автодвижение",
+      "autoTurn",
+      0,
+      2,
+      0.05,
+      "Ползунок",
+      0,
+      "Очень мягкое самостоятельное скручивание стопки. 0 — полностью неподвижные слои, как в оригинале."
     ]
   ],
   "gestureHints": [
@@ -295,7 +306,8 @@
     "gestureStartFrame",
     "lastTapFrame",
     "tapCount",
-    "colorModeIndex"
+    "colorModeIndex",
+    "autoTurn"
   ]
 }
 END_SETKA_PATTERN_DESCRIPTOR */
@@ -376,7 +388,7 @@ function lineColor(mode,t,i,n,x,div){
  return [...hsv2rgb(h,sat,.92),Math.floor(alpha)];
 }
 function geometry(c,f,width,height,visit){
- const turn=stateAt(c,"turn",f),num=stateAt(c,"num",f),
+ const turn=stateAt(c,"turn",f)+.12*c.autoTurn*Math.sin(f/95),num=stateAt(c,"num",f),
        lineW=stateAt(c,"lineW",f),pitch=stateAt(c,"pitch",f),z=zAt(c,f);
  const n=Math.floor(num),baseScale=height/628,cam=628*Math.sqrt(3)/2,
        coP=Math.cos(pitch),siP=Math.sin(pitch),t=phaseAt(c,f),mode=modeOf(c);
@@ -406,7 +418,7 @@ function render(ctx,width,height,c,frame,preview=false){
  const t=phaseAt(c,f),mode=modeOf(c),bg=background(mode,t);
  ctx.save();
  ctx.globalAlpha=1;ctx.shadowBlur=0;
- ctx.fillStyle="rgb("+bg.map(Math.round).join(",")+")";ctx.fillRect(0,0,w,h);
+ ctx.fillStyle=bg.every(x=>x===0)?"#000":bg.every(x=>x===255)?"#fff":"rgb("+bg.map(Math.round).join(",")+")";ctx.fillRect(0,0,w,h);
  ctx.lineCap="round";ctx.lineJoin="round";
  geometry(c,f,w,h,(a,b,col,weight)=>{
   const alpha=col[3]/255;
