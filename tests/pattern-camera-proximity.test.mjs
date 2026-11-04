@@ -30,7 +30,7 @@ test("every packaged camera-proximity slider changes the roadway projection and 
    const scope={window:{SetkaPatternRegistryV1:R},document:{currentScript:{dataset:{patternId:p.id}}},Math};
    const instrumented=p.id==="neurobridge"
     ?moduleSource.replace("registry.bindRenderer(id,render);",
-      "window.__neurobridgeTest={cameraPose,road,projectSegment,railExtent};registry.bindRenderer(id,render);")
+      "window.__neurobridgeTest={cameraPose,road,projectSegment,railExtent,arcMap,travel};registry.bindRenderer(id,render);")
     :moduleSource;
    vm.runInNewContext(instrumented,scope);
    assert.ok(R.ready(p.id),"registered, reusable gameplay and preview renderer");
@@ -83,7 +83,7 @@ test("every packaged camera-proximity slider changes the roadway projection and 
    if(p.id==="neurobridge"){
     // Track-follow is a CAR constrained to the actual surface at the current
     // traveled arc parameter, not a floating camera following a distant gaze.
-    const {cameraPose,road,projectSegment,railExtent}=scope.window.__neurobridgeTest||{};
+    const {cameraPose,road,projectSegment,railExtent,arcMap,travel}=scope.window.__neurobridgeTest||{};
     assert.equal(typeof cameraPose,"function","the real renderer must implement a track-locked carriage");
     assert.equal(typeof projectSegment,"function","geometry must clip across near plane, not drop crossbars");
     assert.equal(typeof railExtent,"function","the rail must extend past the rider");
@@ -95,6 +95,56 @@ test("every packaged camera-proximity slider changes the roadway projection and 
     const extreme={...base,climbs:5,dropDepth:5,hillSharpness:3.5,
      turns:3,turnSharpness:3,randomness:1.4,proximity:1,
      lookYaw:0,lookPitch:0,lanePosition:0};
+    // The previous implementation spaced bars and moved the car in raw Z.
+    // A steep grade stretched real 3D gaps and increased actual speed.
+    // Arc length (not projection or Z) is now the single unit of travel.
+    assert.equal(typeof arcMap,"function","route needs an inverse arc-length lookup");
+    assert.equal(typeof travel,"function","distance clock must be available");
+    function actualLength(config,a,b){
+     const n=Math.max(2,Math.ceil(Math.abs(b-a)/.07));
+     let p=road({...config,steerX:0,steerY:0},a,0),length=0;
+     for(let j=1;j<=n;j++){
+      const v=road({...config,steerX:0,steerY:0},a+(b-a)*j/n,0);
+      length+=Math.hypot(v[0]-p[0],v[1]-p[1],v[2]-p[2]);p=v;
+     }
+     return length;
+    }
+    const routeCases=[
+     {label:"mild road",config:{...base,turns:.2,climbs:.2,dropDepth:.2,hillSharpness:.5}},
+     {label:"high-climb/high-drop road",config:extreme},
+     {label:"lateral switchbacks",config:{...extreme,turnSharpness:3.5,turns:3.5,hillSharpness:2.3}},
+    ];
+    for(const {label,config} of routeCases){
+     const lookup=arcMap(config);
+     const gaps=[],speedSteps=[];
+     for(const distance of [2,12,26,42,61,83,107,131,174,208,270]){
+      const a=lookup.at(distance),b=lookup.at(distance+1.32);
+      const realGap=actualLength(config,a,b);gaps.push(realGap);
+      assert.ok(Math.abs(realGap-1.32)<.015,label+" must keep adjacent bars 1.32 world units apart, got "+realGap);
+      // 1 frame must always cover 0.07 world units of ACTUAL curve,
+      // regardless of slope/curvature and without artificial downhill boost.
+      const d0=travel(config,100)+distance;
+      const p0=lookup.at(d0),p1=lookup.at(d0+.07*config.speed);
+      const speed=actualLength(config,p0,p1);speedSteps.push(speed);
+      assert.ok(Math.abs(speed-.07*config.speed)<.004,
+       label+" must preserve true linear speed, got "+speed);
+     }
+     assert.ok(Math.max(...gaps)-Math.min(...gaps)<.025,
+      label+" must not change sleeper density on hills");
+     assert.ok(Math.max(...speedSteps)-Math.min(...speedSteps)<.008,
+      label+" must not accelerate through climbs or descents");
+     assert.equal(lookup.at(83),arcMap(config).at(83),"arc metric must be Replay-deterministic");
+     const negative=lookup.at(-8),zero=lookup.at(0);
+     assert.ok(negative<zero,"rail behind camera must also be parametrized correctly");
+     assert.ok(Math.abs(actualLength(config,negative,zero)-8)<.03,
+      "negative arc length must remain continuous behind the rider");
+    }
+    const fast={...extreme,speed:2.5};
+    for(const f of [1,93,285,721]){
+     const a=cameraPose(fast,f),b=cameraPose(fast,f+20);
+     assert.ok(Math.abs(actualLength(fast,a.here,b.here)-3.5)<.035,
+      "camera must travel equal 3D metres at high speed on any slope");
+    }
     const inclines=[];
     const descents=[];
     for(let f=0;f<=1120;f+=35){
@@ -107,10 +157,10 @@ test("every packaged camera-proximity slider changes the roadway projection and 
      assert.ok(dot3(pose.forward,pose.tangent)>.996,
       "without gestures, gaze must follow the actual track pitch and yaw");
      (pose.basePitch>=0?inclines:descents).push(pose.basePitch);
-     const {first,last,frontier}=railExtent(extreme,pose.here,1.32);
-     assert.ok(first<pose.here-20,"the 3D road must continue behind the carriage");
-     assert.ok(last>pose.here+9,"the 3D road must continue forward beyond the carriage");
-     assert.ok(frontier>pose.here+10,"emerging road remains ahead, not across the camera");
+     const {first,last,frontier}=railExtent(extreme,pose.hereDistance,1.32);
+     assert.ok(first<pose.hereDistance-20,"the 3D road must continue behind the carriage");
+     assert.ok(last>pose.hereDistance+9,"the 3D road must continue forward beyond the carriage");
+     assert.ok(frontier>pose.hereDistance+10,"emerging road remains ahead, not across the camera");
     }
     assert.ok(inclines.length>0&&descents.length>0,
      "track-follow test exercised both steep climbs and steep descents");
@@ -132,8 +182,8 @@ test("every packaged camera-proximity slider changes the roadway projection and 
       const p0=cameraPose(config,280);
       assert.ok(nearZero(p0.here,cameraPose({...config,proximity:1},280).here),
        "changing camera height never teleports the rider along the rail");
-      const ext=railExtent(config,p0.here,1.32);
-      assert.ok(ext.first<p0.here-20&&ext.last>p0.here+9,
+      const ext=railExtent(config,p0.hereDistance,1.32);
+      assert.ok(ext.first<p0.hereDistance-20&&ext.last>p0.hereDistance+9,
        "road never gets clipped away by height or growth slider");
       let strokes=0;
       const ctx={save(){},restore(){},beginPath(){},moveTo(){},lineTo(){},
