@@ -134,7 +134,7 @@ try{
  const heldTile=other.locator('.favorite-tile').first(),heldBox=await heldTile.boundingBox();
  await other.mouse.move(heldBox.x+heldBox.width/2,heldBox.y+heldBox.height/2);await other.mouse.down();
  await heldTile.evaluate(tile=>tile.parentElement.append(tile));
- await new Promise(resolve=>setTimeout(resolve,700));await other.mouse.up();
+ await new Promise(resolve=>setTimeout(resolve,700));await other.mouse.move(1,1);await other.mouse.up();
  assert.ok(await other.evaluate(()=>window.SetkaApp.getFavorites().some(f=>f.baseId==='stereo-dna')),'lost pointer capture cancels pending favorite removal');
  const heart=await other.locator('.favorite-tile .mini-heart').first().boundingBox(),info=await other.locator('.favorite-tile .st34-info').first().boundingBox();assert.ok(heart.y+heart.height<info.y,'saved heart overlaps the information button');
  console.log('REAL WEB STORAGE QUOTA, INDEXEDDB RETENTION THROUGH STALE TAB/RELOAD, PLAIN NOTES, INLINE MODERATION AND SEPARATE HEART POSITION PASS');
