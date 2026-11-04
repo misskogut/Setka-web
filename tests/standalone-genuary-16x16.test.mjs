@@ -14,7 +14,7 @@ if(!R.has(d.id))R.register(d);
 vm.runInNewContext(source,{window:{SetkaPatternRegistryV1:R},document:{currentScript:{dataset:{patternId:d.id}}},Math},{timeout:2000});
 const base=()=>structuredClone(d.defaults);
 function capture(c,frame=0,width=720,height=720,preview=true){
- const lines=[],fills=[],p=[0,0],q=[0,0];
+ const lines=[],fills=[];let p=[0,0],q=[0,0];
  const ctx={
   save(){},restore(){},beginPath(){},moveTo(x,y){p=[x,y]},lineTo(x,y){q=[x,y]},
   stroke(){lines.push([p[0],p[1],q[0],q[1],this.lineWidth,this.strokeStyle,this.globalAlpha])},
@@ -52,12 +52,12 @@ test("eight original 3D layers; white strokes on black, metadata + all four swip
  assert.match(d.gestureHints[0][1],/3 быстрых касания/);
  const rendered=capture(base());
  assert.equal(rendered.lines.length,8*20);
- assert.equal(rendered.fills[0][4],"rgb(0,0,0)");
+ assert.equal(rendered.fills[0][4],"#000");
  assert.ok(rendered.lines.every(x=>x[5]==="rgb(255,255,255)"));
  assert.deepEqual(capture(base(),120),capture(base(),120));
 });
 test("true whole-stack pitch projects a Z-separated eight-layer scene and collapses to exactly one plane at pitch 0",()=>{
- const c=base(),flat=capture(c).lines;
+ const c={...base(),autoTurn:0},flat=capture(c).lines;
  assert.equal(new Set(flat.map(l=>l.slice(0,4).map(v=>v.toFixed(3)).join(","))).size,20,
    "zero pitch/zero twist means eight coincident copies of each line");
  const pitched={...c,pitch:.95,pitchFrom:.95,zFrom:34};
@@ -125,7 +125,7 @@ test("ten original color combinations cycle with triple tap, including black on 
  assert.deepEqual(visited.at(-1),[0,0]);
  assert.equal(new Set(visited.slice(0,-1).map(p=>p.join(":"))).size,10);
  const negative=capture({...base(),invert:1});
- assert.equal(negative.fills[0][4],"rgb(255,255,255)");
+ assert.equal(negative.fills[0][4],"#fff");
  assert.equal(negative.lines[0][5],"rgb(0,0,0)");
  const cyan=capture({...base(),colorModeIndex:1},0);
  assert.equal(cyan.lines[0][5],"rgb(90,178,255)");
