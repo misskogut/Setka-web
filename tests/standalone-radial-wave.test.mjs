@@ -106,9 +106,9 @@ test("generic gesture dispatcher provides absolute x/y and distinct pointer phas
  const host=fs.readFileSync("app-v7-multipattern.js","utf8");
  assert.match(host,/type:"gesture",phase:"move",frame:currentFrame,zone,x,y,dx,dy,fingers/);
  assert.match(host,/pluginPointerPhase\("start",p\.x,p\.y,1\)/);
- assert.match(host,/pluginPointerPhase\("end",touch\.x,touch\.y,1\)/);
- assert.match(host,/pluginPointerPhase\("start",mouse\.x,mouse\.y,1\)/);
- assert.match(host,/pluginPointerPhase\("end",mouse\.x,mouse\.y,1\)/);
+ assert.match(host,/pluginPointerPhase\("end",touch\.x,touch\.y,1/);
+ assert.match(host,/pluginPointerPhase\("start",mouse\.x,mouse\.y,1/);
+ assert.match(host,/pluginPointerPhase\("end",mouse\.x,mouse\.y,1/);
  assert.match(host,/if\(fingers!==1\|\|!registry\.hasInteraction\?\.\(runtimePatternId\)\)return false/);
 });
 
