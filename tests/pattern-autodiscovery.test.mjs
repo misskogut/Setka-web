@@ -553,3 +553,59 @@ test('future 3D road packages can hide only the road while preserving visible ma
   }
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
+
+
+test('any future continuous road tunnel keeps camera, wall spheres and distant markings after hours of driving',()=>{
+ const dir=workspace();
+ try{
+  const {source}=build(dir),registry=loadRegistry(source);
+  const roads=registry.list().filter(p=>p.module&&p.controls.some(row=>row[1]==='roadOpacity'));
+  assert.ok(roads.length>0,'continuous road contract needs at least one real packaged road');
+  for(const pattern of roads){
+   const document={currentScript:{dataset:{patternId:pattern.id}}};
+   vm.runInNewContext(fs.readFileSync(path.join(dir,pattern.module),'utf8'),
+     {window:{SetkaPatternRegistryV1:registry},document,Math},{timeout:1500});
+   const base=registry.defaults(pattern.id);
+   function inspect(frame,config=base){
+    const metrics={spheres:0,marks:0,blackSurfaces:0,nonFinite:0,farMarks:0,markLocations:[],artPixels:0};
+    const h=844,w=390,horizon=h*.551;
+    const finite=(...a)=>{if(a.some(v=>!Number.isFinite(v)))metrics.nonFinite++};
+    const ctx={
+     fillStyle:'#000',globalAlpha:1,
+     save(){},restore(){},beginPath(){},closePath(){},rotate(){},
+     translate(x,y){metrics.marks++;finite(x,y);
+      if(Math.abs(y-horizon)<7)metrics.farMarks++;
+      if(metrics.markLocations.length<8)metrics.markLocations.push([x,y]);},
+     moveTo(x,y){finite(x,y)},lineTo(x,y){finite(x,y)},
+     fill(){if(this.fillStyle==='#000')metrics.blackSurfaces++},
+     arc(x,y,r){metrics.spheres++;finite(x,y,r)},
+     ellipse(x,y,rx,ry){finite(x,y,rx,ry)},
+     fillRect(x,y,r,h){metrics.artPixels++;finite(x,y,r,h)}
+    };
+    registry.render(ctx,w,h,config,frame,true,pattern.id);
+    return metrics;
+   }
+   // Previously the camera hit the finite array end after ~8.7 km.
+   // Frame 80,000 at 3x exceeds that distance several times.
+   const stages=[44,20000,80000,160000,800000];
+   for(const frame of stages){
+    const a=inspect(frame,{...base,speed:3});
+    assert.ok(a.spheres>100,'world-fixed spheres remain visible at frame '+frame);
+    assert.ok(a.marks>100,'road markings remain visible at frame '+frame);
+    assert.equal(a.nonFinite,0,'camera and projection remain finite at frame '+frame);
+    assert.deepEqual(inspect(frame,{...base,speed:3}),a,'replay is stable at frame '+frame);
+   }
+   const late=inspect(300000,{...base,speed:3,turns:5,randomness:1,hills:3,opacity:1,roadOpacity:1});
+   assert.ok(late.spheres>100&&late.marks>100,'maximum road curvature and climbs never eject camera');
+   assert.equal(late.nonFinite,0);
+   const transparent=inspect(300000,{...base,speed:3,turns:5,randomness:1,hills:3,opacity:0,roadOpacity:0});
+   assert.ok(transparent.spheres>100&&transparent.marks>100,'transparent walls and floor retain road markings and wall spheres');
+   assert.equal(transparent.blackSurfaces,0,'transparent tunnel never paints black occlusion polygons');
+   const straight=inspect(44,{...base,speed:1,turns:0,hills:0,opacity:0,roadOpacity:0});
+   assert.ok(straight.farMarks>5,'distant markings render at the same far plane as tunnel spheres');
+   const next=inspect(45,{...base,speed:1,turns:0,hills:0,opacity:0,roadOpacity:0});
+   assert.ok(Math.abs(next.spheres-straight.spheres)<Math.max(120,straight.spheres*.22),
+      'consecutive frames have a stable world-space dot population, without cloud recycling pulses');
+  }
+ }finally{fs.rmSync(dir,{recursive:true,force:true});}
+});
