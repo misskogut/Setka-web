@@ -514,3 +514,42 @@ test('HexWave 3D supports touch-launched propagating waves, isolated gestures an
   assert.equal(R.validate(state,id).ok,true,'all wave history is a typed, valid config');
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
+
+
+test('future 3D road packages can hide only the road while preserving visible markings and replay',()=>{
+ const dir=workspace();
+ try{
+  const {source}=build(dir),registry=loadRegistry(source);
+  const roadModules=registry.list().filter(p=>p.module&&p.controls.some(c=>c[1]==='roadOpacity'));
+  assert.ok(roadModules.length>0,'a road module declares a generic opacity control');
+  for(const pattern of roadModules){
+   const doc={currentScript:{dataset:{patternId:pattern.id}}};
+   vm.runInNewContext(fs.readFileSync(path.join(dir,pattern.module),'utf8'),
+    {window:{SetkaPatternRegistryV1:registry},document:doc,Math},{timeout:1500});
+   const defaults=registry.defaults(pattern.id);
+   const field=pattern.controls.find(c=>c[1]==='roadOpacity');
+   assert.equal(field[2],0,'road may be fully transparent');
+   assert.equal(field[3],1,'road may be fully opaque');
+   const restored=registry.restore(registry.snapshot({patternId:pattern.id,config:{...defaults,roadOpacity:0},frame:44}));
+   assert.equal(restored.ok,true,'transparent road survives a saved snapshot');
+   assert.equal(restored.snapshot.config.roadOpacity,0);
+   const trace=(c)=>{
+    const result={roadPolygons:0,artDots:0,frames:0};
+    const ctx={fillStyle:'#000',globalAlpha:1,
+     save(){},restore(){},beginPath(){},closePath(){},moveTo(){},lineTo(){},translate(){},rotate(){},
+     fillRect(){result.frames++},arc(){result.artDots++},
+     fill(){if(this.fillStyle==='#000')result.roadPolygons++}};
+    registry.render(ctx,390,700,c,44,true,pattern.id);
+    return result;
+   };
+   const transparent={...defaults,opacity:0,roadOpacity:0};
+   const opaque={...defaults,opacity:0,roadOpacity:1};
+   const a=trace(transparent),b=trace(opaque);
+   assert.equal(a.roadPolygons,0,'transparent floor must not draw a black occlusion polygon');
+   assert.ok(b.roadPolygons>0,'opaque floor draws solid black occlusion geometry');
+   assert.ok(a.artDots>0&&b.artDots>0,'the same independent road markings remain visible');
+   assert.deepEqual(trace(transparent),a,'transparent state is deterministic in replay');
+   assert.deepEqual(trace(opaque),b,'opaque state is deterministic in replay');
+  }
+ }finally{fs.rmSync(dir,{recursive:true,force:true});}
+});
