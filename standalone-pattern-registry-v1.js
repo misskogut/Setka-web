@@ -121,6 +121,10 @@
       else if(rule.type==="array")out[key]=Array.isArray(v)?v.filter(x=>typeof x==="number"&&Number.isFinite(x)).slice(-(rule.maxItems||64)):copy(fallback);
       else out[key]=typeof v==="string"?v.slice(0,rule.maxLength||200):fallback;
     }
+    if(Object.hasOwn(c,"_startFrame")){
+      if(typeof c._startFrame!=="number"||!Number.isFinite(c._startFrame)||c._startFrame<0||c._startFrame>1e9)throw error("invalid_start_frame",id);
+      out._startFrame=c._startFrame;
+    }
     return out;
   }
   function validate(c,hint=null){
@@ -130,10 +134,10 @@
     }catch(e){return {ok:false,config:null,issues:[e.code||e.message]}}
   }
   function configKey(c,hint=null){const x=normalize(c,hint),p=requirePattern(x.patternId);
-    if(p.keyFields)return [p.id,...p.keyFields.map(k=>Array.isArray(x[k])?JSON.stringify(x[k]):typeof x[k]==="boolean"?(x[k]?1:0):Math.round(Number(x[k])*100000)/100000)].join("|");
+    if(p.keyFields)return [p.id,...p.keyFields.map(k=>Array.isArray(x[k])?JSON.stringify(x[k]):typeof x[k]==="boolean"?(x[k]?1:0):Math.round(Number(x[k])*100000)/100000)].join("|")+(Object.hasOwn(x,"_startFrame")?"|@start:"+x._startFrame:"");
     return p.id+"|"+Object.keys(x).sort().map(k=>k+":"+JSON.stringify(x[k])).join("|");
   }
-  function revision(){let h=2166136261;for(const ch of JSON.stringify([...records.values()]))h=Math.imul(h^ch.charCodeAt(0),16777619);return "registry-2-"+(h>>>0).toString(16)}
+  function revision(){let h=2166136261;for(const ch of JSON.stringify([...records.values()]))h=Math.imul(h^ch.charCodeAt(0),16777619);return "registry-3-"+(h>>>0).toString(16)}
   function snapshot(state){
     const id=resolve(state?.config,state?.patternId),p=requirePattern(id);
     return freeze({version:3,schemaVersion:SCHEMA,configSchemaVersion:p.schemaVersion,registryRevision:revision(),patternId:id,patternVersion:p.version,
@@ -168,7 +172,8 @@
     requirePattern(id);
     const handler=interactions.get(id);
     if(!handler)return null;
-    const output=handler(copy(config),copy(event));
+    const input=copy(event);if(Number.isFinite(input.frame))input.frame+=Number(config._startFrame)||0;
+    const output=handler(copy(config),input);
     if(!output||typeof output!=="object"||Array.isArray(output))throw error("invalid_interaction_result",id);
     return normalize(output,id);
   }
@@ -181,7 +186,7 @@
     }
     if(changed)emit("setka:catalog-updated",{});return changed;
   }
-  function render(ctx,w,h,c,frame,preview=false,id=null){const pid=resolve(c,id),renderer=renderers.get(pid);if(!renderer)throw error("renderer_unavailable",pid);return renderer(ctx,w,h,normalize(c,pid),frame,preview)}
+  function render(ctx,w,h,c,frame,preview=false,id=null){const pid=resolve(c,id),renderer=renderers.get(pid);if(!renderer)throw error("renderer_unavailable",pid);return renderer(ctx,w,h,normalize(c,pid),frame+(Number(c._startFrame)||0),preview)}
   function setTitles(rows=[]){let changed=false;for(const row of rows){const id=row.pattern_id||row.patternId||row.id,title=String(row.title||"").trim();if(get(id)&&title&&title.length<=80&&(titles.get(id)?.revision||0)>Number(row.revision||0)){continue}if(get(id)&&title&&title.length<=80){titles.set(id,{title,revision:Number(row.revision||0)});changed=true}}if(changed)emit("setka:pattern-names",{});return changed}
   // Canonical active-catalog projection for every public/runtime consumer.
   // Archive objects are never mutated; a missing renderer is NOT grounds for

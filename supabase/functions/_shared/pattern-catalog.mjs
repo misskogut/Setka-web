@@ -31,7 +31,8 @@ export async function loadPublishedManifest(fetcher=fetch){
 }
 export function assertConfiguration(descriptor,config){
   if(!descriptor?.schema||!config||typeof config!=='object'||Array.isArray(config)||config.patternId!==descriptor.id)throw Error('invalid_configuration');
-  if(Object.keys(config).some(k=>k!=='patternId'&&!Object.hasOwn(descriptor.schema,k)))throw Error('unknown_parameter');
+  if(Object.hasOwn(config,'_startFrame')&&(typeof config._startFrame!=='number'||!Number.isFinite(config._startFrame)||config._startFrame<0||config._startFrame>1e9))throw Error('invalid_start_frame');
+  if(Object.keys(config).some(k=>k!=='patternId'&&k!=='_startFrame'&&!Object.hasOwn(descriptor.schema,k)))throw Error('unknown_parameter');
   for(const [key,r] of Object.entries(descriptor.schema)){
     const v=config[key];
     const valid=r.type==='number'?typeof v==='number'&&Number.isFinite(v)&&v>=r.min&&v<=r.max&&(!r.integer||Number.isInteger(v)):

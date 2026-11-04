@@ -111,7 +111,8 @@ function startPreviews(){
    for(let i=0;i<count;i++){
     const c=list[(cursor+i)%list.length],p=exactPattern(c.dataset.pattern);if(!p)continue;
     let config=p.defaults;try{if(c.dataset.config)config=JSON.parse(c.dataset.config)}catch(_){continue}
-    draw(c,config,(num(c.dataset.frame,44)??44)+phase,p.id,true);
+    const frame=c.dataset.editorClock!==undefined?Math.max(0,(now-Number(c.dataset.editorClock))/16.6667):(num(c.dataset.frame,44)??44)+phase;
+    draw(c,config,frame,p.id,true);
    }
    if(list.length)cursor=(cursor+count)%list.length;
   }
