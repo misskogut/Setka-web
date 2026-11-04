@@ -13,11 +13,20 @@
   return{ids};
  }
  function seen(){return seenInfo().ids}
+ let browsingIds=null;
  function orderBaseTiles(info){
   const panel=document.getElementById('allPatternsPanel');if(!panel)return;
   const tiles=[...panel.children].filter(n=>n.matches?.('.pattern-tile[data-kind="base"]'));
-  if(tiles.length<2)return;
-  const rank=new Map(window.SetkaPatternRegistryV1.libraryIds(info.ids).map((id,i)=>[id,i]));
+  const canonical=window.SetkaPatternRegistryV1.libraryIds(info.ids);
+  // One shared displayed sequence for this gameplay visit. First-open badges
+  // update immediately; relocation waits until the participant returns to the library.
+  const available=new Set(tiles.map(tile=>tile.dataset.patternId));
+  let ids=canonical;
+  if(S.getState().view==='game'){
+   if(!browsingIds)browsingIds=tiles.map(tile=>tile.dataset.patternId);
+   browsingIds=[...browsingIds.filter(id=>available.has(id)),...canonical.filter(id=>available.has(id)&&!browsingIds.includes(id))];ids=browsingIds;
+  }else browsingIds=null;
+  const rank=new Map(ids.map((id,i)=>[id,i]));
   const sorted=tiles.slice().sort((a,b)=>rank.get(a.dataset.patternId)-rank.get(b.dataset.patternId));
   if(sorted.every((tile,i)=>tile===tiles[i]))return; // avoid observer loops / preview resets
   const fragment=document.createDocumentFragment();
@@ -45,6 +54,7 @@
   }
   decorate();return true;
  }
+ window.addEventListener('setka:view',decorate);
  window.addEventListener('setka:pattern-open',e=>markViewed(e.detail?.patternId||e.detail?.state?.patternId));
  window.addEventListener('setka:pattern-preview-open',e=>markViewed(e.detail?.patternId));
  window.addEventListener('setka:pattern-order-updated',decorate);

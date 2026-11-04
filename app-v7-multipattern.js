@@ -476,6 +476,7 @@
   function cyclePattern(dir){
     // Arrows follow exactly the same canonical library order the user sees.
     // No separate hard-coded ordering for newly registered algorithms.
+    window.__SETKA_PATTERN_CATALOG_V1__?.decorate();
     const visibleIds=[...allPatternsPanel.querySelectorAll(':scope > .pattern-tile[data-kind="base"]')]
       .map(tile=>tile.dataset.patternId).filter(id=>IDS.has(id));
     const available=registry.orderedIds().filter(id=>IDS.has(id)&&registry.isActive(id));
