@@ -64,14 +64,22 @@ try{
     const p=S.getPatterns();
     const images=p.map(pattern=>{
       const c=document.createElement("canvas");c.width=220;c.height=290;
-      S.renderPreview(c,pattern.defaults,44,pattern.id);
-      const rgba=c.getContext("2d").getImageData(0,0,c.width,c.height).data;
-      let colored=0,visible=0;
-      for(let i=0;i<rgba.length;i+=4){
-        if(rgba[i]+rgba[i+1]+rgba[i+2]>36)visible++;
-        if(Math.abs(rgba[i]-rgba[i+1])>2||Math.abs(rgba[i+1]-rgba[i+2])>2)colored++;
-      }
-      return {id:pattern.id,visible,colored};
+      const sample=config=>{
+        S.renderPreview(c,config,44,pattern.id);
+        const rgba=c.getContext("2d").getImageData(0,0,c.width,c.height).data;
+        let colored=0,visible=0;
+        for(let i=0;i<rgba.length;i+=4){
+          if(rgba[i]+rgba[i+1]+rgba[i+2]>36)visible++;
+          if(Math.abs(rgba[i]-rgba[i+1])>2||Math.abs(rgba[i+1]-rgba[i+2])>2)colored++;
+        }
+        return {colored,visible};
+      };
+      const initial=sample(pattern.defaults);
+      // Declared RGB overlays preserve white base geometry. Verify both the
+      // actual overlay and its zero-intensity base, without named exceptions.
+      const rgbOverlay=window.SetkaPatternRegistryV1.get(pattern.id).capabilities?.rgbGlitchOverlay;
+      const base=rgbOverlay?sample({...pattern.defaults,glitchAlpha:0}):initial;
+      return {id:pattern.id,...base,...(rgbOverlay?{overlayColored:initial.colored}:{} )};
     });
     const grid=S.getPatterns().find(p=>p.id==="breathing-grid");
     const c=document.createElement("canvas");c.width=180;c.height=240;
@@ -175,7 +183,8 @@ try{
 
   for(const p of result.images){
     assert.ok(p.visible>45,"first B&W preview must be visible: "+JSON.stringify(p));
-    assert.equal(p.colored,0,"FIRST color must be monochrome: "+JSON.stringify(p));
+    assert.equal(p.colored,0,"FIRST base color must be monochrome: "+JSON.stringify(p));
+    if(p.overlayColored!==undefined)assert.ok(p.overlayColored>0,"declared RGB overlay must remain visible: "+JSON.stringify(p));
   }
   assert.equal(result.changed,true,"rotated grid preview must animate without a video or saved still");
   assert.equal(result.config.cols,27);

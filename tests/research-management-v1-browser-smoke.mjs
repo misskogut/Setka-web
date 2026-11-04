@@ -129,6 +129,13 @@ try{
  await other.locator('#favoritesPagerButton').click();
  try{await other.locator('.favorite-tile .st34-info').first().waitFor();}
  catch(error){console.log('FAVORITE AFTER BACK',await other.evaluate(favoriteState));console.log('FAVORITE GALLERY STATE',await other.evaluate(()=>({state:window.SetkaApp.getState(),active:window.SetkaPatternRegistryV1.isActive('stereo-dna'),ready:window.SetkaPatternRegistryV1.ready('stereo-dna'),html:document.getElementById('favoritesPanel').innerHTML,origin:window.SetkaStandaloneNavigationV34?.getOrigin()})));throw error;}
+ // Reparenting a held tile releases pointer capture. It must not leave an
+ // armed long-press timer that removes a favorite after the participant leaves.
+ const heldTile=other.locator('.favorite-tile').first(),heldBox=await heldTile.boundingBox();
+ await other.mouse.move(heldBox.x+heldBox.width/2,heldBox.y+heldBox.height/2);await other.mouse.down();
+ await heldTile.evaluate(tile=>tile.parentElement.append(tile));
+ await new Promise(resolve=>setTimeout(resolve,700));await other.mouse.move(1,1);await other.mouse.up();
+ assert.ok(await other.evaluate(()=>window.SetkaApp.getFavorites().some(f=>f.baseId==='stereo-dna')),'lost pointer capture cancels pending favorite removal');
  const heart=await other.locator('.favorite-tile .mini-heart').first().boundingBox(),info=await other.locator('.favorite-tile .st34-info').first().boundingBox();assert.ok(heart.y+heart.height<info.y,'saved heart overlaps the information button');
  console.log('REAL WEB STORAGE QUOTA, INDEXEDDB RETENTION THROUGH STALE TAB/RELOAD, PLAIN NOTES, INLINE MODERATION AND SEPARATE HEART POSITION PASS');
  const admin=await browser.newPage({viewport:{width:1200,height:900}});admin.on('pageerror',e=>errors.push({page:'admin',message:e.message,stack:e.stack}));

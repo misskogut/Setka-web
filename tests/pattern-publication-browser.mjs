@@ -22,6 +22,7 @@ try{
  browser=await(process.env.SETKA_BROWSER==='webkit'?webkit:chromium).launch({headless:true});
  const context=await browser.newContext({viewport:{width:1100,height:900}});
  const errors=[];context.on('page',p=>p.on('pageerror',e=>errors.push(e.message)));
+ const installFixtures=async context=>{
  await context.route('**/standalone-pattern-registry-v1.js*',r=>r.fulfill({contentType:'text/javascript',body:fs.readFileSync('standalone-pattern-registry-v1.js','utf8')+'\nwindow.SetkaPatternRegistryV1.register('+JSON.stringify(fixture)+');'}));
  await context.route('**/standalone-pattern-fixture-next-publication.js*',r=>r.fulfill({contentType:'text/javascript',body:`window.SetkaPatternRegistryV1.bindRenderer('${id}',(c,w,h,p,f)=>{c.fillStyle='#000';c.fillRect(0,0,w,h);c.fillStyle='#fff';c.fillRect(w/2+Math.sin(f/20)*20,h/2,p.radius,p.radius);});`}));
  await context.route('**/functions/v1/**',async route=>{
@@ -48,6 +49,8 @@ try{
   if(b.action==='overview')out={ok:true,data};
   await route.fulfill({status,headers:cors,contentType:'application/json',body:JSON.stringify(out)});
  });
+ };
+ await installFixtures(context);
  const front=await context.newPage(),admin=await context.newPage();
  await front.goto(base+'/standalone-v34.html');
  await front.waitForFunction(()=>window.__SETKA_PATTERN_CATALOG_V1__?.status()?.ok);
@@ -195,6 +198,37 @@ try{
  await admin.locator('.pattern-manage-card[data-pattern-id="'+id+'"]').getByRole('button',{name:'Изменить название',exact:true}).click();
  await admin.getByRole('button',{name:'Сохранить для всех',exact:true}).click();
  await admin.locator('#detail-dialog[open]').waitFor({state:'hidden'});
+ // A fresh participant walks the exact visible preview sequence, including
+ // multiple unopened algorithms and the future unknown fixture. No production data.
+ const navContext=await browser.newContext({viewport:{width:390,height:844}});await installFixtures(navContext);
+ const nav=await navContext.newPage();nav.on('pageerror',e=>errors.push(e.message));
+ await nav.goto(base+'/standalone-v34.html');
+ await nav.waitForFunction(()=>window.__SETKA_PATTERN_CATALOG_V1__?.status()?.ok&&window.SetkaPatternRegistryV1.ids().every(id=>window.SetkaPatternRegistryV1.ready(id)));
+ const navIds=()=>nav.locator('#allPatternsPanel > .base-tile').evaluateAll(ts=>ts.map(t=>t.dataset.patternId));
+ const openingOrder=await navIds();assert.ok(openingOrder.includes(id),'future module participates in the same navigation');
+ assert.ok(openingOrder.length>2);
+ await nav.evaluate(pid=>window.SetkaApp.openConfig(window.SetkaApp.getPatternDefaults(pid),{type:'base',id:pid,patternId:pid}),openingOrder[0]);
+ for(let index=0;index<openingOrder.length;index++){
+  if(index)await nav.locator('#nextButton').click();
+  assert.equal(await nav.evaluate(()=>window.SetkaApp.getState().patternId),openingOrder[index],'Next follows the adjacent preview');
+  assert.deepEqual(await navIds(),openingOrder,'first openings cannot shuffle the ongoing browse');
+  assert.equal(await nav.locator('#allPatternsPanel [data-pattern-id="'+openingOrder[index]+'"] .setka-new-pattern').count(),0,'arrow entry removes New immediately');
+  assert.equal(await nav.evaluate(pid=>window.SetkaStandaloneV34.getData().openedPatterns.filter(x=>x.patternId===pid).length,openingOrder[index]),1,'one canonical first-open record');
+  if(index===1){
+   await nav.locator('#prevButton').click();assert.equal(await nav.evaluate(()=>window.SetkaApp.getState().patternId),openingOrder[0]);
+   await nav.locator('#nextButton').click();assert.equal(await nav.evaluate(()=>window.SetkaApp.getState().patternId),openingOrder[1]);
+   await nav.evaluate(()=>window.__SETKA_PATTERN_CATALOG_V1__.refresh());assert.deepEqual(await navIds(),openingOrder,'catalog refresh retains the displayed browse order');
+  }
+ }
+ await nav.locator('#nextButton').click();assert.equal(await nav.evaluate(()=>window.SetkaApp.getState().patternId),openingOrder[0],'wrap matches the preview sequence');
+ await nav.locator('#libraryButton').click();
+ await nav.waitForFunction(()=>window.SetkaApp.getState().view==='library');
+ assert.deepEqual(await navIds(),order.patternIds,'return relocates all viewed patterns into owner order');
+ await nav.evaluate(()=>window.SetkaStandaloneV34.whenSaved());await nav.reload();
+ await nav.waitForFunction(()=>window.__SETKA_PATTERN_CATALOG_V1__?.status()?.ok);
+ assert.equal(await nav.locator('#allPatternsPanel .setka-new-pattern').count(),0,'arrow-first openings survive reload');
+ assert.deepEqual(await navIds(),order.patternIds);
+ await navContext.close();
  assert.equal(JSON.stringify(archive),original);assert.deepEqual(errors,[]);
  console.log('ORDER: ADMIN → SAVE/READBACK → TWO CLIENTS → PREVIEW/NEW → RELOAD → CONFLICT → STALE PASS; PUBLICATION: DRAFT → SANDBOX → PUBLISH → SECOND CLIENT → DISABLE → DIRECT-OPEN GUARD → REPUBLISH → OUTAGE/RECOVERY PASS');
 }finally{await browser?.close();server.kill('SIGTERM');}
