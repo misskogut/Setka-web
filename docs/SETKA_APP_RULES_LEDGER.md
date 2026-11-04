@@ -109,3 +109,5 @@ Until each row is proven, report the remaining failures and work against the sha
 | APP-037 | Быстрые публикация/выключение, позиция и стартовая конфигурация с живым превью находятся непосредственно на карточке в списке. Статистика открывается отдельно; второй список названий/позиций сверху запрещён. | Общие UI-компоненты + browser lifecycle; CI/deploy проверяются отдельно. |
 
 Legacy owner-link bootstrap consumes an explicit credential before extensions read stored access; existing authenticated server validation remains mandatory. Full v34 owner-link smoke covers stale stored credentials.
+
+| APP-038 | Сверху — миниатюры по четыре в ряд, перетаскивание пальцем в общий черновик порядка, явное сохранение, отмена pointercancel, клавиатурные стрелки. Подробные карточки остаются; на каждой видна смена названия. Новое имя подтверждается read-back и приходит на фронт. | UI + generic browser regression; CI/deployment/device evidence отдельно. Уточняет APP-037: запрещён отдельный текстовый список позиций, разрешена визуальная мини-сетка. |
