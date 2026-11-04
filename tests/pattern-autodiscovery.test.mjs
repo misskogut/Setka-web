@@ -532,7 +532,7 @@ test('future 3D road packages can hide only the road while preserving visible ma
    assert.equal(field[3],1,'road may be fully opaque');
    const restored=registry.restore(registry.snapshot({patternId:pattern.id,config:{...defaults,roadOpacity:0},frame:44}));
    assert.equal(restored.ok,true,'transparent road survives a saved snapshot');
-   assert.equal(restored.config.roadOpacity,0);
+   assert.equal(restored.snapshot.config.roadOpacity,0);
    const trace=(c)=>{
     const result={roadPolygons:0,artDots:0,frames:0};
     const ctx={fillStyle:'#000',globalAlpha:1,
