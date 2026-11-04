@@ -200,3 +200,19 @@ test('additive pattern upgrades restore prior-version captures without falsifyin
  const fresh=plain(R.snapshot({patternId:id,config:R.defaults(id),frame:123}));
  assert.equal(R.restore(fresh).ok,true,'upgraded snapshots round trip');
 });
+
+test('any future slider-only package cannot synthesize a tap-to-add action',()=>{
+ const R=registry(),id='fixture-slider-only-count';
+ R.register({id,title:'Slider-only fixture',version:2,schemaVersion:2,legacyVersions:[1],
+  defaults:{patternId:id,count:3,speed:.35,colorModeIndex:0},
+  controls:[['Количество','count',1,30,1,'Ползунок',0],
+            ['Скорость движения','speed',.05,2,.05,'Ползунок',0]],
+  render(){}});
+ const d=R.get(id);
+ assert.equal(d.tapButtonLabel,undefined);
+ assert.equal(d.tapOverflow,undefined);
+ assert.deepEqual(Array.from(d.controls.map(row=>row[6])),[0,0]);
+ assert.equal(R.validate({...d.defaults,count:30,speed:.05},id).ok,true);
+ const capture=R.snapshot({patternId:id,config:d.defaults,frame:40});
+ assert.equal(R.restore(capture).ok,true);
+});
