@@ -119,6 +119,13 @@ try{
  await front.evaluate(()=>window.__SETKA_PRIVATE_CORPUS_V40__.sync());const persistedPlain=savedArchive.payload.notes.find(n=>n.text===plain);assert.equal(persistedPlain.noteType,'text');assert.equal(persistedPlain.patternId,null);assert.equal(persistedPlain.config,null);assert.equal(persistedPlain.sessionId,null);
  await other.evaluate(()=>window.__SETKA_PRIVATE_CORPUS_V40__.restore());await other.locator('#st34Nav [data-p="notes"]').click();await other.getByText(plain,{exact:true}).waitFor();
  await other.locator('#st34SheetGrip').click();await other.locator('#st34Layer[aria-hidden="true"]').waitFor();await other.locator('.base-tile[data-pattern-id="stereo-dna"]').click();await other.getByRole('button',{name:'Просто посмотреть',exact:true}).click();await other.locator('#gameScreen.active').waitFor();
+ await other.evaluate(()=>{
+  const S=window.SetkaApp,C=window.SetkaStandaloneV34;window.__isolatedFavoriteTrace=[];
+  const record=label=>window.__isolatedFavoriteTrace.push({label,rows:S.getFavorites().length,durable:C.getData().settings?.favoriteCollection?.rows?.length,events:C.getData().events?.filter(e=>e.type.startsWith('favorite_')).map(e=>({type:e.type,id:e.payload?.favoriteId})),stack:new Error().stack});
+  const restore=S.restoreFavorites;S.restoreFavorites=async rows=>{record('restore '+rows.length);const out=await restore(rows);record('restored');return out};
+  const refresh=S.refreshFavorites;S.refreshFavorites=(...args)=>{record('refresh');const out=refresh(...args);record('refreshed');return out};
+  for(const name of ['favorite-saved','favorite-removed','view','registry-changed','renderer-ready','personal-archive-restored'])window.addEventListener('setka:'+name,()=>record(name));
+ });
  const favoriteState=()=>{const S=window.SetkaApp,C=window.SetkaStandaloneV34;return{patternId:S.getState().patternId,button:document.getElementById('favoriteButton').getAttribute('aria-label'),favorites:S.getFavorites().map(f=>({id:f.id,patternId:f.baseId,unavailable:f.unavailable})),durable:C.getData().settings?.favoriteCollection?.rows?.map(f=>({id:f.id,patternId:f.baseId})),authoritative:window.__SETKA_PRIVATE_CORPUS_V40__?.authoritative()}};
  console.log('FAVORITE BEFORE UI ACTION',await other.evaluate(favoriteState));
  assert.equal(await other.evaluate(()=>window.SetkaApp.getState().patternId),'stereo-dna','the intended pattern must be open before saving');
@@ -136,7 +143,7 @@ try{
  await other.evaluate(()=>new Promise(requestAnimationFrame));
  await other.locator('#favoritesPagerButton').click();
  try{await other.locator('.favorite-tile .st34-info').first().waitFor();}
- catch(error){console.log('FAVORITE AFTER BACK',await other.evaluate(favoriteState));console.log('FAVORITE GALLERY STATE',await other.evaluate(()=>({state:window.SetkaApp.getState(),active:window.SetkaPatternRegistryV1.isActive('stereo-dna'),ready:window.SetkaPatternRegistryV1.ready('stereo-dna'),html:document.getElementById('favoritesPanel').innerHTML,origin:window.SetkaStandaloneNavigationV34?.getOrigin()})));throw error;}
+ catch(error){console.log('FAVORITE TRACE',await other.evaluate(()=>window.__isolatedFavoriteTrace));console.log('FAVORITE AFTER BACK',await other.evaluate(favoriteState));console.log('FAVORITE GALLERY STATE',await other.evaluate(()=>({state:window.SetkaApp.getState(),active:window.SetkaPatternRegistryV1.isActive('stereo-dna'),ready:window.SetkaPatternRegistryV1.ready('stereo-dna'),html:document.getElementById('favoritesPanel').innerHTML,origin:window.SetkaStandaloneNavigationV34?.getOrigin()})));throw error;}
  const heart=await other.locator('.favorite-tile .mini-heart').first().boundingBox(),info=await other.locator('.favorite-tile .st34-info').first().boundingBox();assert.ok(heart.y+heart.height<info.y,'saved heart overlaps the information button');
  console.log('REAL WEB STORAGE QUOTA, INDEXEDDB RETENTION THROUGH STALE TAB/RELOAD, PLAIN NOTES, INLINE MODERATION AND SEPARATE HEART POSITION PASS');
  const admin=await browser.newPage({viewport:{width:1200,height:900}});admin.on('pageerror',e=>errors.push({page:'admin',message:e.message,stack:e.stack}));
