@@ -370,6 +370,42 @@ try{
  assert.deepEqual(errors,[]);
  fs.mkdirSync('tests/visual-smoke',{recursive:true});await page.screenshot({path:'tests/visual-smoke/platform-'+(process.env.SETKA_BROWSER||'chromium')+'.png'});
  await admin.screenshot({path:'tests/visual-smoke/platform-admin-'+(process.env.SETKA_BROWSER||'chromium')+'.png'});
+
+ // Live host proof: do not simulate the controller directly. Mouse down/up
+ // on the real gameplay Canvas must enter the module via generic gesture
+ // dispatch and obey single/double/triple tap and 700ms hold semantics.
+ await page.evaluate(()=>{
+  const R=window.SetkaPatternRegistryV1;
+  if(R.has('hexwave-3d')){
+   const ok=window.SetkaApp.openConfig(R.defaults('hexwave-3d'),
+    {type:'exact',patternId:'hexwave-3d'});
+   if(!ok)throw new Error('HexWave 3D must open from the live registry');
+  }
+ });
+ if(await page.evaluate(()=>window.SetkaPatternRegistryV1.has('hexwave-3d'))){
+  await page.locator('#gameScreen.active').waitFor();
+  await page.waitForFunction(()=>window.SetkaPatternRegistryV1.ready('hexwave-3d'));
+  const target=page.locator('#patternCanvas');
+  await target.click({position:{x:140,y:270}});
+  await target.click({position:{x:140,y:270}});
+  const wave=await page.evaluate(()=>window.SetkaApp.getConfig().waves);
+  assert.equal(wave.length,3,'two real quick taps launch a 3D wave on the canvas');
+  assert.ok(wave[0]>0&&wave[0]<1&&wave[1]>0&&wave[1]<1);
+  await target.click({position:{x:140,y:270}});
+  assert.equal(await page.evaluate(()=>window.SetkaApp.getConfig().colorModeIndex),1,
+   'three taps cycle the shared nine-mode palette');
+  const box=await target.boundingBox();
+  await page.mouse.move(box.x+140,box.y+270);
+  await page.mouse.down();await page.waitForTimeout(740);await page.mouse.up();
+  const stopped=await page.evaluate(()=>window.SetkaApp.getConfig());
+  assert.equal(stopped.spinRate,0,'real long hold stops 3D spin');
+  assert.equal(stopped.waves.length,0,'real long hold clears wavefront history');
+  await target.click({position:{x:140,y:270}});
+  await target.click({position:{x:140,y:270}});
+  assert.ok((await page.evaluate(()=>window.SetkaApp.getConfig().spinRate))>0,
+   'subsequent double tap restores last working spin');
+  console.log('HEXWAVE 3D NATIVE CANVAS GESTURES PASS');
+ }
  await page.evaluate(()=>{const S=window.SetkaApp;S.registerPattern({id:'fixture-readonly',title:'Isolated capabilities',version:1,colorModes:1,defaults:{colorModeIndex:0},controls:[],capabilities:{settings:false,favorites:false,notes:false,audio:false},render(ctx,w,h){ctx.fillStyle='#000';ctx.fillRect(0,0,w,h)}});const R=window.SetkaPatternRegistryV1;R.applyPublication(R.list(),R.publicationRevision()+1);S.openConfig(S.getPatternDefaults('fixture-readonly'),{type:'exact',patternId:'fixture-readonly'})});
  await page.locator('#gameScreen.active').waitFor();
  for(const selector of ['#favoriteButton','#instructionsButton','#st34AudioButton','#st34Note'])assert.equal(await page.locator(selector).isVisible(),false,'declared capability '+selector);
