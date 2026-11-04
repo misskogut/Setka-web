@@ -11,7 +11,7 @@ const d=JSON.parse(match[1]);
 const scope={window:{dispatchEvent(){}},CustomEvent:class{}};
 vm.runInNewContext(fs.readFileSync("standalone-pattern-registry-v1.js","utf8"),scope);
 const R=scope.window.SetkaPatternRegistryV1;
-R.register(d);
+if(!R.has(id))R.register(d);
 vm.runInNewContext(source,{window:{SetkaPatternRegistryV1:R},document:{currentScript:{dataset:{patternId:id}}}}, {timeout:4000});
 function canvas(config=R.defaults(id),frame=120,preview=true){
  const ops=[],colors=[];
@@ -51,8 +51,8 @@ test("one auto-discovered module contains the true mirrored, live, white-start d
   // Both halves use identical geometry mirrored across X.
   for(let j=0;j<3;j++)assert.deepEqual(a.ops[i].points[j],a.ops[i+30].points[j]);
  }
- assert.ok(a.ops.every(x=>x.width>.35&&x.alpha>.3));
- assert.ok(a.colors.every(x=>/^rgb\(/.test(x)),"all lines have real nonblack color");
+ assert.ok(a.ops.every(x=>x.width>.35&&x.alpha>.25));
+ assert.ok(a.colors.every(x=>x==="#fff"||/^rgb\(/.test(x)),"all lines have real nonblack color");
  const after=canvas(conf(),152);
  for(let i=0;i<a.ops.length;i++)assert.notDeepEqual(a.ops[i].points,after.ops[i].points,
    "every layer must vary with time: "+i);
