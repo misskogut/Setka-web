@@ -357,10 +357,11 @@ function interact(c,event){
   }
   return next;
  }
- if(phase!=="move"||!c.gestureRegion)return c;
+ if(phase!=="move")return c;
  const totalX=x-c.gestureStartX*w,totalY=y-c.gestureStartY*h;
  const moved=c.gestureMoved||Math.abs(totalX)>6||Math.abs(totalY)>6;
  const next={...c,gestureMoved:moved};
+ if(!c.gestureRegion)return next; // blank mid-zone drags must never count as taps
  if(c.gestureRegion===1){
   next.waveAmplitude=round(clamp(c.gestureAmpStart-totalY*.15,0,50));
  }else if(c.gestureRegion===2&&Math.abs(totalX)>Math.abs(totalY)){
