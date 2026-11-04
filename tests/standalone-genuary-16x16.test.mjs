@@ -128,7 +128,7 @@ test("ten original color combinations cycle with triple tap, including black on 
  assert.equal(negative.fills[0][4],"rgb(255,255,255)");
  assert.equal(negative.lines[0][5],"rgb(0,0,0)");
  const cyan=capture({...base(),colorModeIndex:1},0);
- assert.equal(cyan.lines[0][5],"rgb(90,253,255)");
+ assert.equal(cyan.lines[0][5],"rgb(90,178,255)");
  const animated=capture({...base(),colorModeIndex:4},0);
  assert.notDeepEqual(capture({...base(),colorModeIndex:4},120).lines,animated.lines,
   "moving rainbow colors evolve deterministically with frame");
