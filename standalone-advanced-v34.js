@@ -177,7 +177,12 @@
     document.getElementById("st34InfoOverlay")?.remove();
     const t=tileTarget(tile),o=document.createElement("div"),title=Setka.getPatternTitle?.(t.patternId)||t.patternId;
     o.id="st34InfoOverlay";o.innerHTML=`<div class="st34-sheet"><div class="st34-sheet-head"><canvas class="st34-preview" width="168" height="168"></canvas><div><div class="st-kicker">${t.kind==="base"?"ПАТТЕРН · СООБЩЕСТВО":"ВАРИАНТ · СООБЩЕСТВО"}</div><h2>${esc(t.kind==="base"?title:"Эта конфигурация")}</h2></div><button class="st34-close" type="button" aria-label="Закрыть">×</button></div><div id="st34InfoBody" class="st-muted" style="padding:18px 0">Загружаем данные…</div></div>`;
-    document.body.appendChild(o);try{
+    document.body.appendChild(o);
+    const panel=o.querySelector('.st34-sheet'),scroll=document.createElement('div'),grip=document.createElement('button');
+    scroll.className='setka-info-scroll';scroll.append(...panel.childNodes);
+    grip.type='button';grip.className='setka-info-grip';grip.setAttribute('aria-label','Изменить высоту информации о паттерне');
+    panel.style.height='min(80dvh, 720px)';panel.append(grip,scroll);window.SetkaPanelResizeV1?.attach(panel,{handle:grip,minHeight:180});
+    try{
       if(typeof Setka.renderPreview==='function'){
         Setka.renderPreview(o.querySelector("canvas"),t.config,44,t.patternId);
         window.dispatchEvent(new CustomEvent("setka:pattern-preview-open",{detail:{patternId:t.patternId}}));
