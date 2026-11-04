@@ -98,7 +98,12 @@ test('Any new Medusa slider patch survives generic interaction reducer',()=>{
 function headCenter(R,c,frame){
   const shapes=sample(R,c,frame).shapes;
   const arms=c.tentacleCount,len=c.tentacleLength;
-  const inner=shapes.slice((len-1)*arms,len*arms);
+  // The real renderer skips subpixel outer segments. Locate the first
+  // creature's last drawn ring, not the theoretical segment count.
+  const renderedRings=Array.from({length:len},(_,j)=>j)
+    .filter(j=>10*c.sizeFactor*(len-j)/len>=.42).length;
+  const bodyArcs=renderedRings*arms;
+  const inner=shapes.slice(bodyArcs-arms,bodyArcs);
   assert.equal(inner.length,arms,'sample includes a full innermost ring');
   return {x:inner.reduce((sum,p)=>sum+p[0],0)/(arms*1000),
           y:inner.reduce((sum,p)=>sum+p[1],0)/(arms*1000)};
