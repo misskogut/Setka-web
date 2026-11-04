@@ -35,7 +35,8 @@ function swipe(c,x,y,dx,dy){
 test("correct standalone descriptor and five original palettes; RGB halo and black/white default",()=>{
  assert.equal(d.id,"hexwave");
  assert.equal(d.colorModes,5);
- assert.equal(d.version,1);
+ assert.equal(d.version,2);
+ assert.deepEqual(d.legacyVersions,[1],"published v1 snapshots remain compatible");
  assert.equal(d.palettes.length,5);
  assert.deepEqual(d.palettes[0],[255,255,255]);
  assert.equal(R.ready(d.id),true);
