@@ -111,3 +111,63 @@ test("generic gesture dispatcher provides absolute x/y and distinct pointer phas
  assert.match(host,/pluginPointerPhase\("end",mouse\.x,mouse\.y,1\)/);
  assert.match(host,/if\(fingers!==1\|\|!registry\.hasInteraction\?\.\(runtimePatternId\)\)return false/);
 });
+
+test("all real gestures and all ten slider explanations are unambiguous",()=>{
+ const d=R.get(descriptor.id);
+ assert.equal(d.tapColorCycle,false,"a third touch must not unexpectedly change color");
+ assert.equal(d.gestureHints.length,2,"only actual touch actions, no invented modes");
+ assert.match(d.gestureHints[0][1],/1 палец/);
+ assert.match(d.gestureHints[1][1],/Два быстрых касания/);
+ assert.match(d.gestureHints[0][0],/Центр волны/);
+ assert.match(d.gestureHints[1][0],/Сброс центра/);
+ const help=Object.fromEntries(d.controls.map(row=>[row[1],row[7]]));
+ for(const row of d.controls){
+  assert.equal(row.length,8,"exactly one explanation per declared slider: "+row[1]);
+  assert.ok(typeof row[7]==="string"&&row[7].length>18,"real meaningful help: "+row[1]);
+  assert.equal(row[6],0,"no slider falsely claims finger gesture: "+row[1]);
+ }
+ assert.match(help.pulse,/выше 0.*коснись/);
+ assert.match(help.twist,/выше 0.*проведи/);
+ assert.match(help.magnet,/Плюс.*минус.*0/);
+ assert.match(help.follow,/центр волны.*догоняет палец/);
+ assert.match(help.amplitude,/При 0/);
+ const key=fs.readFileSync("standalone-pattern-key-v1.js","utf8");
+ assert.match(key,/for\(const \[label,k,min,max,step,gesture,fingers,help\]/);
+ assert.match(key,/input\.setAttribute\("aria-description",help\)/);
+ assert.match(key,/Что делают бегунки\?/);
+ assert.match(key,/sk-help-disclosure/);
+ assert.ok(!d.gestureHints.some(row=>row[0]==="Дополнительное движение"));
+ const host=fs.readFileSync("app-v7-multipattern.js","utf8");
+ assert.match(host,/registry\.get\(runtimePatternId\)\?\.tapColorCycle!==false/);
+});
+test("a drag cannot accidentally arm the double-tap reset",()=>{
+ let c=gesture(conf(),"start",150,310,470);
+ c=R.interact(descriptor.id,c,{
+  type:"gesture",phase:"move",frame:153,x:350,y:520,startX:310,startY:470,
+  dx:40,dy:50,width:400,height:800,fingers:1
+ });
+ assert.equal(c.lastTapFrame,-1000,"movement cancelled candidate for double tap");
+ c=gesture(c,"end",157,350,520);
+ c=gesture(c,"start",164,311,470);
+ assert.ok(c.centerX>.7,"next single tap follows the finger instead of unexpectedly resetting");
+ assert.equal(c.centerX,311/400);
+ assert.equal(c.centerY,470/800);
+});
+test("an unknown future pattern can declare an explanation without custom UI edits",()=>{
+ const nextId="fixture-control-help-future";
+ const future={
+  id:nextId,title:"Fixture",version:1,schemaVersion:1,
+  module:"standalone-pattern-"+nextId+".js",
+  colorModes:1,palettes:[[255,255,255]],
+  defaults:{speed:1,colorModeIndex:0},
+  controls:[["Скорость","speed",.1,3,.1,"Бегунок",0,"Меняет скорость движения точек."]],
+  tapColorCycle:false
+ };
+ const entry=R.register(future);
+ assert.equal(entry.controls[0][7],"Меняет скорость движения точек.");
+ assert.equal(entry.tapColorCycle,false);
+ assert.equal(R.validate(R.defaults(nextId),nextId).ok,true);
+ const invalid={...future,id:"fixture-control-help-invalid",controls:[["Скорость","speed",.1,3,.1,"Бегунок",0,""]]};
+ assert.throws(()=>R.register(invalid),/invalid_control_help/);
+ assert.throws(()=>R.register({...future,id:"fixture-color-policy-invalid",tapColorCycle:"false"}),/invalid_tap_color_cycle/);
+});
