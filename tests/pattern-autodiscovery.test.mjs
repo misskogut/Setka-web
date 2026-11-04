@@ -609,3 +609,62 @@ test('any future continuous road tunnel keeps camera, wall spheres and distant m
   }
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
+
+
+test('unknown steerable 3D tunnels bend the physical road under touch and keep extreme looping deterministic',()=>{
+ const dir=workspace();
+ try{
+  const {source}=build(dir),R=loadRegistry(source);
+  const candidates=R.list().filter(p=>p.module&&p.controls.some(row=>row[1]==='roadOpacity')&&p.controls.some(row=>row[1]==='steerX'));
+  assert.ok(candidates.length>0,'new 3D road module is auto-discovered');
+  for(const p of candidates){
+   const document={currentScript:{dataset:{patternId:p.id}}};
+   vm.runInNewContext(fs.readFileSync(path.join(dir,p.module),'utf8'),
+    {window:{SetkaPatternRegistryV1:R},document,Math},{timeout:1500});
+   const settings=R.defaults(p.id);
+   const turns=p.controls.find(row=>row[1]==='turns');
+   assert.ok(turns[3]>=10,'maximum bend is substantially stronger than the former 500%');
+   assert.equal(settings.randomness,0,'default cycling path is deterministic');
+   const touch=R.interact(p.id,settings,{type:'gesture',phase:'move',fingers:1,zone:'center',
+    startX:195,startY:260,dx:100,dy:-95,width:390,height:844,frame:51});
+   assert.ok(touch.steerX>0&&touch.steerY>0,'one-finger XY drag bends the road in both dimensions');
+   assert.equal(touch.yawOffset,settings.yawOffset,'one-finger road steering does not rotate the head');
+   const pinch=R.interact(p.id,touch,{type:'gesture',phase:'move',fingers:2,
+    dx:60,dy:-110,width:390,height:844,frame:52});
+   assert.ok(pinch.zoom>touch.zoom,'two fingers retain independent zoom');
+   assert.equal(pinch.steerX,touch.steerX,'two-finger touch never adds road steering');
+   assert.equal(pinch.steerY,touch.steerY,'two-finger touch never changes vertical steering');
+   const saved=R.snapshot({patternId:p.id,config:pinch,frame:66});
+   assert.equal(R.restore(saved).ok,true,'new route steering is in immutable note/replay snapshots');
+   const legacy={...saved,patternVersion:2,config:{...saved.config}};
+   delete legacy.config.steerX;delete legacy.config.steerY;delete legacy.config.sensitivity;
+   const restored=R.restore(legacy);
+   assert.equal(restored.ok,true,'older versions open without losing saved color and travel settings');
+   assert.equal(restored.snapshot.config.steerX,0);
+   function paint(c,frame){
+    const output={white:0,marks:0,dots:0,black:0,errors:0,positions:[]};
+    const finite=(...xs)=>{if(xs.some(v=>!Number.isFinite(v)))output.errors++};
+    const ctx={fillStyle:'#000',save(){},restore(){},beginPath(){},closePath(){},
+     translate(x,y){finite(x,y);output.marks++;if(output.positions.length<14)output.positions.push([x,y])},
+     rotate(x){finite(x)},moveTo(x,y){finite(x,y)},lineTo(x,y){finite(x,y)},
+     fillRect(){},arc(x,y,r){finite(x,y,r);output.dots++},
+     ellipse(x,y,rx,ry){finite(x,y,rx,ry)},
+     fill(){if(this.fillStyle==='#000')output.black++;else output.white++}};
+    R.render(ctx,390,844,c,frame,true,p.id);
+    return output;
+   }
+   const base=paint(settings,91),bent=paint(touch,91);
+   assert.ok(base.dots>200&&base.marks>100,'initial road and distant point marks are visible');
+   assert.notDeepEqual(bent.positions,base.positions,'touch curves actual perspective geometry, not only a slider number');
+   const wild={...settings,turns:turns[3],randomness:1,hills:3,steerX:1.1,steerY:-.9};
+   for(const frame of [91,1000,120000,500000]){
+    const once=paint(wild,frame),again=paint(wild,frame);
+    assert.ok(once.dots>200&&once.marks>100,'camera remains inside tunnel at '+frame);
+    assert.equal(once.errors,0,'no NaN or Infinity at '+frame);
+    assert.deepEqual(once,again,'extreme loop replay deterministic at '+frame);
+   }
+   const empty=paint({...settings,opacity:0,roadOpacity:0,turns:0,hills:0,randomness:0},91);
+   assert.ok(empty.dots>200&&empty.marks>100,'straight transparent tunnel remains available');
+  }
+ }finally{fs.rmSync(dir,{recursive:true,force:true});}
+});

@@ -481,8 +481,11 @@ function render(ctx,w,h,c,frame,preview=false){
  const focal=Math.min(width*.505,height*.88)/(1+.012*Math.max(0,c.turns-5))/c.zoom;
  const roofWidth=4.70,roofHeight=4.70+6*c.shape;
  const steerX=Number(c.steerX)||0,steerY=Number(c.steerY)||0;
- function xyz(s,x,y){
-  const p=at(s),t=smooth((s-camS)/42);
+ const framePoints=new Map();
+ function xyz(s,x,y,pose){
+  let p=pose||framePoints.get(s);
+  if(!p){p=at(s);framePoints.set(s,p)}
+  const t=smooth((s-camS)/42);
   // Same forward-only touch-bending principle as Neurobridge.
   const sx=steerX*10.8*t,sy=steerY*10.2*t;
   return {x:p.x+p.rx*x+p.ux*y+camera.rx*sx+camera.ux*sy,
@@ -499,7 +502,7 @@ function render(ctx,w,h,c,frame,preview=false){
   if(q.z<CLIP)return null;const k=focal/q.z;
   return{x:width*.5+q.x*k,y:horizon-q.y*k,z:q.z};
  }
- function proj(s,x,y){return pc(rel(xyz(s,x,y)))}
+ function proj(s,x,y,pose){return pc(rel(xyz(s,x,y,pose)))}
  function polygon(vertices){
   const ps=vertices.map(rel),out=[];
   for(let i=0;i<ps.length;i++){
@@ -525,7 +528,10 @@ function render(ctx,w,h,c,frame,preview=false){
  }
  const ss=(typeof document.createElement==="function"&&typeof ctx.drawImage==="function")?sprites(c.colorModeIndex|0):null,seed=c.seed>>>0;
  function dot(o,s){
-  const radius=1+o.j,p=proj(s,-roofWidth*Math.cos(o.a)*radius,roofHeight*Math.sin(o.a)*radius);
+  // World-space particle poses are immutable for this route model, so mobile
+  // frames do not recalculate 3D rail orientation for thousands of dots.
+  if(o._trackModel!==model){o._trackModel=model;o._trackPose=at(s)}
+  const radius=1+o.j,p=proj(s,-roofWidth*Math.cos(o.a)*radius,roofHeight*Math.sin(o.a)*radius,o._trackPose);
   if(!p||p.x<-24||p.x>width+24||p.y<-24||p.y>height+24)return;
   const size=clamp(focal*o.r/p.z,.16,8.8)*1.65,i=clamp(Math.floor(o.a/PI*59),0,59);
   const alpha=clamp(o.alpha*c.glow,0,1),col=color(o.a/PI,c.colorModeIndex|0);
