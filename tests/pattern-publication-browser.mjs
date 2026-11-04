@@ -182,6 +182,9 @@ try{
  assert.equal(await mini.locator('[data-pattern-id="'+id+'"] .mini-pattern-label').innerText(),'Новое название <тест>');
  await front.evaluate(()=>window.__SETKA_PATTERN_CATALOG_V1__.refresh());
  assert.equal(await front.getByRole('button',{name:'Открыть паттерн Новое название <тест>. Удерживай, чтобы сохранить',exact:true}).count(),1,'rename reaches second client safely');
+ await admin.locator('.pattern-manage-card[data-pattern-id="'+id+'"]').getByRole('button',{name:'Изменить название',exact:true}).click();
+ await admin.getByRole('button',{name:'Сохранить для всех',exact:true}).click();
+ await admin.locator('#detail-dialog[open]').waitFor({state:'hidden'});
  assert.equal(JSON.stringify(archive),original);assert.deepEqual(errors,[]);
  console.log('ORDER: ADMIN → SAVE/READBACK → TWO CLIENTS → PREVIEW/NEW → RELOAD → CONFLICT → STALE PASS; PUBLICATION: DRAFT → SANDBOX → PUBLISH → SECOND CLIENT → DISABLE → DIRECT-OPEN GUARD → REPUBLISH → OUTAGE/RECOVERY PASS');
 }finally{await browser?.close();server.kill('SIGTERM');}

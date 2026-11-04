@@ -301,7 +301,7 @@ function renamePattern(id,stayInList=false){
  if($('previous-title'))$('previous-title').onchange=()=>{const x=old.find(x=>x.revision===Number($('previous-title').value));if(x)$('pattern-title').value=x.title};
  $('rename-form').onsubmit=async e=>{e.preventDefault();const save=$('rename-save'),error=$('rename-error');save.disabled=true;try{const title=$('pattern-title').value.trim();const result=await api('rename-pattern',{patternId:id,title,expectedRevision:current.revision});
  const confirmed=await api('manage-catalog'),row=confirmed.items?.find(x=>x.pattern_id===id);
- if(result.ok!==true||!row||row.title!==title||Number(row.revision)<=Number(current.revision))throw Error('rename_not_confirmed');
+ if(result.ok!==true||!row||row.title!==title||Number(row.revision)<Number(current.revision))throw Error('rename_not_confirmed');
  catalogNameRows=confirmed.items;registry.setTitles(confirmed.items);setPatternNames(confirmed.items);
  document.querySelectorAll('.pattern-manage-card').forEach(card=>{if(card.dataset.patternId===id)card.querySelector('h2').textContent=row.title});
  document.querySelectorAll('.pattern-mini-tile').forEach(tile=>{if(tile.dataset.patternId===id){tile.querySelector('.mini-pattern-label').textContent=row.title;tile.setAttribute('aria-label','Переместить: '+row.title)}});
