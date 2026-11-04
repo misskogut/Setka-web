@@ -2,8 +2,8 @@
 {
   "id": "rainbow-road-tunnel",
   "title": "Радужный тоннель · 3DFP",
-  "version": 3,
-  "schemaVersion": 3,
+  "version": 4,
+  "schemaVersion": 4,
   "introducedAt": "2026-11-04T20:44:00.000Z",
   "module": "standalone-pattern-rainbow-road-tunnel.js",
   "colorModes": 9,
@@ -73,7 +73,8 @@
     "colorModeIndex": 0,
     "steerX": 0,
     "steerY": 0,
-    "sensitivity": 1
+    "sensitivity": 1,
+    "sphereSolidity": 0.65
   },
   "controls": [
     [
@@ -159,6 +160,16 @@
       0.05,
       "Ползунок",
       0
+    ],
+    [
+      "Материал сфер: боке → плотные",
+      "sphereSolidity",
+      0,
+      1,
+      0.05,
+      "Ползунок",
+      0,
+      "0% — мягкие размытые огоньки; 100% — чёткие плотные сферы без боке"
     ],
     [
       "Свечение",
@@ -255,6 +266,7 @@
     "opacity",
     "roadOpacity",
     "density",
+    "sphereSolidity",
     "glow",
     "pulse",
     "zoom",
@@ -267,7 +279,8 @@
   ],
   "legacyVersions": [
     1,
-    2
+    2,
+    3
   ]
 }
 END_SETKA_PATTERN_DESCRIPTOR */
@@ -515,7 +528,7 @@ function render(ctx,w,h,c,frame,preview=false){
   ctx.closePath();ctx.fill();
  }
  function floor(a,b){
-  if(c.roadOpacity<=0)return;ctx.globalAlpha=c.roadOpacity;ctx.fillStyle="#000";
+  if(c.roadOpacity<=0)return;ctx.globalAlpha=c.roadOpacity;ctx.fillStyle="#050509";
   polygon([xyz(b,-roofWidth,0),xyz(b,roofWidth,0),xyz(a,roofWidth,0),xyz(a,-roofWidth,0)]);
  }
  function shell(a,b){
@@ -528,33 +541,56 @@ function render(ctx,w,h,c,frame,preview=false){
  }
  const ss=(typeof document.createElement==="function"&&typeof ctx.drawImage==="function")?sprites(c.colorModeIndex|0):null,seed=c.seed>>>0;
  function dot(o,s){
-  // World-space particle poses are immutable for this route model, so mobile
-  // frames do not recalculate 3D rail orientation for thousands of dots.
+  // Every emitter stays fixed to its world-space road slab. Surface
+  // material changes the optical profile, never the particle positions.
   if(o._trackModel!==model){o._trackModel=model;o._trackPose=at(s)}
   const radius=1+o.j,p=proj(s,-roofWidth*Math.cos(o.a)*radius,roofHeight*Math.sin(o.a)*radius,o._trackPose);
   if(!p||p.x<-24||p.x>width+24||p.y<-24||p.y>height+24)return;
   const size=clamp(focal*o.r/p.z,.16,8.8)*1.65,i=clamp(Math.floor(o.a/PI*59),0,59);
-  const alpha=clamp(o.alpha*c.glow,0,1),col=color(o.a/PI,c.colorModeIndex|0);
-  ctx.fillStyle=(c.colorModeIndex|0)===0?"#fff":"hsl("+col[0]+","+col[1]+"%,"+col[2]+"%)";
-  ctx.globalAlpha=alpha*clamp(.48+size*.2,.45,1);
-  ctx.beginPath();ctx.arc(p.x,p.y,Math.max(.30,size*.34),0,TAU);ctx.fill();
-  if(ss&&size>.5){ctx.globalAlpha=alpha*.76*smooth((size-.5)/1.25);ctx.drawImage(ss[i],p.x-size,p.y-size,size*2,size*2)}
+  const solidity=clamp(Number(c.sphereSolidity??.65),0,1),wallAlpha=clamp(Number(c.opacity??1),0,1);
+  const alpha=clamp(o.alpha*c.glow,0,1)*wallAlpha;
+  if(alpha<=0)return;
+  const col=color(o.a/PI,c.colorModeIndex|0);
+  const pigment=(c.colorModeIndex|0)===0?"#fff":"hsl("+col[0]+","+col[1]+"%,"+col[2]+"%)";
+  // Bokeh is the soft halo BEHIND the core, never a translucent black
+  // billboard. At 100% solidity the core has a crisp circular edge.
+  if(ss&&size>.5&&solidity<1){
+   ctx.globalAlpha=alpha*(.76*(1-solidity)+.10*solidity)*smooth((size-.5)/1.25);
+   ctx.drawImage(ss[i],p.x-size,p.y-size,size*2,size*2);
+  }
+  const coreAlpha=clamp(alpha+solidity*(wallAlpha-alpha)*.84,0,1)*clamp(.48+size*.2,.45,1);
+  ctx.globalAlpha=coreAlpha;ctx.fillStyle=pigment;
+  ctx.beginPath();ctx.arc(p.x,p.y,Math.max(.30,size*(.34+.31*solidity)),0,TAU);ctx.fill();
+  if(solidity>.35&&size>2){
+   ctx.globalAlpha=coreAlpha*solidity*.44;ctx.fillStyle="#fff";
+   ctx.beginPath();ctx.arc(p.x-size*.14,p.y-size*.16,Math.max(.20,size*.09),0,TAU);ctx.fill();
+  }
  }
  function marker(s,x,track){
-  const p=proj(s,x,.012),prev=proj(s-.10,x,.012),next=proj(s+.10,x,.012);
-  if(!p||!prev||!next||p.x<-30||p.x>width+30||p.y<-30||p.y>height+30)return;
-  const angle=Math.atan2(next.y-prev.y,next.x-prev.x);
+  // Each dash is four COPLANAR world-space points, painted onto the
+  // roadway; never camera-facing ellipses or volumetric spheres.
   const wave=Math.max(.50,1+c.pulse*(.20*Math.sin(s*.81+track*1.3)+.09*Math.sin(s*1.38+track)));
-  const natural=(track===1?.060:.082)*focal/p.z*wave,minimum=Math.max(.28,Math.min(width,height)*.0009);
-  const radius=clamp(Math.max(natural,minimum),minimum,13),length=clamp(radius*(track===1?1.45:1.13),minimum,16);
+  const halfLength=(track===1?.155:.13)*wave,halfWidth=(track===1?.070:.075)*Math.sqrt(wave);
+  const ps=[proj(s-halfLength,x-halfWidth,.014),proj(s-halfLength,x+halfWidth,.014),
+            proj(s+halfLength,x+halfWidth,.014),proj(s+halfLength,x-halfWidth,.014)];
+  if(ps.some(p=>!p||!Number.isFinite(p.x)||!Number.isFinite(p.y)))return;
+  const cx=ps.reduce((a,p)=>a+p.x,0)/4,cy=ps.reduce((a,p)=>a+p.y,0)/4;
+  if(cx<-30||cx>width+30||cy<-30||cy>height+30)return;
+  // Strict near-plane and projected size guards prevent slivers on loops.
+  if(ps.some(p=>Math.abs(p.x-cx)>width*2||Math.abs(p.y-cy)>height*2))return;
   const col=c.colorModeIndex===0?[0,0,75]:color(track===0?.08:track===1?.3:.93,c.colorModeIndex|0);
-  ctx.save();ctx.globalAlpha=clamp(.63+natural*.55,.68,1);
-  ctx.translate(p.x,p.y);ctx.rotate(angle);
+  ctx.globalAlpha=clamp(.80+.10*wave,.75,1);
   ctx.fillStyle=(c.colorModeIndex|0)===0?"#fff":"hsl("+col[0]+","+col[1]+"%,"+col[2]+"%)";
-  ctx.beginPath();if(typeof ctx.ellipse==="function")ctx.ellipse(0,0,length,radius*.92,0,0,TAU);
-  else ctx.arc(0,0,radius*.92,0,TAU);
-  ctx.fill();ctx.restore();
+  const area=Math.abs(ps.reduce((a,p,i)=>a+p.x*ps[(i+1)%4].y-ps[(i+1)%4].x*p.y,0))*.5;
+  if(area<.20){
+   // A subpixel paint dab stays visible at the horizon, without 3D shading.
+   ctx.fillRect(cx-.32,cy-.32,.64,.64);return;
+  }
+  ctx.beginPath();ctx.moveTo(ps[0].x,ps[0].y);
+  for(let i=1;i<4;i++)ctx.lineTo(ps[i].x,ps[i].y);
+  ctx.closePath();ctx.fill();
  }
+
  ctx.save();ctx.globalAlpha=1;ctx.fillStyle="#000";ctx.fillRect(0,0,width,height);
  const near=.62,far=preview?108:145,step=preview?2.1:1.3,nSeg=Math.ceil((far-near)/step);
  const buckets=Array.from({length:nSeg},()=>[]),marks=Array.from({length:nSeg},()=>[]);
@@ -579,11 +615,17 @@ function render(ctx,w,h,c,frame,preview=false){
   const pa=proj(sa,0,0),pb=proj(sb,0,0);
   return (pb?.z||0)-(pa?.z||0);
  });
+ // A black shell/floor drawn between particle slabs was erasing previously
+ // rendered spheres and lane paint when bends inverted their depth order.
+ // First paint every opaque surface against the black background; only then
+ // paint ALL wall emitters and finally ALL coplanar road markings.
  for(const k of order){
   const a=camS+near+k*step,b=a+step;
   shell(a,b);floor(a,b);
-  for(const ob of buckets[k])dot(ob,ob.s);
-  for(const s of marks[k]){marker(s,-3.08,0);marker(s,0,1);marker(s,3.08,2);}
+ }
+ for(const k of order)for(const ob of buckets[k])dot(ob,ob.s);
+ for(const k of order)for(const s of marks[k]){
+  marker(s,-3.08,0);marker(s,0,1);marker(s,3.08,2);
  }
  ctx.restore();
 }
