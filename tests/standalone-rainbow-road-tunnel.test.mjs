@@ -16,7 +16,7 @@ for(const file of files){
  if(!match)continue;
  const d=JSON.parse(match[1]);
  if(!d.capabilities?.paintedRoadDashes&&!d.capabilities?.stableEmitterLayering)continue;
- registry.register(d);
+ if(!registry.has(d.id))registry.register(d);
  const doc={
   currentScript:{dataset:{patternId:d.id}},
   createElement(){
