@@ -2,13 +2,12 @@
 {
   "id": "medusa",
   "title": "Медузы · Medusa",
-  "version": 1,
+  "version": 2,
   "introducedAt": "2026-11-03T21:47:43.000Z",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
+  "legacyVersions": [1],
   "module": "standalone-pattern-medusa.js",
   "colorModes": 9,
-  "tapOverflow": "clamp",
-  "tapButtonLabel": "＋ Добавить медузу",
   "palettes": [
     [255,255,255], [80,242,221], [98,139,255],
     [195,140,255], [255,131,187], [255,209,118],
@@ -19,7 +18,7 @@
     "medusaCount": 3,
     "tentacleCount": 10,
     "tentacleLength": 50,
-    "speed": 1,
+    "speed": 0.35,
     "sizeFactor": 1,
     "swayStrength": 1,
     "seed": 2011,
@@ -34,12 +33,12 @@
     "colorModeIndex": 0
   },
   "controls": [
-    ["Медузы · тап = добавить", "medusaCount", 1, 30, 1, "Тап", 1],
+    ["Количество медуз", "medusaCount", 1, 30, 1, "Ползунок", 0],
     ["Щупальца", "tentacleCount", 6, 16, 1, "Ползунок", 0],
     ["Длина щупалец", "tentacleLength", 20, 70, 1, "Ползунок", 0],
-    ["Скорость", "speed", 0.4, 2, 0.1, "Ползунок", 0],
+    ["Скорость плавания", "speed", 0.05, 2, 0.05, "Ползунок", 0],
     ["Размер медузы", "sizeFactor", 0.5, 2, 0.01, "Ползунок", 0],
-    ["Покачивание", "swayStrength", 0.2, 2, 0.01, "Ползунок", 0]
+    ["Колебание щупалец", "swayStrength", 0.2, 2, 0.01, "Ползунок", 0]
   ],
   "schema": {
     "seed": {"type":"number","min":0,"max":4294967295,"integer":true},
@@ -88,10 +87,9 @@ function newCreature(index,c,at=0){
  const seed=c.seed>>>0;
  const x=rnd(seed,index,0x12481bcb)*600;
  const y=rnd(seed,index,0x3b7c33ee)*300;
- const path={start:0,duration:1,x,y,dx:0,dy:0};
- const body={
+  const body={
   index,seed,paths:[],pathEnd:0,lastX:x,lastY:y,
-  distance:300+100*rnd(seed,index,0x478d3711),
+  distance:190+140*rnd(seed,index,0x478d3711),
   arms:[],len:c.tentacleLength
  };
  const arms=c.tentacleCount,len=c.tentacleLength;
@@ -104,21 +102,30 @@ function newCreature(index,c,at=0){
  }
  return body;
 }
-function pathThrough(b,t){
+// Deterministic rest -> swim cycles. Tentacles keep stepping at 60 Hz.
+function restFrames(speed,initial,index,seed){
+ if(initial)return Math.max(1,Math.round(60*(.15+.65*rnd(seed,index,0x1494a7f1))));
+ return Math.max(1,Math.round(60*clamp(.9+.65/speed,.8,14)));
+}
+function pathThrough(b,t,c){
+ const speed=clamp(c.speed,.05,2);
  while(b.pathEnd<=t){
-  const ordinal=b.paths.length;
+  const ordinal=b.paths.length/2;
   const n=Math.imul(ordinal+1,0x85ebca6b)^Math.imul(b.index+1,0x27d4eb2d)^b.seed;
-  const dur=50+Math.floor(hash(n^0x3912cc1d)*40);
+  const rest=restFrames(speed,ordinal===0,b.index,b.seed);
+  b.paths.push({kind:"rest",start:b.pathEnd,duration:rest,x:b.lastX,y:b.lastY,dx:0,dy:0});
+  b.pathEnd+=rest;
+  const swim=Math.max(1,Math.round(60*(.95+.6*hash(n^0x3912cc1d))/speed));
   const ang=TAU*hash(n^0x42a7d9e7);
   let dx=Math.cos(ang)*b.distance,dy=Math.sin(ang)*b.distance;
-  if(b.lastX+dx>600)dx=-Math.abs(dx);else if(b.lastX+dx<0)dx=Math.abs(dx);
-  if(b.lastY+dy>600)dy=-Math.abs(dy);else if(b.lastY+dy<0)dy=Math.abs(dy);
-  b.paths.push({start:b.pathEnd,duration:dur,x:b.lastX,y:b.lastY,dx,dy});
-  b.lastX+=dx;b.lastY+=dy;b.pathEnd+=dur;
+  if(b.lastX+dx>575)dx=-Math.abs(dx);else if(b.lastX+dx<25)dx=Math.abs(dx);
+  if(b.lastY+dy>575)dy=-Math.abs(dy);else if(b.lastY+dy<25)dy=Math.abs(dy);
+  b.paths.push({kind:"swim",start:b.pathEnd,duration:swim,x:b.lastX,y:b.lastY,dx,dy});
+  b.lastX+=dx;b.lastY+=dy;b.pathEnd+=swim;
  }
 }
-function positionAt(b,t){
- pathThrough(b,t);
+function positionAt(b,t,c){
+ pathThrough(b,t,c);
  // Segment search is small for gameplay; binary search also covers long
  // sessions opened directly from an immutable note/replay snapshot.
  let left=0,right=b.paths.length-1;
@@ -126,14 +133,14 @@ function positionAt(b,t){
   const mid=(left+right+1)>>1;
   if(b.paths[mid].start<=t)left=mid;else right=mid-1;
  }
- const p=b.paths[left],factor=expo(t-p.start,p.duration);
+ const p=b.paths[left],factor=p.kind==="rest"?0:expo(t-p.start,p.duration);
  return {x:p.x+factor*p.dx,y:p.y+factor*p.dy};
 }
 // Match the approved source: animate every tentacle from the PREVIOUS
 // head location, then advance the body. The one-frame spatial lag creates
 // the trailing wake and prevents reorienting the whole arm fan each tick.
 function headAt(b,frame,c){
- const base=positionAt(b,frame);
+ const base=positionAt(b,frame,c);
  if(b.index!==c.dragIndex)return base;
  if(c.dragActive&&frame>=c.dragFrame)return {x:c.dragX,y:c.dragY};
  if(!c.dragActive&&c.dragReleaseFrame>0&&frame>=c.dragReleaseFrame){
@@ -168,7 +175,7 @@ function warm(body,target,c){
  // Live playback steps every frame without dropping any intermediate states.
  const begin=Math.max(0,target-220);
  if(begin){
-  const head=positionAt(body,begin);
+  const head=positionAt(body,begin,c);
   for(let a=0;a<body.arms.length;a++){
    const angle=a*TAU/body.arms.length,coords=body.arms[a];
    const px=head.x+Math.cos(angle)*HEAD*c.sizeFactor/2,py=head.y+Math.sin(angle)*HEAD*c.sizeFactor/2;
@@ -182,7 +189,7 @@ function warm(body,target,c){
  for(let k=begin;k<=target;k++)stepBody(body,k,c);
 }
 function stateFor(ctx,c,target){
- const signature=[c.seed,c.tentacleCount,c.tentacleLength].join("|");
+ const signature=[c.seed,c.tentacleCount,c.tentacleLength,c.speed].join("|");
  let s=states.get(ctx);
  if(!s||s.signature!==signature||s.frame>target||target-s.frame>500){
   s={signature,frame:target,bodies:[]};
@@ -218,7 +225,8 @@ function color(mode,index,alpha,frame){
 }
 function render(ctx,width,height,c,frame,preview=false){
  const w=Math.max(1,width),h=Math.max(1,height);
- const target=Math.max(0,Math.floor(Math.max(0,Number(frame)||0)*c.speed));
+ // Physics stays at 60 Hz. Speed controls swim and rest durations instead.
+ const target=Math.max(0,Math.floor(Math.max(0,Number(frame)||0)));
  const state=stateFor(ctx,c,target);
  const scale=Math.min(w,h)/600;
  const mode=clamp(Math.round(c.colorModeIndex),0,8);
@@ -252,7 +260,7 @@ function interact(c,e){
  const x=clamp(300+(Number(e.x)-w/2)/scale,0,600);
  const y=clamp(300+(Number(e.y)-h/2)/scale,0,600);
  if(!Number.isFinite(x)||!Number.isFinite(y))return c;
- const frame=Math.max(0,Math.floor((Number(e.frame)||0)*c.speed));
+ const frame=Math.max(0,Math.floor(Number(e.frame)||0));
  if(e.phase==="start"){
   let nearest=-1,best=(85*c.sizeFactor)**2;
   for(let i=0;i<c.medusaCount;i++){
@@ -269,7 +277,7 @@ function interact(c,e){
  }
  if(e.phase==="end"){
   if(c.dragIndex<0||!c.dragActive)return {...c,dragIndex:-1,dragActive:false};
-  const p=positionAt(newCreature(c.dragIndex,c),frame);
+  const p=positionAt(newCreature(c.dragIndex,c),frame,c);
   return {...c,dragActive:false,dragReleaseFrame:frame,
    dragOffsetX:clamp(c.dragX-p.x,-600,600),
    dragOffsetY:clamp(c.dragY-p.y,-600,600)};
