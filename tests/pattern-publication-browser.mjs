@@ -109,9 +109,18 @@ try{
  await quickCard.getByRole('button',{name:'Выключить',exact:true}).click();
  await quickCard.getByRole('button',{name:'Опубликовать',exact:true}).waitFor();
  await front.evaluate(()=>window.__SETKA_PATTERN_CATALOG_V1__.refresh());assert.equal(await tile.count(),0);
+ await admin.waitForFunction(id=>!document.querySelector('#pattern-mini-order [data-pattern-id="'+id+'"]'),id);
+ assert.equal(await quickCard.count(),1,'disabled future module remains in detailed management');
+ assert.equal(order.revision,0,'hiding does not change saved order');
+ await quickCard.getByRole('button',{name:'Вернуть на проверку',exact:true}).click();
+ await admin.waitForFunction(()=>!document.getElementById('refresh').disabled);
+ assert.equal((await miniIds()).includes(id),false,'testing is also absent from public ordering grid');
+ assert.equal(await quickCard.count(),1,'testing module remains available below');
  await quickCard.getByRole('button',{name:'Опубликовать',exact:true}).click();
  await quickCard.getByRole('button',{name:'Выключить',exact:true}).waitFor();
  await front.evaluate(()=>window.__SETKA_PATTERN_CATALOG_V1__.refresh());assert.equal(await tile.count(),1);
+ await admin.waitForFunction(id=>!!document.querySelector('#pattern-mini-order [data-pattern-id="'+id+'"]'),id);
+ assert.deepEqual(await miniIds(),beforeMini,'republish returns to the same retained order');
  await quickCard.locator('summary').click();
  await quickCard.getByRole('slider',{name:'Радиус',exact:true}).waitFor();
  assert.equal(await admin.locator('#detail-dialog[open]').count(),0,'startup editor stays inline');
