@@ -54,6 +54,14 @@ try{
   assert.ok((await layer.boundingBox()).height<before.height-150);assert.equal(await layer.isVisible(),true);
   await page.locator(`#st34Nav [data-p="${tab}"]`).click();await layer.waitFor({state:'hidden'});
  }
+ await page.locator('#st34Nav [data-p="today"]').click();await layer.waitFor({state:'visible'});
+ await layer.locator('#st34SheetGrip').press('End');await drag(layer.locator('#st34SheetGrip'),220);
+ const restoredHeight=(await layer.boundingBox()).height;
+ await page.setViewportSize({width:390,height:500});
+ await page.waitForFunction(()=>document.querySelector('#st34Layer').getBoundingClientRect().height<400);
+ await page.setViewportSize({width:390,height:844});
+ await page.waitForFunction(h=>Math.abs(document.querySelector('#st34Layer').getBoundingClientRect().height-h)<2,restoredHeight);
+ await page.locator('#st34Nav [data-p="today"]').click();await layer.waitFor({state:'hidden'});
  // Information sheets also keep a fixed grab handle and scrollable body.
  await page.locator('#allPatternsPanel .st34-info').first().click();
  const info=page.locator('#st34InfoOverlay .st34-sheet');await info.waitFor();

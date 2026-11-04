@@ -91,7 +91,9 @@
     bindings.set(panel,{api});refresh();return api;
   }
   function update(){for(const [panel,{api}] of bindings){if(!panel.isConnected)api.destroy();else api.refresh()}}
-  window.addEventListener('resize',update);window.visualViewport?.addEventListener('resize',update);
+  let viewportFrame=0;
+  function viewportUpdate(){if(!viewportFrame)viewportFrame=requestAnimationFrame(()=>{viewportFrame=0;update()})}
+  window.addEventListener('resize',viewportUpdate);window.visualViewport?.addEventListener('resize',viewportUpdate);
   new MutationObserver(update).observe(document.body,{childList:true,subtree:true});
   window.SetkaPanelResizeV1={attach};
 })();
