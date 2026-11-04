@@ -532,7 +532,7 @@ function render(ctx,w,h,c,frame,preview=false){
   ctx.closePath();ctx.fill();
  }
  function floor(a,b){
-  if(c.roadOpacity<=0)return;ctx.globalAlpha=c.roadOpacity;ctx.fillStyle="#050509";
+  if(c.roadOpacity<=0)return;ctx.globalAlpha=c.roadOpacity;ctx.fillStyle="#000";
   polygon([xyz(b,-roofWidth,0),xyz(b,roofWidth,0),xyz(a,roofWidth,0),xyz(a,-roofWidth,0)]);
  }
  function shell(a,b){
@@ -551,8 +551,9 @@ function render(ctx,w,h,c,frame,preview=false){
   const radius=1+o.j,p=proj(s,-roofWidth*Math.cos(o.a)*radius,roofHeight*Math.sin(o.a)*radius,o._trackPose);
   if(!p||p.x<-24||p.x>width+24||p.y<-24||p.y>height+24)return;
   const size=clamp(focal*o.r/p.z,.16,8.8)*1.65,i=clamp(Math.floor(o.a/PI*59),0,59);
-  const solidity=clamp(Number(c.sphereSolidity??.65),0,1),wallAlpha=clamp(Number(c.opacity??1),0,1);
-  const alpha=clamp(o.alpha*c.glow,0,1)*wallAlpha;
+  const solidity=clamp(Number(c.sphereSolidity??.65),0,1);
+  // Wall opacity controls the dark shell, NOT the light emitters.
+  const alpha=clamp(o.alpha*c.glow,0,1);
   if(alpha<=0)return;
   const col=color(o.a/PI,c.colorModeIndex|0);
   const pigment=(c.colorModeIndex|0)===0?"#fff":"hsl("+col[0]+","+col[1]+"%,"+col[2]+"%)";
@@ -562,7 +563,7 @@ function render(ctx,w,h,c,frame,preview=false){
    ctx.globalAlpha=alpha*(.76*(1-solidity)+.10*solidity)*smooth((size-.5)/1.25);
    ctx.drawImage(ss[i],p.x-size,p.y-size,size*2,size*2);
   }
-  const coreAlpha=clamp(alpha+solidity*(wallAlpha-alpha)*.84,0,1)*clamp(.48+size*.2,.45,1);
+  const coreAlpha=clamp(alpha+solidity*(1-alpha)*.84,0,1)*clamp(.48+size*.2,.45,1);
   ctx.globalAlpha=coreAlpha;ctx.fillStyle=pigment;
   ctx.beginPath();ctx.arc(p.x,p.y,Math.max(.30,size*(.34+.31*solidity)),0,TAU);ctx.fill();
   if(solidity>.35&&size>2){
