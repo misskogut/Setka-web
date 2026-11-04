@@ -2,9 +2,9 @@ name: Verify unified pattern platform v2
 on:
   push:
     branches: ['audit/unified-patterns-20261020', 'fix/account-login-after-recovery', 'main']
-    paths: ['standalone-*.js','standalone-*.html','app-v7-multipattern.js','research-v1/**','scripts/**','supabase/migrations/**','supabase/functions/_shared/pattern-catalog.mjs','supabase/functions/setka-research-admin-v1/**','tests/pattern-*','tests/account-cohorts*','research-v1/sql/account-cohorts.sql','tests/setka-app-platform-guard.test.mjs','AGENTS.md','SETKA_START_HERE.md','SETKA_APP_CANONICAL_CONTRACT.md','docs/SETKA_APP_RULES_LEDGER.md','docs/PATTERN_PLATFORM_V2.md','.github/workflows/check-pattern-platform-v2.yml']
+    paths: ['standalone-*.js','standalone-*.html','app-v7-multipattern.js','research-v1/**','scripts/**','supabase/migrations/**','supabase/functions/_shared/pattern-catalog.mjs','supabase/functions/setka-research-admin-v1/**','tests/pattern-*','tests/standalone-*.test.mjs','tests/standalone-*-browser-smoke.mjs','tests/account-cohorts*','research-v1/sql/account-cohorts.sql','tests/setka-app-platform-guard.test.mjs','AGENTS.md','SETKA_START_HERE.md','SETKA_APP_CANONICAL_CONTRACT.md','docs/SETKA_APP_RULES_LEDGER.md','docs/PATTERN_PLATFORM_V2.md','.github/workflows/check-pattern-platform-v2.yml']
   pull_request:
-    paths: ['standalone-*.js','standalone-*.html','app-v7-multipattern.js','research-v1/**','scripts/**','supabase/migrations/**','supabase/functions/_shared/pattern-catalog.mjs','supabase/functions/setka-research-admin-v1/**','tests/pattern-*','tests/account-cohorts*','research-v1/sql/account-cohorts.sql','.github/workflows/check-pattern-platform-v2.yml']
+    paths: ['standalone-*.js','standalone-*.html','app-v7-multipattern.js','research-v1/**','scripts/**','supabase/migrations/**','supabase/functions/_shared/pattern-catalog.mjs','supabase/functions/setka-research-admin-v1/**','tests/pattern-*','tests/standalone-*.test.mjs','tests/standalone-*-browser-smoke.mjs','tests/account-cohorts*','research-v1/sql/account-cohorts.sql','.github/workflows/check-pattern-platform-v2.yml']
 permissions:
   contents: read
 jobs:
@@ -31,6 +31,9 @@ jobs:
         env:
           SETKA_BROWSER: ${{ matrix.browser }}
       - run: node tests/standalone-radial-wave-browser-smoke.mjs
+        env:
+          SETKA_BROWSER: ${{ matrix.browser }}
+      - run: node tests/standalone-hemispheric-spirals-browser-smoke.mjs
         env:
           SETKA_BROWSER: ${{ matrix.browser }}
       - run: node tests/pattern-publication-browser.mjs
