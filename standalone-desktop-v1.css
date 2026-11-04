@@ -1,0 +1,33 @@
+/* The live app adapts to the window, independently of pattern identity.
+   Mobile rules remain in the original stylesheets. */
+@media (min-width: 768px) {
+  body { display: block; background: #000; }
+  #app {
+    max-width: none;
+    height: 100dvh;
+    min-height: 0;
+    box-shadow: none;
+  }
+  #app #libraryScreen {
+    padding-left: clamp(28px, 4vw, 80px);
+    padding-right: clamp(28px, 4vw, 80px);
+  }
+  #app .pattern-panel {
+    grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+    gap: 28px;
+    scrollbar-width: thin;
+    scrollbar-color: #444 transparent;
+  }
+  #app .pattern-panel::-webkit-scrollbar { display: block; width: 6px; }
+  #app .pattern-panel::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+  body.setka-sheet-layout #st34Nav { width: min(calc(100% - 48px), 680px); }
+  body.setka-sheet-layout #st34Layer { width: min(calc(100% - 64px), 920px); }
+  body.setka-sheet-layout #st34Layer > .st-wrap { padding-left: 28px; padding-right: 28px; }
+}
+/* A short laptop window must keep library content and controls reachable. */
+@media (min-width: 768px) and (max-height: 650px) {
+  #app #libraryScreen { padding-top: 16px; }
+  #app .library-pager { margin-bottom: 20px; }
+  #app .library-title { top: 70px; }
+  #app .pattern-panel { padding-top: 30px; }
+}

@@ -198,14 +198,14 @@ jobs:
 
   browser-smoke:
     runs-on: ubuntu-latest
+    container: mcr.microsoft.com/playwright:v1.64.1-noble
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm install --no-save --ignore-scripts playwright esbuild
-      - run: npx playwright install --with-deps chromium webkit
+      - run: npm install --no-save --ignore-scripts playwright@1.64.1 esbuild
       - run: node scripts/build-pattern-manifest.mjs
       - run: node tests/research-management-v1-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/research-management-v1-browser-smoke.mjs
