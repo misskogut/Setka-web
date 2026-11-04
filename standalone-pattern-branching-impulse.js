@@ -2,7 +2,7 @@
 {
   "id": "branching-impulse",
   "title": "Ветвящийся импульс",
-  "version": 1,
+  "version": 2,
   "introducedAt": "2026-11-03T23:06:00.000Z",
   "schemaVersion": 1,
   "module": "standalone-pattern-branching-impulse.js",
@@ -89,7 +89,8 @@
     "touchY": 0.5,
     "touchActive": false,
     "interactionMode": 0,
-    "colorModeIndex": 0
+    "colorModeIndex": 0,
+    "touchRetractEpoch": 0
   },
   "controls": [
     [
@@ -165,7 +166,7 @@
       0
     ],
     [
-      "Реакция на палец",
+      "Втягивание",
       "touchStrength",
       0,
       200,
@@ -183,7 +184,7 @@
       0
     ],
     [
-      "Импульс по ветке",
+      "Скорость реакции",
       "pulse",
       0,
       100,
@@ -248,16 +249,12 @@
   ],
   "gestureHints": [
     [
+      "Касание ветвей",
+      "Коснись узора — ветка втянется; отпусти — плавно раскроется"
+    ],
+    [
       "Вращение",
-      "1 палец: начни на свободном участке и веди по кругу вокруг центра"
-    ],
-    [
-      "Живая ветка",
-      "1 палец: коснись линии и тяни — эта ветка и её дочерние ветки отклоняются"
-    ],
-    [
-      "Световые волны",
-      "Неон и радуга движутся по веткам; интенсивность и скорость — в настройках"
+      "Проведи одним пальцем по свободному участку снаружи"
     ]
   ],
   "schema": {
@@ -341,6 +338,11 @@
       "min": 0,
       "max": 2,
       "integer": true
+    },
+    "touchRetractEpoch": {
+      "type": "number",
+      "min": 0,
+      "max": 1000000000
     }
   },
   "keyFields": [
@@ -377,7 +379,11 @@
     "touchY",
     "touchActive",
     "interactionMode",
-    "colorModeIndex"
+    "colorModeIndex",
+    "touchRetractEpoch"
+  ],
+  "legacyVersions": [
+    1
   ]
 }
 END_SETKA_PATTERN_DESCRIPTOR */
@@ -411,6 +417,20 @@ const powerAt=(c,f)=>{
  if(c.touchRoot<0||c.touchNode<0||f<c.touchFrame)return 0;
  return c.touchActive?1:Math.exp(-3*Math.max(0,f-c.touchEndFrame)/60);
 };
+// v2: match the accepted tactile preview: an entire branch bundle retracts
+// while the finger rests, short taps stay perceptible, then it unfolds.
+// touchRetractEpoch===0 preserves the historic v1 displacement in old recordings.
+function retractAt(c,f){
+ if(c.touchRetractEpoch<=0||c.touchRoot<0||c.touchNode<0||f<c.touchFrame)return 0;
+ const elapsed=Math.max(0,f-c.touchFrame);
+ const response=.3+.95*c.pulse/100;
+ const pull=1-Math.exp(-elapsed*.028*response*(1000/60));
+ if(c.touchActive)return pull;
+ const holdUntil=Math.max(c.touchEndFrame,c.touchFrame+20);
+ if(f<=holdUntil)return pull;
+ const u=clamp((f-holdUntil)/(30/response),0,1);
+ return pull*(1-u*u*(3-2*u));
+}
 function hsl(h,s,l){
  h=((h%360)+360)%360;s/=100;l/=100;
  const a=s*Math.min(l,1-l);
@@ -440,7 +460,10 @@ function project(x,y,angle){
 function walk(c,f,visitor,withHit=false){
  const t=timeAt(c,f),rot=rotationAt(c,f),opening=Math.sin(t/5)**2/3*c.spread;
  const breathing=1+Math.sin(t*1.5)*c.breath*.0008;
- const touchPower=powerAt(c,f)*c.touchStrength/100;
+ const retractMode=c.touchRetractEpoch>0;
+ const touchPower=retractMode
+  ?retractAt(c,f)*clamp(c.touchStrength/100*.97,0,.982)
+  :powerAt(c,f)*c.touchStrength/100;
  const active=touchPower>.005,phase=Math.max(0,f-c.touchFrame);
  function branch(d,s,x,y,l,root,node,depth,dist,inherited){
   if(s<=0)return;
@@ -448,15 +471,21 @@ function walk(c,f,visitor,withHit=false){
   let endX=x+l*breathing*Math.cos(d)+force*Math.cos(n);
   let endY=y+l*breathing*Math.sin(d)+force*Math.sin(n);
   const selected=active&&root===c.touchRoot&&node===c.touchNode;
-  if(selected){
+  const propagated=inherited||selected;
+  const collapse=retractMode&&propagated?touchPower:0;
+  if(collapse>.001){
+   // Fold the entire selected subtree toward its parent joint, not only
+   // the tiny line beneath a finger. The parent ancestor has node <= 3.
+   endX=x+(endX-x)*(1-collapse);
+   endY=y+(endY-y)*(1-collapse);
+  }else if(selected&&!retractMode){
    const pulse=Math.sin(phase*.16)*c.pulse/100;
    endX+=touchPower*(c.touchDX+12*pulse);
    endY+=touchPower*(c.touchDY+12*Math.cos(phase*.16)*c.pulse/100);
   }
   const a=project(x,y,rot),b=project(endX,endY,rot);
   const span=Math.hypot(endX-x,endY-y);
-  const propagated=inherited||selected;
-  const hit={a,b,s,root,node,depth,dist,span,propagated,selected,phase,touchPower};
+  const hit={a,b,s,root,node,depth,dist,propagated,selected,phase,touchPower,collapse,retractMode};
   visitor(hit);
   const next=dist+span;
   branch(d+opening,s-1,endX,endY,l*.8,root,node*2,depth+1,next,propagated);
@@ -479,17 +508,17 @@ function paint(ctx,h,c,f,preview){
   const mid=(e.dist+e.span/2),r=Math.hypot((e.a.x+e.b.x)/2-360,(e.a.y+e.b.y)/2-360);
   const palette=tint(c,e.root,e.depth,r,mid,flow);
   const color=c.invert&&c.colorModeIndex===0?[0,0,0]:palette;
-  const branchWave=e.propagated?e.touchPower*c.pulse/100*(.5+.5*Math.sin(e.phase*.2-e.depth*.9)):0;
+  const branchWave=!e.retractMode&&e.propagated?e.touchPower*c.pulse/100*(.5+.5*Math.sin(e.phase*.2-e.depth*.9)):0;
   const ww=wave(mid,flow),intensity=clamp(ww*neon+branchWave*.9,0,1);
   const width=Math.max(.04,e.s*2*c.lineWidth*(e.selected?1.18:1));
   ctx.shadowBlur=0;
   ctx.lineWidth=width;
-  ctx.strokeStyle=rgba(color,1);
+  ctx.strokeStyle=rgba(color,1-e.collapse*.8);
   ctx.beginPath();ctx.moveTo(e.a.x,e.a.y);ctx.lineTo(e.b.x,e.b.y);ctx.stroke();
   if(intensity>.055&&(neon||branchWave)){
    let light=c.invert&&c.colorModeIndex===0?[0,0,0]:[Math.round(color[0]*.32+255*.68),Math.round(color[1]*.32+255*.68),Math.round(color[2]*.32+255*.68)];
    ctx.lineWidth=width*(1+intensity*.21);
-   ctx.strokeStyle=rgba(light,Math.min(.98,intensity*.85));
+   ctx.strokeStyle=rgba(light,Math.min(.98,intensity*.85)*(1-e.collapse*.8));
    if(intensity>.55&&c.glow>0&&!preview){
     ctx.shadowColor=rgba(color,.85);
     ctx.shadowBlur=clamp(c.glow/100*15*intensity,0,17);
@@ -498,7 +527,7 @@ function paint(ctx,h,c,f,preview){
    ctx.shadowBlur=0;
   }
   if(e.s===1&&c.tips>0){
-   ctx.fillStyle=rgba(color,c.tips/100);
+   ctx.fillStyle=rgba(color,c.tips/100*(1-e.collapse*.8));
    ctx.beginPath();ctx.arc(e.b.x,e.b.y,Math.max(.15,c.lineWidth*(.45+c.tips*.023)),0,TAU);ctx.fill();
   }
  },true);
@@ -511,6 +540,7 @@ function render(ctx,width,height,c,frame,preview=false){
 function nearest(c,f,x,y,w,h){
  const scale=Math.min(w,h)/720;
  const px=360+(x-w/2)/scale,py=360+(y-h/2)/scale;
+ const radius=Math.hypot(px-360,py-360);
  let best=null,d=Infinity;
  walk(c,f,e=>{
   const dx=e.b.x-e.a.x,dy=e.b.y-e.a.y,den=dx*dx+dy*dy||1;
@@ -518,7 +548,9 @@ function nearest(c,f,x,y,w,h){
   const dist=Math.hypot(px-e.a.x-q*dx,py-e.a.y-q*dy);
   if(dist<d){d=dist;best=e}
  });
- return d<=Math.max(20,Math.min(33,20+c.lineWidth*4))?best:null;
+ // The approved preview accepts broad taps within the central pattern
+ // area, because hitting a hairline on a phone was unreliable.
+ return best&&(d<=75||radius<=290)?best:null;
 }
 function angleDiff(a,b){return Math.atan2(Math.sin(a-b),Math.cos(a-b))}
 function interact(c,event){
@@ -547,7 +579,10 @@ function interact(c,event){
  if(phase==="start"){
   const hit=c.touchStrength>0?nearest(c,f,x,y,w,h):null;
   if(hit){
-   return {...c,interactionMode:1,touchRoot:hit.root,touchNode:hit.node,
+   // Selecting the parent branch <= 3 makes even a tip-touch visibly fold.
+   let node=hit.node;
+   while(node>3)node=Math.floor(node/2);
+   return {...c,interactionMode:1,touchRoot:hit.root,touchNode:node,touchRetractEpoch:f+1,
     touchFrame:f,touchEndFrame:f,touchDX:0,touchDY:0,touchX:clamp(x/w,0,1),touchY:clamp(y/h,0,1),touchActive:true};
   }
   return {...c,interactionMode:2,touchActive:false,touchEndFrame:f};
@@ -555,11 +590,9 @@ function interact(c,event){
  if(phase!=="move")return c;
  const dx=Number(e.dx)||0,dy=Number(e.dy)||0;
  if(c.interactionMode===1&&c.touchActive){
-  const s=720/Math.min(w,h),angle=rotationAt(c,f);
-  const co=Math.cos(angle),si=Math.sin(angle);
-  return {...c,touchDX:round(clamp(c.touchDX+(co*dx+si*dy)*s,-250,250)),
-   touchDY:round(clamp(c.touchDY+(-si*dx+co*dy)*s,-250,250)),
-   touchX:round(clamp(x/w,0,1)),touchY:round(clamp(y/h,0,1))};
+  // The selected branch hides automatically; dragging cannot steer it or
+  // accidentally rotate the whole pattern.
+  return {...c,touchX:round(clamp(x/w,0,1)),touchY:round(clamp(y/h,0,1))};
  }
  if(c.interactionMode===2){
   const prev=Math.atan2(y-dy-h/2,x-dx-w/2);
