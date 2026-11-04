@@ -63,24 +63,40 @@ test("ultra-thin line slider and thick stroke are real; nine palettes and radial
  const radial=capture({...clone(),colorModeIndex:8,neon:0},180).segments;
  assert.notEqual(radial[0][5],radial[radial.length-1][5],"rainbow changes along the radius");
 });
-test("finger pulls the actually selected branch and its children; empty-space gesture rotates around axis",()=>{
+test("touch retracts selected branch, holds, then unfolds; free-space rotation stays separate",()=>{
  const original=clone(),initial=capture({...original,neon:0},100).segments[0];
  const x=(initial[0]+initial[2])/2,y=(initial[1]+initial[3])/2;
  const touched=gesture(original,"start",100,x,y);
  assert.equal(touched.interactionMode,1,"near segment selects touch, not rotation");
  assert.ok(touched.touchRoot>=0&&touched.touchNode>=1);
- const moved=gesture(touched,"move",102,x+70,y-35,70,-35);
- assert.ok(Math.abs(moved.touchDX)+Math.abs(moved.touchDY)>60,"finger movement is real");
- assert.notDeepEqual(capture(moved,103).segments,capture(original,103).segments);
- const ended=gesture(moved,"end",105,x+70,y-35);
+ assert.ok(touched.touchRetractEpoch>0,"new touch uses v2 retract behavior");
+ const early=capture(touched,107);
+ const late=capture(touched,116);
+ assert.notDeepEqual(late.segments,capture(original,116).segments,"contact visibly withdraws a branch");
+ assert.notDeepEqual(late.segments,early.segments,"branch retracts progressively");
+ const moved=gesture(touched,"move",118,x+70,y-35,70,-35);
+ assert.equal(moved.touchDX,0,"drag must not stretch the selected branch");
+ assert.equal(moved.touchDY,0,"drag must not stretch the selected branch");
+ assert.notDeepEqual(capture(moved,118).segments,capture(original,118).segments);
+ const ended=gesture(moved,"end",119,x+70,y-35);
  assert.equal(ended.touchActive,false);
- assert.ok(R.restore(R.snapshot({patternId:d.id,config:ended,frame:106})).ok,"touch is saved and replays");
+ assert.notDeepEqual(capture(ended,123).segments,capture(original,123).segments,"short release keeps a visible retreat");
+ assert.deepEqual(capture(ended,175),capture(original,175),"branch unfolds to identical original geometry");
+ assert.ok(R.restore(R.snapshot({patternId:d.id,config:ended,frame:124})).ok,"retraction is serializable");
  const free=gesture(original,"start",100,5,5);
  assert.equal(free.interactionMode,2);
  const spun=gesture(free,"move",102,30,100,25,95);
  assert.notEqual(spun.rotation,original.rotation);
  assert.notDeepEqual(capture(spun,103).segments[0],capture(original,103).segments[0]);
  assert.equal(gesture(spun,"end",104,30,100).interactionMode,0);
+});
+test("legacy v1 snapshots remain in legacy deformation mode until the next new touch",()=>{
+ const old={...clone(),touchRetractEpoch:0,touchRoot:0,touchNode:1,touchFrame:100,touchEndFrame:100,touchDX:38,touchDY:14,touchActive:true};
+ const saved={...R.snapshot({patternId:d.id,config:old,frame:108}),patternVersion:1};
+ assert.ok(R.restore(saved).ok,"v1 snapshot remains recognized");
+ assert.notDeepEqual(capture(old,108).segments,capture(clone(),108).segments,"legacy displacement is preserved");
+ const interacted=gesture(old,"start",120,350,360);
+ assert.ok(interacted.touchRetractEpoch>0,"future touches switch to the new reflex");
 });
 test("sliders use the shared patch reducer and preserve animation phase during speed changes",()=>{
  let c=clone();
