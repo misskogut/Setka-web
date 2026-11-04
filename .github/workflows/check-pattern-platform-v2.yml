@@ -42,6 +42,9 @@ jobs:
       - run: node tests/standalone-genuary-16x16-browser-smoke.mjs
         env:
           SETKA_BROWSER: ${{ matrix.browser }}
+      - run: node tests/standalone-hexwave-browser-smoke.mjs
+        env:
+          SETKA_BROWSER: ${{ matrix.browser }}
       - run: node tests/pattern-publication-browser.mjs
         env:
           SETKA_BROWSER: ${{ matrix.browser }}
