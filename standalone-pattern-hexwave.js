@@ -36,7 +36,8 @@
   ],
   "tapColorCycle": false,
   "capabilities": {
-    "rgbGlitchOverlay": true
+    "rgbGlitchOverlay": true,
+    "fullViewportLattice": true
   },
   "defaults": {
     "patternId": "hexwave",
