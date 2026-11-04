@@ -377,14 +377,16 @@ function render(ctx,w,h,c,frame,preview=false){
     xyz(a,-roofWidth*Math.cos(v),roofHeight*Math.sin(v)),xyz(a,-roofWidth*Math.cos(u),roofHeight*Math.sin(u))]);
   }
  }
- const ss=sprites(c.colorModeIndex|0),dots=particles(c.seed>>>0),maxDot=Math.min(dots.length,Math.floor((preview?2900:10200)*c.density));
+ const dots=particles(c.seed>>>0),maxDot=Math.min(dots.length,Math.floor((preview?2900:10200)*c.density));
  function dot(o,s){
   const radius=1+o.j,p=proj(s,-roofWidth*Math.cos(o.a)*radius,roofHeight*Math.sin(o.a)*radius);
   if(!p||p.x<-24||p.x>width+24||p.y<-24||p.y>height+24)return;
   const size=clamp(focal*o.r/p.z,.2,8.8)*1.65,i=clamp(Math.floor(o.a/PI*59),0,59);
   ctx.globalAlpha=clamp(o.alpha*c.glow*(p.z>74?.82:1),0,1);
-  if(size<.65){const col=color(o.a/PI,c.colorModeIndex|0);ctx.fillStyle="hsl("+col[0]+","+col[1]+"%,"+col[2]+"%)";ctx.fillRect(p.x,p.y,1,1);}
-  else ctx.drawImage(ss[i],p.x-size,p.y-size,size*2,size*2);
+  const col=color(o.a/PI,c.colorModeIndex|0);
+  ctx.fillStyle=(c.colorModeIndex|0)===0?"#fff":"hsl("+col[0]+","+col[1]+"%,"+col[2]+"%)";
+  if(size<.65)ctx.fillRect(p.x,p.y,1,1);
+  else{ctx.beginPath();ctx.arc(p.x,p.y,size*.52,0,TAU);ctx.fill();}
  }
  function marker(s,x,track){
   const p=proj(s,x,.012),prev=proj(s-.10,x,.012),next=proj(s+.10,x,.012);
@@ -395,8 +397,8 @@ function render(ctx,w,h,c,frame,preview=false){
   const radius=clamp(natural,.05,13),length=clamp(radius*(track===1?1.45:1.13),.05,15);
   const col=c.colorModeIndex===0?[0,0,75]:color(track===0?.08:track===1?.3:.93,c.colorModeIndex|0);
   ctx.save();ctx.globalAlpha=clamp(natural*2.5,.10,1)*clamp(1-p.z/230,.35,1);
-  ctx.translate(p.x,p.y);ctx.rotate(angle);ctx.fillStyle="hsl("+col[0]+","+col[1]+"%,"+col[2]+"%)";
-  ctx.beginPath();ctx.ellipse(0,0,length,radius*.92,0,0,TAU);ctx.fill();ctx.restore();
+  ctx.translate(p.x,p.y);ctx.rotate(angle);ctx.fillStyle=(c.colorModeIndex|0)===0?"#fff":"hsl("+col[0]+","+col[1]+"%,"+col[2]+"%)";
+  ctx.beginPath();ctx.arc(0,0,Math.max(.05,radius*.92),0,TAU);ctx.fill();ctx.restore();
  }
  ctx.save();ctx.fillStyle="#000";ctx.globalAlpha=1;ctx.fillRect(0,0,width,height);
  const near=.62,far=preview?108:145,step=preview?2.1:1.3,nSeg=Math.ceil((far-near)/step);
