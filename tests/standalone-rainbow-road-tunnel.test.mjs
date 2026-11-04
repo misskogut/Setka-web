@@ -110,7 +110,7 @@ test("solid-sphere material is a saved slider rather than new particles or a sep
   assert.ok(bokeh.some(c=>c.kind==="halo"),"bokeh includes halos");
   assert.equal(solid.some(c=>c.kind==="halo"),false,"solid spheres do not use bokeh sprites");
   const radii=calls=>calls.filter(c=>c.kind==="fill"&&c.shape==="circle"&&c.color?.startsWith("hsl("))
-    .slice(0,25).map(c=>c.coords[2]);
+    .slice(-300).map(c=>c.coords[2]);
   const a=radii(bokeh),b=radii(solid);
   assert.ok(a.length>5&&b.length>5);
   assert.ok(b.every((r,i)=>r>=a[i])&&b.some((r,i)=>r>a[i]),"same emitters preserve tiny subpixel cores and grow larger cores");
