@@ -63,24 +63,52 @@ test("ultra-thin line slider and thick stroke are real; nine palettes and radial
  const radial=capture({...clone(),colorModeIndex:8,neon:0},180).segments;
  assert.notEqual(radial[0][5],radial[radial.length-1][5],"rainbow changes along the radius");
 });
-test("finger pulls the actually selected branch and its children; empty-space gesture rotates around axis",()=>{
+test("approved broad finger taps retract an entire root branch, hold, release and preserve rotation isolation",()=>{
  const original=clone(),initial=capture({...original,neon:0},100).segments[0];
  const x=(initial[0]+initial[2])/2,y=(initial[1]+initial[3])/2;
  const touched=gesture(original,"start",100,x,y);
- assert.equal(touched.interactionMode,1,"near segment selects touch, not rotation");
- assert.ok(touched.touchRoot>=0&&touched.touchNode>=1);
- const moved=gesture(touched,"move",102,x+70,y-35,70,-35);
- assert.ok(Math.abs(moved.touchDX)+Math.abs(moved.touchDY)>60,"finger movement is real");
- assert.notDeepEqual(capture(moved,103).segments,capture(original,103).segments);
- const ended=gesture(moved,"end",105,x+70,y-35);
+ assert.equal(touched.interactionMode,1,"touch selects branch, not rotation");
+ assert.ok(touched.touchRoot>=0&&touched.touchNode>=1&&touched.touchNode<=3,"select a visible ancestor bundle");
+ assert.equal(touched.touchRetractEpoch,101);
+ const early=capture(touched,101),later=capture(touched,116),reference=capture(original,116);
+ assert.notDeepEqual(early.segments,later.segments,"withdrawal grows with elapsed contact");
+ assert.notDeepEqual(later.segments,reference.segments,"branch visibly retracts while held");
+ // The very first root segment is selected. It must visibly shorten.
+ const length=s=>Math.hypot(s[2]-s[0],s[3]-s[1]);
+ assert.ok(length(later.segments[0])<length(reference.segments[0])*.3,"the selected stem shrinks dramatically");
+ const moved=gesture(touched,"move",119,x+70,y-35,70,-35);
+ assert.equal(moved.touchDX,0,"drag does not pull or stretch the branch");
+ assert.equal(moved.touchDY,0,"drag does not pull or stretch the branch");
+ assert.equal(moved.rotation,0,"drag does not rotate when a branch was selected");
+ const ended=gesture(moved,"end",119,x+70,y-35);
  assert.equal(ended.touchActive,false);
- assert.ok(R.restore(R.snapshot({patternId:d.id,config:ended,frame:106})).ok,"touch is saved and replays");
+ assert.notDeepEqual(capture(ended,123).segments,capture(original,123).segments,"a brief tap still retracts visibly");
+ assert.deepEqual(capture(ended,180),capture(original,180),"after release, exact original form returns");
+ const snap=R.snapshot({patternId:d.id,config:ended,frame:125});
+ const restored=R.restore(snap);
+ assert.equal(restored.ok,true,"contact saves and replays");
+ assert.deepEqual(capture(restored.snapshot.config,125),capture(ended,125),"retraction is deterministic after restore");
+ // Hairline segments can be difficult to hit exactly on a phone: tap near.
+ const broad=gesture(original,"start",100,540,550);
+ assert.equal(broad.interactionMode,1,"tap inside the broad interactive area triggers the reflex");
  const free=gesture(original,"start",100,5,5);
  assert.equal(free.interactionMode,2);
  const spun=gesture(free,"move",102,30,100,25,95);
  assert.notEqual(spun.rotation,original.rotation);
  assert.notDeepEqual(capture(spun,103).segments[0],capture(original,103).segments[0]);
  assert.equal(gesture(spun,"end",104,30,100).interactionMode,0);
+});
+test("old v1 recordings retain their historic bend while new taps use v2 reflex",()=>{
+ const original=clone();
+ const legacy={...original,touchRoot:11,touchNode:1,touchFrame:100,touchEndFrame:100,touchDX:40,touchDY:14,touchActive:true};
+ delete legacy.touchRetractEpoch;
+ const snapshot={...R.snapshot({patternId:d.id,config:original,frame:110}),patternVersion:1,config:legacy};
+ const restored=R.restore(snapshot);
+ assert.equal(restored.ok,true,"v1 recipes are still readable");
+ assert.equal(restored.snapshot.config.touchRetractEpoch,0,"previous touches remain in old mode");
+ assert.notDeepEqual(capture(restored.snapshot.config,110),capture(original,110),"previous bending is not rewritten");
+ const touched=gesture(restored.snapshot.config,"start",120,360,360);
+ assert.equal(touched.touchRetractEpoch,121,"the next new touch uses the approved reflex");
 });
 test("sliders use the shared patch reducer and preserve animation phase during speed changes",()=>{
  let c=clone();
