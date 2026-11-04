@@ -473,7 +473,7 @@ function road(c,s,here){
 // The live finger-steering onset is local to the rider. Its derivative is
 // zero at the current rail point, so the stable base route gives exactly the
 // physical speed at the carriage without reparameterization jumps on touch.
-const ARC_STEP=.22,ARC_CACHE_LIMIT=5,arcCache=new Map();
+const ARC_STEP=.055,ARC_CACHE_LIMIT=3,arcCache=new Map();
 function arcMap(c){
  const key=[c.turns,c.turnSharpness,c.climbs,c.dropDepth,
             c.hillSharpness,c.randomness,c.routeSeed].join("|");
