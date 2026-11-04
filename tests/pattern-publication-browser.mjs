@@ -127,6 +127,7 @@ try{
  await quickCard.locator('summary').click();
  await editor.locator('.pattern-manage-card[data-pattern-id="'+id+'"] .pattern-order-controls select').selectOption('0');
  await admin.locator('#refresh').click();
+ await admin.waitForFunction(()=>!document.getElementById('refresh').disabled);
  assert.equal(await editor.locator('.pattern-order-controls select').first().getAttribute('aria-label'),'Позиция: '+fixture.title,'routine refresh keeps unsaved draft');
  orderFailure=true;await editor.getByRole('button',{name:'Сохранить порядок',exact:true}).first().click();
  await editor.getByRole('status').filter({hasText:'Сохранение не подтверждено'}).first().waitFor();
@@ -160,7 +161,7 @@ try{
  assert.equal(await front.locator('#allPatternsPanel .setka-new-pattern').count(),0,'seen survives reload/archive hydration');
  assert.deepEqual(await baseIds(),order.patternIds);
  // A concurrent owner edit must produce an explicit revision conflict, never a silent overwrite.
- await admin.locator('#refresh').click();await admin.locator('#refresh').waitFor({state:'visible'});
+ await admin.locator('#refresh').click();await admin.waitForFunction(()=>!document.getElementById('refresh').disabled);
  await editor.getByRole('button',{name:'Вниз: '+fixture.title,exact:true}).click();
  await editor.getByRole('status').filter({hasText:'Порядок изменён.'}).first().waitFor();
  order={patternIds:order.patternIds.slice().reverse(),revision:2};
