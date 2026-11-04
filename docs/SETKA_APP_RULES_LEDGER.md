@@ -99,3 +99,5 @@ Until each row is proven, report the remaining failures and work against the sha
 **No automatic memory claims:** ChatGPT conversational memory may not update synchronously. Repository rules are durable, versioned and can be inspected by every future developer or agent.
 
 | APP-037 | Быстрые публикация/выключение, позиция и стартовая конфигурация с живым превью находятся непосредственно на карточке в списке. Статистика открывается отдельно; второй список названий/позиций сверху запрещён. | Общие UI-компоненты + browser lifecycle; CI/deploy проверяются отдельно. |
+
+Legacy owner-link bootstrap consumes an explicit credential before extensions read stored access; existing authenticated server validation remains mandatory. Full v34 owner-link smoke covers stale stored credentials.

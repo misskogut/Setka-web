@@ -8,6 +8,18 @@
 <meta name="setka-release-build" content="development" />
 <meta name="referrer" content="no-referrer" />
 <script>
+// Consume an explicit owner credential before any extension can read old storage.
+// This only selects the supplied credential; the server still validates access.
+(() => {try{
+ const params=new URLSearchParams(location.hash.slice(1)),key=params.get('access');
+ if(key&&/^SKA-[a-zA-Z0-9_-]{32,240}$/.test(key)){
+  localStorage.setItem('setka-research:admin-key:v1',key);
+  params.delete('access');const rest=params.toString();
+  history.replaceState(history.state,'',location.pathname+location.search+(rest?'#'+rest:''));
+ }
+}catch(_){} })();
+</script>
+<script>
 /* Capture an expiring recovery ticket before any external resource loads.
    Unlike # fragments, URL query parameters survive ChatGPT's mobile browser. */
 (() => {
