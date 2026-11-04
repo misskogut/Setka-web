@@ -146,7 +146,25 @@ try{
   }
   await page.locator('#st34KeySheet [data-action="close"]').click();
  }
- // Regression: after all patterns have been opened, the grid must be
+ // A declarative tap action must remain functional after opening the
+  // shared settings sheet, without any pattern-specific UI wiring.
+  const action=R.list().find(p=>p.tapButtonLabel);
+  if(action){
+    const tap=action.controls.find(row=>row[5]==='Тап');
+    assert.ok(tap,'button must be bound to a documented tap field');
+    await page.evaluate(id=>window.SetkaApp.openConfig(
+      window.SetkaApp.getPatternDefaults(id),{type:'base',id,patternId:id}),action.id);
+    await page.locator('#instructionsButton').click();
+    const button=page.locator('#st34KeySheet .sk-tap-add');
+    assert.equal(await button.count(),1,'one declared add button');
+    assert.equal(await button.getAttribute('aria-label'),action.tapButtonLabel);
+    const before=await page.evaluate(key=>window.SetkaApp.getConfig()[key],tap[1]);
+    await button.click();
+    const after=await page.evaluate(key=>window.SetkaApp.getConfig()[key],tap[1]);
+    assert.equal(after,Math.min(tap[3],before+tap[4]),'add button commits through common config API');
+    await page.locator('#st34KeySheet [data-action="close"]').click();
+  }
+  // Regression: after all patterns have been opened, the grid must be
  // ordered by creation/publication, never by the order the user viewed them.
  await page.locator('#libraryButton').click();
  const viewedOrder=await baseIds();

@@ -18,6 +18,13 @@
     // Optional display-only hints for multi-axis gestures that cannot be
     // represented as a single parameter slider (e.g. free camera panning).
     const gestureHints=raw.gestureHints??[];
+    if(raw.tapOverflow!==undefined&&!["wrap","clamp"].includes(raw.tapOverflow))
+      throw error("invalid_tap_overflow",raw.id);
+    if(raw.tapButtonLabel!==undefined&&
+      (typeof raw.tapButtonLabel!=="string"||!raw.tapButtonLabel.trim()||
+       raw.tapButtonLabel.length>64||
+       !raw.controls.some(row=>row[5]==="Тап"&&row[6]===1)))
+      throw error("invalid_tap_button",raw.id);
     if(!Array.isArray(gestureHints)||gestureHints.length>8||
        gestureHints.some(x=>!Array.isArray(x)||x.length!==2||
          x.some(v=>typeof v!=="string"||!v.trim()||v.length>140)))
@@ -68,7 +75,9 @@
       defaults,schema,controls:copy(raw.controls),gestureHints:copy(gestureHints),colorModes,capabilities:{...standard,...copy(raw.capabilities||{})},
       aliases:copy(raw.aliases||{}),keyFields:copy(raw.keyFields||null),legacyVersions:copy(raw.legacyVersions||[]),
       ...(raw.palettes?{palettes:copy(raw.palettes)}:{}),
-      module:raw.module||null});
+      module:raw.module||null,
+      ...(raw.tapOverflow?{tapOverflow:raw.tapOverflow}:{}),
+      ...(raw.tapButtonLabel?{tapButtonLabel:raw.tapButtonLabel}:{})});
     records.set(p.id,p);
     if(typeof raw.render==="function")renderers.set(p.id,raw.render);
     emit("setka:registry-changed",{patternId:p.id,revision:revision()});return p;
