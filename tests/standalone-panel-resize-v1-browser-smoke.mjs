@@ -17,6 +17,7 @@ try{
  await page.locator('#allPatternsPanel .pattern-tile').first().waitFor();
  const key=page.locator('#st34KeySheet'),layer=page.locator('#st34Layer');
  async function drag(handle,dy,touch=false){
+  await handle.click({trial:true});
   const box=await handle.boundingBox(),x=box.x+box.width/2,y=box.y+box.height/2;
   if(touch&&engine===chromium){
    const cdp=await page.context().newCDPSession(page);
@@ -49,6 +50,7 @@ try{
   await page.locator(`#st34Nav [data-p="${tab}"]`).click();await layer.waitFor({state:'visible'});
   await layer.locator('#st34SheetGrip').press('End');
   const before=await layer.boundingBox();await drag(layer.locator('#st34SheetGrip'),220,true);
+  console.log('DOCK RESIZE',tab,before,await layer.boundingBox());
   assert.ok((await layer.boundingBox()).height<before.height-150);assert.equal(await layer.isVisible(),true);
   await page.locator(`#st34Nav [data-p="${tab}"]`).click();await layer.waitFor({state:'hidden'});
  }
