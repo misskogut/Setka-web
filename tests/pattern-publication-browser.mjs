@@ -12,6 +12,7 @@ R.register(fixture);
 const port=49745,base='http://127.0.0.1:'+port;
 const server=spawn('python3',['-m','http.server',String(port),'--bind','127.0.0.1'],{stdio:'ignore'});
 let browser,revision=1,failed=false,order={patternIds:[],revision:0},orderFailure=false;
+const startupDefaults=[];
 const rows=R.list().map(p=>({pattern_id:p.id,state:p.id===id?'testing':'published',revision:1})),writes=[];
 const archive={notes:[{id:'retained-note',text:'Retained original',patternId:id,config:R.defaults(id)}]};
 const original=JSON.stringify(archive);
@@ -31,7 +32,7 @@ try{
   if(['catalog','manage-catalog'].includes(b.action)){
    if(failed&&b.action==='catalog'){status=503;out={error:'publication_unavailable'};}
    else out={ok:true,order,registryAvailable:true,registryRevision:R.revision(),publicationRevision:revision,publication:rows,
-    items:R.list().filter(p=>b.action==='manage-catalog'||rows.find(r=>r.pattern_id===p.id)?.state==='published').map(p=>({pattern_id:p.id,title:p.title,revision:1})),defaults:[]};
+    items:R.list().filter(p=>b.action==='manage-catalog'||rows.find(r=>r.pattern_id===p.id)?.state==='published').map(p=>({pattern_id:p.id,title:p.title,revision:1})),defaults:startupDefaults};
   }
   if(b.action==='set-pattern-order'){
    if(orderFailure){status=503;out={error:'isolated_order_unavailable'};}
@@ -42,6 +43,7 @@ try{
    const row=rows.find(r=>r.pattern_id===b.patternId);assert.equal(b.expectedRevision,row.revision);
    row.state=b.state;row.revision=++revision;writes.push(b);out={ok:true,item:row};
   }
+  if(b.action==='save-pattern-defaults'){const item={pattern_id:b.patternId,pattern_version:b.patternVersion,schema_version:b.schemaVersion,config:b.config,revision:1};startupDefaults.push(item);out={ok:true,item};}
   if(b.action==='overview')out={ok:true,data};
   await route.fulfill({status,headers:cors,contentType:'application/json',body:JSON.stringify(out)});
  });
@@ -97,6 +99,13 @@ try{
  assert.equal(await admin.locator('#detail-dialog[open]').count(),0,'startup editor stays inline');
  await quickCard.getByRole('slider',{name:'Радиус',exact:true}).press('End');
  assert.equal(await quickCard.getByRole('slider',{name:'Радиус',exact:true}).inputValue(),'20');
+ await admin.locator('#refresh').click();
+ assert.equal(await quickCard.getByRole('slider',{name:'Радиус',exact:true}).inputValue(),'20','refresh preserves inline draft');
+ await quickCard.getByRole('button',{name:'Сохранить стартовые настройки',exact:true}).click();
+ await quickCard.getByRole('status').filter({hasText:'Настройки сохранены.'}).waitFor();
+ await front.evaluate(()=>window.__SETKA_PATTERN_CATALOG_V1__.refresh());
+ assert.equal(await front.evaluate(id=>window.SetkaApp.getPatternDefaults(id).radius,id),20,'inline startup reaches front defaults');
+ assert.equal(await tile.locator('canvas').count(),1,'updated shared preview remains available');
  await quickCard.locator('summary').click();
  await editor.locator('.pattern-manage-card[data-pattern-id="'+id+'"] .pattern-order-controls select').selectOption('0');
  await admin.locator('#refresh').click();
