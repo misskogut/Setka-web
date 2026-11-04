@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';import {createServer} from 'node:http';i
 import {buildData} from '../research-v1/model.mjs';import {patterns,configKey} from '../research-v1/renderer.mjs';
 const port=49319,base=`http://127.0.0.1:${port}`,root=process.cwd();
 const catalog=patterns.map(x=>({pattern_id:x.id,title:x.id==='dandelion'?'Одуванчик':x.title,revision:1}));let ownIssued=[],savedArchive={payload:{openedPatterns:[],symptoms:[],checkins:[]},favorites:[]};
-const publications=new Map(),noteActions=[],deviceArchives=new Map();
+const publications=new Map(),noteActions=[];
 const fixtureMerge=(old=[],next=[])=>[...new Map([...old,...next].map(x=>[x.id,x])).values()];
 const server=createServer(async(req,res)=>{
  try{
@@ -25,14 +25,9 @@ const server=createServer(async(req,res)=>{
     if(b.action==='sync'){
      // Production combines archives from multiple devices. A late isolated
      // device upload must not erase another device's already persisted notes.
-     // Match production mergeRows: private archives are device-scoped. A late
-     // empty device cannot replace another device's saved relation. Only an
-     // explicit favorite_remove event removes it from the account projection.
-     deviceArchives.set(b.deviceId,{payload:b.archive,favorites:b.favorites||[]});
-     const events=[...deviceArchives.values()].reduce((out,row)=>fixtureMerge(out,row.payload.events),[]);
-     const removed=new Set(events.filter(e=>e.type==='favorite_remove').map(e=>e.payload?.favoriteId));
-     const favorites=[...deviceArchives.values()].reduce((out,row)=>fixtureMerge(out,row.favorites),[]).filter(f=>!removed.has(f.id));
-     savedArchive={payload:{...b.archive,events,notes:fixtureMerge(savedArchive.payload.notes,b.archive.notes),symptoms:fixtureMerge(savedArchive.payload.symptoms,b.archive.symptoms),checkins:fixtureMerge(savedArchive.payload.checkins,b.archive.checkins)},favorites,updatedAt:new Date().toISOString()};
+     const prior=savedArchive.payload.settings?.favoriteCollection,next=b.archive.settings?.favoriteCollection;
+     const collection=(Date.parse(prior?.updatedAt)||0)>(Date.parse(next?.updatedAt)||0)?prior:next;
+     savedArchive={payload:{...b.archive,settings:{...b.archive.settings,...(collection?{favoriteCollection:collection}:{})},notes:fixtureMerge(savedArchive.payload.notes,b.archive.notes),symptoms:fixtureMerge(savedArchive.payload.symptoms,b.archive.symptoms),checkins:fixtureMerge(savedArchive.payload.checkins,b.archive.checkins)},favorites:collection?.rows||b.favorites||[],updatedAt:new Date().toISOString()};
      out={ok:true,updatedAt:savedArchive.updatedAt,stateHistory:{symptoms:savedArchive.payload.symptoms,checkins:savedArchive.payload.checkins},counts:{symptoms:savedArchive.payload.symptoms.length,checkins:savedArchive.payload.checkins.length}};
     }else out={ok:true,archive:{...savedArchive,sourceDevices:1}};
    }
@@ -119,13 +114,6 @@ try{
  await front.evaluate(()=>window.__SETKA_PRIVATE_CORPUS_V40__.sync());const persistedPlain=savedArchive.payload.notes.find(n=>n.text===plain);assert.equal(persistedPlain.noteType,'text');assert.equal(persistedPlain.patternId,null);assert.equal(persistedPlain.config,null);assert.equal(persistedPlain.sessionId,null);
  await other.evaluate(()=>window.__SETKA_PRIVATE_CORPUS_V40__.restore());await other.locator('#st34Nav [data-p="notes"]').click();await other.getByText(plain,{exact:true}).waitFor();
  await other.locator('#st34SheetGrip').click();await other.locator('#st34Layer[aria-hidden="true"]').waitFor();await other.locator('.base-tile[data-pattern-id="stereo-dna"]').click();await other.getByRole('button',{name:'Просто посмотреть',exact:true}).click();await other.locator('#gameScreen.active').waitFor();
- await other.evaluate(()=>{
-  const S=window.SetkaApp,C=window.SetkaStandaloneV34;window.__isolatedFavoriteTrace=[];
-  const record=label=>window.__isolatedFavoriteTrace.push({label,rows:S.getFavorites().length,durable:C.getData().settings?.favoriteCollection?.rows?.length,events:C.getData().events?.filter(e=>e.type.startsWith('favorite_')).map(e=>({type:e.type,id:e.payload?.favoriteId})),stack:new Error().stack});
-  const restore=S.restoreFavorites;S.restoreFavorites=async rows=>{record('restore '+rows.length);const out=await restore(rows);record('restored');return out};
-  const refresh=S.refreshFavorites;S.refreshFavorites=(...args)=>{record('refresh');const out=refresh(...args);record('refreshed');return out};
-  for(const name of ['favorite-saved','favorite-removed','view','registry-changed','renderer-ready','personal-archive-restored'])window.addEventListener('setka:'+name,()=>record(name));
- });
  const favoriteState=()=>{const S=window.SetkaApp,C=window.SetkaStandaloneV34;return{patternId:S.getState().patternId,button:document.getElementById('favoriteButton').getAttribute('aria-label'),favorites:S.getFavorites().map(f=>({id:f.id,patternId:f.baseId,unavailable:f.unavailable})),durable:C.getData().settings?.favoriteCollection?.rows?.map(f=>({id:f.id,patternId:f.baseId})),authoritative:window.__SETKA_PRIVATE_CORPUS_V40__?.authoritative()}};
  console.log('FAVORITE BEFORE UI ACTION',await other.evaluate(favoriteState));
  assert.equal(await other.evaluate(()=>window.SetkaApp.getState().patternId),'stereo-dna','the intended pattern must be open before saving');
@@ -134,16 +122,20 @@ try{
  try{await other.waitForFunction(()=>window.SetkaApp.getFavorites().some(x=>x.baseId==='stereo-dna'));}
  catch(error){console.log('FAVORITE AFTER FAILED ACTION',await other.evaluate(favoriteState));throw error;}
  await other.waitForFunction(()=>window.SetkaStandaloneV34.getData().settings?.favoriteCollection?.rows?.some(x=>x.baseId==='stereo-dna'||x.patternId==='stereo-dna'));
- await other.evaluate(()=>window.__SETKA_PRIVATE_CORPUS_V40__.sync());
- await fetch(base+'/functions/v1/setka-tester-archive-v37',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'sync',deviceId:'isolated-late-empty-device',archive:{settings:{favoriteCollection:{rows:[],updatedAt:new Date().toISOString()}}},favorites:[]})});
- assert.ok(savedArchive.favorites.some(f=>f.baseId==='stereo-dna'),'production-like account merge retains another device favorite');
  await other.locator('#libraryButton').click();
  // Back restores the origin panel on its next animation frame. Finish that
  // navigation before the next user action selects another library page.
  await other.evaluate(()=>new Promise(requestAnimationFrame));
  await other.locator('#favoritesPagerButton').click();
  try{await other.locator('.favorite-tile .st34-info').first().waitFor();}
- catch(error){console.log('FAVORITE TRACE',await other.evaluate(()=>window.__isolatedFavoriteTrace));console.log('FAVORITE AFTER BACK',await other.evaluate(favoriteState));console.log('FAVORITE GALLERY STATE',await other.evaluate(()=>({state:window.SetkaApp.getState(),active:window.SetkaPatternRegistryV1.isActive('stereo-dna'),ready:window.SetkaPatternRegistryV1.ready('stereo-dna'),html:document.getElementById('favoritesPanel').innerHTML,origin:window.SetkaStandaloneNavigationV34?.getOrigin()})));throw error;}
+ catch(error){console.log('FAVORITE AFTER BACK',await other.evaluate(favoriteState));console.log('FAVORITE GALLERY STATE',await other.evaluate(()=>({state:window.SetkaApp.getState(),active:window.SetkaPatternRegistryV1.isActive('stereo-dna'),ready:window.SetkaPatternRegistryV1.ready('stereo-dna'),html:document.getElementById('favoritesPanel').innerHTML,origin:window.SetkaStandaloneNavigationV34?.getOrigin()})));throw error;}
+ // Reparenting a held tile releases pointer capture. It must not leave an
+ // armed long-press timer that removes a favorite after the participant leaves.
+ const heldTile=other.locator('.favorite-tile').first(),heldBox=await heldTile.boundingBox();
+ await other.mouse.move(heldBox.x+heldBox.width/2,heldBox.y+heldBox.height/2);await other.mouse.down();
+ await heldTile.evaluate(tile=>tile.parentElement.append(tile));
+ await new Promise(resolve=>setTimeout(resolve,700));await other.mouse.up();
+ assert.ok(await other.evaluate(()=>window.SetkaApp.getFavorites().some(f=>f.baseId==='stereo-dna')),'lost pointer capture cancels pending favorite removal');
  const heart=await other.locator('.favorite-tile .mini-heart').first().boundingBox(),info=await other.locator('.favorite-tile .st34-info').first().boundingBox();assert.ok(heart.y+heart.height<info.y,'saved heart overlaps the information button');
  console.log('REAL WEB STORAGE QUOTA, INDEXEDDB RETENTION THROUGH STALE TAB/RELOAD, PLAIN NOTES, INLINE MODERATION AND SEPARATE HEART POSITION PASS');
  const admin=await browser.newPage({viewport:{width:1200,height:900}});admin.on('pageerror',e=>errors.push({page:'admin',message:e.message,stack:e.stack}));
