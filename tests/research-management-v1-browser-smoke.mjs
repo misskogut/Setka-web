@@ -25,7 +25,9 @@ const server=createServer(async(req,res)=>{
     if(b.action==='sync'){
      // Production combines archives from multiple devices. A late isolated
      // device upload must not erase another device's already persisted notes.
-     savedArchive={payload:{...b.archive,notes:fixtureMerge(savedArchive.payload.notes,b.archive.notes),symptoms:fixtureMerge(savedArchive.payload.symptoms,b.archive.symptoms),checkins:fixtureMerge(savedArchive.payload.checkins,b.archive.checkins)},favorites:b.favorites||[],updatedAt:new Date().toISOString()};
+     const prior=savedArchive.payload.settings?.favoriteCollection,next=b.archive.settings?.favoriteCollection;
+     const collection=(Date.parse(prior?.updatedAt)||0)>(Date.parse(next?.updatedAt)||0)?prior:next;
+     savedArchive={payload:{...b.archive,settings:{...b.archive.settings,...(collection?{favoriteCollection:collection}:{})},notes:fixtureMerge(savedArchive.payload.notes,b.archive.notes),symptoms:fixtureMerge(savedArchive.payload.symptoms,b.archive.symptoms),checkins:fixtureMerge(savedArchive.payload.checkins,b.archive.checkins)},favorites:collection?.rows||b.favorites||[],updatedAt:new Date().toISOString()};
      out={ok:true,updatedAt:savedArchive.updatedAt,stateHistory:{symptoms:savedArchive.payload.symptoms,checkins:savedArchive.payload.checkins},counts:{symptoms:savedArchive.payload.symptoms.length,checkins:savedArchive.payload.checkins.length}};
     }else out={ok:true,archive:{...savedArchive,sourceDevices:1}};
    }
