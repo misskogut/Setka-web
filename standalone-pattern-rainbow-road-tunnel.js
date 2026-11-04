@@ -377,7 +377,7 @@ function render(ctx,w,h,c,frame,preview=false){
     xyz(a,-roofWidth*Math.cos(v),roofHeight*Math.sin(v)),xyz(a,-roofWidth*Math.cos(u),roofHeight*Math.sin(u))]);
   }
  }
- const dots=particles(c.seed>>>0),maxDot=Math.min(dots.length,Math.floor((preview?2900:10200)*c.density));
+ const ss=(typeof document.createElement==='function'&&typeof ctx.drawImage==='function')?sprites(c.colorModeIndex|0):null,dots=particles(c.seed>>>0),maxDot=Math.min(dots.length,Math.floor((preview?2900:10200)*c.density));
  function dot(o,s){
   const radius=1+o.j,p=proj(s,-roofWidth*Math.cos(o.a)*radius,roofHeight*Math.sin(o.a)*radius);
   if(!p||p.x<-24||p.x>width+24||p.y<-24||p.y>height+24)return;
@@ -386,6 +386,7 @@ function render(ctx,w,h,c,frame,preview=false){
   const col=color(o.a/PI,c.colorModeIndex|0);
   ctx.fillStyle=(c.colorModeIndex|0)===0?"#fff":"hsl("+col[0]+","+col[1]+"%,"+col[2]+"%)";
   if(size<.65)ctx.fillRect(p.x,p.y,1,1);
+  else if(ss)ctx.drawImage(ss[i],p.x-size,p.y-size,size*2,size*2);
   else{ctx.beginPath();ctx.arc(p.x,p.y,size*.52,0,TAU);ctx.fill();}
  }
  function marker(s,x,track){
