@@ -281,9 +281,9 @@ function buildModel(c){
  }
  const X=new Float64Array(COUNT),Y=new Float64Array(COUNT),Z=new Float64Array(COUNT),A=new Float64Array(COUNT),G=new Float64Array(COUNT);
  const period=(COUNT-1)*DS,blendStart=period-320;
+ const strength=1.24*Math.tanh(c.turns*.32);
  const angleStart=strength*((1-c.randomness)*Math.sin(.20)+c.randomness*secs[0][2]);
  const gradeStart=c.hills*(.14*Math.sin(.52)+.065*Math.sin(-1.15));
- const strength=1.24*Math.tanh(c.turns*.32);
  let segment=0,prev=0;
  for(let i=0;i<COUNT;i++){
   const s=i*DS;
