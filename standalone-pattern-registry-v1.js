@@ -18,6 +18,8 @@
     // Optional display-only hints for multi-axis gestures that cannot be
     // represented as a single parameter slider (e.g. free camera panning).
     const gestureHints=raw.gestureHints??[];
+    if(raw.tapColorCycle!==undefined&&typeof raw.tapColorCycle!=="boolean")
+      throw error("invalid_tap_color_cycle",raw.id);
     if(raw.tapOverflow!==undefined&&!["wrap","clamp"].includes(raw.tapOverflow))
       throw error("invalid_tap_overflow",raw.id);
     if(raw.tapButtonLabel!==undefined&&
@@ -51,7 +53,7 @@
       }
     }
     schema.colorModeIndex={type:"number",min:0,max:colorModes-1,integer:true};
-    for(const [label,key,min,max,step,gesture,fingers] of raw.controls){
+    for(const [label,key,min,max,step,gesture,fingers,help] of raw.controls){
       // New modules must describe a real gesture: 0=slider only,
       // 1=one finger/tap, 2=two fingers/pinch. Never use a speed factor here.
       if(raw.module&&(!Number.isInteger(fingers)||fingers<0||fingers>2||
@@ -62,6 +64,8 @@
           (gesture==="Тап"&&fingers!==1)||
           (fingers>0&&gesture!=="Тап"&&gesture!=="Пинч"&&!/[↑↓←→]/.test(gesture))))
         throw error("invalid_gesture_contract",raw.id+"/"+key);
+      if(help!==undefined&&(typeof help!=="string"||!help.trim()||help.length>240))
+        throw error("invalid_control_help",raw.id+"/"+key);
       const rule=schema[key];
       if(!label||!rule||rule.type!=="number"||![min,max,step].every(Number.isFinite)||min>max||step<=0||rule.min!==min||rule.max!==max)
         throw error("invalid_control_schema",raw.id+"/"+key);
@@ -77,7 +81,8 @@
       ...(raw.palettes?{palettes:copy(raw.palettes)}:{}),
       module:raw.module||null,
       ...(raw.tapOverflow?{tapOverflow:raw.tapOverflow}:{}),
-      ...(raw.tapButtonLabel?{tapButtonLabel:raw.tapButtonLabel}:{})});
+      ...(raw.tapButtonLabel?{tapButtonLabel:raw.tapButtonLabel}:{}),
+      ...(raw.tapColorCycle!==undefined?{tapColorCycle:raw.tapColorCycle}:{})});
     records.set(p.id,p);
     if(typeof raw.render==="function")renderers.set(p.id,raw.render);
     emit("setka:registry-changed",{patternId:p.id,revision:revision()});return p;
