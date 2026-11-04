@@ -93,10 +93,7 @@
     e.preventDefault();e.stopImmediatePropagation();activate(button.dataset.p);
   },true);
   grip.onclick=()=>close('handle');backdrop.onclick=()=>close('outside');
-  let down=null;
-  grip.addEventListener('pointerdown',e=>{down={id:e.pointerId,y:e.clientY};grip.setPointerCapture?.(e.pointerId)});
-  grip.addEventListener('pointerup',e=>{if(down&&e.pointerId===down.id&&e.clientY-down.y>45)close('handle-swipe');down=null});
-  grip.addEventListener('pointercancel',()=>{down=null});
+  window.SetkaPanelResizeV1?.attach(layer,{handle:grip,minHeight:160});
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&visible()&&!document.querySelector('#st34InfoOverlay,#st34Choice,.modal-backdrop.active'))close('escape')});
   new MutationObserver(queueSync).observe(layer,{attributes:true,attributeFilter:['class'],childList:true,subtree:true});
   new MutationObserver(queueSync).observe(game,{attributes:true,attributeFilter:['class']});
