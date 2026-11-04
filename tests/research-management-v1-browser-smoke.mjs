@@ -119,6 +119,7 @@ try{
  if(!alreadySaved)await other.getByRole('button',{name:'Сохранить текущую конфигурацию',exact:true}).click();
  try{await other.waitForFunction(()=>window.SetkaApp.getFavorites().some(x=>x.baseId==='stereo-dna'));}
  catch(error){console.log('FAVORITE AFTER FAILED ACTION',await other.evaluate(favoriteState));throw error;}
+ await other.waitForFunction(()=>window.SetkaStandaloneV34.getData().settings?.favoriteCollection?.rows?.some(x=>x.baseId==='stereo-dna'||x.patternId==='stereo-dna'));
  await other.locator('#libraryButton').click();await other.locator('#favoritesPagerButton').click();await other.locator('.favorite-tile .st34-info').first().waitFor();
  const heart=await other.locator('.favorite-tile .mini-heart').first().boundingBox(),info=await other.locator('.favorite-tile .st34-info').first().boundingBox();assert.ok(heart.y+heart.height<info.y,'saved heart overlaps the information button');
  console.log('REAL WEB STORAGE QUOTA, INDEXEDDB RETENTION THROUGH STALE TAB/RELOAD, PLAIN NOTES, INLINE MODERATION AND SEPARATE HEART POSITION PASS');
