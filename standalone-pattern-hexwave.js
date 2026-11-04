@@ -365,13 +365,13 @@ function interact(c,event){
  if(c.gestureRegion===1){
   next.waveAmplitude=round(clamp(c.gestureAmpStart-totalY*.15,0,50));
  }else if(c.gestureRegion===2&&Math.abs(totalX)>Math.abs(totalY)){
+  next.dotSize=round(clamp(c.gestureDotStart+totalX*.025,1,40));
+ }else if(c.gestureRegion===3&&Math.abs(totalX)>Math.abs(totalY)){
   const speed=round(clamp(c.gestureSpeedStart+totalX*.0006,.001,.3));
   if(speed!==c.waveSpeed){
    next.wavePhase=round(phaseAt(c,f));next.waveFrame=f;
    next.waveSpeed=speed;
   }
- }else if(c.gestureRegion===3&&Math.abs(totalX)>Math.abs(totalY)){
-  next.dotSize=round(clamp(c.gestureDotStart+totalX*.025,1,40));
  }else if(c.gestureRegion===4&&Math.abs(totalY)>Math.abs(totalX)){
   next.hexRadius=round(clamp(c.gestureHexStart-totalY*.08,2,120));
  }
