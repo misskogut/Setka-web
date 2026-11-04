@@ -60,12 +60,12 @@ test('every automatically discovered pattern renders its real white-on-black sta
    assert.ok(manifest.patterns.some(p=>p.id===pattern.id),'same manifest '+pattern.id);
    function trace(config,frame){
      const strokes=[],fills=[],gradientStops=[],shapes=[];
-     let start,end,totalStrokes=0,lastArc=null,rotation=0;
+     let start,end,totalStrokes=0,lastArc=null,rotation=0,totalArcs=0;
      const ctx={
        save(){},restore(){},translate(){},scale(){},rotate(a){rotation=a},beginPath(){},closePath(){},
        fillRect(x,y,w,h){fills.push(this.fillStyle);
          if(this.fillStyle!=='#000'&&shapes.length<24)shapes.push({kind:'rect',x,y,w,h,color:this.fillStyle})},
-       arc(x,y,r){lastArc={x,y,r}},
+       arc(x,y,r){totalArcs++;lastArc={x,y,r}}, 
        fill(){if(lastArc&&shapes.length<24)shapes.push({kind:'circle',...lastArc,color:this.fillStyle});lastArc=null},
        createLinearGradient(){const stops=[];gradientStops.push(stops);return {__stops:stops,addColorStop(_,v){stops.push(v)}}},
        moveTo(x,y){start=[x,y]},
@@ -73,7 +73,7 @@ test('every automatically discovered pattern renders its real white-on-black sta
        stroke(){totalStrokes++;if(strokes.length<20)strokes.push({start,end,rotation,color:typeof this.strokeStyle==='string'?this.strokeStyle:this.strokeStyle.__stops.slice()});}
      };
      registry.render(ctx,250,250,config,frame,true,pattern.id);
-     return {strokes,fills,gradientStops,totalStrokes,shapes};
+     return {strokes,fills,gradientStops,totalStrokes,totalArcs,shapes};
    }
    // A future unknown package declaring a trail control must show a visibly
    // different, deterministic exposure at a fixed replay frame. This is
@@ -89,7 +89,7 @@ test('every automatically discovered pattern renders its real white-on-black sta
    }
    const a=trace(c,44),b=trace(c,44);
    assert.ok(a.fills.includes('#000'),'real black canvas '+pattern.id);
-   assert.ok(a.strokes.length>4||a.shapes.length>4,'actual dynamic art '+pattern.id);
+   assert.ok(a.strokes.length>4||a.shapes.length>4||a.totalArcs>4,'actual dynamic art including batched dot paths '+pattern.id);
    assert.deepEqual(a,b,'deterministic replay '+pattern.id);
    // Some approved interactive patterns intentionally begin paused. Their
    // animated contract is verified after advancing the signed rotation slider,
@@ -107,7 +107,15 @@ test('every automatically discovered pattern renders its real white-on-black sta
      'the animation moves at nonzero speed '+pattern.id);
    const paint=[...a.strokes.map(st=>st.color).filter(x=>typeof x==='string'),...a.gradientStops.flat(),...a.shapes.map(item=>item.color)];
    assert.ok(paint.length>0,'visible stroke colors '+pattern.id);
-   assert.ok(paint.every(color=>/rgba\(255,255,255,/.test(color)||color==='rgb(255,255,255)'||color==='#fff'),'first frame monochrome '+pattern.id);
+   const mono=color=>/rgba\(255,255,255,/.test(color)||color==='rgb(255,255,255)'||color==='#fff';
+   // A declared RGB displacement halo is not a colored main pattern. Keep the
+   // initial WHITE geometric dots and allow only the three RGB overlay channels.
+   // This generic capability is available to future unknown pattern modules.
+   if(pattern.capabilities?.rgbGlitchOverlay===true&&c.glitchAlpha>0){
+     assert.ok(paint.some(mono),'initial primary dots remain white '+pattern.id);
+     assert.ok(paint.every(color=>mono(color)||['#ff0000','#00ff00','#0000ff'].includes(color)),
+       'only RGB displacement channels may accompany white dots '+pattern.id);
+   }else assert.ok(paint.every(mono),'first frame monochrome '+pattern.id);
  }
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
