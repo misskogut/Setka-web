@@ -40,6 +40,7 @@ try {
   await page.locator('#st34Layer').waitFor({state:'hidden'});
   // Use the same real card pointer handler as the existing v34 smoke suite.
   await page.locator('#allPatternsPanel .pattern-tile[data-pattern-id="tentacle-orbit"]').dispatchEvent('pointerup',{pointerId:491,pointerType:'mouse',bubbles:true});
+  console.log('OPEN DEBUG',await page.evaluate(()=>({view:window.SetkaApp.getState(),active:window.SetkaPatternRegistryV1.isActive('tentacle-orbit'),ready:window.SetkaPatternRegistryV1.ready('tentacle-orbit'),toast:document.querySelector('#toast').textContent,body:document.body.innerText.slice(-1000)})));
   await page.locator('#gameScreen.active').waitFor();
   for(const [width,height] of [[1366,768],[1024,600],[390,844]]){
     await page.setViewportSize({width,height});
