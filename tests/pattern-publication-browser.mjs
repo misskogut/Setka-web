@@ -7,7 +7,7 @@ import {chromium,webkit} from 'playwright';
 import {buildData} from '../research-v1/model.mjs';
 import '../standalone-pattern-registry-v1.js';
 const R=globalThis.SetkaPatternRegistryV1,id='fixture-next-publication';
-const fixture={id,title:'Следующий тестовый паттерн',version:1,colorModes:1,defaults:{radius:5,colorModeIndex:0},controls:[['Радиус','radius',1,20,1,'Слева ↑↓',1]],module:'standalone-pattern-fixture-next-publication.js'};
+const fixture={id,title:'Следующий тестовый паттерн',version:1,colorModes:1,defaults:{radius:5,colorModeIndex:0,launchFrame:0},controls:[['Радиус','radius',1,20,1,'Слева ↑↓',1]],module:'standalone-pattern-fixture-next-publication.js'};
 R.register(fixture);
 const port=49745,base='http://127.0.0.1:'+port;
 const server=spawn('python3',['-m','http.server',String(port),'--bind','127.0.0.1'],{stdio:'ignore'});
@@ -20,11 +20,11 @@ const data=buildData({accounts:[],archives:[],patternCatalog:[]},[]);
 try{
  for(let n=0;n<40;n++){try{if((await fetch(base+'/standalone-v34.html')).ok)break;}catch{}await new Promise(r=>setTimeout(r,100));}
  browser=await(process.env.SETKA_BROWSER==='webkit'?webkit:chromium).launch({headless:true});
- const context=await browser.newContext({viewport:{width:1100,height:900}});
+ const context=await browser.newContext({viewport:{width:1100,height:900},hasTouch:true});
  const errors=[];context.on('page',p=>p.on('pageerror',e=>errors.push(e.message)));
  const installFixtures=async context=>{
  await context.route('**/standalone-pattern-registry-v1.js*',r=>r.fulfill({contentType:'text/javascript',body:fs.readFileSync('standalone-pattern-registry-v1.js','utf8')+'\nwindow.SetkaPatternRegistryV1.register('+JSON.stringify(fixture)+');'}));
- await context.route('**/standalone-pattern-fixture-next-publication.js*',r=>r.fulfill({contentType:'text/javascript',body:`window.SetkaPatternRegistryV1.bindRenderer('${id}',(c,w,h,p,f)=>{c.fillStyle='#000';c.fillRect(0,0,w,h);c.fillStyle='#fff';c.fillRect(w/2+Math.sin(f/20)*20,h/2,p.radius,p.radius);});`}));
+ await context.route('**/standalone-pattern-fixture-next-publication.js*',r=>r.fulfill({contentType:'text/javascript',body:`window.SetkaPatternRegistryV1.bindRenderer('${id}',(c,w,h,p,f)=>{c.fillStyle='#000';c.fillRect(0,0,w,h);c.fillStyle='#fff';c.fillRect(w/2+Math.sin((f-p.launchFrame)/20)*20,h/2,p.radius,p.radius);});window.SetkaPatternRegistryV1.bindInteraction('${id}',(c,e)=>e.type==='gesture'&&e.phase==='start'&&e.fingers===1?{...c,radius:c.radius===20?19:20,launchFrame:e.frame}:e.type==='patch'?{...c,...e.patch}:c);`}));
  await context.route('**/functions/v1/**',async route=>{
   const request=route.request(),cors={'access-control-allow-origin':base,'access-control-allow-credentials':'true','access-control-allow-headers':'content-type,apikey,authorization,x-client-info','access-control-allow-methods':'POST,OPTIONS'};
   if(request.method()==='OPTIONS')return route.fulfill({status:204,headers:cors,body:''});
@@ -44,7 +44,7 @@ try{
    const row=rows.find(r=>r.pattern_id===b.patternId);assert.equal(b.expectedRevision,row.revision);
    row.state=b.state;row.revision=++revision;writes.push(b);out={ok:true,item:row};
   }
-  if(b.action==='save-pattern-defaults'){const item={pattern_id:b.patternId,pattern_version:b.patternVersion,schema_version:b.schemaVersion,config:b.config,revision:1};startupDefaults.push(item);out={ok:true,item};}
+  if(b.action==='save-pattern-defaults'){const index=startupDefaults.findIndex(x=>x.pattern_id===b.patternId),item={pattern_id:b.patternId,pattern_version:b.patternVersion,schema_version:b.schemaVersion,config:b.config,revision:index<0?1:startupDefaults[index].revision+1};if(index<0)startupDefaults.push(item);else startupDefaults[index]=item;out={ok:true,item};}
   if(b.action==='rename-pattern'){const item={pattern_id:b.patternId,title:b.title,revision:2};names.set(b.patternId,item);out={ok:true,item};}
   if(b.action==='overview')out={ok:true,data};
   await route.fulfill({status,headers:cors,contentType:'application/json',body:JSON.stringify(out)});
@@ -136,6 +136,20 @@ try{
  await front.evaluate(()=>window.__SETKA_PATTERN_CATALOG_V1__.refresh());
  assert.equal(await front.evaluate(id=>window.SetkaApp.getPatternDefaults(id).radius,id),20,'inline startup reaches front defaults');
  assert.equal(await tile.locator('canvas').count(),1,'updated shared preview remains available');
+ // A future module's real touch changes the same config as its sliders and
+ // persists its logical clock origin; opening on the other client cannot wait
+ // for an old admin uptime before the recorded launch becomes visible.
+ await quickCard.locator('.pattern-start-editor canvas').tap({position:{x:80,y:70}});
+ assert.equal(await quickCard.getByRole('slider',{name:'Радиус',exact:true}).inputValue(),'19','touch updates the shared slider state');
+ await quickCard.getByRole('button',{name:'Сохранить стартовые настройки',exact:true}).click();
+ await quickCard.getByRole('status').filter({hasText:'Настройки сохранены.'}).waitFor();
+ const touched=startupDefaults.find(x=>x.pattern_id===id).config;
+ assert.ok(touched._startFrame>=touched.launchFrame&&touched.launchFrame>0,'saved origin includes the real touch launch');
+ await front.evaluate(()=>window.__SETKA_PATTERN_CATALOG_V1__.refresh());
+ assert.deepEqual(await front.evaluate(id=>window.SetkaApp.getPatternDefaults(id),id),touched,'second client receives exact touched startup');
+ assert.equal(await front.evaluate(id=>window.SetkaApp.openConfig(window.SetkaApp.getPatternDefaults(id),{type:'base',id,patternId:id}),id),true);
+ await front.locator('#libraryButton').click();
+
  await quickCard.locator('summary').click();
  await editor.locator('.pattern-manage-card[data-pattern-id="'+id+'"] .pattern-order-controls select').selectOption('0');
  await admin.locator('#refresh').click();
@@ -198,6 +212,18 @@ try{
  await admin.locator('.pattern-manage-card[data-pattern-id="'+id+'"]').getByRole('button',{name:'Изменить название',exact:true}).click();
  await admin.getByRole('button',{name:'Сохранить для всех',exact:true}).click();
  await admin.locator('#detail-dialog[open]').waitFor({state:'hidden'});
+ // The approved wave module uses its real double-touch reducer in the editor.
+ const waveCard=admin.locator('.pattern-manage-card[data-pattern-id="hexwave-3d"]');
+ await waveCard.locator('summary').click();const waveCanvas=waveCard.locator('.pattern-start-editor canvas');await waveCanvas.waitFor();
+ await waveCanvas.tap({position:{x:120,y:100}});await waveCanvas.tap({position:{x:120,y:100}});
+ const waveDraft=await waveCanvas.evaluate(c=>JSON.parse(c.dataset.config));assert.equal(waveDraft.waves.length,3,'double tap launches a real wave in admin preview');
+ await waveCard.getByRole('button',{name:'Сохранить стартовые настройки',exact:true}).click();
+ await waveCard.getByRole('status').filter({hasText:'Настройки сохранены.'}).waitFor();
+ const waveStartup=startupDefaults.find(x=>x.pattern_id==='hexwave-3d').config;
+ assert.ok(waveStartup._startFrame>=waveStartup.waves[2],'startup begins after the captured wave launch');
+ await front.evaluate(()=>window.__SETKA_PATTERN_CATALOG_V1__.refresh());
+ assert.deepEqual(await front.evaluate(()=>window.SetkaApp.getPatternDefaults('hexwave-3d')),waveStartup);
+ await waveCard.locator('summary').click();
  // A fresh participant walks the exact visible preview sequence, including
  // multiple unopened algorithms and the future unknown fixture. No production data.
  const navContext=await browser.newContext({viewport:{width:390,height:844}});await installFixtures(navContext);

@@ -216,3 +216,18 @@ test('any future slider-only package cannot synthesize a tap-to-add action',()=>
  const capture=R.snapshot({patternId:id,config:d.defaults,frame:40});
  assert.equal(R.restore(capture).ok,true);
 });
+
+test('startup origin preserves gesture clocks and distinct snapshots for any unknown module',()=>{
+ const R=registry(),id='fixture-startup-clock';R.register(fixture(id));
+ const base=R.defaults(id),originalKey=R.configKey(base,id),anchored={...base,_startFrame:123.5};
+ let rendered,interacted;R.bindRenderer(id,(_ctx,_w,_h,c,f)=>{rendered={c,f}});
+ R.bindInteraction(id,(c,e)=>{interacted=e.frame;return c});
+ R.render({},10,10,anchored,0);assert.equal(rendered.f,123.5);
+ R.interact(id,anchored,{type:'gesture',frame:2});assert.equal(interacted,125.5);
+ assert.equal(R.normalize(anchored,id)._startFrame,123.5);
+ assert.notEqual(R.configKey(anchored,id),originalKey);
+ const snap=R.snapshot({patternId:id,config:anchored,frame:7});assert.equal(R.restore(snap).snapshot.config._startFrame,123.5);
+ assertConfiguration(R.get(id),anchored);
+ for(const value of [-1,Infinity,'12']){assert.throws(()=>R.normalize({...base,_startFrame:value},id));assert.throws(()=>assertConfiguration(R.get(id),{...base,_startFrame:value}));}
+ assert.equal(R.configKey(base,id),originalKey,'legacy configurations remain unchanged');
+});
