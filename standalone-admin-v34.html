@@ -13,7 +13,20 @@
 (() => {
  try {
   const url=new URL(location.href),ticket=url.searchParams.get("owner_ticket")||"";
-  if(!ticket)return;
+  if(!ticket){
+   // A valid legacy owner link wins over a previously stored revoked key.
+   // Resolve it before other scripts initialize and issue authenticated calls.
+   const legacy=new URLSearchParams(url.hash.replace(/^#/,"")).get("access")||"";
+   if(/^SKA-[A-Za-z0-9_-]{40,}$/.test(legacy)){
+    // A failed storage write leaves the fragment for admin-v3.js to handle.
+    try{
+      localStorage.setItem("setka-research:admin-key:v1",legacy);
+      url.hash="";
+      history.replaceState(history.state,"",url.pathname+url.search);
+    }catch(_){}
+   }
+   return;
+  }
   url.searchParams.delete("owner_ticket");
   history.replaceState(history.state,"",url.pathname+url.search+url.hash);
   if(/^SETKA1-[a-zA-Z0-9_-]{64}$/.test(ticket))window.__SETKA_OWNER_TICKET=ticket;
