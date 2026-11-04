@@ -61,7 +61,9 @@ try{
  await front.goto(base+'/standalone-v34.html',{waitUntil:'domcontentloaded'});await front.waitForFunction(()=>!!window.__SETKA_PATTERN_CATALOG_V1__&&!!window.SetkaStandaloneV34.activity);
  assert.equal(await front.locator('.base-tile .setka-new-pattern').count(),await front.evaluate(()=>window.SetkaPatternRegistryV1.ids().length));
  assert.equal(await front.locator('.base-tile .setka-new-pattern').first().innerText(),'new');
- const firstPreview=await front.locator('.base-tile .thumb-canvas').first().evaluate(c=>c.toDataURL());
+ // Zero-speed patterns are allowed to begin paused. Use an animated fixture
+ // for the live-preview assertion rather than assuming the first tile moves.
+ const firstPreview=await front.locator('.base-tile[data-pattern-id="dandelion"] .thumb-canvas').evaluate(c=>c.toDataURL());
  await front.waitForFunction(before=>document.querySelector('.base-tile .thumb-canvas').toDataURL()!==before,firstPreview);
  assert.equal(await front.evaluate(()=>(window.SetkaStandaloneV34.getData().patternExposures||[]).length),0,'animated previews are not recorded views');
 
@@ -84,7 +86,7 @@ try{
  await front.locator('#st34Nav [data-p="symptoms"]').click();await front.locator('.st34-add-state').click();await front.getByRole('button',{name:'Усталость',exact:true}).tap();await front.locator('.st34-state-card').waitFor();
  await front.locator('.st34-mark-btn').click();await front.locator('.st34-mark-editor.open input').fill('6');await front.getByRole('button',{name:'Сохранить отметку',exact:true}).tap();
  await front.getByRole('button',{name:'Проверить сохранение',exact:true}).click();await front.getByText(/Состояния и отметки сохранены в аккаунте/).waitFor();
- const paused=await front.locator('.base-tile .thumb-canvas').first().evaluate(c=>c.toDataURL());await new Promise(r=>setTimeout(r,180));assert.equal(await front.locator('.base-tile .thumb-canvas').first().evaluate(c=>c.toDataURL()),paused,'previews pause behind a sheet');
+ const paused=await front.locator('.base-tile[data-pattern-id="dandelion"] .thumb-canvas').evaluate(c=>c.toDataURL());await new Promise(r=>setTimeout(r,180));assert.equal(await front.locator('.base-tile[data-pattern-id="dandelion"] .thumb-canvas').evaluate(c=>c.toDataURL()),paused,'previews pause behind a sheet');
  await stale.locator('#st34Nav [data-p="today"]').click();assert.ok(await stale.evaluate(()=>JSON.parse((window.SetkaDataScopeV1?.storage||localStorage).getItem('setka-standalone:v34')).symptoms.some(x=>x.name==='Усталость')));
  await front.reload();await front.locator('#st34Nav [data-p="symptoms"]').click();await front.getByText('Усталость',{exact:true}).waitFor();assert.match(await front.locator('.st34-state-now').innerText(),/6\/10/);
  const other=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});other.on('pageerror',e=>errors.push({page:'other-device',message:e.message}));await other.addInitScript(localApiTransport);await other.addInitScript(()=>localStorage.setItem('setka-v40:cabinet-session',JSON.stringify({token:'isolated-fixture-only',testerId:'T-OWNERAAA'})));await other.goto(base+'/standalone-v34.html');await other.waitForFunction(()=>!!window.__SETKA_PRIVATE_CORPUS_V40__);await other.evaluate(()=>window.__SETKA_PRIVATE_CORPUS_V40__.sync());await other.locator('#st34Nav [data-p="symptoms"]').click();await other.getByText('Усталость',{exact:true}).waitFor();assert.match(await other.locator('.st34-state-now').innerText(),/6\/10/);
