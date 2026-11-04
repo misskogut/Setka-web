@@ -71,6 +71,9 @@ These facts are stored *only* as `introducedAt` inside their descriptors. Any fu
 
 | APP-036 | Medusa: preserve the approved original Penner movement and tentacle physics (each arm update uses the prior head before the body advances), default 3 bodies × 10 tentacles × 50 segments, black ground and white first of 9 palettes. Tap/slider can add up to 30 (clamped, never wrap); existing body state/paths remain undisturbed. A one-finger drag can move an individual medusa through the platform's generic pointer hook. Exactly the same package renders gameplay, previews, snapshots and Replay, no per-ID consumer code. | **Implemented as one module + Node regression** `standalone-pattern-medusa.js` / `tests/pattern-medusa.test.mjs`. Full v34 browser and Pages/device release must be verified independently. |
 
+
+| APP-037 | Настройки **каждого** визуального паттерна отображают только ясное название параметра и регулятор, без повторяющихся «Бегунок/Ползунок» возле каждой строки, без заголовка «ТОЛЬКО БЕГУНКОМ», без обязательных видимых дробных/числовых значений. Реальное значение (включая 0,001 и отрицательные диапазоны) поступает в движок без округления; вспомогательная доступная озвучка уровня может быть целым процентом. Для осмысленных жестов показывается только короткая подсказка; не вставлять ложный жест в строки без жестового управления. Все настройки используют один разделяемый компонент, а не per-pattern патчи. | `standalone-pattern-key-v1.js`, `tests/pattern-settings-compact.test.mjs`, Platforms CI + Pages gate. |
+
 **Vocabulary:** `CI enforceable` means an executable guard runs on repository code; `CI partial` means some scenarios are automated but not all devices/accounts; `TARGET` means a required capability is not yet demonstrated. **Never convert TARGET to DONE merely by changing this document.**
 
 ## Rule intake: how every future conversation decision becomes a feature of SETKA
