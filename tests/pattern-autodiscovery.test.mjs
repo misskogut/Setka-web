@@ -60,9 +60,9 @@ test('every automatically discovered pattern renders its real white-on-black sta
    assert.ok(manifest.patterns.some(p=>p.id===pattern.id),'same manifest '+pattern.id);
    function trace(config,frame){
      const strokes=[],fills=[],gradientStops=[],shapes=[];
-     let start,end,totalStrokes=0,lastArc=null;
+     let start,end,totalStrokes=0,lastArc=null,rotation=0;
      const ctx={
-       save(){},restore(){},translate(){},scale(){},rotate(){},beginPath(){},
+       save(){},restore(){},translate(){},scale(){},rotate(a){rotation=a},beginPath(){},closePath(){},
        fillRect(x,y,w,h){fills.push(this.fillStyle);
          if(this.fillStyle!=='#000'&&shapes.length<24)shapes.push({kind:'rect',x,y,w,h,color:this.fillStyle})},
        arc(x,y,r){lastArc={x,y,r}},
@@ -70,7 +70,7 @@ test('every automatically discovered pattern renders its real white-on-black sta
        createLinearGradient(){const stops=[];gradientStops.push(stops);return {__stops:stops,addColorStop(_,v){stops.push(v)}}},
        moveTo(x,y){start=[x,y]},
        lineTo(x,y){end=[x,y]},
-       stroke(){totalStrokes++;if(strokes.length<20)strokes.push({start,end,color:typeof this.strokeStyle==='string'?this.strokeStyle:this.strokeStyle.__stops.slice()});}
+       stroke(){totalStrokes++;if(strokes.length<20)strokes.push({start,end,rotation,color:typeof this.strokeStyle==='string'?this.strokeStyle:this.strokeStyle.__stops.slice()});}
      };
      registry.render(ctx,250,250,config,frame,true,pattern.id);
      return {strokes,fills,gradientStops,totalStrokes,shapes};
@@ -91,7 +91,17 @@ test('every automatically discovered pattern renders its real white-on-black sta
    assert.ok(a.fills.includes('#000'),'real black canvas '+pattern.id);
    assert.ok(a.strokes.length>4||a.shapes.length>4,'actual dynamic art '+pattern.id);
    assert.deepEqual(a,b,'deterministic replay '+pattern.id);
-   assert.notDeepEqual({strokes:a.strokes,shapes:a.shapes},{strokes:trace(c,65).strokes,shapes:trace(c,65).shapes},'the animation actually moves '+pattern.id);
+   // Some approved interactive patterns intentionally begin paused. Their
+   // animated contract is verified after advancing the signed rotation slider,
+   // while the default must remain static, exactly as the preview showed.
+   const rotation=pattern.controls.find(row=>row[1]==='omega');
+   const paused=rotation&&Number(c.omega)===0;
+   const motion=paused?{...c,omega:Math.max(rotation[4],Math.min(rotation[3],.018))}:c;
+   if(paused)assert.deepEqual(trace(c,44),trace(c,65),'zero angular velocity stays still '+pattern.id);
+   assert.notDeepEqual(
+     {strokes:trace(motion,44).strokes,shapes:trace(motion,44).shapes},
+     {strokes:trace(motion,65).strokes,shapes:trace(motion,65).shapes},
+     'the animation moves at nonzero speed '+pattern.id);
    const paint=[...a.strokes.map(st=>st.color).filter(x=>typeof x==='string'),...a.gradientStops.flat(),...a.shapes.map(item=>item.color)];
    assert.ok(paint.length>0,'visible stroke colors '+pattern.id);
    assert.ok(paint.every(color=>/rgba\(255,255,255,/.test(color)||color==='rgb(255,255,255)'||color==='#fff'),'first frame monochrome '+pattern.id);
@@ -295,5 +305,88 @@ test('Rain registers a real deterministic renderer and changes visibly with fram
   assert.notDeepEqual(a,trace(defaults,88),'different frame should move');
   assert.notDeepEqual(a,trace({...defaults,motionMode:2},8),'mode changes the geometry');
   assert.equal(R.restore(R.snapshot({patternId:'rain',config:defaults,frame:8})).ok,true);
+ }finally{fs.rmSync(dir,{recursive:true,force:true});}
+});
+
+
+test('approved Hex Wheel Buddha renders pointy-top XY hexagons and isolated one-finger gestures',()=>{
+ const dir=workspace();
+ try{
+  const {source,manifest}=build(dir),R=loadRegistry(source),id='hex-wheel-buddha';
+  assert.ok(R.has(id),'automatically packaged Buddha Wheel is in public and research registry');
+  assert.ok(manifest.patterns.some(p=>p.id===id),'research catalog carries the same dynamic module');
+  const p=R.get(id),d=R.defaults(id),window={SetkaPatternRegistryV1:R},
+    document={currentScript:{dataset:{patternId:id}}};
+  vm.runInNewContext(fs.readFileSync(path.join(dir,p.module),'utf8'),{window,document,Math});
+  assert.ok(R.ready(id)&&R.hasInteraction(id),'standalone module registers both gameplay and swipe reducer');
+  assert.deepEqual(JSON.parse(JSON.stringify(d)),{
+   patternId:id,omega:0,hexSize:44,strokeW:1.6,angleOffset:0,anchorFrame:0,colorModeIndex:0
+  },'approved initial wheel is white, stationary, 44px, 1.6px');
+  assert.equal(p.controls.length,3,'speed, line thickness and hex size are the only sliders');
+  for(const [key,zone] of [['omega','Снизу'],['strokeW','Сверху'],['hexSize','Слева']]){
+   const row=p.controls.find(x=>x[1]===key);
+   assert.equal(row[6],1,'swipe must be shown as one-finger input on the settings sheet');
+   assert.ok(row[5].startsWith(zone),'swipe zone matches preview');
+  }
+  assert.equal(p.colorModes,9);
+  assert.equal(p.tapColorCycle,true,'triple-tap color cycle remains on native host');
+  assert.deepEqual(JSON.parse(JSON.stringify(p.palettes[0])),[255,255,255]);
+  function trace(config,frame=0,width=320,height=480){
+   const segments=[],fills=[],turns=[],colors=[],translates=[];
+   let begin=null,part=null;
+   const ctx={save(){},restore(){},beginPath(){},closePath(){},
+    fillRect(){fills.push(this.fillStyle)},translate(x,y){translates.push([x,y])},rotate(a){turns.push(a)},
+    scale(){},moveTo(x,y){begin=[x,y]},lineTo(x,y){part=[x,y]},
+    stroke(){segments.push({begin,part,weight:this.lineWidth,color:this.strokeStyle});colors.push(this.strokeStyle)}};
+   R.render(ctx,width,height,config,frame,false,id);
+   return {segments,fills,turns,colors,translates};
+  }
+  const start=trace(d);
+  assert.ok(start.segments.length>4,'real hex grid uses multiple row batches');
+  assert.equal(start.fills[0],'#000');
+  assert.ok(start.colors.every(x=>x==='rgb(255,255,255)'));
+  assert.deepEqual(start.translates[0],[160,240],'central hex anchored at screen center');
+  assert.deepEqual(trace(d,0),trace(d,220),'stationary start matches approved preview');
+  assert.notDeepEqual(trace({...d,omega:.018},0),trace({...d,omega:.018},90),
+   'nonzero speed rotates without becoming screen-space displacement');
+  assert.deepEqual(trace({...d,omega:.018},90),trace({...d,omega:.018},90),
+   'random access immutable note/research Replay is deterministic');
+  assert.notDeepEqual(trace({...d,hexSize:5}),trace({...d,hexSize:120}),
+   'expanded 5–120 size slider changes real geometry');
+  assert.notDeepEqual(trace({...d,strokeW:.5}),trace({...d,strokeW:6}),
+   'stroke slider changes actual line width');
+  assert.ok(trace({...d,colorModeIndex:1}).colors.includes('rgb(201,153,45)'),'original gold palette');
+  assert.ok(trace({...d,colorModeIndex:8},120).colors.some(x=>x.startsWith('rgb(')&&x!=='rgb(255,255,255)'),
+   'mode 9 is continuously shifting unified rainbow');
+  function swipe(c,startX,startY,dx,dy,extra={}){
+   return R.interact(id,c,{type:'gesture',phase:'move',fingers:1,
+    startX,startY,dx,dy,width:390,height:800,frame:100,...extra});
+  }
+  const left=swipe(d,30,740,0,-100);
+  assert.equal(left.hexSize,34,'left-edge swipe up decreases cells even at bottom-left');
+  assert.equal(left.omega,0,'left swipe never changes speed');
+  const down=swipe(d,30,80,0,100);
+  assert.equal(down.hexSize,54,'left-edge swipe down increases cells even at top-left');
+  const bottom=swipe(d,195,740,40,0);
+  assert.ok(Math.abs(bottom.omega-.1)<1e-8,'bottom right swipe accelerates');
+  assert.equal(bottom.strokeW,d.strokeW);
+  const reverse=swipe(bottom,195,740,-80,0);
+  assert.ok(reverse.omega<0,'bottom left swipe reverses rotation');
+  const top=swipe(d,195,70,80,0);
+  assert.equal(top.strokeW,2.4,'top swipe changes stroke thickness');
+  assert.equal(top.omega,0);
+  assert.deepEqual(JSON.parse(JSON.stringify(swipe(d,195,390,100,100))),JSON.parse(JSON.stringify(d)),
+   'center swipe must not trigger a stray zone');
+  assert.deepEqual(JSON.parse(JSON.stringify(R.interact(id,d,{type:'gesture',phase:'move',fingers:2,dx:300,dy:300,width:390,height:800}))),
+   JSON.parse(JSON.stringify(d)),'two-finger swipes do not mix with one-finger actions');
+  const moving={...d,omega:.037,anchorFrame:0,angleOffset:.2};
+  const before=trace(moving,200).turns[0];
+  const patched=R.interact(id,moving,{type:'patch',frame:200,patch:{omega:-.045}});
+  assert.ok(Math.abs(trace(patched,200).turns[0]-before)<1e-8,
+   'changing speed keeps the exact current angle; no snapping');
+  assert.notEqual(trace(patched,220).turns[0],before,'reverse motion works after switching speed');
+  const snap=R.snapshot({patternId:id,config:{...patched,colorModeIndex:8,hexSize:5,strokeW:4},frame:220});
+  assert.ok(R.restore(snap).ok,'all wheel controls replay from saved favorites/notes');
+  assert.equal(R.validate(R.defaults(id),id).ok,true);
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
