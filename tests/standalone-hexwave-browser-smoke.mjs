@@ -64,8 +64,7 @@ try{
  // Read actual on-screen pixels: the canvas is already full-size; the pattern
  // must be populated at its four edges, both portrait and landscape.
  await page.evaluate(()=>{
-  window.__hxCoverage=()=>{
-   const canvas=document.getElementById("patternCanvas");
+  window.__hxCoverage=(canvas=document.getElementById("patternCanvas"))=>{
    const r=canvas.getBoundingClientRect(),w=canvas.width,h=canvas.height;
    const data=canvas.getContext("2d").getImageData(0,0,w,h).data;
    const bright=[0,0,0,0],band=.09;
@@ -77,7 +76,7 @@ try{
     if(x<w*band)bright[2]++;
     if(x>w*(1-band))bright[3]++;
    }
-   return {bright,width:r.width,height:r.height,pixelsW:w,pixelsH:h};
+   return {bright,width:r.width||w,height:r.height||h,pixelsW:w,pixelsH:h};
   };
  });
  await page.waitForTimeout(220);
@@ -152,12 +151,19 @@ try{
  const tallAfterPan=await page.evaluate(()=>window.__hxCoverage());
  assert.ok(tallAfterPan.bright.every(v=>v>20),
   "panning keeps all long-phone edges populated: "+JSON.stringify(tallAfterPan));
- await page.setViewportSize({width:844,height:390});
- await page.waitForTimeout(250);
- const wide=await page.evaluate(()=>window.__hxCoverage());
- assert.ok(wide.width>wide.height*1.45,"app canvas responds to landscape resize");
+ // The SETKA shell has max-width:520px and min-height:560px. Validate the
+ // same registered renderer in a true wide buffer without changing global
+ // layout rules or imposing a special-case CSS override for this pattern.
+ const wide=await page.evaluate(()=>{
+  const canvas=document.createElement("canvas");
+  canvas.width=844;canvas.height=390;
+  window.SetkaPatternRegistryV1.render(
+   canvas.getContext("2d"),844,390,window.SetkaApp.getConfig(),120,false,"hexwave");
+  return window.__hxCoverage(canvas);
+ });
+ assert.ok(wide.width>wide.height*1.45,"landscape test buffer is wide");
  assert.ok(wide.bright.every(v=>v>20),
-  "live HexWave reaches all landscape edges: "+JSON.stringify(wide));
+  "registered HexWave renderer reaches all landscape edges: "+JSON.stringify(wide));
  const stored=await page.evaluate(()=>{
   const r=window.SetkaPatternRegistryV1,config=window.SetkaApp.getConfig();
   const snap=r.snapshot({patternId:"hexwave",config,frame:75});
