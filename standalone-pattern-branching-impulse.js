@@ -485,7 +485,7 @@ function walk(c,f,visitor,withHit=false){
   }
   const a=project(x,y,rot),b=project(endX,endY,rot);
   const span=Math.hypot(endX-x,endY-y);
-  const hit={a,b,s,root,node,depth,dist,propagated,selected,phase,touchPower,collapse,retractMode};
+  const hit={a,b,s,root,node,depth,dist,span,propagated,selected,phase,touchPower,collapse,retractMode};
   visitor(hit);
   const next=dist+span;
   branch(d+opening,s-1,endX,endY,l*.8,root,node*2,depth+1,next,propagated);
