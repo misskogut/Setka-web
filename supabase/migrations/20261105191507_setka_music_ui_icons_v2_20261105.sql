@@ -6,7 +6,7 @@ create table if not exists public.setka_music_ui_icons_v1 (
     'motion-ccw','motion-counter','motion-eight','motion-chaos',
     'motion-spiral','motion-breath','speed-slow','speed-fast','power'
   )),
-  icon_path text not null check (icon_path ~ '^icons/[a-f0-9-]{36}\\.(png|webp)$'),
+  icon_path text not null check (icon_path ~ '^icons/[a-f0-9-]{36}\.(png|webp)$'),
   updated_at timestamptz not null default now()
 );
 alter table public.setka_music_ui_icons_v1 enable row level security;
