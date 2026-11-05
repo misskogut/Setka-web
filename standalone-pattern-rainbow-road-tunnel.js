@@ -482,129 +482,138 @@ function sprites(mode,solid){
  spriteCache.set(key,arr);if(spriteCache.size>27)spriteCache.delete(spriteCache.keys().next().value);
  return arr;
 }
+
 function render(ctx,w,h,c,frame,preview=false){
  const width=Math.max(1,w),height=Math.max(1,h),f=Math.max(0,Number(frame)||0);
  const model=buildModel(c),at=model.at,camS=48+f*12.8*c.speed/60;
- const camera=at(camS),ahead=at(camS+5),horizon=height*.551,eyeHeight=1.55;
- let follow=clamp(c.follow,0,1),extra=Math.max(0,c.follow-1);
- let forward=unit([camera.fx*follow+(1-follow)*0+extra*(ahead.fx-camera.fx),
-                   camera.fy*follow+(1-follow)*0+extra*(ahead.fy-camera.fy),
-                   camera.fz*follow+(1-follow)+extra*(ahead.fz-camera.fz)]);
- let upGuess=unit([camera.ux*follow,camera.uy*follow+(1-follow),camera.uz*follow]);
- let right=unit(cross3(upGuess,forward));
- if(Math.hypot(...right)<.001)right=[camera.rx,camera.ry,camera.rz];
- let up=unit(cross3(forward,right));
- const a=c.yawOffset||0,ca=Math.cos(a),sa=Math.sin(a),initial=forward;
- forward=unit([ca*initial[0]+sa*right[0],ca*initial[1]+sa*right[1],ca*initial[2]+sa*right[2]]);
- right=unit([ca*right[0]-sa*initial[0],ca*right[1]-sa*initial[1],ca*right[2]-sa*initial[2]]);
+ const camera=at(camS),ahead=at(camS+5);
+ const forward0=[camera.fx,camera.fy,camera.fz],follow=clamp(c.follow,0,1),extra=Math.max(0,c.follow-1);
+ let forward=unit(forward0.map((v,i)=>v*follow+(1-follow)*(i===2?1:0)+extra*([ahead.fx,ahead.fy,ahead.fz][i]-v)));
+ const upGuess=unit([camera.ux*follow,camera.uy*follow+1-follow,camera.uz*follow]);
+ let right=unit(cross3(upGuess,forward)),up=unit(cross3(forward,right));
+ const turn=c.yawOffset||0,ca=Math.cos(turn),sa=Math.sin(turn),old=forward;
+ forward=unit(old.map((v,i)=>ca*v+sa*right[i]));
+ right=unit(right.map((v,i)=>ca*v-sa*old[i]));
  up=unit(cross3(forward,right));
- const eye=[camera.x+eyeHeight*camera.ux,camera.y+eyeHeight*camera.uy,camera.z+eyeHeight*camera.uz];
- const focal=Math.min(width*.505,height*.88)/(1+.012*Math.max(0,c.turns-5))/c.zoom;
- const roofWidth=4.70,roofHeight=4.70+6*c.shape;
- const steerX=Number(c.steerX)||0,steerY=Number(c.steerY)||0;
- const framePoints=new Map();
+ const eye=[camera.x+camera.ux*1.55,camera.y+camera.uy*1.55,camera.z+camera.uz*1.55];
+ const horizon=height*.552,focal=Math.min(width*.485,height*.86)/c.zoom;
+ const roofWidth=4.7,roofHeight=4.7+6*c.shape;
+ const sx=(c.steerX||0)*9*clamp(c.turns/6,0,1),
+       sy=(c.steerY||0)*8.7*clamp(c.hills/3,0,1),steering=Math.abs(sx)+Math.abs(sy)>.00001;
+ const frameCache=new Map();
+ const position=s=>{
+  const q=at(s),t=smooth((s-camS)/72);
+  return[q.x+camera.rx*sx*t+camera.ux*sy*t,
+         q.y+camera.ry*sx*t+camera.uy*sy*t,
+         q.z+camera.rz*sx*t+camera.uz*sy*t];
+ };
+ function frameAt(s){
+  if(frameCache.has(s))return frameCache.get(s);
+  const base=at(s);
+  if(!steering){frameCache.set(s,base);return base;}
+  const p=position(s),a=position(s-.26),b=position(s+.26),tf=unit([b[0]-a[0],b[1]-a[1],b[2]-a[2]]);
+  const tu=unit([base.ux,base.uy,base.uz]),tr=unit(cross3(tu,tf)),newUp=unit(cross3(tf,tr));
+  const result={x:p[0],y:p[1],z:p[2],
+   rx:tr[0],ry:tr[1],rz:tr[2],ux:newUp[0],uy:newUp[1],uz:newUp[2],fx:tf[0],fy:tf[1],fz:tf[2]};
+  frameCache.set(s,result);return result;
+ }
  function xyz(s,x,y,pose){
-  let p=pose||framePoints.get(s);
-  if(!p){p=at(s);framePoints.set(s,p)}
-  const t=smooth((s-camS)/42);
-  // Same forward-only touch-bending principle as Neurobridge.
-  const sx=steerX*10.8*t,sy=steerY*10.2*t;
-  return {x:p.x+p.rx*x+p.ux*y+camera.rx*sx+camera.ux*sy,
-          y:p.y+p.ry*x+p.uy*y+camera.ry*sx+camera.uy*sy,
-          z:p.z+p.rz*x+p.uz*y+camera.rz*sx+camera.uz*sy};
+  const p=pose||frameAt(s);
+  return[x*p.rx+y*p.ux+p.x,x*p.ry+y*p.uy+p.y,x*p.rz+y*p.uz+p.z];
  }
  function rel(p){
-  const dx=p.x-eye[0],dy=p.y-eye[1],dz=p.z-eye[2];
-  return {x:dx*right[0]+dy*right[1]+dz*right[2],
-          y:dx*up[0]+dy*up[1]+dz*up[2],
-          z:dx*forward[0]+dy*forward[1]+dz*forward[2]};
+  const d=[p[0]-eye[0],p[1]-eye[1],p[2]-eye[2]];
+  return{x:dot3(d,right),y:dot3(d,up),z:dot3(d,forward)};
  }
  function pc(q){
-  if(q.z<CLIP)return null;const k=focal/q.z;
-  return{x:width*.5+q.x*k,y:horizon-q.y*k,z:q.z};
+  if(q.z<CLIP)return null;
+  const k=focal/q.z;return{x:width*.5+q.x*k,y:horizon-q.y*k,z:q.z};
  }
- function proj(s,x,y,pose){return pc(rel(xyz(s,x,y,pose)))}
- function polygon(vertices){
-  const ps=vertices.map(rel),out=[];
-  for(let i=0;i<ps.length;i++){
-   const a=ps[i],b=ps[(i+1)%ps.length],okA=a.z>=CLIP,okB=b.z>=CLIP;
-   if(okA)out.push(a);
-   if(okA!==okB){const t=(CLIP-a.z)/(b.z-a.z);out.push({x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t,z:CLIP})}
+ function proj(s,x,y,p){return pc(rel(xyz(s,x,y,p)))}
+ function polygon(points,opacity,fill){
+  if(opacity<=0)return false;
+  const verts=points.map(rel),out=[];
+  for(let i=0;i<verts.length;i++){
+   const a=verts[i],b=verts[(i+1)%verts.length],inside=a.z>=CLIP,end=b.z>=CLIP;
+   if(inside)out.push(a);
+   if(inside!==end){
+    const t=(CLIP-a.z)/(b.z-a.z);
+    out.push({x:mix(a.x,b.x,t),y:mix(a.y,b.y,t),z:CLIP});
+   }
   }
-  if(out.length<3)return;
-  ctx.beginPath();out.forEach((q,i)=>{const p=pc(q);if(i)ctx.lineTo(p.x,p.y);else ctx.moveTo(p.x,p.y)});
-  ctx.closePath();ctx.fill();
+  if(out.length<3)return false;
+  ctx.globalAlpha=opacity;ctx.fillStyle=fill;ctx.beginPath();
+  out.forEach((q,i)=>{const p=pc(q);if(i)ctx.lineTo(p.x,p.y);else ctx.moveTo(p.x,p.y)});
+  ctx.closePath();ctx.fill();return true;
  }
  function floor(a,b){
-  if(c.roadOpacity<=0)return;ctx.globalAlpha=c.roadOpacity;ctx.fillStyle="#000";
-  polygon([xyz(b,-roofWidth,0),xyz(b,roofWidth,0),xyz(a,roofWidth,0),xyz(a,-roofWidth,0)]);
+  if(c.roadOpacity<=0)return;
+  polygon([xyz(a,-roofWidth,0),xyz(a,roofWidth,0),xyz(b,roofWidth,0),xyz(b,-roofWidth,0)],c.roadOpacity,"#000");
  }
  function shell(a,b){
-  if(c.opacity<=0)return;ctx.globalAlpha=c.opacity;ctx.fillStyle="#000";
-  for(let j=0;j<ARC;j++){
-   const u=j*PI/ARC,v=(j+1)*PI/ARC;
-   polygon([xyz(b,-roofWidth*Math.cos(u),roofHeight*Math.sin(u)),xyz(b,-roofWidth*Math.cos(v),roofHeight*Math.sin(v)),
-    xyz(a,-roofWidth*Math.cos(v),roofHeight*Math.sin(v)),xyz(a,-roofWidth*Math.cos(u),roofHeight*Math.sin(u))]);
+  if(c.opacity<=0)return;
+  for(let j=0;j<19;j++){
+   const t=j*PI/19,u=(j+1)*PI/19;
+   polygon([xyz(a,-roofWidth*Math.cos(t),roofHeight*Math.sin(t)),
+    xyz(a,-roofWidth*Math.cos(u),roofHeight*Math.sin(u)),
+    xyz(b,-roofWidth*Math.cos(u),roofHeight*Math.sin(u)),
+    xyz(b,-roofWidth*Math.cos(t),roofHeight*Math.sin(t))],c.opacity,"#000");
   }
  }
- const ss=(typeof document.createElement==="function"&&typeof ctx.drawImage==="function")?sprites(c.colorModeIndex|0):null,seed=c.seed>>>0;
+ const spriteAvailable=typeof document.createElement==="function"&&typeof ctx.drawImage==="function";
+ const spriteSheet=spriteAvailable?sprites(c.colorModeIndex|0,c.solid||0):null,seed=c.seed>>>0;
  function dot(o,s){
-  // World-space particle poses are immutable for this route model, so mobile
-  // frames do not recalculate 3D rail orientation for thousands of dots.
-  if(o._trackModel!==model){o._trackModel=model;o._trackPose=at(s)}
-  const radius=1+o.j,p=proj(s,-roofWidth*Math.cos(o.a)*radius,roofHeight*Math.sin(o.a)*radius,o._trackPose);
-  if(!p||p.x<-24||p.x>width+24||p.y<-24||p.y>height+24)return;
-  const size=clamp(focal*o.r/p.z,.16,8.8)*1.65,i=clamp(Math.floor(o.a/PI*59),0,59);
-  const alpha=clamp(o.alpha*c.glow,0,1),col=color(o.a/PI,c.colorModeIndex|0);
-  ctx.fillStyle=(c.colorModeIndex|0)===0?"#fff":"hsl("+col[0]+","+col[1]+"%,"+col[2]+"%)";
-  ctx.globalAlpha=alpha*clamp(.48+size*.2,.45,1);
-  ctx.beginPath();ctx.arc(p.x,p.y,Math.max(.30,size*.34),0,TAU);ctx.fill();
-  if(ss&&size>.5){ctx.globalAlpha=alpha*.76*smooth((size-.5)/1.25);ctx.drawImage(ss[i],p.x-size,p.y-size,size*2,size*2)}
+  // Physical sphere positions are attached to a fixed road slab, not the camera.
+  let pose;
+  if(steering)pose=frameAt(s);
+  else{
+   if(o._trackModel!==model){o._trackModel=model;o._trackPose=at(s)}
+   pose=o._trackPose;
+  }
+  const p=proj(s,-roofWidth*Math.cos(o.a)*.965,roofHeight*Math.sin(o.a)*.965,pose);
+  if(!p||p.x<-35||p.x>width+35||p.y<-35||p.y>height+35)return;
+  const size=clamp(2.9*focal*o.r*c.size/p.z,1.1,30),idx=clamp(Math.floor(o.a/PI*59),0,59);
+  ctx.globalAlpha=clamp(o.alpha*c.glow,0,1);
+  if(spriteSheet)ctx.drawImage(spriteSheet[idx],p.x-size*.5,p.y-size*.5,size,size);
+  else{
+   const rgb=color(o.a/PI,c.colorModeIndex|0);ctx.fillStyle=(c.colorModeIndex|0)===0?"#fff":"hsl("+rgb[0]+","+rgb[1]+"%,"+rgb[2]+"%)";
+   ctx.beginPath();ctx.arc(p.x,p.y,size*.45,0,TAU);ctx.fill();
+  }
  }
- function marker(s,x,track){
-  const p=proj(s,x,.012),prev=proj(s-.10,x,.012),next=proj(s+.10,x,.012);
-  if(!p||!prev||!next||p.x<-30||p.x>width+30||p.y<-30||p.y>height+30)return;
-  const angle=Math.atan2(next.y-prev.y,next.x-prev.x);
-  const wave=Math.max(.50,1+c.pulse*(.20*Math.sin(s*.81+track*1.3)+.09*Math.sin(s*1.38+track)));
-  const natural=(track===1?.060:.082)*focal/p.z*wave,minimum=Math.max(.28,Math.min(width,height)*.0009);
-  const radius=clamp(Math.max(natural,minimum),minimum,13),length=clamp(radius*(track===1?1.45:1.13),minimum,16);
-  const col=c.colorModeIndex===0?[0,0,75]:color(track===0?.08:track===1?.3:.93,c.colorModeIndex|0);
-  ctx.save();ctx.globalAlpha=clamp(.63+natural*.55,.68,1);
-  ctx.translate(p.x,p.y);ctx.rotate(angle);
-  ctx.fillStyle=(c.colorModeIndex|0)===0?"#fff":"hsl("+col[0]+","+col[1]+"%,"+col[2]+"%)";
-  ctx.beginPath();if(typeof ctx.ellipse==="function")ctx.ellipse(0,0,length,radius*.92,0,0,TAU);
-  else ctx.arc(0,0,radius*.92,0,TAU);
-  ctx.fill();ctx.restore();
+ function marker(s){
+  const pulse=Math.max(.5,1+c.pulse*(.11*Math.sin(s*.86)+.09*Math.sin(s*1.3)));
+  const a=s-.17,b=s+.17,fa=frameAt(a),fb=frameAt(b);
+  for(let lane=-1;lane<=1;lane++){
+   const x=lane*3.08,width=.058*pulse;
+   const fill=(c.colorModeIndex|0)===0?"#fff":lane===-1?"#93fb6c":lane===0?"#ff6dab":"#5ddfff";
+   polygon([xyz(a,x-width,.032,fa),xyz(a,x+width,.032,fa),
+    xyz(b,x+width,.032,fb),xyz(b,x-width,.032,fb)],.96,fill);
+  }
  }
  ctx.save();ctx.globalAlpha=1;ctx.fillStyle="#000";ctx.fillRect(0,0,width,height);
- const near=.62,far=preview?108:145,step=preview?2.1:1.3,nSeg=Math.ceil((far-near)/step);
- const buckets=Array.from({length:nSeg},()=>[]),marks=Array.from({length:nSeg},()=>[]);
- const firstCell=Math.floor((camS+near)/SLAB),lastCell=Math.floor((camS+far)/SLAB);
- const perCell=Math.min(SLAB_CAP,Math.floor((preview?42:148)*c.density));
- for(let cell=firstCell;cell<=lastCell;cell++){
-  const cellDots=particles(seed,cell);
+ const near=.56,far=preview?108:146,step=1.75,nSeg=Math.ceil((far-near)/step);
+ const spheresBySegment=Array.from({length:nSeg},()=>[]),marks=Array.from({length:nSeg},()=>[]);
+ const cellStart=Math.floor((camS+near)/SLAB),cellEnd=Math.ceil((camS+far)/SLAB);
+ const perCell=Math.min(SLAB_CAP,Math.floor((preview?43:66)*c.density));
+ for(let cell=cellStart;cell<=cellEnd;cell++){
+  const cloud=particles(seed,cell);
   for(let i=0;i<perCell;i++){
-   const ob=cellDots[i],distance=ob.s-camS;if(distance<near||distance>=far)continue;
-   buckets[Math.min(nSeg-1,Math.floor((distance-near)/step))].push(ob);
+   const o=cloud[i],d=o.s-camS;
+   if(d<near||d>=far)continue;
+   spheresBySegment[Math.min(nSeg-1,Math.floor((d-near)/step))].push(o);
   }
  }
- const gap=.45;
- for(let n=Math.ceil((camS+near)/gap);n<=Math.floor((camS+far)/gap);n++){
-  const s=n*gap,d=s-camS;marks[Math.min(nSeg-1,Math.floor((d-near)/step))].push(s);
+ for(let n=Math.ceil((camS+near)/.65);n*.65<camS+far;n++){
+  const s=n*.65,depth=s-camS;
+  marks[Math.min(nSeg-1,Math.max(0,Math.floor((depth-near)/step)))].push(s);
  }
- // Painter ordering uses eye-space depth of each 3D slab, not just route
- // distance, allowing vertical loops and helices to pass across the view.
- const order=Array.from({length:nSeg},(_,k)=>k);
- order.sort((a,b)=>{
-  const sa=camS+near+(a+.5)*step,sb=camS+near+(b+.5)*step;
-  const pa=proj(sa,0,0),pb=proj(sb,0,0);
-  return (pb?.z||0)-(pa?.z||0);
- });
- for(const k of order){
+ // V15 scene layering: distant black wall/road polygons first, then attached
+ // solid/bokeh spheres and FLAT road markings at their same track segment.
+ for(let k=nSeg-1;k>=0;k--){
   const a=camS+near+k*step,b=a+step;
   shell(a,b);floor(a,b);
-  for(const ob of buckets[k])dot(ob,ob.s);
-  for(const s of marks[k]){marker(s,-3.08,0);marker(s,0,1);marker(s,3.08,2);}
+  for(const o of spheresBySegment[k])dot(o,o.s);
+  for(const s of marks[k])marker(s);
  }
  ctx.restore();
 }
