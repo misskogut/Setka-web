@@ -20,6 +20,7 @@ const tracks=[
  {id:"00000000-0000-4000-8000-000000000003",title:"Ветер",audio_url:audio,icon_key:"wind",category_ids:["eye"],published:true,loop:true}
 ];
 let browser;
+let uiStub=[{slot:"motion-counter",icon_path:"icons/00000000-0000-4000-8000-000000000999.png"}];
 try{
  for(let i=0;i<45;i++){try{if((await fetch(base+"/standalone-v34.html")).ok)break}catch{}await new Promise(r=>setTimeout(r,150))}
  browser=await browserType.launch({headless:true});
@@ -29,7 +30,7 @@ try{
  await page.route("**/functions/v1/**",route=>route.fulfill({status:200,contentType:"application/json",
   headers:{"access-control-allow-origin":"*"},body:JSON.stringify({ok:true,items:[],notes:[],sessions:[],metrics:{},profile:{}})}));
  await page.route("**/functions/v1/setka-music-v1",route=>route.fulfill({status:200,contentType:"application/json",
-  headers:{"access-control-allow-origin":"*"},body:JSON.stringify({ok:true,categories:cats,tracks})}));
+  headers:{"access-control-allow-origin":"*"},body:JSON.stringify({ok:true,categories:cats,tracks,ui_icons:uiStub})}));
  await installPublicationCatalog(page);
  await page.goto(base+"/standalone-v34.html?music=1",{waitUntil:"domcontentloaded"});
  await page.locator("#allPatternsPanel .pattern-tile").first().waitFor();
@@ -52,6 +53,7 @@ try{
  await page.locator(".sm-track").nth(0).click();await page.locator(".sm-track").nth(1).click();
  await page.locator(".sm-category").last().click();
  assert.equal(await page.locator(".sm-source").count(),2,"two active tracks appear on orbits");
+ assert.equal(await page.locator(".sm-motion").nth(3).locator(".sm-asset-icon").count(),1,"server-supplied transparent icon skin displayed as mask");
  await page.screenshot({path:"tests/visual-smoke/music-orbits-"+(process.env.SETKA_BROWSER||"chromium")+".png"});
  await page.locator(".sm-motion").nth(1).click();
  let state=await page.evaluate(()=>window.SetkaMusicV1.state());
@@ -74,7 +76,8 @@ try{
   if(route.request().method()==="OPTIONS")return route.fulfill({status:204,headers:{"access-control-allow-origin":"*","access-control-allow-headers":"content-type,apikey,authorization","access-control-allow-methods":"POST,OPTIONS"}});
   let body={};try{body=route.request().postDataJSON()}catch(_){}
   let out={ok:true};
-  if(body.action==="manage")out={ok:true,categories:cats,tracks:[]};
+  if(body.action==="manage")out={ok:true,categories:cats,tracks:[],ui_icons:uiStub};
+  else if(body.action==="reset-ui-icon"){uiStub=uiStub.filter(x=>x.slot!==body.slot);out={ok:true}};
   else if(body.action==="manage-catalog")out={ok:true,items:[],defaults:[],publication:[]};
   else if(body.action==="overview")out={ok:true,data:buildData({},[])};
   return route.fulfill({status:200,contentType:"application/json",headers:{"access-control-allow-origin":"*"},body:JSON.stringify(out)});
@@ -85,8 +88,13 @@ try{
  await admin.locator("#workspace").waitFor();
  await admin.locator('.nav[data-page="music"]').click();
  await admin.locator(".sm-admin").waitFor();
- assert.equal(await admin.locator(".sm-admin-section").count(),2,"music categories and tracks have separate admin editors");
- assert.equal(await admin.locator(".sm-admin input[type=file]").count(),3,"category icon, track audio and track icon are uploadable");
+ assert.equal(await admin.locator(".sm-admin-section").count(),3,"system icons, music categories and tracks have separate admin editors");
+ assert.equal(await admin.locator(".sm-admin-glyph-card").count(),14,"all system icons have replaceable image upload");
+ assert.equal(await admin.locator(".sm-admin input[type=file]").count(),17,"14 system icons plus category icon, track audio and track icon can be uploaded");
+ assert.equal(await admin.locator(".sm-admin-glyph-card").nth(3).locator(".sm-asset-icon").count(),0,"stock icon is still vector");
+ await admin.getByRole("button",{name:"Вернуть исходный"}).click();
+ await admin.locator(".sm-admin-glyph-card").first().waitFor();
+ assert.equal(await admin.getByRole("button",{name:"Вернуть исходный"}).count(),0,"server reset restored stock glyph");
  assert.equal(await admin.getByText("Опубликовать на фронте",{exact:true}).count(),1);
  await admin.close();
  assert.deepEqual(errors.filter(e=>/setka-music/i.test(e)),[]);
