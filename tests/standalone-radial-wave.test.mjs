@@ -105,11 +105,11 @@ test("all ten sliders survive snapshot and replay; trail does not add blur",()=>
 test("generic gesture dispatcher provides absolute x/y and distinct pointer phases",()=>{
  const host=fs.readFileSync("app-v7-multipattern.js","utf8");
  assert.match(host,/type:"gesture",phase:"move",frame:currentFrame,zone,x,y,dx,dy,fingers/);
- assert.match(host,/pluginPointerPhase\("start",p\.x,p\.y,1\)/);
- assert.match(host,/pluginPointerPhase\("end",touch\.x,touch\.y,1/);
- assert.match(host,/pluginPointerPhase\("start",mouse\.x,mouse\.y,1/);
- assert.match(host,/pluginPointerPhase\("end",mouse\.x,mouse\.y,1/);
- assert.match(host,/if\(fingers!==1\|\|!registry\.hasInteraction\?\.\(runtimePatternId\)\)return false/);
+ assert.match(host,/pluginPointerPhase\("start",p\.x,p\.y,touch\.fingers\)/);
+ assert.match(host,/pluginPointerPhase\("end",touch\.x,touch\.y,touch\.fingers/);
+ assert.match(host,/pluginPointerPhase\("start",mouse\.x,mouse\.y,mouse\.fingers/);
+ assert.match(host,/pluginPointerPhase\("end",mouse\.x,mouse\.y,mouse\.fingers/);
+ assert.match(host,/if\(fingers<1\|\|!registry\.hasInteraction\?\.\(runtimePatternId\)\)return false/);
 });
 
 test("all real gestures and all ten slider explanations are unambiguous",()=>{
