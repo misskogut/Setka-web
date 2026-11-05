@@ -1,3 +1,5 @@
+#libraryScreen.setka-music-open .library-pager .pager-button{opacity:.25!important;filter:none!important}
+#libraryScreen.setka-music-open #setkaMusicPagerButton{opacity:1!important;filter:drop-shadow(0 0 5px rgba(255,255,255,.45))!important}
 /* SETKA Music is an additive page inside the existing library, not a replacement. */
 #libraryScreen #setkaMusicPagerButton svg{width:30px;height:30px;display:block}
 #libraryScreen #setkaMusicPagerButton.active svg{filter:drop-shadow(0 0 7px rgba(255,255,255,.32))}
