@@ -43,6 +43,13 @@
       if(!initial||initial.some(v=>v!==255))throw error("initial_palette_must_be_monochrome",raw.id);
     }
     const defaults=copy({...raw.defaults,patternId:raw.id,colorModeIndex:raw.defaults.colorModeIndex??0});
+    const transientFields=raw.transientFields??[];
+    if(!Array.isArray(transientFields)||transientFields.length>12||
+       new Set(transientFields).size!==transientFields.length||
+       transientFields.some(key=>typeof key!=="string"||!Object.hasOwn(defaults,key)||
+         raw.controls.some(control=>control[1]===key)||
+         typeof defaults[key]!=="number"||!Number.isFinite(defaults[key])))
+      throw error("invalid_transient_field_contract",raw.id);
     const schema=copy(raw.schema||{});
     for(const [key,value] of Object.entries(defaults)){
       if(key==="patternId")continue;
@@ -79,7 +86,7 @@
       defaults,schema,controls:copy(raw.controls),gestureHints:copy(gestureHints),colorModes,capabilities:{...standard,...copy(raw.capabilities||{})},
       aliases:copy(raw.aliases||{}),keyFields:copy(raw.keyFields||null),legacyVersions:copy(raw.legacyVersions||[]),
       ...(raw.palettes?{palettes:copy(raw.palettes)}:{}),
-      module:raw.module||null,
+      module:raw.module||null,transientFields:copy(transientFields),
       ...(raw.tapOverflow?{tapOverflow:raw.tapOverflow}:{}),
       ...(raw.tapButtonLabel?{tapButtonLabel:raw.tapButtonLabel}:{}),
       ...(raw.tapColorCycle!==undefined?{tapColorCycle:raw.tapColorCycle}:{})});
@@ -127,6 +134,11 @@
     }
     return out;
   }
+  function persistentConfig(c,hint=null){
+    const out=normalize(c,hint),p=requirePattern(out.patternId);
+    for(const key of p.transientFields||[])out[key]=copy(p.defaults[key]);
+    return out;
+  }
   function validate(c,hint=null){
     try{const config=normalize(c,hint),p=requirePattern(config.patternId),issues=[];
       for(const k of Object.keys(p.schema))if(Object.hasOwn(c,k)&&JSON.stringify(c[k])!==JSON.stringify(config[k]))issues.push(k);
@@ -140,9 +152,10 @@
   function revision(){let h=2166136261;for(const ch of JSON.stringify([...records.values()]))h=Math.imul(h^ch.charCodeAt(0),16777619);return "registry-3-"+(h>>>0).toString(16)}
   function snapshot(state){
     const id=resolve(state?.config,state?.patternId),p=requirePattern(id);
+    const durable=persistentConfig(state.config,id);
     return freeze({version:3,schemaVersion:SCHEMA,configSchemaVersion:p.schemaVersion,registryRevision:revision(),patternId:id,patternVersion:p.version,
       capturedAt:state.capturedAt||new Date().toISOString(),frame:Number.isFinite(state.frame)?state.frame:0,
-      seed:state.seed??state.config?.seed??null,audio:copy(state.audio||null),configHash:configKey(state.config,id),config:normalize(state.config,id)});
+      seed:state.seed??durable.seed??null,audio:copy(state.audio||null),configHash:configKey(durable,id),config:durable});
   }
   function restore(raw){
     const p=get(raw?.patternId);if(!p)return {ok:false,reason:"unknown_pattern",snapshot:copy(raw)};
@@ -228,7 +241,7 @@
   function isActive(item){const id=identityOf(item);return (!publicCatalog||publishedIds.has(id))&&typeof id==="string"&&records.has(id)}
   function activeItems(rows){return Array.isArray(rows)?rows.filter(isActive):[]}
   const api={schemaVersion:SCHEMA,applyOrder,orderedIds,libraryIds,orderRevision:()=>orderRevision,usePublicCatalog,applyPublication,publicationRevision:()=>publicationRevision,register,get,has:id=>records.has(id),isActive,activeItems,identityOf,ids:()=>[...records.keys()],list:()=>[...records.values()].map(copy),
-    controls:id=>copy(get(id)?.controls||[]),inference,resolve,normalize,validate,configKey,snapshot,restore,revision,bindRenderer,bindInteraction,interact,hasInteraction:id=>interactions.has(id),render,
+    controls:id=>copy(get(id)?.controls||[]),inference,resolve,normalize,persistentConfig,validate,configKey,snapshot,restore,revision,bindRenderer,bindInteraction,interact,hasInteraction:id=>interactions.has(id),render,
     ready:id=>renderers.has(id),supports:(id,feature)=>get(id)?.capabilities?.[feature]===true,
     title:id=>titles.get(id)?.title||get(id)?.title||id||"Неизвестный паттерн",setTitles,
     defaults:id=>copy(overrides.get(id)?.config||get(id)?.defaults||null),applyDefaults,
