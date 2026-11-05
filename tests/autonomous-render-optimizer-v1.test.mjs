@@ -83,3 +83,13 @@ test("sparse-line art is automatically protected from resolution reduction",()=>
   assert.equal(p.resolutionScale,1,"small numbers of lines must never disappear");
   assert.equal(p.limitation,"renderer-bound","report a true algorithm bottleneck instead");
 });
+
+test("an expensive future renderer yields to neighboring previews without losing its turn",()=>{
+  const {engine,setTime,el}=setup(),heavy=[el(),{patternId:"expensive-future"}],light=[el(),{patternId:"ordinary-future"}];
+  setTime(100);engine.paint("library",heavy[0],heavy[1].patternId,100,()=>{setTime(190)});
+  setTime(230);const admitted=engine.choose("library",[heavy,light],230);
+  assert.equal(admitted.length,1);assert.equal(admitted[0],light);
+  const duplicate=[el(),heavy[1]];
+  assert.equal(engine.choose("auxiliary",[duplicate],230).length,0,"same expensive renderer shares its preview budget across surfaces");
+  setTime(560);assert.equal(engine.choose("library",[heavy],560)[0],heavy,"costly live thumbnail gets another turn after cooldown");
+});
