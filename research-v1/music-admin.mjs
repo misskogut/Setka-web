@@ -1,4 +1,5 @@
 import {ICON_NAMES,iconSvg} from "../standalone-music-icons-v1.mjs?v=2";
+import {selectedMusicCategorySVG} from "../standalone-music-approved-icons-v1.mjs";
 import {UI_ICON_SLOTS,uiIconHTML,assetIconMask} from "../standalone-music-ui-icons-v2.mjs";
 const API="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-music-v1";
 const PUBLIC="https://gfchgaphzhxufwdhrcis.supabase.co/storage/v1/object/public/setka-music/";
@@ -137,7 +138,7 @@ export function mountMusicAdmin(container,getAdminKey){
   const icon=field(form,"Иконка PNG / SVG / WebP (необязательно)",input("file"));icon.accept=".png,.svg,.webp,image/png,image/svg+xml,image/webp";
   const note=el("p","muted",c.icon_path?"Текущая иконка сохранена. Не выбирайте новый файл, чтобы оставить её.":"Без файла используется встроенный символ SETKA.");
   const iconPreview=el("div","sm-admin-preview-icon");
-  iconPreview.innerHTML=assetIconMask(c.icon_path)||iconSvg(c.id||"hand");
+  iconPreview.innerHTML=assetIconMask(c.icon_path)||selectedMusicCategorySVG(c.id||"hand")||iconSvg(c.id||"hand");
   form.append(iconPreview);
   const msg=el("p","sm-admin-feedback");const save=btn("Сохранить категорию",()=>{});
   save.onclick=async()=>{

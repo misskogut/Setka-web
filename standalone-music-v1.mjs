@@ -1,4 +1,5 @@
 import {iconSvg} from "./standalone-music-icons-v1.mjs?v=2";
+import {selectedMusicCategorySVG} from "./standalone-music-approved-icons-v1.mjs";
 import {uiIconHTML,assetIconMask,UI_ICON_IDS} from "./standalone-music-ui-icons-v2.mjs";
 import {SetkaMusicMixer} from "./standalone-music-audio-v1.mjs";
 import {createOrbitUI} from "./standalone-music-orbits-v1.mjs?v=2";
@@ -44,7 +45,7 @@ function redrawCategories(){
  for(const c of categories.filter(c=>c.visible!==false)){
   const b=document.createElement("button");b.type="button";
   b.className="sm-category"+(selected===c.id?" active":"");b.setAttribute("aria-label",c.title);
-  b.innerHTML=assetIconMask(c.icon_path)||iconSvg(c.id==="8d"?"8d":c.id);
+  b.innerHTML=assetIconMask(c.icon_path)||selectedMusicCategorySVG(c.id)||iconSvg(c.id==="8d"?"8d":c.id);
   b.onclick=()=>{selected=selected===c.id?null:c.id;redraw()};
   categoriesRow.append(b);
  }
