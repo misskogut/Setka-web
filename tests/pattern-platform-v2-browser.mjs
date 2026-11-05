@@ -254,7 +254,8 @@ try{
  assert.equal(await page.locator('.base-tile').count(),R.list().length,'every existing/new algorithm appears without UI edits');
  for(const id of fixtures.map(p=>p.id)){
   const tile=page.locator(`.base-tile[data-pattern-id="${id}"] canvas`);await tile.scrollIntoViewIfNeeded();const image=await tile.evaluate(c=>c.toDataURL());
-  await page.waitForFunction(({id,image})=>document.querySelector(`.base-tile[data-pattern-id="${id}"] canvas`)?.toDataURL()!==image,{id,image});
+  try{await page.waitForFunction(({id,image})=>document.querySelector(`.base-tile[data-pattern-id="${id}"] canvas`)?.toDataURL()!==image,{id,image});}
+  catch(e){console.error('LIVE PREVIEW DIAGNOSTICS',id,errors,await page.evaluate(id=>{const c=document.querySelector(`.base-tile[data-pattern-id="${id}"] canvas`);return {rect:c?.getBoundingClientRect()?.toJSON(),hidden:document.hidden,game:document.getElementById('gameScreen')?.classList.contains('active'),viewport:[innerWidth,innerHeight],optimizer:window.SetkaAutoOptimizerV1?.status?.()};},id));throw e;}
   await page.evaluate(id=>{const S=window.SetkaApp;S.openConfig(S.getPatternDefaults(id),{type:'exact',id,patternId:id})},id);
   await page.locator('#gameScreen.active').waitFor();
   if(id==='fixture-shapes')await page.evaluate(()=>window.SetkaStandaloneV34.startSession({requestKey:'focus',preState:3,plannedSeconds:600}));

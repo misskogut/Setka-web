@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 const source=fs.readFileSync('standalone-pattern-gravity-cubes.js','utf8');
 const descriptor=JSON.parse(source.match(/SETKA_PATTERN_DESCRIPTOR\n([\s\S]*?)\nEND_SETKA_PATTERN_DESCRIPTOR/)[1]);
-function load(){const context={window:{SetkaPatternRegistryV1:{has:()=>true,bindRenderer(){},bindInteraction(){}}},document:{currentScript:{dataset:{patternId:descriptor.id}}}};vm.createContext(context);vm.runInContext(source.replace('registry.bindRenderer(id,render);','window.inspectCubes={at,interact,render};registry.bindRenderer(id,render);'),context);return context.window.inspectCubes;}
+function load(){const context={window:{SetkaPatternRegistryV1:{has:()=>true,bindRenderer(){},bindInteraction(){}}},document:{currentScript:{dataset:{patternId:descriptor.id}}}};vm.createContext(context);vm.runInContext(source.replace('registry.bindRenderer(id,render);','window.inspectCubes={at,interact,render,cursors:()=>[...simulations.values()].flatMap(s=>s.cursors.map(c=>c.sim.frame))};registry.bindRenderer(id,render);'),context);return context.window.inspectCubes;}
 const config={...descriptor.defaults,count:200};
 const span=b=>Math.max(...b.map(b=>b.position.length()));
 test('solid cube package fills the entire initial volume, scatters to unequal depths, and has repeatable random-access replay',()=>{
@@ -20,3 +20,8 @@ test('solid cube package fills the entire initial volume, scatters to unequal de
 });
 test('pointer rotation, pinch zoom and settings use durable isolated config fields',()=>{const {interact}=load();const move=interact(config,{type:'gesture',phase:'move',fingers:1,dx:50,dy:-25});assert.equal(move.yaw,.2);assert.equal(move.pitch,-.1);assert.equal(move.blast,config.blast);const pinch=interact(move,{type:'gesture',phase:'move',fingers:2,pinchDistance:120,previousPinchDistance:100});assert.equal(pinch.zoom,1.2);assert.equal(pinch.yaw,move.yaw);assert.equal(interact(config,{type:'patch',patch:{gravity:2}}).gravity,2);});
 test('physics runtime is bundled and renders opaque cube silhouettes without runtime network or timers',()=>{const body=source.slice(source.indexOf('END_SETKA_PATTERN_DESCRIPTOR */'));assert.doesNotMatch(body,/\b(?:fetch|requestAnimationFrame|setInterval|setTimeout)\s*\(/);assert.match(body,/new C\.Box/);assert.match(body,/ctx\.fillStyle='#000';ctx\.fill\(\)/);assert.match(body,/world\.step\(dt\)/);});
+
+test('interleaved canvas seeks retain separate forward simulation cursors',()=>{
+ const m=load();m.at(config,90);m.at(config,10);m.at(config,91);m.at(config,11);
+ assert.equal(JSON.stringify(m.cursors()),'[91,11]','both surfaces advance without replaying from zero');
+});

@@ -13229,9 +13229,22 @@ function hull(a){a.sort((a,b)=>a[0]-b[0]||a[1]-b[1]);const cross=(a,b,c)=>(b[0]-
 // Derived simulation/snapshot caches only. A fresh context seeks from the same seed at fixed 180 Hz;
 // frame/config are the sole input, wall-clock history and random draws outside the seeded engine are absent.
 const simulations=new Map();
-function at(c,target){const key=[c.seed,c.count,c.size,c.spread,c.gravity,c.blast,c.spin].join('|');let state=simulations.get(key);if(!state){state={sim:createSimulation(c),shots:new Map()};simulations.set(key,state);while(simulations.size>3)simulations.delete(simulations.keys().next().value)}
-if(state.shots.has(target))return state.shots.get(target);if(state.sim.frame>target)state.sim=createSimulation(c);state.sim.advance(target);
-const shot=state.sim.bodies.map(b=>({half:b.half,position:b.position.clone(),quaternion:b.quaternion.clone()}));state.shots.set(target,shot);while(state.shots.size>12)state.shots.delete(state.shots.keys().next().value);return shot;}
+let access=0;
+function at(c,target){
+ const key=[c.seed,c.count,c.size,c.spread,c.gravity,c.blast,c.spin].join('|');
+ let state=simulations.get(key);
+ if(!state){state={cursors:[],shots:new Map()};simulations.set(key,state);while(simulations.size>3)simulations.delete(simulations.keys().next().value)}
+ if(state.shots.has(target))return state.shots.get(target);
+ // Multiple surfaces can render the same config at different frame anchors.
+ // Keep a small cursor pool so alternating canvases do not seek from zero.
+ let cursor=null;
+ for(const candidate of state.cursors)if(candidate.sim.frame<=target&&(!cursor||candidate.sim.frame>cursor.sim.frame))cursor=candidate;
+ if(!cursor){cursor={sim:createSimulation(c),used:0};state.cursors.push(cursor);if(state.cursors.length>3){const oldest=state.cursors.reduce((a,b)=>a===cursor||b!==cursor&&b.used<a.used?b:a);state.cursors.splice(state.cursors.indexOf(oldest),1)}}
+ cursor.used=++access;cursor.sim.advance(target);
+ const shot=cursor.sim.bodies.map(b=>({half:b.half,position:b.position.clone(),quaternion:b.quaternion.clone()}));
+ state.shots.set(target,shot);while(state.shots.size>12)state.shots.delete(state.shots.keys().next().value);
+ return shot;
+}
 function render(ctx,width,height,c,frame,preview=false){const w=Math.max(1,width),h=Math.max(1,height),yaw=c.yaw,pitch=c.pitch,zoom=c.zoom,p=c;
 const target=Math.max(0,Math.floor((Number(frame)||0)*c.speed));const bodies=at(c,target),vertex=new C.Vec3();ctx.save();
 ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);const ca=Math.cos(yaw),sa=Math.sin(yaw),cb=Math.cos(pitch),sb=Math.sin(pitch),distance=2350,focal=Math.min(w,h)*1.3*zoom;
