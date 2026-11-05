@@ -1,4 +1,4 @@
-import {mountMusicAdmin} from './music-admin.mjs?v=3-approved-icons';
+import {mountMusicAdmin} from './music-admin.mjs?v=4-sleep-align-20261106';
 import {mountPatternOrder} from './pattern-order.mjs';
 import {mountPublication,publicationLabel} from './publication.mjs';
 import {mountPatternEditor} from './pattern-editor.mjs';

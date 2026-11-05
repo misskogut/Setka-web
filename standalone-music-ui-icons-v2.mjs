@@ -1,4 +1,4 @@
-import {selectedMusicCategorySVG} from "./standalone-music-approved-icons-v1.mjs";
+import {selectedMusicCategorySVG} from "./standalone-music-approved-icons-v1.mjs?v=sleep-align-20261106";
 // SETKA Music · mono vector controls v2. A single 24x24 stroke grammar.
 // The glow belongs to UI state, never to the image: uploaded transparent art
 // is used as an alpha mask and inherits currentColor (white/gray).
