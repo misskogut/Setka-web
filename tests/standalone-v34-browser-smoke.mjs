@@ -68,19 +68,32 @@ async function go(){
   // the active page and can intercept the later first pattern-info tap.
   const headingGap=await page.evaluate(()=>{
     const bar=document.getElementById("st34CommunityModes");
+    const wrap=document.getElementById("librarySwipeArea");
+    const topBefore=wrap.getBoundingClientRect().top;
     const wasHidden=bar.classList.contains("hidden");
     bar.classList.remove("hidden");
     try{
       const title=document.getElementById("libraryTitle").getBoundingClientRect();
       const tabs=bar.getBoundingClientRect();
+      const firstPattern=document.querySelector("#allPatternsPanel .pattern-tile")?.getBoundingClientRect();
       const btns=[...bar.querySelectorAll("button")];
       return{gap:tabs.top-title.bottom,buttons:btns.length,tabWidth:tabs.width,
-        lastRight:btns.at(-1)?.getBoundingClientRect().right||0};
+        lastRight:btns.at(-1)?.getBoundingClientRect().right||0,
+        contentShift:wrap.getBoundingClientRect().top-topBefore,
+        gapBeforeGrid:(firstPattern?.top??tabs.bottom)-tabs.bottom,
+        baselineDifference:document.getElementById("communityPanel").getBoundingClientRect().top-
+          document.getElementById("allPatternsPanel").getBoundingClientRect().top};
     }finally{if(wasHidden)bar.classList.add("hidden")}
   });
   assert.ok(headingGap.gap>=9,
     "community filters must sit BELOW title with a readable gap: "+JSON.stringify(headingGap));
   assert.equal(headingGap.buttons,4,"all community filters must remain available");
+  assert.ok(Math.abs(headingGap.contentShift)<1,
+    "community filter row must not shift the pattern grid down: "+JSON.stringify(headingGap));
+  assert.ok(headingGap.gapBeforeGrid>=3,
+    "community filters must not overlap the first thumbnail row: "+JSON.stringify(headingGap));
+  assert.ok(Math.abs(headingGap.baselineDifference)<1,
+    "community and mother pattern panels must start at exactly the same vertical position");
   console.log("LIBRARY ICON ALIGNMENT / NO SWIPE HINT / COMMUNITY TAB GAP PASS",navGeometry,headingGap);
   const tiles=page.locator("#allPatternsPanel .pattern-tile");
   const result=[];
