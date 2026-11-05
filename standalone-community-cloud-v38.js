@@ -9,10 +9,19 @@
 
   const style=document.createElement("style");
   style.textContent=`
-    /* The pager above has margin-bottom:30px. Adjacent block margins collapse,
-       so a small positive margin-top does not move this row. 42px creates
-       a real 12px additional title-to-tabs gap on iPhone Safari. */
-    #st34CommunityModes{gap:5px!important;margin:42px auto 14px!important;flex-wrap:nowrap!important}
+    /* Keep the community filters independent of the library content flow.
+       If the filters occupy a normal row, every community tile starts ~90px
+       below its matching mother-pattern tile. Anchor them between the heading
+       and the common thumbnail baseline; preserve all four filter controls. */
+    #libraryScreen #st34CommunityModes{
+      position:absolute!important;top:calc(var(--safe-top) + 133px)!important;
+      left:50%!important;transform:translateX(-50%)!important;
+      margin:0!important;max-width:calc(100% - 18px);
+      gap:5px!important;flex-wrap:nowrap!important;z-index:8;
+    }
+    @media(min-width:768px) and (max-height:650px){
+      #libraryScreen #st34CommunityModes{top:89px!important}
+    }
     #st34CommunityModes button{height:31px!important;padding:0 9px!important;font-size:9px!important;white-space:nowrap!important}
     #communityPanel .st40-community-meta,#st40CommunityMetrics,#st40CommunityTabs{display:none!important}
     #st40CommunityNotes{grid-column:1/-1;display:block;width:100%;padding:0 2px calc(env(safe-area-inset-bottom,0px) + 130px)}
