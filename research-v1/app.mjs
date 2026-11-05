@@ -1,4 +1,4 @@
-import {mountMusicAdmin} from './music-admin.mjs';
+import {mountMusicAdmin} from './music-admin.mjs?v=2';
 import {mountPatternOrder} from './pattern-order.mjs';
 import {mountPublication,publicationLabel} from './publication.mjs';
 import {mountPatternEditor} from './pattern-editor.mjs';
