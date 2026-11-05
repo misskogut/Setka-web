@@ -1,3 +1,4 @@
+import {mountMusicAdmin} from './music-admin.mjs';
 import {mountPatternOrder} from './pattern-order.mjs';
 import {mountPublication,publicationLabel} from './publication.mjs';
 import {mountPatternEditor} from './pattern-editor.mjs';
@@ -33,7 +34,7 @@ const personButton=id=>btn(person(id)?.label||'Участник','person',id);
 const section=(title,body,extra='')=>`<article class="card"><div class="section-header"><h2>${esc(title)}</h2>${extra}</div>${body}</article>`;
 const table=(head,rows)=>`<div class="table-wrap"><table><thead><tr>${head.map(x=>`<th>${esc(x)}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(x=>`<td>${x}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
 const technical=o=>`<details><summary>Технические сведения и источники</summary><pre>${esc(JSON.stringify(o,null,2))}</pre></details>`;
-const NAV={home:['01 / ОБЗОР','Главная','Общая картина использования приложения.'],sessions:['02 / ВОСПРОИЗВЕДЕНИЕ','Сессии и Replay','От выбора сессии — к зарегистрированным состояниям экрана.'],participants:['03 / УЧАСТНИКИ','Участники','Цельная история аккаунта и подтверждённых связей устройств.'],patterns:['04 / ВИЗУАЛЬНЫЕ ПАТТЕРНЫ','Паттерны','Общие показатели сообщества и конкретные конфигурации.'],community:['05 / ПУБЛИКАЦИИ','Сообщество','Опубликованные варианты, заметки и очередь модерации.'],research:['06 / НАБЛЮДЕНИЯ','Исследования','Состояния, поведение и проверяемые гипотезы.']};
+const NAV={home:['01 / ОБЗОР','Главная','Общая картина использования приложения.'],sessions:['02 / ВОСПРОИЗВЕДЕНИЕ','Сессии и Replay','От выбора сессии — к зарегистрированным состояниям экрана.'],participants:['03 / УЧАСТНИКИ','Участники','Цельная история аккаунта и подтверждённых связей устройств.'],patterns:['04 / ВИЗУАЛЬНЫЕ ПАТТЕРНЫ','Паттерны','Общие показатели сообщества и конкретные конфигурации.'],community:['05 / ПУБЛИКАЦИИ','Сообщество','Опубликованные варианты, заметки и очередь модерации.'],music:['07 / АУДИО','Музыка','Музыкальная библиотека и публикация звуков.'],research:['06 / НАБЛЮДЕНИЯ','Исследования','Состояния, поведение и проверяемые гипотезы.']};
 let adminKey='',data=null,page='home',busy=false,player=null,animation=0,renderToken=0,sessionKind='measured',communityTab='patterns',researchTab='outcomes',selectedPattern=null,participantsTab='people';
 let filters={scope:'current',from:null,to:null};
 const registry=globalThis.SetkaPatternRegistryV1;
@@ -85,7 +86,7 @@ function setPeriod(){
 }
 function navigate(next){inlineEditors.clear();if(!NAV[next])return;page=next;history.replaceState(null,'',`#${next}`);document.querySelectorAll('.nav').forEach(b=>b.classList.toggle('selected',b.dataset.page===page));$('page-number').textContent=NAV[page][0];$('page-title').textContent=NAV[page][1];$('page-description').textContent=NAV[page][2];render();}
 function render(){if(!data||orderDraft.saving||orderDraft.dragging||inlineEditors.size)return;stopPreviews();renderToken++;const view=sliceData(data,filters);$('notice').innerHTML=`${accessWarning?`<div class="notice" role="status">${esc(accessWarning)}</div>`:''}<div class="notice">${filters.scope==='current'?'Показаны только данные вошедших аккаунтов. Гостевая история хранится на устройстве и здесь не учтена.':filters.scope==='history'?'Исторические записи показаны отдельно. Гостевое устройство не равно отдельному человеку.':'Аккаунты и исторические устройства показаны вместе. Неподтверждённые личности не объединены.'}${data.sources.some(s=>!s.ok||s.truncated)?' Часть источников недоступна — откройте диагностику.':''}${catalogError?' Каталог паттернов не подтверждён сервером: названия и стартовые настройки могут быть устаревшими.':''}${lastError?' Данные устарели: обновление не удалось.':''}</div>`;
-  ({home:homePage,sessions:sessionsPage,participants:participantsPage,patterns:patternsPage,community:communityPage,research:researchPage}[page])(view);
+  ({home:homePage,sessions:sessionsPage,participants:participantsPage,patterns:patternsPage,community:communityPage,research:researchPage,music:()=>mountMusicAdmin($('content'),()=>adminKey)}[page])(view);
   bind($('content'));startPreviews();
 }
 function bind(root){root.querySelectorAll('[data-action]').forEach(b=>b.onclick=()=>{
