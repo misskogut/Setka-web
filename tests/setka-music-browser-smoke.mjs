@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {spawn} from "node:child_process";
 import {mkdir} from "node:fs/promises";
 import {chromium,webkit} from "playwright";
+import {installPublicationCatalog} from "./publication-fixture.mjs";
 const port=49417,base="http://127.0.0.1:"+port,server=spawn("python3",["-m","http.server",String(port),"--bind","127.0.0.1"],{stdio:"ignore"});
 const browserType=process.env.SETKA_BROWSER==="webkit"?webkit:chromium;
 function wav(){
@@ -28,6 +29,7 @@ try{
   headers:{"access-control-allow-origin":"*"},body:JSON.stringify({ok:true,items:[],notes:[],sessions:[],metrics:{},profile:{}})}));
  await page.route("**/functions/v1/setka-music-v1",route=>route.fulfill({status:200,contentType:"application/json",
   headers:{"access-control-allow-origin":"*"},body:JSON.stringify({ok:true,categories:cats,tracks})}));
+ await installPublicationCatalog(page);
  await page.goto(base+"/standalone-v34.html",{waitUntil:"domcontentloaded"});
  await page.locator("#allPatternsPanel .pattern-tile").first().waitFor();
  await page.locator("#setkaMusicPagerButton").click();
