@@ -1,4 +1,4 @@
-import {ICON_NAMES,iconSvg} from "../standalone-music-icons-v1.mjs";
+import {ICON_NAMES,iconSvg} from "../standalone-music-icons-v1.mjs?v=2";
 import {UI_ICON_SLOTS,uiIconHTML,assetIconMask} from "../standalone-music-ui-icons-v2.mjs";
 const API="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-music-v1";
 const PUBLIC="https://gfchgaphzhxufwdhrcis.supabase.co/storage/v1/object/public/setka-music/";
