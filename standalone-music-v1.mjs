@@ -71,13 +71,13 @@ async function reload(){
  loading=false;redraw();
 }
 function openMusic(){
- visible=true;patternPanels.hidden=true;patternPanels.style.display="none";root.hidden=false;
+ visible=true;root.parentElement?.classList.add("setka-music-open");patternPanels.hidden=true;patternPanels.style.display="none";root.hidden=false;
  title.textContent="Музыка";
  for(const b of document.querySelectorAll(".library-pager .pager-button"))b.classList.toggle("active",b===note);
  redraw();reload();
 }
 function hideMusic(){
- if(!visible)return;visible=false;root.hidden=true;patternPanels.hidden=false;patternPanels.style.display="";
+ if(!visible)return;visible=false;root.parentElement?.classList.remove("setka-music-open");root.hidden=true;patternPanels.hidden=false;patternPanels.style.display="";
  note.classList.remove("active");
 }
 function install(){
