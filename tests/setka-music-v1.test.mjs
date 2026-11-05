@@ -8,6 +8,7 @@ const file=name=>readFileSync(new URL(name,root),"utf8");
 test("music is mounted additively, without replacing pattern renderer or bottom nav",()=>{
  const html=file("standalone-v34.html");
  assert.match(html,/standalone-music-v1\.mjs/);
+ assert.match(file("standalone-music-v1.mjs"),/get\("music"\)!=="1"/);
  assert.match(html,/standalone-music-v1\.css/);
  assert.match(html,/id="allPatternsPanel"/);
  assert.match(html,/id="librarySwipeArea"/);
