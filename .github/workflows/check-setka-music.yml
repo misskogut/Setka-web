@@ -49,6 +49,7 @@ jobs:
           node-version: "22"
       - run: npm install --no-save --ignore-scripts playwright@1.62.1
       - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - run: node scripts/build-pattern-manifest.mjs
       - run: node tests/setka-music-browser-smoke.mjs
         env:
           SETKA_BROWSER: ${{ matrix.browser }}
