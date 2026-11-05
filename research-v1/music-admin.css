@@ -1,0 +1,23 @@
+/* SETKA Research Admin — additional music editor, no legacy panel changes. */
+.sm-admin{display:grid;gap:26px;max-width:1150px}
+.sm-admin-section{background:#fff;border:1px solid #e5e5e2;border-radius:16px;padding:22px}
+.sm-admin-section h2{font-size:22px;margin:0 0 16px}
+.sm-admin-section .row{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:16px}
+.sm-admin-section .row button{font-size:12px;padding:8px 10px}
+.sm-admin-form{border-top:1px solid #e8e8e5;margin-top:12px;padding-top:15px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.sm-admin-form h3{grid-column:1/-1;font-size:16px;margin:0 0 3px}
+.sm-admin-form .sm-admin-field{display:flex;flex-direction:column;gap:6px;min-width:0;color:#555}
+.sm-admin-form input:not([type="checkbox"]),.sm-admin-form select{width:100%;padding:9px;border:1px solid #d6d6d6;border-radius:8px}
+.sm-admin-form input[type="checkbox"]{width:18px;height:18px;align-self:flex-start}
+.sm-admin-form button{justify-self:start;align-self:end}
+.sm-admin-form .sm-admin-feedback,.sm-admin-form>p,.sm-admin-cats{grid-column:1/-1}
+.sm-admin-feedback{color:#444;min-height:1.5em}
+.sm-admin-cats{border:1px solid #ddd;border-radius:9px;display:flex;flex-wrap:wrap;gap:10px;padding:10px 14px}
+.sm-admin-cats label{display:flex;flex-direction:row;align-items:center;gap:6px}
+.sm-admin-track-list{display:grid;gap:8px}
+.sm-admin-track{display:flex;flex-wrap:wrap;align-items:center;gap:9px;padding:10px;border:1px solid #eee;border-radius:10px}
+.sm-admin-track>span:nth-child(2){min-width:170px;flex:1}
+.sm-admin-icon{width:35px;height:35px;color:#222;display:grid;place-items:center}
+.sm-admin-icon svg,.sm-admin-icon img{width:35px;height:35px}
+.sm-admin-track audio{width:min(100%,280px);height:34px}
+@media(max-width:720px){.sm-admin-section{padding:14px}.sm-admin-form{grid-template-columns:1fr}}
