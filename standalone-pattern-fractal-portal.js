@@ -38,7 +38,7 @@ function render(ctx,width,height,c,frame,preview){
  const speed=Number(c.speedFactor)||0;
  const time=tick/60*speed;
  const n=Math.max(20,Math.round(Number(c.depth)||80));
- const zoom=clamp(Number(c.zoom)||1,.3,3);
+ const zoom=clamp(Number.isFinite(Number(c.zoom))?Number(c.zoom):1,.3,3);
  const sides=[6,3,4,96][Math.round(c.shape)||0]||6;
  const colors=registry.get(id).palettes;
  const mode=clamp(Math.round(c.colorModeIndex)||0,0,3);
