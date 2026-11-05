@@ -40,7 +40,14 @@ export function mountMusicAdmin(container,getAdminKey){
   sectionCats.append(el("h2","","Категории музыки"));
   const catBar=el("div","row");
   catBar.append(btn("Добавить категорию",()=>{currentCategory=null;render()}));
-  for(const c of model.categories){const b=btn(c.title+" · "+(c.visible?"показана":"скрыта"),()=>{currentCategory=c;render()});catBar.append(b)}
+  for(const c of model.categories){
+   const b=btn(c.title+" · "+(c.visible?"показана":"скрыта"),()=>{currentCategory=c;render()});catBar.append(b);
+   if(!c.is_system)catBar.append(btn("Удалить «"+c.title+"»",async()=>{
+    if(!confirm("Удалить категорию «"+c.title+"»? Привязанные к ней треки должны быть сначала переназначены."))return;
+    try{await req("delete-category",{id:c.id});currentCategory=null;await reload()}
+    catch(e){alert("Не удалось удалить категорию: "+e.message)}
+   }));
+  }
   sectionCats.append(catBar);renderCategoryForm(sectionCats);
   sectionTracks.append(el("h2","","Музыкальные треки"));
   const toolbar=el("div","row");
