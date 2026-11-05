@@ -3,6 +3,7 @@ import {spawn} from "node:child_process";
 import {mkdir} from "node:fs/promises";
 import {chromium,webkit} from "playwright";
 import {installPublicationCatalog} from "./publication-fixture.mjs";
+import {buildData} from "../research-v1/model.mjs";
 const port=49417,base="http://127.0.0.1:"+port,server=spawn("python3",["-m","http.server",String(port),"--bind","127.0.0.1"],{stdio:"ignore"});
 const browserType=process.env.SETKA_BROWSER==="webkit"?webkit:chromium;
 function wav(){
@@ -68,6 +69,26 @@ try{
  assert.equal(await page.locator("#allPatternsPanel .pattern-tile").count()>0,true);
  await mkdir("tests/visual-smoke",{recursive:true});
  await page.screenshot({path:"tests/visual-smoke/music-"+(process.env.SETKA_BROWSER||"chromium")+".png"});
+ const admin=await browser.newPage({viewport:{width:980,height:900}});
+ await admin.route("**/functions/v1/**",async route=>{
+  if(route.request().method()==="OPTIONS")return route.fulfill({status:204,headers:{"access-control-allow-origin":"*","access-control-allow-headers":"content-type,apikey,authorization","access-control-allow-methods":"POST,OPTIONS"}});
+  let body={};try{body=route.request().postDataJSON()}catch(_){}
+  let out={ok:true};
+  if(body.action==="manage")out={ok:true,categories:cats,tracks:[]};
+  else if(body.action==="manage-catalog")out={ok:true,items:[],defaults:[],publication:[]};
+  else if(body.action==="overview")out={ok:true,data:buildData({},[])};
+  return route.fulfill({status:200,contentType:"application/json",headers:{"access-control-allow-origin":"*"},body:JSON.stringify(out)});
+ });
+ await admin.goto(base+"/standalone-research-admin-v1.html");
+ await admin.locator("#key").fill("SKA-"+"x".repeat(43));
+ await admin.locator("#login-button").click();
+ await admin.locator("#workspace").waitFor();
+ await admin.locator('.nav[data-page="music"]').click();
+ await admin.locator(".sm-admin").waitFor();
+ assert.equal(await admin.locator(".sm-admin-section").count(),2,"music categories and tracks have separate admin editors");
+ assert.equal(await admin.locator(".sm-admin input[type=file]").count(),3,"category icon, track audio and track icon are uploadable");
+ assert.equal(await admin.getByText("Опубликовать на фронте",{exact:true}).count(),1);
+ await admin.close();
  assert.deepEqual(errors.filter(e=>/setka-music/i.test(e)),[]);
  console.log("SETKA music browser smoke PASS",process.env.SETKA_BROWSER||"chromium");
 }finally{await browser?.close();server.kill()}
