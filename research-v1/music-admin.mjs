@@ -18,9 +18,10 @@ export function mountMusicAdmin(container,getAdminKey){
  }
  async function upload(file){
   if(!file)return null;
-  const type=file.type||(file.name.toLowerCase().endsWith(".mp3")?"audio/mpeg":file.name.toLowerCase().endsWith(".svg")?"image/svg+xml":"");
+  let type=file.type||(file.name.toLowerCase().endsWith(".mp3")?"audio/mpeg":file.name.toLowerCase().endsWith(".svg")?"image/svg+xml":"");
+  if(type==="audio/x-wav")type="audio/wav";if(type==="audio/x-m4a"||type==="audio/m4a")type="audio/mp4";
   const intent=await req("upload-intent",{mime:type,size:file.size});
-  const data=new FormData();data.append("cacheControl","3600");data.append("",file);
+  const data=new FormData();data.append("cacheControl","3600");data.append("",type===file.type?file:new File([file],file.name,{type}));
   const result=await fetch(intent.upload_url,{method:"PUT",headers:{"x-upsert":"false"},body:data});
   if(!result.ok)throw Error("upload_failed_"+result.status);
   return intent.path;
