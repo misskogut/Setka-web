@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {UI_ICON_SLOTS,UI_ICON_IDS,uiIconHTML,assetIconMask,defaultIconSVG} from "../standalone-music-ui-icons-v2.mjs";
 import {iconSvg} from "../standalone-music-icons-v1.mjs";
+import {SELECTED_MUSIC_CATEGORY_IDS,selectedMusicCategorySVG} from "../standalone-music-approved-icons-v1.mjs";
 const read=path=>readFileSync(new URL("../"+path,import.meta.url),"utf8");
 test("all SETKA music system controls have a consistent white-line vector default",()=>{
  assert.equal(UI_ICON_IDS.length,14);
@@ -50,4 +51,21 @@ test("admin provides explicit uploading/reset, server protects fixed slots",()=>
  const sql=read("supabase/migrations/20261105191507_setka_music_ui_icons_v2_20261105.sql");
  assert.match(sql,/enable row level security/);
  assert.match(sql,/revoke all/);
+});
+
+test("the first user-approved row supplies all five default music category drawings",()=>{
+ assert.deepEqual(SELECTED_MUSIC_CATEGORY_IDS,["hand","eye","sleep","8d","orbits"]);
+ for(const id of SELECTED_MUSIC_CATEGORY_IDS){
+  const svg=selectedMusicCategorySVG(id);
+  assert.ok(svg&&svg.includes('viewBox='),id);
+  assert.match(svg,/fill="currentColor"/);
+  assert.match(svg,/sm-approved-category-icon/);
+ }
+ assert.equal(selectedMusicCategorySVG("unknown"),null);
+ assert.match(uiIconHTML("orbit-tab"),/sm-approved-category-icon/);
+ const override="icons/00000000-0000-4000-8000-000000000999.png";
+ assert.match(uiIconHTML("orbit-tab",{"orbit-tab":override}),/sm-asset-icon/);
+ assert.ok(!uiIconHTML("orbit-tab",{"orbit-tab":override}).includes("sm-approved-category-icon"));
+ assert.match(read("standalone-music-v1.mjs"),/assetIconMask\(c\.icon_path\)\|\|selectedMusicCategorySVG\(c\.id\)/);
+ assert.match(read("research-v1\/music-admin.mjs"),/selectedMusicCategorySVG\(c\.id\|\|"hand"\)/);
 });
