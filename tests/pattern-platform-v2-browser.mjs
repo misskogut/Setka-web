@@ -156,6 +156,7 @@ try{
  // Every mother and every dynamically registered plugin gets its exact
  // shared gesture contract shown in the key: fingers, side, or slider-only.
  for(const pattern of R.list()){
+  console.log("SETKA settings contract",pattern.id);
   await page.evaluate(id=>window.SetkaApp.openConfig(window.SetkaApp.getPatternDefaults(id),{type:'base',id,patternId:id}),pattern.id);
   await page.locator('#instructionsButton').click();
   const result=await page.evaluate(id=>{
