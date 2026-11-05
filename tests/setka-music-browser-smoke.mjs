@@ -38,6 +38,8 @@ try{
  assert.equal(await page.locator(".sm-categories .sm-category").count(),5);
  assert.equal(await page.locator("#libraryTitle").textContent(),"Музыка");
  assert.equal(await page.locator(".sm-track").count(),3);
+ await mkdir("tests/visual-smoke",{recursive:true});
+ await page.screenshot({path:"tests/visual-smoke/music-catalog-"+(process.env.SETKA_BROWSER||"chromium")+".png"});
  assert.equal(await page.locator(".sm-dots").count(),0,"off must have zero dots");
  const cat=page.locator(".sm-track").first();
  await cat.click();assert.equal(await page.locator(".sm-track.active .sm-dots i").count(),1);
@@ -47,6 +49,7 @@ try{
  await page.locator(".sm-track").nth(0).click();await page.locator(".sm-track").nth(1).click();
  await page.locator(".sm-category").last().click();
  assert.equal(await page.locator(".sm-source").count(),2,"two active tracks appear on orbits");
+ await page.screenshot({path:"tests/visual-smoke/music-orbits-"+(process.env.SETKA_BROWSER||"chromium")+".png"});
  await page.locator(".sm-motion").nth(1).click();
  let state=await page.evaluate(()=>window.SetkaMusicV1.state());
  assert.equal(state.mode,"cw");
