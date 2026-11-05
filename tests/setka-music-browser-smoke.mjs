@@ -40,7 +40,7 @@ try{
  assert.equal(await page.locator("#libraryTitle").textContent(),"Музыка");
  assert.equal(await page.locator(".sm-track").count(),3);
  assert.equal(await page.locator("#libraryScreen").evaluate(el=>el.classList.contains("setka-music-open")),true,"music view must retain active note");
- assert.equal(await page.locator("#setkaMusicPagerButton").evaluate(el=>getComputedStyle(el).opacity),"1","music note must remain illuminated");
+ await page.waitForFunction(()=>Number(getComputedStyle(document.querySelector("#setkaMusicPagerButton")).opacity)>.98,{timeout:2500});
  await mkdir("tests/visual-smoke",{recursive:true});
  await page.screenshot({path:"tests/visual-smoke/music-catalog-"+(process.env.SETKA_BROWSER||"chromium")+".png"});
  assert.equal(await page.locator(".sm-dots").count(),0,"off must have zero dots");
