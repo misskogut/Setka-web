@@ -439,6 +439,28 @@ try{
     'older physical roads use the earlier drag steering fields');
   }
   assert.equal(after.yawOffset,start.yawOffset,'road dragging does not secretly steer the head');
+  if(Array.isArray(after.roadBends)){
+   const pinc=await page.evaluate(()=>{
+    const canvas=document.getElementById('patternCanvas'),box=canvas.getBoundingClientRect();
+    const point=(id,x,y)=>({identifier:id,clientX:box.left+box.width*x,clientY:box.top+box.height*y});
+    const send=(type,touches)=>{
+     const event=new Event(type,{bubbles:true,cancelable:true});
+     Object.defineProperty(event,'touches',{value:touches});
+     canvas.dispatchEvent(event);
+     return window.SetkaApp.getConfig();
+    };
+    const initial=window.SetkaApp.getConfig();
+    send('touchstart',[point(200,.36,.52)]);
+    send('touchstart',[point(200,.36,.52),point(201,.64,.52)]);
+    const changed=send('touchmove',[point(200,.27,.52),point(201,.73,.52)]);
+    send('touchend',[point(200,.27,.52)]);
+    const released=send('touchend',[]);
+    return {initial,changed,released};
+   });
+   assert.ok(pinc.changed.zoom<pinc.initial.zoom,'spreading fingers zooms into the tunnel');
+   assert.equal(pinc.released.zoom,pinc.changed.zoom,'two-finger magnification stays saved after release');
+   assert.deepEqual(pinc.released.roadBends,after.roadBends,'pinch does not undo the sculpted section');
+  }
   console.log('REAL STEERABLE TUNNEL GESTURES PASS',bendableRoad);
  }
 
