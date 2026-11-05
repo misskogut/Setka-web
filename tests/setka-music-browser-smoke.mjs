@@ -70,6 +70,11 @@ try{
    stripTouch:getComputedStyle(strip).touchAction};
  });
  assert.ok(geometry.scrollWidth>geometry.clientWidth+45,"music category strip overflows horizontally");
+ const categoryPeek=await page.locator(".sm-categories").evaluate(el=>{
+  const outer=el.getBoundingClientRect(),last=el.lastElementChild.getBoundingClientRect();
+  return {visible:last.left<outer.right-4,partlyHidden:last.right>outer.right+12};
+ });
+ assert.ok(categoryPeek.visible&&categoryPeek.partlyHidden,"the clipped fifth icon signals that the filters swipe horizontally");
  assert.ok(geometry.tabSize>=64,"category symbols are clearly larger than tracks");
  assert.ok(geometry.tabSize>=geometry.trackSize+12,"large filters remain visually distinct from sound icons");
  assert.ok(geometry.noteSize<=26,"note is optically smaller and matches neighboring top icons");
