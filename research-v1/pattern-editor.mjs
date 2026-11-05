@@ -15,7 +15,8 @@ export async function mountPatternEditor(root,{id,api,onChange=()=>{},draftOnly=
  const go=document.createElement('button');go.type='submit';go.className='primary';go.textContent='Сохранить стартовые настройки';
  const message=document.createElement('p');message.className='small';message.setAttribute('role','status');
  const controls=[];
- const frame=()=>Math.max(0,(performance.now()-Number(canvas.dataset.editorClock))/16.6667);
+ const frame=()=>p.capabilities?.sequentialPhysics?Number(canvas.dataset.displayedFrame||0):Math.max(0,(performance.now()-Number(canvas.dataset.editorClock))/16.6667);
+ const resetClock=()=>{canvas.dataset.editorClock=String(performance.now());delete canvas.dataset.displayedFrame};
  const paint=()=>{canvas.dataset.config=JSON.stringify(config);for(const sync of controls)sync();go.disabled=false;onChange()};
  const apply=event=>{if(saving)return;const next=registry.interact(id,config,{...event,frame:frame()});if(next)config=next;paint()};
  const patch=changes=>{if(saving)return;config=registry.interact(id,config,{type:'patch',patch:changes,frame:frame()})||registry.normalize({...config,...changes},id);paint()};
@@ -33,7 +34,7 @@ export async function mountPatternEditor(root,{id,api,onChange=()=>{},draftOnly=
  const color=document.createElement('label');color.textContent='Цветовой режим';const palette=document.createElement('select');palette.setAttribute('aria-label','Цветовой режим');
  for(let i=0;i<p.colorModes;i++){const option=document.createElement('option');option.value=i;option.textContent=String(i+1);palette.append(option)}palette.value=config.colorModeIndex;
  controls.push(()=>{palette.value=config.colorModeIndex});palette.onchange=()=>patch({colorModeIndex:Number(palette.value)});color.append(palette);form.append(color);if(!draftOnly)form.append(go,message);
- const undo=document.createElement('button');undo.type='button';undo.textContent='Вернуть сохранённые настройки';undo.onclick=()=>{config=registry.defaults(id);canvas.dataset.editorClock=String(performance.now());paint()};form.append(undo);
+ const undo=document.createElement('button');undo.type='button';undo.textContent='Вернуть сохранённые настройки';undo.onclick=()=>{config=registry.defaults(id);resetClock();paint()};form.append(undo);
  go.style.marginTop='18px';
  form.onsubmit=async event=>{
   event.preventDefault();if(draftOnly||saving)return;saving=true;form.querySelectorAll('input,select,button').forEach(el=>el.disabled=true);canvas.setAttribute('aria-disabled','true');message.textContent='Сохраняем…';
@@ -42,7 +43,7 @@ export async function mountPatternEditor(root,{id,api,onChange=()=>{},draftOnly=
    if(!result.ok||!result.item)throw Error('not_confirmed');
    const confirmed=await api('manage-catalog'),row=confirmed.defaults?.find(x=>x.pattern_id===id);
    if(!row||row.revision!==result.item.revision||registry.configKey(row.config,id)!==registry.configKey(requested,id))throw Error('readback_not_confirmed');
-   saved=row;config=registry.normalize(row.config,id);canvas.dataset.editorClock=String(performance.now());paint();go.disabled=true;registry.applyDefaults([saved]);message.textContent='Настройки сохранены. Фронт получит их при обновлении каталога.';
+   saved=row;config=registry.normalize(row.config,id);resetClock();paint();go.disabled=true;registry.applyDefaults([saved]);message.textContent='Настройки сохранены. Фронт получит их при обновлении каталога.';
   }catch(error){message.textContent=error.message==='revision_conflict'?'Настройки уже изменились. Откройте карточку заново.':'Сохранение не подтверждено. Изменения остаются в редакторе.';go.disabled=false}finally{saving=false;canvas.removeAttribute('aria-disabled');form.querySelectorAll('input,select,button').forEach(el=>{if(el!==go)el.disabled=false})}
  };
  paint();

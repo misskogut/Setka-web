@@ -4,7 +4,7 @@
 // registered renderers. It never mutates pattern configs, records or frame data.
 // Runtime-only telemetry; no user/session information is sent anywhere.
 if(window.SetkaAutoOptimizerV1)return;
-const profiles=new Map(),canvases=new WeakMap(),groups=new Map();
+const profiles=new Map(),canvases=new WeakMap(),groups=new Map(),cooldowns=new Map();
 const MIN_QUALITY=.7,WORK_BUDGET=15,MIN_INTERVAL=30,MAX_AGE=180;
 const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
 const time=()=>performance.now();
@@ -45,7 +45,7 @@ function choose(name,items,now,options={}){
   const eligible=items.map(item=>{
     const canvas=item[0],id=item[1]?.patternId||"unknown",p=profile(name,id),s=canvasState(canvas);
     return{item,p,s,age:s.last?Math.max(0,now-s.last):MAX_AGE+1};
-  }).filter(x=>x.age>=Math.max(MIN_INTERVAL,Number(options.interval)||0));
+  }).filter(x=>x.age>=Math.max(MIN_INTERVAL,Number(options.interval)||0)&&now>=(cooldowns.get(x.p.id)||0));
   eligible.sort((a,b)=>b.age-a.age);
   let allowance=Math.max(3,WORK_BUDGET-globalSpent);
   let planned=0;
@@ -137,6 +137,10 @@ function paint(name,canvas,id,now,render,options={}){
     p.samples++;p.paints++;g.painted++;g.lastCost=spent;
     if(s)s.last=now;
     globalSpent+=spent;
+    // A single expensive preview must leave time for neighboring canvases
+    // and for input in the next few browser frames. The cooldown is shared
+    // by every thumbnail of that renderer; gameplay is never throttled here.
+    if(canvas&&spent>WORK_BUDGET)cooldowns.set(id,now+Math.min(700,Math.max(100,spent*5)));
     const goal=Math.max(2,WORK_BUDGET/Math.max(1,g.visible));
     if(options.adaptiveResolution!==false)tune(p,goal,canvas);
     return result;
@@ -145,7 +149,7 @@ function paint(name,canvas,id,now,render,options={}){
   }
 }
 function reset(){
-  profiles.clear();groups.clear();globalFrame=NaN;globalSpent=0;
+  profiles.clear();groups.clear();cooldowns.clear();globalFrame=NaN;globalSpent=0;
 }
 function status(){
   return{

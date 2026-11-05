@@ -149,6 +149,12 @@
     if(p.keyFields)return [p.id,...p.keyFields.map(k=>Array.isArray(x[k])?JSON.stringify(x[k]):typeof x[k]==="boolean"?(x[k]?1:0):Math.round(Number(x[k])*100000)/100000)].join("|")+(Object.hasOwn(x,"_startFrame")?"|@start:"+x._startFrame:"");
     return p.id+"|"+Object.keys(x).sort().map(k=>k+":"+JSON.stringify(x[k])).join("|");
   }
+  function clockFrame(id,previous,requested){
+    const next=Number.isFinite(Number(requested))?Math.max(0,Number(requested)):0;
+    if(!get(id)?.capabilities?.sequentialPhysics)return next;
+    const prior=Number.isFinite(Number(previous))?Math.max(0,Number(previous)):next;
+    return Math.max(prior,Math.min(next,prior+1));
+  }
   function revision(){let h=2166136261;for(const ch of JSON.stringify([...records.values()]))h=Math.imul(h^ch.charCodeAt(0),16777619);return "registry-3-"+(h>>>0).toString(16)}
   function snapshot(state){
     const id=resolve(state?.config,state?.patternId),p=requirePattern(id);
@@ -240,7 +246,7 @@
   }
   function isActive(item){const id=identityOf(item);return (!publicCatalog||publishedIds.has(id))&&typeof id==="string"&&records.has(id)}
   function activeItems(rows){return Array.isArray(rows)?rows.filter(isActive):[]}
-  const api={schemaVersion:SCHEMA,applyOrder,orderedIds,libraryIds,orderRevision:()=>orderRevision,usePublicCatalog,applyPublication,publicationRevision:()=>publicationRevision,register,get,has:id=>records.has(id),isActive,activeItems,identityOf,ids:()=>[...records.keys()],list:()=>[...records.values()].map(copy),
+  const api={clockFrame,schemaVersion:SCHEMA,applyOrder,orderedIds,libraryIds,orderRevision:()=>orderRevision,usePublicCatalog,applyPublication,publicationRevision:()=>publicationRevision,register,get,has:id=>records.has(id),isActive,activeItems,identityOf,ids:()=>[...records.keys()],list:()=>[...records.values()].map(copy),
     controls:id=>copy(get(id)?.controls||[]),inference,resolve,normalize,persistentConfig,validate,configKey,snapshot,restore,revision,bindRenderer,bindInteraction,interact,hasInteraction:id=>interactions.has(id),render,
     ready:id=>renderers.has(id),supports:(id,feature)=>get(id)?.capabilities?.[feature]===true,
     title:id=>titles.get(id)?.title||get(id)?.title||id||"Неизвестный паттерн",setTitles,

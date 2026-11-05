@@ -150,6 +150,7 @@
     panel.replaceChildren();build();panelSignatures.set(panel,signature);
   }
   function renderLibrary(){
+    if(window.__SETKA_RENDER_ONLY__)return;
     stopLibraryPreviews();
     const available=PATTERNS.filter(p=>registry.isActive(p.id));
     reconcilePanel(allPatternsPanel,JSON.stringify([available.map(p=>[p.id,p.version,registry.defaults(p.id),registry.ready(p.id)]),[...recommendedPatterns]]),()=>{
@@ -206,7 +207,7 @@
       if(!pending)showToast("Слепок сохранён. Для открытия нужен совместимый паттерн.");
     });
     return placeholder;
-  }const patternId=inferPatternId(item.config,item.patternId||item.baseId||(item.kind==="base"?item.id:null)),b=document.createElement("button");b.type="button";b.className=`pattern-tile ${item.kind}-tile`;b.dataset.kind=item.kind;b.dataset.itemId=item.id;b.dataset.patternId=patternId;b.setAttribute("aria-label",item.kind==="favorite"?"Открыть сохраненную конфигурацию. Удерживай, чтобы удалить":item.kind==="community"?"Открыть конфигурацию сообщества. Удерживай, чтобы сохранить себе":`Открыть паттерн ${patternById(patternId).title}. Удерживай, чтобы сохранить`);const thumb=document.createElement("canvas");thumb.width=180;thumb.height=180;thumb.className="thumb-canvas";b.appendChild(thumb);drawThumbnail(thumb,item.config||registry.defaults(patternId),previewRenderedFrame(Number.isFinite(Number(item.previewFrame))?Number(item.previewFrame):BASE_PREVIEW_FRAME),patternId);previewTiles.set(thumb,{patternId,config:cloneConfig(item.config||registry.defaults(patternId),patternId),frame:Number.isFinite(Number(item.previewFrame))?Number(item.previewFrame):BASE_PREVIEW_FRAME});if(item.kind==="favorite"){const h=document.createElement("span");h.className="mini-heart";h.textContent="♥";b.appendChild(h)}if(item.kind==="community"){const badge=document.createElement("span");badge.className="community-count";badge.textContent=`♥ ${Math.max(0,Number(item.saveCount)||0)}`;b.appendChild(badge)}const rec=document.createElement("span");rec.className="recommendation-mark";rec.textContent="●";b.appendChild(rec);let timer=0,held=false,sx=0,sy=0;const cancel=()=>{if(timer)clearTimeout(timer);timer=0};b.addEventListener("pointerdown",e=>{if(e.target.closest?.(".st34-info"))return;held=false;sx=e.clientX;sy=e.clientY;b.setPointerCapture?.(e.pointerId);timer=setTimeout(()=>{if(!b.isConnected||!b.hasPointerCapture?.(e.pointerId)){cancel();return}held=true;if(item.kind==="favorite"){const f=favorites.find(x=>x.id===item.id);if(f)removeFavorite(f,"tile_hold")}else{const cfg=item.kind==="base"?registry.defaults(patternId):item.config,old=matchingFavorite(cfg,patternId);if(old)removeFavorite(old,"tile_hold");else saveFavorite(cfg,item.previewFrame,{origin:"tile_hold",baseId:patternId,communityId:item.kind==="community"?item.communityId:null,parentCommunityId:item.kind==="community"?item.communityId:null,patternVersion:item.patternVersion||patternById(patternId).version})}navigator.vibrate?.(18)},620)});b.addEventListener("pointermove",e=>{if(!held&&Math.hypot(e.clientX-sx,e.clientY-sy)>18)cancel()});b.addEventListener("pointercancel",cancel);b.addEventListener("lostpointercapture",cancel);b.addEventListener("pointerup",e=>{cancel();if(e.target.closest?.(".st34-info"))return;if(held){e.preventDefault();return}if(item.kind==="base")openConfig(cloneConfig(item.config||registry.defaults(patternId),patternId),{type:"base",id:patternId,patternId,communityId:null});if(item.kind==="favorite"){const f=favorites.find(x=>x.id===item.id);if(f)openConfig(f.config,{type:"favorite",id:f.id,patternId:f.baseId,communityId:f.communityId||null})}if(item.kind==="community")openConfig(item.config,{type:"community",id:item.communityId,patternId,communityId:item.communityId})});b.addEventListener("contextmenu",e=>e.preventDefault());return b}
+  }const patternId=inferPatternId(item.config,item.patternId||item.baseId||(item.kind==="base"?item.id:null)),b=document.createElement("button");b.type="button";b.className=`pattern-tile ${item.kind}-tile`;b.dataset.kind=item.kind;b.dataset.itemId=item.id;b.dataset.patternId=patternId;b.setAttribute("aria-label",item.kind==="favorite"?"Открыть сохраненную конфигурацию. Удерживай, чтобы удалить":item.kind==="community"?"Открыть конфигурацию сообщества. Удерживай, чтобы сохранить себе":`Открыть паттерн ${patternById(patternId).title}. Удерживай, чтобы сохранить`);const thumb=document.createElement("canvas");thumb.width=180;thumb.height=180;thumb.className="thumb-canvas";b.appendChild(thumb);drawThumbnail(thumb,item.config||registry.defaults(patternId),libraryPreviewFrame(item.config||registry.defaults(patternId),patternId,Number.isFinite(Number(item.previewFrame))?Number(item.previewFrame):BASE_PREVIEW_FRAME,previewRenderedFrame(Number.isFinite(Number(item.previewFrame))?Number(item.previewFrame):BASE_PREVIEW_FRAME)),patternId);previewTiles.set(thumb,{patternId,config:cloneConfig(item.config||registry.defaults(patternId),patternId),frame:Number.isFinite(Number(item.previewFrame))?Number(item.previewFrame):BASE_PREVIEW_FRAME});if(item.kind==="favorite"){const h=document.createElement("span");h.className="mini-heart";h.textContent="♥";b.appendChild(h)}if(item.kind==="community"){const badge=document.createElement("span");badge.className="community-count";badge.textContent=`♥ ${Math.max(0,Number(item.saveCount)||0)}`;b.appendChild(badge)}const rec=document.createElement("span");rec.className="recommendation-mark";rec.textContent="●";b.appendChild(rec);let timer=0,held=false,sx=0,sy=0;const cancel=()=>{if(timer)clearTimeout(timer);timer=0};b.addEventListener("pointerdown",e=>{if(e.target.closest?.(".st34-info"))return;held=false;sx=e.clientX;sy=e.clientY;b.setPointerCapture?.(e.pointerId);timer=setTimeout(()=>{if(!b.isConnected||!b.hasPointerCapture?.(e.pointerId)){cancel();return}held=true;if(item.kind==="favorite"){const f=favorites.find(x=>x.id===item.id);if(f)removeFavorite(f,"tile_hold")}else{const cfg=item.kind==="base"?registry.defaults(patternId):item.config,old=matchingFavorite(cfg,patternId);if(old)removeFavorite(old,"tile_hold");else saveFavorite(cfg,item.previewFrame,{origin:"tile_hold",baseId:patternId,communityId:item.kind==="community"?item.communityId:null,parentCommunityId:item.kind==="community"?item.communityId:null,patternVersion:item.patternVersion||patternById(patternId).version})}navigator.vibrate?.(18)},620)});b.addEventListener("pointermove",e=>{if(!held&&Math.hypot(e.clientX-sx,e.clientY-sy)>18)cancel()});b.addEventListener("pointercancel",cancel);b.addEventListener("lostpointercapture",cancel);b.addEventListener("pointerup",e=>{cancel();if(e.target.closest?.(".st34-info"))return;if(held){e.preventDefault();return}if(item.kind==="base")openConfig(cloneConfig(item.config||registry.defaults(patternId),patternId),{type:"base",id:patternId,patternId,communityId:null});if(item.kind==="favorite"){const f=favorites.find(x=>x.id===item.id);if(f)openConfig(f.config,{type:"favorite",id:f.id,patternId:f.baseId,communityId:f.communityId||null})}if(item.kind==="community")openConfig(item.config,{type:"community",id:item.communityId,patternId,communityId:item.communityId})});b.addEventListener("contextmenu",e=>e.preventDefault());return b}
 
   function openConfig(config,source={}){
     try{
@@ -225,6 +226,17 @@
     }catch(error){showToast("Не удалось открыть этот паттерн. Сохранённая запись остаётся доступна.");window.dispatchEvent(new CustomEvent("setka:pattern-error",{detail:{patternId:source.patternId||config?.patternId||null,reason:error.code||error.message}}));return false}
   }
   function canAnimateLibrary(){const overlay=document.getElementById("st34Layer");return !window.__SETKA_RENDER_ONLY__&&!document.hidden&&!reducedPreviewMotion.matches&&libraryScreen.classList.contains("active")&&(!overlay||overlay.classList.contains("hidden"));}
+  const physicsPreviewClocks=new Map();
+  function libraryPreviewFrame(c,id,start,requested,advance=false){
+    const R=window.SetkaPatternRegistryV1;
+    if(!R?.get(id)?.capabilities?.sequentialPhysics)return requested;
+    const key=R.configKey(c,id)+"|preview:"+start;
+    const prior=physicsPreviewClocks.get(key)??start;
+    const next=advance?R.clockFrame(id,prior,requested):prior;
+    physicsPreviewClocks.set(key,next);
+    if(physicsPreviewClocks.size>64)physicsPreviewClocks.delete(physicsPreviewClocks.keys().next().value);
+    return next;
+  }
   function stopLibraryPreviews(){
     if(previewAnimation)cancelAnimationFrame(previewAnimation);
     previewAnimation=0;previewLastPaint=0;previewLastTick=0;
@@ -268,14 +280,14 @@
         if(selected){
           for(const [canvas,item] of selected){
             optimizer.paint("library",canvas,item.patternId,now,
-              ()=>drawThumbnail(canvas,item.config,previewFrame(item.frame),item.patternId));
+              ()=>drawThumbnail(canvas,item.config,libraryPreviewFrame(item.config,item.patternId,item.frame,previewFrame(item.frame),true),item.patternId));
             previewStats.frames++;
           }
         }else{
           const count=Math.min(previewStats.maxPerPaint,visible.length);
           for(let i=0;i<count;i++){
             const [canvas,item]=visible[(previewCursor+i)%visible.length];
-            drawThumbnail(canvas,item.config,previewFrame(item.frame),item.patternId);
+            drawThumbnail(canvas,item.config,libraryPreviewFrame(item.config,item.patternId,item.frame,previewFrame(item.frame),true),item.patternId);
             previewStats.frames++;
           }
           previewCursor=visible.length?(previewCursor+count)%visible.length:0;
@@ -295,7 +307,8 @@
       // clock. Pattern implementations, saved configs and thumbnails are intact.
       const sound=registry.supports(runtimePatternId,"audio")?window.SetkaAudioReactiveV1:null;
       const reactiveFrame=sound?.nextFrame?.(baseFrame,now,runtimePatternId);
-      currentFrame=Number.isFinite(reactiveFrame)?Math.max(0,reactiveFrame):baseFrame;
+      currentFrame=registry.clockFrame(runtimePatternId,currentFrame,Number.isFinite(reactiveFrame)?Math.max(0,reactiveFrame):baseFrame);
+      if(registry.get(runtimePatternId)?.capabilities?.sequentialPhysics)animationStart=now-currentFrame*16.6667;
       // Preserve the exact displayed frame when music is turned off, instead
       // of snapping back to the unmodulated wall-clock animation position.
       if(sound?.isActive?.())animationStart=now-currentFrame*16.6667;

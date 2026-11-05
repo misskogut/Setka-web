@@ -42,7 +42,11 @@
   }
   function paint(canvas, item, frame) {
     try {
-      draw(canvas, item.config, frame, item.patternId);
+      const R=window.SetkaPatternRegistryV1;
+      const actual=R?.get(item.patternId)?.capabilities?.sequentialPhysics
+        ?(item.drawFrame===undefined?item.frame:R.clockFrame(item.patternId,item.drawFrame,frame)):frame;
+      item.drawFrame=actual;
+      draw(canvas, item.config, actual, item.patternId);
       canvas.dataset.setkaLivePreview = "true";
       canvas.dataset.snapshotPatternId = item.patternId;
       counters.frames++;

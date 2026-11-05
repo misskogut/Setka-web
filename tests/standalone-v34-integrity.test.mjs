@@ -390,3 +390,11 @@ test("favorite archives are not rewritten during startup; new renderers trigger 
   assert.doesNotMatch(js,/persistFavorites\(\);buildColorDots\(\)/);
   assert.match(js,/unavailableReason:/);
 });
+
+
+test("render-only replay boot does not construct an entire live library",()=>{
+  const source=read("app-v7-multipattern.js"),a=source.indexOf("  function renderLibrary(){"),b=source.indexOf("\n  function ",a+10);
+  assert.ok(a>=0&&b>a);
+  const render=vm.runInNewContext(source.slice(a,b)+"\nrenderLibrary",{window:{__SETKA_RENDER_ONLY__:true},stopLibraryPreviews(){throw Error("unused library initialized in the renderer")}});
+  assert.doesNotThrow(render);
+});
