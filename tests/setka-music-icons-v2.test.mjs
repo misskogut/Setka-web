@@ -64,3 +64,19 @@ test("closed-eye endpoints align vertically with open-eye corners (without movin
  const front=read("standalone-music-v1.mjs");
  assert.match(front,/assetIconMask\(c\.icon_path\)\|\|selectedMusicCategorySVG\(c\.id\)/);
 });
+
+test("nature category uses user's exact option 7: five bars and two leaves",()=>{
+ const nature=selectedMusicCategorySVG("hand");
+ assert.match(nature,/viewBox="75 35 190 190"/);
+ assert.match(nature,/M169,55 166,57/,"long central sound bar");
+ assert.match(nature,/M86,113 84,122/,"left leaf");
+ assert.match(nature,/M253,113 240,125/,"right leaf");
+ assert.equal((nature.match(/Z/g)||[]).length,9,"five bars plus two leaf outlines with interiors");
+ assert.match(nature,/fill="currentColor"/,"active and inactive states inherit white or gray");
+ const fallback=read("standalone-music-v1.mjs");
+ assert.match(fallback,/assetIconMask\(c\.icon_path\)\|\|selectedMusicCategorySVG\(c\.id\)/,
+   "admin uploaded icon must remain higher priority than the built-in nature icon");
+ const admin=read("research-v1/music-admin.mjs");
+ assert.match(admin,/selectedMusicCategorySVG\(c\.id\|\|"hand"\)/,
+   "the same option 7 is used in admin category previews");
+});
