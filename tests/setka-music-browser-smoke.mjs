@@ -77,7 +77,7 @@ try{
   let body={};try{body=route.request().postDataJSON()}catch(_){}
   let out={ok:true};
   if(body.action==="manage")out={ok:true,categories:cats,tracks:[],ui_icons:uiStub};
-  else if(body.action==="reset-ui-icon"){uiStub=uiStub.filter(x=>x.slot!==body.slot);out={ok:true}};
+  else if(body.action==="reset-ui-icon"){uiStub=uiStub.filter(x=>x.slot!==body.slot);out={ok:true}}
   else if(body.action==="manage-catalog")out={ok:true,items:[],defaults:[],publication:[]};
   else if(body.action==="overview")out={ok:true,data:buildData({},[])};
   return route.fulfill({status:200,contentType:"application/json",headers:{"access-control-allow-origin":"*"},body:JSON.stringify(out)});
