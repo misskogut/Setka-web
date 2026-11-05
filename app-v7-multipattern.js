@@ -150,6 +150,7 @@
     panel.replaceChildren();build();panelSignatures.set(panel,signature);
   }
   function renderLibrary(){
+    if(window.__SETKA_RENDER_ONLY__)return;
     stopLibraryPreviews();
     const available=PATTERNS.filter(p=>registry.isActive(p.id));
     reconcilePanel(allPatternsPanel,JSON.stringify([available.map(p=>[p.id,p.version,registry.defaults(p.id),registry.ready(p.id)]),[...recommendedPatterns]]),()=>{
