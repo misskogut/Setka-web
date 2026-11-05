@@ -48,8 +48,11 @@ try{
  await page.route("**/functions/v1/setka-music-v1",route=>route.fulfill({status:200,contentType:"application/json",
   headers:{"access-control-allow-origin":"*"},body:JSON.stringify({ok:true,categories:cats,tracks,ui_icons:uiStub})}));
  await installPublicationCatalog(page);
- await page.goto(base+"/standalone-v34.html?music=1",{waitUntil:"domcontentloaded"});
+ await page.goto(base+"/standalone-v34.html",{waitUntil:"domcontentloaded"});
  await page.locator("#allPatternsPanel .pattern-tile").first().waitFor();
+ assert.equal(await page.locator("#setkaMusicPagerButton").count(),1,"the music tab must exist on the default URL, no ?music=1");
+ assert.equal(await page.locator("#setkaMusicPagerButton").isVisible(),true,"visible fourth tab on the normal SETKA home");
+ assert.equal(await page.locator(".library-pager .pager-button").count(),4,"four permanent upper tabs");
  await page.locator("#setkaMusicPagerButton").click();
  await page.locator(".sm-track").first().waitFor();
  assert.equal(await page.locator(".library-pager .pager-button").count(),4);
