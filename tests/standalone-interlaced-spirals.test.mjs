@@ -143,7 +143,7 @@ test("additional breadth and braid sliders preserve the exact authored baseline 
 test("shared app remains unaware of this pattern ID; inherited gestures stay unchanged",()=>{
  const host=fs.readFileSync("app-v7-multipattern.js","utf8");
  assert.ok(!host.includes('"interlaced-spirals"'));
- assert.match(host,/pluginPointerPhase\("start",mouse\.x,mouse\.y,1,"mouse"\)/);
+ assert.match(host,/pluginPointerPhase\("start",mouse\.x,mouse\.y,mouse\.fingers,"mouse"\)/);
  assert.match(host,/pinchDistance:currentDist,previousPinchDistance:touch\.lastDist/);
  assert.match(host,/type:"wheel",frame:currentFrame,deltaY:e\.deltaY/);
 });
