@@ -555,7 +555,7 @@ function render(ctx,w,h,c,frame,preview=false){
  const active=Number(c.touchMode)>0,elapsed=Math.max(0,f-(Number(c.touchReleaseFrame)||0));
  const touchBlend=active?1:Math.exp(-elapsed/12);
  const temporaryScale=1+((Number(c.touchScale)||1)-1)*touchBlend;
- const horizon=height*.552,focal=Math.min(width*.485,height*.86)/clamp(c.zoom*temporaryScale,.3,3);
+ const horizon=height*.552,focal=Math.min(width*.485,height*.86)*clamp(temporaryScale,.3,3)/c.zoom;
  const roofWidth=4.7,roofHeight=4.7+6*c.shape;
  const sx=(c.steerX||0)*9+(c.touchX||0)*13*touchBlend,
        sy=(c.steerY||0)*8.7+(c.touchY||0)*13*touchBlend,
