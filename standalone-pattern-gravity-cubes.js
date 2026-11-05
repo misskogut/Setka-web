@@ -6,7 +6,7 @@
   "schemaVersion": 1,
   "introducedAt": "2026-11-05T02:30:00.000Z",
   "module": "standalone-pattern-gravity-cubes.js",
-  "capabilities": {"sequentialPhysics": true},
+  "capabilities": {"sequentialPhysics": true, "audioViewFields": ["light", "yaw", "pitch"]},
   "colorModes": 1,
   "palettes": [
     [

@@ -419,9 +419,11 @@
     const pattern=window.SetkaPatternRegistryV1?.get?.(patternId);
     if(!pattern||!pattern.controls?.length)return null;
     const out={},mix=["low","mid","high"];
+    const viewFields=pattern.capabilities?.audioViewFields;
     let count=0;
     for(const row of pattern.controls){
       const [,key,min,max,step]=row;
+      if(Array.isArray(viewFields)&&!viewFields.includes(key))continue;
       if(typeof key!=="string"||!Number.isFinite(min)||!Number.isFinite(max)||
         !Number.isFinite(step)||step>=1||staticTopology.has(key)||key==="zoom"||
         /(?:count|number|depth|layers|branches|num|points|rings|cols|rows)/i.test(key))continue;
@@ -438,7 +440,8 @@
     return count?out:null;
   }
   function configForMode(original,patternId,live,n,time){
-    const p=profile(n),recipe=choreography[n]?.[patternId]||autoRecipe(patternId,n);
+    const p=profile(n),viewFields=window.SetkaPatternRegistryV1?.get?.(patternId)?.capabilities?.audioViewFields;
+    const recipe=Array.isArray(viewFields)?autoRecipe(patternId,n):(choreography[n]?.[patternId]||autoRecipe(patternId,n));
     if(!p||!recipe)return original;
     const out={...original},sensitivity=sensitivityByPattern[patternId]??.28;
     let index=0;
