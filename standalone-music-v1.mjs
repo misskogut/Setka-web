@@ -91,14 +91,20 @@ function hideMusic(){
  note.classList.remove("active");
 }
 function install(){
- // Owner-only canary: no navigation mutation on the default production URL.
- if(new URLSearchParams(location.search).get("music")!=="1")return;
+ // Music is a permanent fourth library destination, including ordinary URLs.
+ // Keep the note in HTML so it never disappears before module initialization.
  const library=$("libraryScreen"),pager=library?.querySelector(".library-pager");
  patternPanels=$("librarySwipeArea");title=$("libraryTitle");
  if(!library||!pager||!patternPanels||!title)return;
- note=document.createElement("button");note.type="button";
- note.id="setkaMusicPagerButton";note.className="pager-button";note.setAttribute("aria-label","Музыка");
- note.innerHTML=uiIconHTML("nav-note",uiIcons);note.onclick=openMusic;pager.append(note);
+ note=$("setkaMusicPagerButton");
+ if(!note){
+  // Safe compatibility for other standalone shells sharing the music module.
+  note=document.createElement("button");note.type="button";
+  note.id="setkaMusicPagerButton";note.className="pager-button";note.setAttribute("aria-label","Музыка");
+  pager.append(note);
+ }
+ note.innerHTML=uiIconHTML("nav-note",uiIcons);
+ note.onclick=openMusic;
  for(const id of ["libraryPagerButton","communityPagerButton","favoritesPagerButton"])
   $(id)?.addEventListener("click",hideMusic,true);
  const app=window.SetkaApp;
