@@ -30,7 +30,7 @@ try{
  await page.route("**/functions/v1/setka-music-v1",route=>route.fulfill({status:200,contentType:"application/json",
   headers:{"access-control-allow-origin":"*"},body:JSON.stringify({ok:true,categories:cats,tracks})}));
  await installPublicationCatalog(page);
- await page.goto(base+"/standalone-v34.html",{waitUntil:"domcontentloaded"});
+ await page.goto(base+"/standalone-v34.html?music=1",{waitUntil:"domcontentloaded"});
  await page.locator("#allPatternsPanel .pattern-tile").first().waitFor();
  await page.locator("#setkaMusicPagerButton").click();
  await page.locator(".sm-track").first().waitFor();
