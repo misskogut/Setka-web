@@ -64,3 +64,9 @@
 .sm-speed input{flex:1;min-width:0;width:auto;margin:0;accent-color:#fff;cursor:pointer;touch-action:pan-x}
 @media(max-width:365px){#setkaMusicPage{left:8px;right:8px}.sm-category svg,.sm-category img,.sm-category .sm-asset-icon{width:65px;height:65px}.sm-track-icon,.sm-track-icon svg,.sm-track-icon img,.sm-track-icon .sm-asset-icon{width:45px;height:45px}.sm-motion{width:32px;height:32px}.sm-motion svg,.sm-motion .sm-asset-icon{width:26px;height:26px}}
 @media(max-height:730px){#setkaMusicPage{top:calc(var(--safe-top) + 111px);bottom:calc(var(--safe-bottom) + 90px)}.sm-categories{flex-basis:78px}.sm-category{height:73px}.sm-stage{width:min(67vw,35svh,290px);height:min(67vw,35svh,290px)}.sm-track{min-height:73px}}
+
+/* All three library headings share the same mobile baseline; this never
+   changes the thumbnail grid or the bottom navigation. */
+@media(max-width:767px){
+ #libraryScreen .library-title{top:calc(var(--safe-top) + 96px)}
+}

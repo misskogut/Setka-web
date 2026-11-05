@@ -19,6 +19,10 @@
       margin:0!important;max-width:calc(100% - 18px);
       gap:5px!important;flex-wrap:nowrap!important;z-index:8;
     }
+    @media(max-width:767px){
+      /* Lift all four community filters, leaving breathing room above row 1. */
+      #libraryScreen #st34CommunityModes{top:calc(var(--safe-top) + 121px)!important}
+    }
     @media(min-width:768px) and (max-height:650px){
       #libraryScreen #st34CommunityModes{top:89px!important}
     }

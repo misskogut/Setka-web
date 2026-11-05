@@ -49,7 +49,7 @@ async function go(){
   assert.equal(await page.locator(".swipe-hint").count(),0,
     "permanent swipe helper text must be deleted from the library");
   const navGeometry=await page.evaluate(()=>{
-    const ids=["libraryPagerButton","communityPagerButton","favoritesPagerButton"];
+    const ids=["libraryPagerButton","communityPagerButton","favoritesPagerButton","setkaMusicPagerButton"];
     return ids.map(id=>{
       const e=document.getElementById(id),r=e.getBoundingClientRect(),
         mark=e.firstElementChild,icon=mark.getBoundingClientRect();
@@ -58,11 +58,13 @@ async function go(){
     });
   });
   assert.ok(navGeometry.every(v=>v.width===48&&v.height===48),
-    "all three pager hit targets must be 48px: "+JSON.stringify(navGeometry));
+    "all four pager hit targets must be 48px: "+JSON.stringify(navGeometry));
   assert.ok(navGeometry.every(v=>Math.abs(v.cy-navGeometry[0].cy)<.6),
     "pager icons must be vertically aligned");
   assert.ok(navGeometry[2].fontSize<=25,"favorite heart must remain visually smaller");
   assert.ok(navGeometry[0].iconWidth>=18,"dot should not appear tiny next to other symbols");
+  assert.equal(navGeometry.length,4,"music note must always appear on default URL");
+  assert.ok(navGeometry[3].iconWidth>=20&&navGeometry[3].iconWidth<=26,"music note must match icon scale");
   // Measure the visible community layout without switching screens here:
   // a real page transition at the beginning of this long smoke test changes
   // the active page and can intercept the later first pattern-info tap.
@@ -90,7 +92,7 @@ async function go(){
   assert.equal(headingGap.buttons,4,"all community filters must remain available");
   assert.ok(Math.abs(headingGap.contentShift)<1,
     "community filter row must not shift the pattern grid down: "+JSON.stringify(headingGap));
-  assert.ok(headingGap.gapBeforeGrid>=3,
+  assert.ok(headingGap.gapBeforeGrid>=14,
     "community filters must not overlap the first thumbnail row: "+JSON.stringify(headingGap));
   assert.ok(Math.abs(headingGap.baselineDifference)<1,
     "community and mother pattern panels must start at exactly the same vertical position");
