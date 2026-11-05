@@ -534,11 +534,11 @@ test('future 3D road packages can hide only the road while preserving visible ma
    assert.equal(restored.ok,true,'transparent road survives a saved snapshot');
    assert.equal(restored.snapshot.config.roadOpacity,0);
    const trace=(c)=>{
-    const result={roadPolygons:0,artDots:0,frames:0};
+    const result={roadPolygons:0,artDots:0,flatMarks:0,frames:0};
     const ctx={fillStyle:'#000',globalAlpha:1,
-     save(){},restore(){},beginPath(){},closePath(){},moveTo(){},lineTo(){},translate(){},rotate(){},
+     save(){},restore(){},beginPath(){this._shape=''},closePath(){},moveTo(){this._shape='poly'},lineTo(){},translate(){},rotate(){},
      fillRect(){result.frames++},arc(){result.artDots++},
-     fill(){if(this.fillStyle==='#000')result.roadPolygons++}};
+     fill(){if(this.fillStyle==='#000')result.roadPolygons++;else if(this._shape==='poly')result.flatMarks++}};
     registry.render(ctx,390,700,c,44,true,pattern.id);
     return result;
    };
@@ -547,7 +547,8 @@ test('future 3D road packages can hide only the road while preserving visible ma
    const a=trace(transparent),b=trace(opaque);
    assert.equal(a.roadPolygons,0,'transparent floor must not draw a black occlusion polygon');
    assert.ok(b.roadPolygons>0,'opaque floor draws solid black occlusion geometry');
-   assert.ok(a.artDots>0&&b.artDots>0,'the same independent road markings remain visible');
+   assert.ok(a.artDots>0&&b.artDots>0,'the same independent wall spheres remain visible');
+   assert.ok(a.flatMarks>0&&b.flatMarks>0,'flat road markings remain even when the road material is transparent');
    assert.deepEqual(trace(transparent),a,'transparent state is deterministic in replay');
    assert.deepEqual(trace(opaque),b,'opaque state is deterministic in replay');
   }
@@ -572,12 +573,15 @@ test('any future continuous road tunnel keeps camera, wall spheres and distant m
     const finite=(...a)=>{if(a.some(v=>!Number.isFinite(v)))metrics.nonFinite++};
     const ctx={
      fillStyle:'#000',globalAlpha:1,
-     save(){},restore(){},beginPath(){},closePath(){},rotate(){},
-     translate(x,y){metrics.marks++;finite(x,y);
-      if(Math.abs(y-horizon)<7)metrics.farMarks++;
-      if(metrics.markLocations.length<8)metrics.markLocations.push([x,y]);},
-     moveTo(x,y){finite(x,y)},lineTo(x,y){finite(x,y)},
-     fill(){if(this.fillStyle==='#000')metrics.blackSurfaces++},
+     save(){},restore(){},beginPath(){this._shape='';this._start=null},closePath(){},rotate(){},
+     translate(x,y){finite(x,y)},
+     moveTo(x,y){finite(x,y);this._shape='polygon';this._start=[x,y]},lineTo(x,y){finite(x,y)},
+     fill(){if(this.fillStyle==='#000')metrics.blackSurfaces++;
+      else if(this._shape==='polygon'){
+       metrics.marks++;const xy=this._start||[0,0];
+       if(Math.abs(xy[1]-horizon)<7)metrics.farMarks++;
+       if(metrics.markLocations.length<8)metrics.markLocations.push(xy);
+      }},
      arc(x,y,r){metrics.spheres++;finite(x,y,r)},
      ellipse(x,y,rx,ry){finite(x,y,rx,ry)},
      fillRect(x,y,r,h){metrics.artPixels++;finite(x,y,r,h)}
@@ -644,12 +648,16 @@ test('unknown steerable 3D tunnels bend the physical road under touch and keep e
    function paint(c,frame){
     const output={white:0,marks:0,dots:0,black:0,errors:0,positions:[]};
     const finite=(...xs)=>{if(xs.some(v=>!Number.isFinite(v)))output.errors++};
-    const ctx={fillStyle:'#000',save(){},restore(){},beginPath(){},closePath(){},
-     translate(x,y){finite(x,y);output.marks++;if(output.positions.length<14)output.positions.push([x,y])},
-     rotate(x){finite(x)},moveTo(x,y){finite(x,y)},lineTo(x,y){finite(x,y)},
-     fillRect(){},arc(x,y,r){finite(x,y,r);output.dots++},
+    const ctx={fillStyle:'#000',save(){},restore(){},beginPath(){this._shape='';this._start=null},closePath(){},
+     translate(x,y){finite(x,y)},
+     rotate(x){finite(x)},moveTo(x,y){finite(x,y);this._shape='poly';this._start=[x,y]},lineTo(x,y){finite(x,y)},
+     fillRect(){},arc(x,y,r){finite(x,y,r);this._shape='dot';output.dots++},
      ellipse(x,y,rx,ry){finite(x,y,rx,ry)},
-     fill(){if(this.fillStyle==='#000')output.black++;else output.white++}};
+     fill(){if(this.fillStyle==='#000')output.black++;else{
+      output.white++;if(this._shape==='poly'){
+       output.marks++;if(output.positions.length<14)output.positions.push(this._start);
+      }
+     }}};
     R.render(ctx,390,844,c,frame,true,p.id);
     return output;
    }
@@ -665,6 +673,69 @@ test('unknown steerable 3D tunnels bend the physical road under touch and keep e
    }
    const empty=paint({...settings,opacity:0,roadOpacity:0,turns:0,hills:0,randomness:0},91);
    assert.ok(empty.dots>200&&empty.marks>100,'straight transparent tunnel remains available');
+  }
+ }finally{fs.rmSync(dir,{recursive:true,force:true});}
+});
+
+
+test('future serpentine road modules separate turn power, turn frequency, random mode and full-black materials',()=>{
+ const dir=workspace();
+ try{
+  const {source}=build(dir),registry=loadRegistry(source);
+  const roads=registry.list().filter(p=>p.module&&p.controls.some(x=>x[1]==='roadOpacity')&&p.controls.some(x=>x[1]==='frequency'));
+  assert.ok(roads.length>0,'published serpentine route is discovered declaratively');
+  for(const p of roads){
+   const document={currentScript:{dataset:{patternId:p.id}}};
+   vm.runInNewContext(fs.readFileSync(path.join(dir,p.module),'utf8'),
+    {window:{SetkaPatternRegistryV1:registry},document,Math},{timeout:1500});
+   const d=registry.defaults(p.id),fields=new Map(p.controls.map(x=>[x[1],x]));
+   assert.ok(fields.get('turns')[3]>=30,'actual turning power is substantially extended');
+   assert.ok(fields.get('frequency')[3]>=10,'frequency is independent of turn angle');
+   assert.ok(fields.get('hills')[3]>=8,'vertical range is substantially extended');
+   assert.ok(fields.get('randomness')[3]>=2,'randomness range is extended');
+   assert.ok(fields.has('bank')&&fields.has('solid')&&fields.has('size'),'full V15 visual controls are included');
+   assert.ok(!fields.has('sharpness'),'duplicated turn-sharpness control was removed');
+   function probe(c,frame=120){
+    const metrics={spheres:0,markPolygons:0,blackPolygons:0,marks:[],finite:true};
+    const check=(...x)=>{if(x.some(v=>!Number.isFinite(v)))metrics.finite=false};
+    const ctx={fillStyle:'#000',globalAlpha:1,save(){},restore(){},
+     beginPath(){this._shape='';this._point=null},closePath(){},
+     moveTo(x,y){check(x,y);this._shape='polygon';this._point=[x,y]},lineTo(x,y){check(x,y)},
+     fillRect(){},translate(x,y){check(x,y)},rotate(v){check(v)},
+     arc(x,y,r){check(x,y,r);this._shape='dot';metrics.spheres++},
+     fill(){if(this._shape==='polygon'&&this.fillStyle==='#000')metrics.blackPolygons++;
+      if(this._shape==='polygon'&&this.fillStyle!=='#000'){
+       metrics.markPolygons++;if(metrics.marks.length<10)metrics.marks.push(this._point);
+      }}
+    };
+    registry.render(ctx,390,844,c,frame,true,p.id);
+    return metrics;
+   }
+   const straight={...d,turns:0,hills:0,bank:0,randomness:2,frequency:10,opacity:0,roadOpacity:0};
+   const a=probe(straight),b=probe({...straight,randomness:0});
+   assert.deepEqual(a,b,'maximum randomness cannot invent geometric motion when all amplitudes are zero');
+   const white=probe({...d,opacity:0,roadOpacity:0});
+   assert.equal(white.blackPolygons,0,'both fully transparent surfaces create zero black faces');
+   const black=probe({...d,opacity:1,roadOpacity:1});
+   assert.ok(black.blackPolygons>100,'fully opaque tunnel/road render true-black faces');
+   assert.ok(white.markPolygons>150&&black.markPolygons>150,'flat road markings remain drawn on both opaque and transparent road');
+   const angle=probe({...d,turns:30,frequency:5,hills:0,opacity:0,roadOpacity:0},2400);
+   const rare=probe({...d,turns:30,frequency:0,hills:0,opacity:0,roadOpacity:0},2400);
+   const frequent=probe({...d,turns:30,frequency:10,hills:0,opacity:0,roadOpacity:0},2400);
+   assert.notDeepEqual(rare.marks,frequent.marks,'turn frequency changes the road trajectory');
+   assert.notDeepEqual(angle.marks,straight.marks,'turn strength changes geometry rather than only a displayed value');
+   assert.ok(a.finite&&black.finite&&rare.finite&&frequent.finite);
+   const snapshot=registry.snapshot({patternId:p.id,config:{...d,frequency:9,bank:2,solid:.9,size:2},frame:88});
+   const restored=registry.restore(snapshot);
+   assert.equal(restored.ok,true,'V15 configs survive serialization and research replay');
+   for(const key of ['frequency','bank','solid','size'])assert.equal(restored.snapshot.config[key],snapshot.config[key]);
+   for(const version of [1,2,3]){
+    const old={...snapshot,patternVersion:version,config:{...d}};
+    for(const key of ['frequency','bank','solid','size'])delete old.config[key];
+    if(version<3)for(const key of ['steerX','steerY','sensitivity'])delete old.config[key];
+    const compat=registry.restore(old);
+    assert.equal(compat.ok,true,'older published v'+version+' snapshots remain accessible');
+   }
   }
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
