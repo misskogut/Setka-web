@@ -225,6 +225,17 @@
     }catch(error){showToast("Не удалось открыть этот паттерн. Сохранённая запись остаётся доступна.");window.dispatchEvent(new CustomEvent("setka:pattern-error",{detail:{patternId:source.patternId||config?.patternId||null,reason:error.code||error.message}}));return false}
   }
   function canAnimateLibrary(){const overlay=document.getElementById("st34Layer");return !window.__SETKA_RENDER_ONLY__&&!document.hidden&&!reducedPreviewMotion.matches&&libraryScreen.classList.contains("active")&&(!overlay||overlay.classList.contains("hidden"));}
+  const physicsPreviewClocks=new Map();
+  function libraryPreviewFrame(c,id,start,requested,advance=false){
+    const R=window.SetkaPatternRegistryV1;
+    if(!R?.get(id)?.capabilities?.sequentialPhysics)return requested;
+    const key=R.configKey(c,id)+"|preview:"+start;
+    const prior=physicsPreviewClocks.get(key)??start;
+    const next=advance?R.clockFrame(id,prior,requested):prior;
+    physicsPreviewClocks.set(key,next);
+    if(physicsPreviewClocks.size>64)physicsPreviewClocks.delete(physicsPreviewClocks.keys().next().value);
+    return next;
+  }
   function stopLibraryPreviews(){
     if(previewAnimation)cancelAnimationFrame(previewAnimation);
     previewAnimation=0;previewLastPaint=0;previewLastTick=0;
@@ -287,16 +298,6 @@
   }
   for(const event of ["setka:overlay-visibility","setka:sheet-presentation","setka:view"])window.addEventListener(event,syncLibraryPreviews);
   document.addEventListener("visibilitychange",syncLibraryPreviews);reducedPreviewMotion.addEventListener?.("change",syncLibraryPreviews);
-  const physicsPreviewClocks=new Map();
-  function libraryPreviewFrame(c,id,start,requested,advance=false){
-    if(!registry.get(id)?.capabilities?.sequentialPhysics)return requested;
-    const key=registry.configKey(c,id)+"|preview:"+start;
-    const prior=physicsPreviewClocks.get(key)??start;
-    const next=advance?registry.clockFrame(id,prior,requested):prior;
-    physicsPreviewClocks.set(key,next);
-    if(physicsPreviewClocks.size>64)physicsPreviewClocks.delete(physicsPreviewClocks.keys().next().value);
-    return next;
-  }
   function drawThumbnail(el,c,f=BASE_PREVIEW_FRAME,id=null){const t=el.getContext("2d"),pid=inferPatternId(c,id);renderPattern(t,el.width,el.height,cloneConfig(c,pid),Number.isFinite(Number(f))?Number(f):BASE_PREVIEW_FRAME,true,pid)}
   function renderPreview(el,c,f=BASE_PREVIEW_FRAME,id=null){drawThumbnail(el,c,f,id)}
   function resizeMainCanvas(){const r=app.getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,2);canvas.width=Math.max(1,Math.floor(r.width*dpr));canvas.height=Math.max(1,Math.floor(r.height*dpr));canvas.style.width=`${r.width}px`;canvas.style.height=`${r.height}px`;ctx.setTransform(dpr,0,0,dpr,0,0)}
