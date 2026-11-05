@@ -1,24 +1,13 @@
 import {MOTION,MOTION_LABELS} from "./standalone-music-audio-v1.mjs";
-const paths={
- static:'<circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/>',
- cw:'<path d="M20 7a9 9 0 1 0 1 8M20 3v5h-5"/>',
- ccw:'<path d="M4 7a9 9 0 1 1-1 8M4 3v5h5"/>',
- counter:'<path d="M2 8h17l-4-4m4 4-4 4M22 16H5l4-4m-4 4 4 4"/>',
- eight:'<path d="M12 12C8 5 2 4 2 11s7 9 10 1c3-8 10-6 10 0s-6 8-10 0Z"/>',
- chaos:'<path d="M2 19 20 4m-5 0h5v5M2 5l18 15m-5 0h5v-5"/>',
- spiral:'<path d="M12 12c0-2 3-2 3 0 0 5-9 6-9-1 0-10 16-10 16 1 0 15-21 15-21 0"/>',
- breath:'<circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="10"/>'
-};
-const moveSVG=m=>'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+paths[m]+'</svg>';
-const speedIcon=(which)=>which==="slow"?'<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 19c0-6 5-11 11-11s10 4 11 10h4v4H5zM8 23l-2 4m16-4 2 4M25 14h4M13 9v11"/></svg>':'<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M12 13 9 2l6 8M18 12l2-10 4 13M6 22c1-9 8-13 16-9l6 7-6 2-3 6h-7l-5-3-5 3M21 16h.1M4 19H1"/></svg>';
-export function createOrbitUI(mixer,trackHTML){
+import {uiIconHTML} from "./standalone-music-ui-icons-v2.mjs";
+export function createOrbitUI(mixer,trackHTML,uiIcons={}){
  const root=document.createElement("section");root.className="sm-orbits";root.hidden=true;
  const stage=document.createElement("div");stage.className="sm-stage";stage.setAttribute("aria-label","Пространственное расположение активных звуков");
- stage.innerHTML='<span class="sm-ring sm-ring-inner"></span><span class="sm-ring sm-ring-middle"></span><span class="sm-ring sm-ring-outer"></span><span class="sm-listener"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="24" r="14"/><path d="M14 27v-5a18 18 0 0 1 36 0v5M10 25h8v14h-8zm36 0h8v14h-8zM12 57c2-11 12-17 20-17s18 6 20 17"/></svg></span>';
+ stage.innerHTML='<span class="sm-ring sm-ring-inner"></span><span class="sm-ring sm-ring-middle"></span><span class="sm-ring sm-ring-outer"></span><span class="sm-listener">'+uiIconHTML("listener",uiIcons)+'</span>';
  root.append(stage);
  const row=document.createElement("div");row.className="sm-motion-row";row.setAttribute("role","group");row.setAttribute("aria-label","Режим движения звуков");root.append(row);
  const speed=document.createElement("div");speed.className="sm-speed";
- speed.innerHTML=speedIcon("slow")+'<input type="range" min="0" max="100" value="'+mixer.speed+'" aria-label="Скорость движения звуков">'+speedIcon("fast");
+ speed.innerHTML='<span class="sm-speed-slow">'+uiIconHTML("speed-slow",uiIcons)+'</span><input type="range" min="0" max="100" value="'+mixer.speed+'" aria-label="Скорость движения звуков"><span class="sm-speed-fast">'+uiIconHTML("speed-fast",uiIcons)+'</span>';
  const input=speed.querySelector("input");input.addEventListener("input",()=>mixer.setSpeed(input.value));
  root.append(speed);
  const elements=new Map();
@@ -32,7 +21,7 @@ export function createOrbitUI(mixer,trackHTML){
   row.replaceChildren();
   for(const mode of MOTION){
    const b=document.createElement("button");b.type="button";b.className="sm-motion"+(mixer.mode===mode?" active":"");
-   b.title=MOTION_LABELS[mode];b.setAttribute("aria-label",MOTION_LABELS[mode]);b.innerHTML=moveSVG(mode);
+   b.title=MOTION_LABELS[mode];b.setAttribute("aria-label",MOTION_LABELS[mode]);b.innerHTML=uiIconHTML("motion-"+mode,uiIcons);
    b.onclick=()=>{mixer.motion(mode);updateMotions()};
    row.append(b);
   }
@@ -65,6 +54,12 @@ export function createOrbitUI(mixer,trackHTML){
   updateMotions();
   requestAnimationFrame(updatePositions);
  }
+ function refreshIcons(){
+  stage.querySelector(".sm-listener").innerHTML=uiIconHTML("listener",uiIcons);
+  speed.querySelector(".sm-speed-slow").innerHTML=uiIconHTML("speed-slow",uiIcons);
+  speed.querySelector(".sm-speed-fast").innerHTML=uiIconHTML("speed-fast",uiIcons);
+  updateMotions();
+ }
  window.addEventListener("resize",updatePositions);
- return {root,render,updatePositions};
+ return {root,render,updatePositions,refreshIcons};
 }
