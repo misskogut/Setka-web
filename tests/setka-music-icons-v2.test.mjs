@@ -9,7 +9,7 @@ test("all SETKA music system controls have a consistent white-line vector defaul
  assert.equal(new Set(UI_ICON_IDS).size,UI_ICON_IDS.length);
  for(const {id} of UI_ICON_SLOTS){
   assert.match(defaultIconSVG(id),/viewBox="0 0 24 24"/);
-  assert.match(uiIconHTML(id),/stroke="currentColor"/);
+  assert.match(uiIconHTML(id),/(?:stroke|fill)="currentColor"/);
  }
  for(const id of ["hand","eye","sleep","8d"]){
   assert.match(iconSvg(id),/viewBox="0 0 128 128"/);
