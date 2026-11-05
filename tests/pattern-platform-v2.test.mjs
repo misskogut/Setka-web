@@ -231,3 +231,13 @@ test('startup origin preserves gesture clocks and distinct snapshots for any unk
  for(const value of [-1,Infinity,'12']){assert.throws(()=>R.normalize({...base,_startFrame:value},id));assert.throws(()=>assertConfiguration(R.get(id),{...base,_startFrame:value}));}
  assert.equal(R.configKey(base,id),originalKey,'legacy configurations remain unchanged');
 });
+
+test('future sequential physics modules admit bounded displayed time without changing ordinary clocks',()=>{
+ const R=registry();
+ const ordinary={id:'fixture-ordinary-clock',title:'ordinary clock',version:1,defaults:{speed:1,colorModeIndex:0},controls:[['Скорость','speed',0,2,.1,'Ползунок',0]],colorModes:1};
+ R.register(ordinary);R.register({...ordinary,id:'fixture-sequential-clock',capabilities:{sequentialPhysics:true}});
+ assert.equal(R.clockFrame('fixture-ordinary-clock',44,9000),9000);
+ assert.equal(R.clockFrame('fixture-sequential-clock',44,9000),45);
+ assert.equal(R.clockFrame('fixture-sequential-clock',45,44),45);
+ assert.equal(R.clockFrame('fixture-sequential-clock',45,45.3),45.3);
+});
