@@ -57,6 +57,7 @@ try{
  await page.locator(".sm-track").first().waitFor();
  assert.equal(await page.locator(".library-pager .pager-button").count(),4);
  assert.equal(await page.locator(".sm-categories .sm-category").count(),5);
+ assert.equal(await page.locator(".sm-categories svg.sm-approved-category-icon").count(),5,"five selected first-row glyphs render in music navigation");
  assert.equal(await page.locator("#libraryTitle").isVisible(),false,"pattern title must not appear on music screen, even if async library state updates its text");
  assert.equal(await page.locator(".sm-track").count(),3);
  const geometry=await page.evaluate(()=>{
