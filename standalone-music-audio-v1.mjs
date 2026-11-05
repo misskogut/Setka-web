@@ -11,7 +11,7 @@ export class SetkaMusicMixer {
    if(!A)throw Error("audio_unsupported");
    this.ctx=new A();
    this.master=this.ctx.createDynamicsCompressor();
-   Object.assign(this.master.threshold,{value:-10});
+   this.master.threshold.value=-10;
    this.master.knee.value=3;this.master.ratio.value=12;
    this.master.attack.value=.003;this.master.release.value=.25;
    this.master.connect(this.ctx.destination);
@@ -88,8 +88,8 @@ export class SetkaMusicMixer {
    if(this.mode==="cw")a+=w*t;
    else if(this.mode==="ccw")a-=w*t;
    else if(this.mode==="counter")a+=(j%2?-1:1)*w*t;
-   else if(this.mode==="breath")r=Math.max(.33,Math.min(.87,rad+.15*Math.sin(w*t+phase)));
-   else if(this.mode==="spiral"){a+=w*t;r=.34+.48*(.5-.5*Math.cos(.6*w*t+phase))}
+   else if(this.mode==="breath")r=Math.max(.33,Math.min(.87,rad+.15*(Math.sin(w*t+phase)-Math.sin(phase))));
+   else if(this.mode==="spiral"){a+=w*t;r=rad*(1-blend)+(.34+.48*(.5-.5*Math.cos(.6*w*t+phase)))*blend}
    else {
     const q=w*t+phase;
     if(this.mode==="eight"){x=.77*Math.sin(q);y=-.60*Math.sin(2*q)}
