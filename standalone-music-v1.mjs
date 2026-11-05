@@ -37,6 +37,9 @@ function redrawCatalog(){
  }
 }
 function redrawCategories(){
+ // Preserve scroll offset while rebuilding categories; tapped items offscreen
+ // should not cause the strip to jump back to its initial leftmost position.
+ const previousScroll=categoriesRow.scrollLeft;
  categoriesRow.replaceChildren();
  for(const c of categories.filter(c=>c.visible!==false)){
   const b=document.createElement("button");b.type="button";
@@ -50,6 +53,7 @@ function redrawCategories(){
  o.setAttribute("aria-label","Орбиты");o.innerHTML=uiIconHTML("orbit-tab",uiIcons);
  o.onclick=()=>{selected=selected==="orbits"?null:"orbits";redraw()};
  categoriesRow.append(o);
+ categoriesRow.scrollLeft=previousScroll;
 }
 function redraw(){
  if(!root)return;redrawCategories();

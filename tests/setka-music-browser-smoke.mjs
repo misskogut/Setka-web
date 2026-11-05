@@ -54,8 +54,43 @@ try{
  await page.locator(".sm-track").first().waitFor();
  assert.equal(await page.locator(".library-pager .pager-button").count(),4);
  assert.equal(await page.locator(".sm-categories .sm-category").count(),5);
- assert.equal(await page.locator("#libraryTitle").textContent(),"Музыка");
+ assert.equal(await page.locator("#libraryTitle").isVisible(),false,"pattern title must not appear on music screen, even if async library state updates its text");
  assert.equal(await page.locator(".sm-track").count(),3);
+ const geometry=await page.evaluate(()=>{
+  const strip=document.querySelector(".sm-categories");
+  const tab=strip.querySelector(".sm-category");
+  const note=document.querySelector("#setkaMusicPagerButton svg");
+  const pager=document.querySelector("#libraryScreen .library-pager");
+  const categoryRect=tab.querySelector("svg,.sm-asset-icon")?.getBoundingClientRect();
+  const trackRect=document.querySelector(".sm-track-icon svg,.sm-track-icon .sm-asset-icon")?.getBoundingClientRect();
+  return {scrollWidth:strip.scrollWidth,clientWidth:strip.clientWidth,tabSize:categoryRect?.width,
+   trackSize:trackRect?.width,noteSize:note?.getBoundingClientRect().width,
+   pagerTop:getComputedStyle(pager).top,
+   appTouch:getComputedStyle(document.querySelector("#app")).touchAction,
+   stripTouch:getComputedStyle(strip).touchAction};
+ });
+ assert.ok(geometry.scrollWidth>geometry.clientWidth+45,"music category strip overflows horizontally");
+ const categoryPeek=await page.locator(".sm-categories").evaluate(el=>{
+  const outer=el.getBoundingClientRect(),last=el.lastElementChild.getBoundingClientRect();
+  return {visible:last.left<outer.right-4,partlyHidden:last.right>outer.right+12};
+ });
+ assert.ok(categoryPeek.visible&&categoryPeek.partlyHidden,"the clipped fifth icon signals that the filters swipe horizontally");
+ assert.ok(geometry.tabSize>=64,"category symbols are clearly larger than tracks");
+ assert.ok(geometry.tabSize>=geometry.trackSize+12,"large filters remain visually distinct from sound icons");
+ assert.ok(geometry.noteSize<=26,"note is optically smaller and matches neighboring top icons");
+ assert.equal(geometry.pagerTop,"-9px","all top navigation icons are lifted together");
+ assert.match(geometry.stripTouch,/pan-x/,"finger may swipe music categories horizontally");
+ assert.match(geometry.appTouch,/pan-x/,"top-level touch contract must allow horizontal swipes");
+ // Opening the offscreen orbit tab must keep the user's horizontal scroll position.
+ await page.locator(".sm-category").last().click();
+ assert.equal(await page.locator(".sm-orbits").isVisible(),true);
+ const scrollAtOrbit=await page.locator(".sm-categories").evaluate(el=>el.scrollLeft);
+ assert.ok(scrollAtOrbit>25,"rightmost tab is reached by horizontal scrolling");
+ await page.locator(".sm-category").last().click();
+ assert.equal(await page.locator(".sm-catalog").isVisible(),true);
+ const scrollAfter=await page.locator(".sm-categories").evaluate(el=>el.scrollLeft);
+ assert.ok(scrollAfter>20,"category strip must not reset on rerender");
+ await page.locator(".sm-categories").evaluate(el=>el.scrollLeft=0);
  assert.equal(await page.locator("#libraryScreen").evaluate(el=>el.classList.contains("setka-music-open")),true,"music view must retain active note");
  await page.waitForFunction(()=>Number(getComputedStyle(document.querySelector("#setkaMusicPagerButton")).opacity)>.98,{timeout:2500});
  await mkdir("tests/visual-smoke",{recursive:true});
