@@ -1,0 +1,60 @@
+name: Check SETKA Music and Spatial Orbits
+on:
+  pull_request:
+    paths:
+      - "standalone-music-*"
+      - "standalone-v34.html"
+      - "standalone-research-admin-v1.html"
+      - "research-v1/music-admin*"
+      - "research-v1/app.mjs"
+      - "supabase/functions/setka-music-v1/**"
+      - "tests/setka-music*"
+      - ".github/workflows/check-setka-music.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Syntax check
+        run: |
+          node --check standalone-music-icons-v1.mjs
+          node --check standalone-music-audio-v1.mjs
+          node --check standalone-music-orbits-v1.mjs
+          node --check standalone-music-v1.mjs
+          node --check research-v1/music-admin.mjs
+          node --check research-v1/app.mjs
+      - name: Audio and admin contracts
+        run: node --test tests/setka-music-v1.test.mjs
+      - name: Verify public catalog API without credentials
+        run: |
+          curl --fail --silent --show-error --max-time 15 https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-music-v1 -o /tmp/setka-music-catalog.json
+          node -e "const d=require('/tmp/setka-music-catalog.json'); if (!d.ok || !Array.isArray(d.categories) || !Array.isArray(d.tracks)) process.exit(1)"
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install --no-save --ignore-scripts playwright@1.62.1
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - run: node tests/setka-music-browser-smoke.mjs
+        env:
+          SETKA_BROWSER: ${{ matrix.browser }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: setka-music-${{ matrix.browser }}
+          path: tests/visual-smoke/music-*.png
+          if-no-files-found: ignore
