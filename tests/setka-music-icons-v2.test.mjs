@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {UI_ICON_SLOTS,UI_ICON_IDS,uiIconHTML,assetIconMask,defaultIconSVG} from "../standalone-music-ui-icons-v2.mjs";
 import {iconSvg} from "../standalone-music-icons-v1.mjs";
+import {selectedMusicCategorySVG} from "../standalone-music-approved-icons-v1.mjs";
 const read=path=>readFileSync(new URL("../"+path,import.meta.url),"utf8");
 test("all SETKA music system controls have a consistent white-line vector default",()=>{
  assert.equal(UI_ICON_IDS.length,14);
@@ -50,4 +51,16 @@ test("admin provides explicit uploading/reset, server protects fixed slots",()=>
  const sql=read("supabase/migrations/20261105191507_setka_music_ui_icons_v2_20261105.sql");
  assert.match(sql,/enable row level security/);
  assert.match(sql,/revoke all/);
+});
+
+test("closed-eye endpoints align vertically with open-eye corners (without moving the button)",()=>{
+ const view=id=>selectedMusicCategorySVG(id).match(/viewBox="([^"]+)"/)[1].split(" ").map(Number);
+ const eye=view("eye"),sleep=view("sleep");
+ // First-row eye: corner at y=69. Closed eye: left/right tips at y=32.
+ const openY=(69-eye[1])/eye[3];
+ const closedY=(32-sleep[1])/sleep[3];
+ assert.ok(Math.abs(openY-closedY)<.02,
+   "closed-eye tip must sit on same row as eye corner; open="+openY+" closed="+closedY);
+ const front=read("standalone-music-v1.mjs");
+ assert.match(front,/assetIconMask\(c\.icon_path\)\|\|selectedMusicCategorySVG\(c\.id\)/);
 });
