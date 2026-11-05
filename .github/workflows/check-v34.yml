@@ -200,6 +200,12 @@ jobs:
     runs-on: ubuntu-latest
     container: mcr.microsoft.com/playwright:v1.64.1-noble
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    env:
+      SETKA_BROWSER: ${{ matrix.browser }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -208,16 +214,12 @@ jobs:
       - run: npm install --no-save --ignore-scripts playwright@1.64.1 esbuild
       - run: node scripts/build-pattern-manifest.mjs
       - run: node tests/research-management-v1-browser-smoke.mjs
-      - run: SETKA_BROWSER=webkit node tests/research-management-v1-browser-smoke.mjs
       # Fail fast on cross-surface contract issues before slower visual suites.
       - run: node tests/setka-front-research-audit-browser.mjs
-      - run: SETKA_BROWSER=webkit node tests/setka-front-research-audit-browser.mjs
       # Audio has an independent safety regression; run it before the full UI
       # suite so a flaky unrelated preview does not obscure mic test results.
       - run: node tests/standalone-breathing-grid-browser-smoke.mjs
-      - run: SETKA_BROWSER=webkit node tests/standalone-breathing-grid-browser-smoke.mjs
       - run: node tests/standalone-audio-reactive-v1-browser-smoke.mjs
-      - run: SETKA_BROWSER=webkit node tests/standalone-audio-reactive-v1-browser-smoke.mjs
       - run: node tests/standalone-v34-browser-smoke.mjs
       - run: node tests/standalone-sheets-v1-browser-smoke.mjs
       - run: node tests/standalone-live-previews-v1-browser-smoke.mjs
@@ -226,14 +228,6 @@ jobs:
       - run: node tests/research-admin-v1-access-browser-smoke.mjs
       - run: node tests/standalone-v34-admin-browser-smoke.mjs
       - run: node tests/standalone-v34-open-admin-browser-smoke.mjs
-      - run: SETKA_BROWSER=webkit node tests/standalone-v34-browser-smoke.mjs
-      - run: SETKA_BROWSER=webkit node tests/standalone-sheets-v1-browser-smoke.mjs
-      - run: SETKA_BROWSER=webkit node tests/standalone-live-previews-v1-browser-smoke.mjs
-      - run: SETKA_BROWSER=webkit node tests/standalone-invites-autosync-browser-smoke.mjs
-      - run: SETKA_BROWSER=webkit node tests/standalone-pulse-v1-browser-smoke.mjs
-      - run: SETKA_BROWSER=webkit node tests/research-admin-v1-access-browser-smoke.mjs
-      - run: SETKA_BROWSER=webkit node tests/standalone-v34-admin-browser-smoke.mjs
-      - run: SETKA_BROWSER=webkit node tests/standalone-v34-open-admin-browser-smoke.mjs
       - run: ./node_modules/.bin/esbuild supabase/functions/setka-pattern-knowledge-v40/index.ts --outfile=/tmp/setka-admin-backend-check.js --format=esm
       - run: ./node_modules/.bin/esbuild supabase/functions/setka-community-patterns-v38/index.ts --outfile=/tmp/setka-community-feed-check.js --format=esm
       - run: ./node_modules/.bin/esbuild supabase/functions/setka-tester-archive-v37/index.ts --outfile=/tmp/setka-tester-archive-check.js --format=esm
@@ -243,6 +237,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: v34-browser-smoke
+          name: v34-browser-smoke-${{ matrix.browser }}
           path: tests/visual-smoke/
           if-no-files-found: ignore
