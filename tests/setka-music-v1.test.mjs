@@ -32,7 +32,7 @@ test("orbit presets are eight explicit, independent trajectories",()=>{
  assert.deepEqual(MOTION,["static","cw","ccw","counter","eight","chaos","spiral","breath"]);
  const mixer=new SetkaMusicMixer();
  assert.equal(mixer.omega()>0,true);
- const slow=mixer.omega();mixer.speed=100;assert.ok(mixer.omega()>slow*30);
+ mixer.speed=0;const slow=mixer.omega();mixer.speed=100;assert.ok(mixer.omega()>slow*30);
  const pos=[];
  mixer.ctx={currentTime:0};
  mixer.items.set("test",{id:"test",angle:0,radius:.6,anchorAngle:0,anchorRadius:.6,manual:false,
