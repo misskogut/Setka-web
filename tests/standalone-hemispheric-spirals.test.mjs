@@ -152,7 +152,7 @@ test("generic host passes real start zones, touch/mouse, pinch/cancel and wheel"
  assert.match(host,/startX:sx,startY:sy,width:r\.width,height:r\.height,pinch,pointerType/);
  assert.match(host,/pluginPointerPhase\("end",touch\.x,touch\.y,1,"touch",true\)/);
  assert.match(host,/pointerType,cancelled/);
- assert.match(host,/pluginPointerPhase\("end",mouse\.x,mouse\.y,1,"mouse"\)/);
+ assert.match(host,/pluginPointerPhase\("end",mouse\.x,mouse\.y,mouse\.fingers,"mouse"\)/);
  assert.match(host,/type:"wheel",frame:currentFrame,deltaY:e\.deltaY/);
  assert.match(host,/if\(configKey\(config,runtimePatternId\)===before\)return/);
 });
