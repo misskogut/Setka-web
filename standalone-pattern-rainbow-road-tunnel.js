@@ -2,8 +2,8 @@
 {
   "id": "rainbow-road-tunnel",
   "title": "Радужный тоннель · 3DFP",
-  "version": 4,
-  "schemaVersion": 4,
+  "version": 5,
+  "schemaVersion": 5,
   "introducedAt": "2026-11-04T20:44:00.000Z",
   "module": "standalone-pattern-rainbow-road-tunnel.js",
   "colorModes": 9,
@@ -77,27 +77,15 @@
     "frequency": 5,
     "bank": 0,
     "solid": 0,
-    "size": 1
+    "size": 1,
+    "hillsFrequency": 5,
+    "touchX": 0,
+    "touchY": 0,
+    "touchScale": 1,
+    "touchMode": 0,
+    "touchReleaseFrame": 0
   },
   "controls": [
-    [
-      "Скорость езды",
-      "speed",
-      0,
-      3,
-      0.05,
-      "Ползунок",
-      0
-    ],
-    [
-      "Следование камеры",
-      "follow",
-      0,
-      1.3,
-      0.05,
-      "Ползунок",
-      0
-    ],
     [
       "Сила поворотов",
       "turns",
@@ -119,6 +107,25 @@
       "От редких длинных дуг до частой змейки; не меняет максимальный угол поворота"
     ],
     [
+      "Спуски и подъёмы",
+      "hills",
+      0,
+      8,
+      0.05,
+      "Ползунок",
+      0
+    ],
+    [
+      "Частота спусков и подъёмов",
+      "hillsFrequency",
+      0,
+      10,
+      0.1,
+      "Ползунок",
+      0,
+      "От протяжённых пологих перепадов высоты до частых смен подъёма и спуска, независимо от их силы"
+    ],
+    [
       "Сила виража · скручивание",
       "bank",
       0,
@@ -127,6 +134,15 @@
       "Ползунок",
       0,
       "Скручивает поперечное сечение полотна, боковых стен и сфер тоннеля вокруг направления движения"
+    ],
+    [
+      "Форма тоннеля",
+      "shape",
+      0,
+      1,
+      0.05,
+      "Ползунок",
+      0
     ],
     [
       "Непредсказуемость дороги",
@@ -139,22 +155,32 @@
       "Случайный выбор только разрешённых поворотов и подъёмов; при нулевой силе поворотов и нулевых подъёмах дорога остаётся прямой"
     ],
     [
-      "Спуски и подъёмы",
-      "hills",
+      "Следование камеры",
+      "follow",
       0,
-      8,
+      1.3,
       0.05,
       "Ползунок",
       0
     ],
     [
-      "Форма тоннеля",
-      "shape",
+      "Скорость езды",
+      "speed",
       0,
-      1,
+      3,
       0.05,
       "Ползунок",
       0
+    ],
+    [
+      "Масштаб обзора",
+      "zoom",
+      0.65,
+      1.55,
+      0.01,
+      "Ползунок",
+      0,
+      "Базовый масштаб камеры. Жест двумя пальцами временно приближает/отдаляет, не меняя это значение."
     ],
     [
       "Непрозрачность стен",
@@ -223,15 +249,6 @@
       0
     ],
     [
-      "Масштаб обзора",
-      "zoom",
-      0.65,
-      1.55,
-      0.01,
-      "2 пальца ↑↓",
-      2
-    ],
-    [
       "Смещение взгляда",
       "yawOffset",
       -0.27,
@@ -241,24 +258,24 @@
       0
     ],
     [
-      "Изгиб дороги ←→",
+      "Постоянный изгиб ←→",
       "steerX",
       -2.5,
       2.5,
       0.01,
-      "Центр ←→",
-      1,
-      "Проведи пальцем по тоннелю вправо/влево: меняется изгиб следующих участков дороги"
+      "Ползунок",
+      0,
+      "Постоянное боковое искривление. Жест одним пальцем действует независимо и временно."
     ],
     [
-      "Изгиб дороги ↑↓",
+      "Постоянный изгиб ↑↓",
       "steerY",
       -2.5,
       2.5,
       0.01,
-      "Центр ↑↓",
-      1,
-      "Движение вверх/вниз изгибает дорогу в пространстве"
+      "Ползунок",
+      0,
+      "Постоянное вертикальное искривление. Жест одним пальцем действует независимо и временно."
     ],
     [
       "Чувствительность касания",
@@ -277,16 +294,42 @@
       "min": 0,
       "max": 4294967295,
       "integer": true
+    },
+    "touchX": {
+      "type": "number",
+      "min": -4,
+      "max": 4
+    },
+    "touchY": {
+      "type": "number",
+      "min": -4,
+      "max": 4
+    },
+    "touchScale": {
+      "type": "number",
+      "min": 0.3,
+      "max": 3
+    },
+    "touchMode": {
+      "type": "number",
+      "min": 0,
+      "max": 2,
+      "integer": true
+    },
+    "touchReleaseFrame": {
+      "type": "number",
+      "min": 0,
+      "max": 1000000000
     }
   },
   "gestureHints": [
     [
-      "Управление дорогой",
-      "1 палец ←→↑↓ — изгиб в пределах силы поворотов и подъёмов"
+      "Свободный изгиб",
+      "1 палец ←→↑↓ — временно изгибает дорогу независимо от силы поворотов и подъёмов; после отпускания плавно восстанавливается"
     ],
     [
-      "Масштаб",
-      "2 пальца ↑↓ — увеличение/уменьшение без изменения траектории"
+      "Свободный масштаб",
+      "2 пальца свести/развести — временный зум; после отпускания возврат к установленному масштабу"
     ]
   ],
   "keyFields": [
@@ -311,13 +354,25 @@
     "frequency",
     "bank",
     "solid",
-    "size"
+    "size",
+    "hillsFrequency"
   ],
   "legacyVersions": [
     1,
     2,
-    3
-  ]
+    3,
+    4
+  ],
+  "transientFields": [
+    "touchX",
+    "touchY",
+    "touchScale",
+    "touchMode",
+    "touchReleaseFrame"
+  ],
+  "capabilities": {
+    "pairedSettings": true
+  }
 }
 END_SETKA_PATTERN_DESCRIPTOR */
 
@@ -368,7 +423,7 @@ function noise(t,channel){
 }
 const modelCache=new Map();
 function buildModel(c){
- const key=[c.turns,c.frequency,c.randomness,c.hills,c.bank,c.seed].join("|");
+ const key=[c.turns,c.frequency,c.randomness,c.hills,c.hillsFrequency,c.bank,c.seed].join("|");
  if(modelCache.has(key)){const value=modelCache.get(key);modelCache.delete(key);modelCache.set(key,value);return value}
  const power=clamp(c.turns/30,0,1),chaos=clamp(c.randomness/2,0,1),hill=clamp(c.hills/8,0,1);
  const magnitude=1.44*Math.pow(power,.55),w=.014+.0056*c.frequency,strength=1.06*Math.pow(hill,.8);
@@ -380,8 +435,9 @@ function buildModel(c){
   return magnitude*mix(regular,random,chaos);
  }
  function pitchRaw(s){
-  return strength*mix(Math.sin(.029*s+.36),
-   clamp(.74*noiseSeed(s*.012,14)+.28*Math.sin(.018*s+1.8),-1,1),chaos);
+  const elevationRate=.009+.004*c.hillsFrequency,tempo=elevationRate/.029;
+  return strength*mix(Math.sin(elevationRate*s+.36),
+   clamp(.74*noiseSeed(s*.012*tempo,14)+.28*Math.sin(.018*s*tempo+1.8),-1,1),chaos);
  }
  const yaw0=yawRaw(0),pitch0=pitchRaw(0);
  function heading(s){
@@ -496,10 +552,14 @@ function render(ctx,w,h,c,frame,preview=false){
  right=unit(right.map((v,i)=>ca*v-sa*old[i]));
  up=unit(cross3(forward,right));
  const eye=[camera.x+camera.ux*1.55,camera.y+camera.uy*1.55,camera.z+camera.uz*1.55];
- const horizon=height*.552,focal=Math.min(width*.485,height*.86)/c.zoom;
+ const active=Number(c.touchMode)>0,elapsed=Math.max(0,f-(Number(c.touchReleaseFrame)||0));
+ const touchBlend=active?1:Math.exp(-elapsed/12);
+ const temporaryScale=1+((Number(c.touchScale)||1)-1)*touchBlend;
+ const horizon=height*.552,focal=Math.min(width*.485,height*.86)/clamp(c.zoom*temporaryScale,.3,3);
  const roofWidth=4.7,roofHeight=4.7+6*c.shape;
- const sx=(c.steerX||0)*9*clamp(c.turns/6,0,1),
-       sy=(c.steerY||0)*8.7*clamp(c.hills/3,0,1),steering=Math.abs(sx)+Math.abs(sy)>.00001;
+ const sx=(c.steerX||0)*9+(c.touchX||0)*13*touchBlend,
+       sy=(c.steerY||0)*8.7+(c.touchY||0)*13*touchBlend,
+       steering=Math.abs(sx)+Math.abs(sy)>.00001;
  const frameCache=new Map();
  const position=s=>{
   const q=at(s),t=smooth((s-camS)/72);
@@ -619,13 +679,32 @@ function render(ctx,w,h,c,frame,preview=false){
 }
 function interact(c,e){
  if(e?.type==="patch")return {...c,...e.patch};
- if(e?.type!=="gesture"||e.phase==="start"||e.phase==="end"||e.phase==="cancel")return c;
+ if(e?.type!=="gesture")return c;
+ const frame=Math.max(0,Number(e.frame)||0),mode=Math.min(2,Math.max(1,Number(e.fingers)||1));
+ if(e.phase==="start"){
+  const decay=(c.touchMode||0)>0?1:Math.exp(-Math.max(0,frame-(c.touchReleaseFrame||0))/12);
+  return {...c,touchMode:mode,
+   touchX:mode===1?(c.touchX||0)*decay:0,
+   touchY:mode===1?(c.touchY||0)*decay:0,
+   touchScale:mode===2?1+((c.touchScale||1)-1)*decay:1};
+ }
+ if(e.phase==="end"||e.phase==="cancel"){
+  return {...c,touchMode:0,touchReleaseFrame:frame};
+ }
+ if(e.phase!=="move")return c;
  const dx=Number(e.dx)||0,dy=Number(e.dy)||0;
- if(e.fingers>=2)return {...c,zoom:clamp(c.zoom-dy*.002,.65,1.55)};
- if(e.fingers!==1||(!dx&&!dy))return c;
+ if(mode>=2){
+  const ratio=Number(e.pinch);
+  const prev=Number(e.previousPinchDistance),current=Number(e.pinchDistance);
+  const valid=Number.isFinite(ratio)&&ratio>0?ratio:
+    Number.isFinite(prev)&&prev>0&&Number.isFinite(current)?current/prev:null;
+  const zoomFactor=valid&&Number.isFinite(valid)?valid:Math.exp(-dy*.012);
+  return {...c,touchMode:2,touchScale:clamp((c.touchScale||1)*zoomFactor,.3,3)};
+ }
  const width=Math.max(1,Number(e.width)||390),height=Math.max(1,Number(e.height)||780),sensitivity=c.sensitivity||1;
- return {...c,steerX:clamp((c.steerX||0)+dx/width*2.55*sensitivity,-2.5,2.5),
-  steerY:clamp((c.steerY||0)-dy/height*2.55*sensitivity,-2.5,2.5)};
+ return {...c,touchMode:1,
+  touchX:clamp((c.touchX||0)+dx/width*3.5*sensitivity,-4,4),
+  touchY:clamp((c.touchY||0)-dy/height*3.5*sensitivity,-4,4)};
 }
 registry.bindInteraction(id,interact);
 registry.bindRenderer(id,render);
