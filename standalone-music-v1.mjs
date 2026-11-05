@@ -81,6 +81,8 @@ function hideMusic(){
  note.classList.remove("active");
 }
 function install(){
+ // Owner-only canary: no navigation mutation on the default production URL.
+ if(new URLSearchParams(location.search).get("music")!=="1")return;
  const library=$("libraryScreen"),pager=library?.querySelector(".library-pager");
  patternPanels=$("librarySwipeArea");title=$("libraryTitle");
  if(!library||!pager||!patternPanels||!title)return;
