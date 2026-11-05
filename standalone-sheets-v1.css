@@ -153,3 +153,14 @@ body.setka-sheet-layout .pattern-tile .mini-heart {
 @media (prefers-reduced-motion: reduce) {
   body.setka-sheet-layout #st34Layer, #st34SheetBackdrop { transition: none; }
 }
+
+/* iOS dock regression guard: never lift the navigation with a stale keyboard
+   inset when no editable field is focused. The dock belongs to the viewport. */
+body.setka-sheet-layout #st34Nav {
+  position: fixed !important;
+  bottom: calc(8px + env(safe-area-inset-bottom, 0px)) !important;
+  top: auto !important;
+}
+body.setka-sheet-layout:has(input:focus:not([type="range"]):not([type="checkbox"]):not([type="radio"]), textarea:focus, [contenteditable="true"]:focus) #st34Nav {
+  bottom: calc(8px + env(safe-area-inset-bottom, 0px) + var(--setka-keyboard-inset, 0px)) !important;
+}
