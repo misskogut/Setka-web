@@ -8,7 +8,8 @@ const file=name=>readFileSync(new URL(name,root),"utf8");
 test("music is mounted additively, without replacing pattern renderer or bottom nav",()=>{
  const html=file("standalone-v34.html");
  assert.match(html,/standalone-music-v1\.mjs/);
- assert.match(file("standalone-music-v1.mjs"),/get\("music"\)!=="1"/);
+ assert.doesNotMatch(file("standalone-music-v1.mjs"),/get\("music"\)!=="1"/,"music must no longer be gated behind URL query params");
+ assert.match(html,/id="setkaMusicPagerButton"/,"music note must exist in static HTML before JS loads");
  assert.match(html,/standalone-music-v1\.css/);
  assert.match(html,/id="allPatternsPanel"/);
  assert.match(html,/id="librarySwipeArea"/);
