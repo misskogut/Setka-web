@@ -2,8 +2,8 @@
 {
   "id": "rainbow-road-tunnel",
   "title": "Радужный тоннель · 3DFP",
-  "version": 5,
-  "schemaVersion": 5,
+  "version": 6,
+  "schemaVersion": 6,
   "introducedAt": "2026-11-04T20:44:00.000Z",
   "module": "standalone-pattern-rainbow-road-tunnel.js",
   "colorModes": 9,
@@ -83,7 +83,9 @@
     "touchY": 0,
     "touchScale": 1,
     "touchMode": 0,
-    "touchReleaseFrame": 0
+    "touchReleaseFrame": 0,
+    "roadBends": [],
+    "touchBendIndex": -1
   },
   "controls": [
     [
@@ -180,7 +182,7 @@
       0.01,
       "Ползунок",
       0,
-      "Базовый масштаб камеры. Жест двумя пальцами временно приближает/отдаляет, не меняя это значение."
+      "Базовый масштаб обзора. Изменяется бегунком или сведением/разведением двух пальцев; выбранное значение сохраняется."
     ],
     [
       "Непрозрачность стен",
@@ -320,16 +322,26 @@
       "type": "number",
       "min": 0,
       "max": 1000000000
+    },
+    "roadBends": {
+      "type": "array",
+      "maxItems": 120
+    },
+    "touchBendIndex": {
+      "type": "number",
+      "min": -1,
+      "max": 119,
+      "integer": true
     }
   },
   "gestureHints": [
     [
-      "Свободный изгиб",
-      "1 палец ←→↑↓ — временно изгибает дорогу независимо от силы поворотов и подъёмов; после отпускания плавно восстанавливается"
+      "Формирование дороги",
+      "1 палец ←→↑↓ — сгибает участок дороги впереди как пластилин; после отпускания изгиб остаётся, пока не проедешь его"
     ],
     [
-      "Свободный масштаб",
-      "2 пальца свести/развести — временный зум; после отпускания возврат к установленному масштабу"
+      "Масштаб обзора",
+      "2 пальца свести/развести — изменяет и сохраняет масштаб, как бегунок «Масштаб обзора»"
     ]
   ],
   "keyFields": [
@@ -355,20 +367,23 @@
     "bank",
     "solid",
     "size",
-    "hillsFrequency"
+    "hillsFrequency",
+    "roadBends"
   ],
   "legacyVersions": [
     1,
     2,
     3,
-    4
+    4,
+    5
   ],
   "transientFields": [
     "touchX",
     "touchY",
     "touchScale",
     "touchMode",
-    "touchReleaseFrame"
+    "touchReleaseFrame",
+    "touchBendIndex"
   ],
   "capabilities": {
     "pairedSettings": true
@@ -542,30 +557,35 @@ function sprites(mode,solid){
 function render(ctx,w,h,c,frame,preview=false){
  const width=Math.max(1,w),height=Math.max(1,h),f=Math.max(0,Number(frame)||0);
  const model=buildModel(c),at=model.at,camS=48+f*12.8*c.speed/60;
- const camera=at(camS),ahead=at(camS+5);
- const forward0=[camera.fx,camera.fy,camera.fz],follow=clamp(c.follow,0,1),extra=Math.max(0,c.follow-1);
- let forward=unit(forward0.map((v,i)=>v*follow+(1-follow)*(i===2?1:0)+extra*([ahead.fx,ahead.fy,ahead.fz][i]-v)));
- const upGuess=unit([camera.ux*follow,camera.uy*follow+1-follow,camera.uz*follow]);
- let right=unit(cross3(upGuess,forward)),up=unit(cross3(forward,right));
- const turn=c.yawOffset||0,ca=Math.cos(turn),sa=Math.sin(turn),old=forward;
- forward=unit(old.map((v,i)=>ca*v+sa*right[i]));
- right=unit(right.map((v,i)=>ca*v-sa*old[i]));
- up=unit(cross3(forward,right));
- const eye=[camera.x+camera.ux*1.55,camera.y+camera.uy*1.55,camera.z+camera.uz*1.55];
- const active=Number(c.touchMode)>0,elapsed=Math.max(0,f-(Number(c.touchReleaseFrame)||0));
- const touchBlend=active?1:Math.exp(-elapsed/12);
- const temporaryScale=1+((Number(c.touchScale)||1)-1)*touchBlend;
- const horizon=height*.552,focal=Math.min(width*.485,height*.86)*clamp(temporaryScale,.3,3)/c.zoom;
+ const baseCamera=at(camS);
+ const horizon=height*.552,focal=Math.min(width*.485,height*.86)/c.zoom;
  const roofWidth=4.7,roofHeight=4.7+6*c.shape;
- const sx=(c.steerX||0)*9+(c.touchX||0)*13*touchBlend,
-       sy=(c.steerY||0)*8.7+(c.touchY||0)*13*touchBlend,
-       steering=Math.abs(sx)+Math.abs(sy)>.00001;
+ const sx=(c.steerX||0)*9,sy=(c.steerY||0)*8.7;
+ // A finger edits an anchored piece of the WORLD-space route; the edit is
+ // never multiplied by elapsed time or a recovery factor after release.
+ const bends=c.roadBends||[],bendFrames=[];
+ for(let i=0;i+2<bends.length;i+=3){
+  const anchor=bends[i],dx=bends[i+1],dy=bends[i+2];
+  if(anchor+95<camS-3||anchor-25>camS+176)continue;
+  const p=at(anchor);
+  bendFrames.push({s:anchor,dx,dy,
+    rx:p.rx,ry:p.ry,rz:p.rz,ux:p.ux,uy:p.uy,uz:p.uz});
+ }
+ const steering=Math.abs(sx)+Math.abs(sy)>.00001||bendFrames.length>0;
  const frameCache=new Map();
  const position=s=>{
   const q=at(s),t=smooth((s-camS)/72);
-  return[q.x+camera.rx*sx*t+camera.ux*sy*t,
-         q.y+camera.ry*sx*t+camera.uy*sy*t,
-         q.z+camera.rz*sx*t+camera.uz*sy*t];
+  let x=q.x+baseCamera.rx*sx*t+baseCamera.ux*sy*t,
+      y=q.y+baseCamera.ry*sx*t+baseCamera.uy*sy*t,
+      z=q.z+baseCamera.rz*sx*t+baseCamera.uz*sy*t;
+  for(const b of bendFrames){
+   const weight=smooth((s-(b.s-24))/34)*(1-smooth((s-(b.s+45))/50));
+   if(weight<.000001)continue;
+   x+=weight*(b.dx*b.rx+b.dy*b.ux);
+   y+=weight*(b.dx*b.ry+b.dy*b.uy);
+   z+=weight*(b.dx*b.rz+b.dy*b.uz);
+  }
+  return[x,y,z];
  };
  function frameAt(s){
   if(frameCache.has(s))return frameCache.get(s);
@@ -577,6 +597,16 @@ function render(ctx,w,h,c,frame,preview=false){
    rx:tr[0],ry:tr[1],rz:tr[2],ux:newUp[0],uy:newUp[1],uz:newUp[2],fx:tf[0],fy:tf[1],fz:tf[2]};
   frameCache.set(s,result);return result;
  }
+ const camera=frameAt(camS),ahead=frameAt(camS+5);
+ const forward0=[camera.fx,camera.fy,camera.fz],follow=clamp(c.follow,0,1),extra=Math.max(0,c.follow-1);
+ let forward=unit(forward0.map((v,i)=>v*follow+(1-follow)*(i===2?1:0)+extra*([ahead.fx,ahead.fy,ahead.fz][i]-v)));
+ const upGuess=unit([camera.ux*follow,camera.uy*follow+1-follow,camera.uz*follow]);
+ let right=unit(cross3(upGuess,forward)),up=unit(cross3(forward,right));
+ const turn=c.yawOffset||0,ca=Math.cos(turn),sa=Math.sin(turn),old=forward;
+ forward=unit(old.map((v,i)=>ca*v+sa*right[i]));
+ right=unit(right.map((v,i)=>ca*v-sa*old[i]));
+ up=unit(cross3(forward,right));
+ const eye=[camera.x+camera.ux*1.55,camera.y+camera.uy*1.55,camera.z+camera.uz*1.55];
  function xyz(s,x,y,pose){
   const p=pose||frameAt(s);
   return[x*p.rx+y*p.ux+p.x,x*p.ry+y*p.uy+p.y,x*p.rz+y*p.uz+p.z];
@@ -680,31 +710,36 @@ function render(ctx,w,h,c,frame,preview=false){
 function interact(c,e){
  if(e?.type==="patch")return {...c,...e.patch};
  if(e?.type!=="gesture")return c;
- const frame=Math.max(0,Number(e.frame)||0),mode=Math.min(2,Math.max(1,Number(e.fingers)||1));
- if(e.phase==="start"){
-  const decay=(c.touchMode||0)>0?1:Math.exp(-Math.max(0,frame-(c.touchReleaseFrame||0))/12);
-  return {...c,touchMode:mode,
-   touchX:mode===1?(c.touchX||0)*decay:0,
-   touchY:mode===1?(c.touchY||0)*decay:0,
-   touchScale:mode===2?1+((c.touchScale||1)-1)*decay:1};
- }
+ const mode=Math.min(2,Math.max(1,Number(e.fingers)||1));
+ if(e.phase==="start")return {...c,touchMode:mode,touchBendIndex:-1};
  if(e.phase==="end"||e.phase==="cancel"){
-  return {...c,touchMode:0,touchReleaseFrame:frame};
+  // Do not undo or decay the shape! The vehicle physically drives through it.
+  return {...c,touchMode:0,touchBendIndex:-1};
  }
  if(e.phase!=="move")return c;
- const dx=Number(e.dx)||0,dy=Number(e.dy)||0;
  if(mode>=2){
-  const ratio=Number(e.pinch);
-  const prev=Number(e.previousPinchDistance),current=Number(e.pinchDistance);
-  const valid=Number.isFinite(ratio)&&ratio>0?ratio:
-    Number.isFinite(prev)&&prev>0&&Number.isFinite(current)?current/prev:null;
-  const zoomFactor=valid&&Number.isFinite(valid)?valid:Math.exp(-dy*.012);
-  return {...c,touchMode:2,touchScale:clamp((c.touchScale||1)*zoomFactor,.3,3)};
+  const ratio=Number(e.pinch),previous=Number(e.previousPinchDistance),current=Number(e.pinchDistance);
+  const factor=Number.isFinite(ratio)&&ratio>0?ratio:
+   Number.isFinite(previous)&&previous>0&&Number.isFinite(current)&&current>0?current/previous:null;
+  if(!factor||!Number.isFinite(factor))return {...c,touchMode:2,touchBendIndex:-1};
+  // This is a durable zoom setting, exactly like moving the slider.
+  return {...c,touchMode:2,touchBendIndex:-1,zoom:clamp(c.zoom/factor,.65,1.55)};
  }
+ const dx=Number(e.dx)||0,dy=Number(e.dy)||0;
+ if(!dx&&!dy)return c;
  const width=Math.max(1,Number(e.width)||390),height=Math.max(1,Number(e.height)||780),sensitivity=c.sensitivity||1;
- return {...c,touchMode:1,
-  touchX:clamp((c.touchX||0)+dx/width*3.5*sensitivity,-4,4),
-  touchY:clamp((c.touchY||0)-dy/height*3.5*sensitivity,-4,4)};
+ let bends=(c.roadBends||[]).slice(),index=Number(c.touchBendIndex);
+ if(!Number.isInteger(index)||index<0||index+2>=bends.length){
+  // Begin a new local stretch ~32 metres ahead, independent of slider power.
+  const speed=Math.max(0,Number(c.speed)||0),frame=Math.max(0,Number(e.frame)||0);
+  const anchor=48+frame*12.8*speed/60+32;
+  // Bound history without touching the active stroke; older bends are behind.
+  if(bends.length>=120)bends=bends.slice(-117);
+  index=bends.length;bends.push(anchor,0,0);
+ }
+ bends[index+1]=clamp(bends[index+1]+dx/width*3.5*sensitivity*13,-36,36);
+ bends[index+2]=clamp(bends[index+2]-dy/height*3.5*sensitivity*13,-36,36);
+ return {...c,roadBends:bends,touchMode:1,touchBendIndex:index};
 }
 registry.bindInteraction(id,interact);
 registry.bindRenderer(id,render);
