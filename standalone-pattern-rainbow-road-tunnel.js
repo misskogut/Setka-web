@@ -2,8 +2,8 @@
 {
   "id": "rainbow-road-tunnel",
   "title": "Радужный тоннель · 3DFP",
-  "version": 3,
-  "schemaVersion": 3,
+  "version": 4,
+  "schemaVersion": 4,
   "introducedAt": "2026-11-04T20:44:00.000Z",
   "module": "standalone-pattern-rainbow-road-tunnel.js",
   "colorModes": 9,
@@ -73,7 +73,11 @@
     "colorModeIndex": 0,
     "steerX": 0,
     "steerY": 0,
-    "sensitivity": 1
+    "sensitivity": 1,
+    "frequency": 5,
+    "bank": 0,
+    "solid": 0,
+    "size": 1
   },
   "controls": [
     [
@@ -98,27 +102,47 @@
       "Сила поворотов",
       "turns",
       0,
-      12,
+      30,
+      0.1,
+      "Ползунок",
+      0,
+      "Угол отклонения вправо и влево: чем больше, тем круче настоящие повороты змейкой; не путать с частотой"
+    ],
+    [
+      "Частота поворотов",
+      "frequency",
+      0,
+      10,
+      0.1,
+      "Ползунок",
+      0,
+      "От редких длинных дуг до частой змейки; не меняет максимальный угол поворота"
+    ],
+    [
+      "Сила виража · скручивание",
+      "bank",
+      0,
+      3,
       0.05,
       "Ползунок",
       0,
-      "0% — прямая горизонтальная траектория; максимум — значительно более глубокие виражи, развороты и кривые"
+      "Скручивает поперечное сечение полотна, боковых стен и сфер тоннеля вокруг направления движения"
     ],
     [
       "Непредсказуемость дороги",
       "randomness",
       0,
-      1,
+      2,
       0.01,
       "Ползунок",
       0,
-      "0% — регулярные левые и правые повороты; максимум — случайные прямые, длинные дуги, 3D-спирали и петли при достаточной силе поворотов и подъёмов"
+      "Случайный выбор только разрешённых поворотов и подъёмов; при нулевой силе поворотов и нулевых подъёмах дорога остаётся прямой"
     ],
     [
       "Спуски и подъёмы",
       "hills",
       0,
-      3,
+      8,
       0.05,
       "Ползунок",
       0
@@ -168,6 +192,26 @@
       0.05,
       "Ползунок",
       0
+    ],
+    [
+      "Вид сфер: боке → плотные",
+      "solid",
+      0,
+      1,
+      0.01,
+      "Ползунок",
+      0,
+      "0 — мягкое боке; 1 — плотная цельная сфера"
+    ],
+    [
+      "Размер сфер",
+      "size",
+      0.4,
+      2.3,
+      0.05,
+      "Ползунок",
+      0,
+      "Размер точек на стенах независимо от плотности"
     ],
     [
       "Пульсация разметки",
@@ -237,12 +281,12 @@
   },
   "gestureHints": [
     [
-      "Изгибать трассу",
-      "Один палец по визуалу ←→↑↓ — изгиб дороги впереди, как в «Нейромосте»"
+      "Управление дорогой",
+      "1 палец ←→↑↓ — изгиб в пределах силы поворотов и подъёмов"
     ],
     [
       "Масштаб",
-      "Два пальца ↑↓ — приближение/отдаление, без изменения направления дороги"
+      "2 пальца ↑↓ — увеличение/уменьшение без изменения траектории"
     ]
   ],
   "keyFields": [
@@ -263,11 +307,16 @@
     "colorModeIndex",
     "steerX",
     "steerY",
-    "sensitivity"
+    "sensitivity",
+    "frequency",
+    "bank",
+    "solid",
+    "size"
   ],
   "legacyVersions": [
     1,
-    2
+    2,
+    3
   ]
 }
 END_SETKA_PATTERN_DESCRIPTOR */
@@ -303,129 +352,93 @@ function color(u,mode){
  return stops[stops.length-1].slice(1);
 }
 
-const modelCache=new Map();
+
+const PATH_STEP=.65,ROUTE_COUNT=13500,ROUTE_PERIOD=(ROUTE_COUNT-1)*PATH_STEP;
 const dot3=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
-function cross3(a,b){return [a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]]}
-function unit(v){const l=Math.hypot(...v)||1;return [v[0]/l,v[1]/l,v[2]/l]}
-function mv(m,v){return [m[0]*v[0]+m[1]*v[1]+m[2]*v[2],m[3]*v[0]+m[4]*v[1]+m[5]*v[2],m[6]*v[0]+m[7]*v[1]+m[8]*v[2]]}
-function mm(a,b){const m=new Array(9);for(let row=0;row<3;row++)for(let col=0;col<3;col++)m[row*3+col]=a[row*3]*b[col]+a[row*3+1]*b[col+3]+a[row*3+2]*b[col+6];return m}
+const cross3=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+const unit=v=>{const n=Math.hypot(...v)||1;return v.map(x=>x/n)};
 const I3=[1,0,0,0,1,0,0,0,1];
+const mix=(a,b,t)=>a+(b-a)*t;
+function mv(m,v){return [m[0]*v[0]+m[1]*v[1]+m[2]*v[2],m[3]*v[0]+m[4]*v[1]+m[5]*v[2],m[6]*v[0]+m[7]*v[1]+m[8]*v[2]]}
+function mm(a,b){let v=[];for(let i=0;i<3;i++)for(let j=0;j<3;j++)v.push(a[i*3]*b[j]+a[i*3+1]*b[3+j]+a[i*3+2]*b[6+j]);return v}
+function transpose(m){return [m[0],m[3],m[6],m[1],m[4],m[7],m[2],m[5],m[8]]}
+function noise(t,channel){
+ const i=Math.floor(t),f=t-i,v=smooth(f),offset=Math.imul(channel,0x9e3779b9);
+ return mix(hash(i+offset)*2-1,hash(i+1+offset)*2-1,v);
+}
+const modelCache=new Map();
 function buildModel(c){
- const key=[c.turns,c.randomness,c.hills,c.seed].join("|");
- if(modelCache.has(key)){const value=modelCache.get(key);modelCache.delete(key);modelCache.set(key,value);return value;}
- let state=(c.seed>>>0)||92341;
- function rand(){state=(state+0x6D2B79F5)|0;let z=state;z=Math.imul(z^(z>>>15),z|1);z^=z+Math.imul(z^(z>>>7),z|61);return ((z^(z>>>14))>>>0)/4294967296;}
- const between=(a,b)=>a+(b-a)*rand();
- const period=(COUNT-1)*DS,segments=[];
- let cursor=0,segmentIndex=0;
- const turnStrength=clamp(c.turns/7,0,2),hillStrength=clamp(c.hills/3,0,1.5);
- while(cursor<period+300){
-  const q=rand(),forced=segmentIndex%7;
-  const kind=forced===1?"loop":forced===3?"helix":forced===5?"straight":
-   q<.17?"straight":q<.47?"yaw":q<.66?"mixed":q<.83?"pitch":"helix";
-  const long=rand()<.20;
-  const len=kind==="straight"?between(24,132):kind==="loop"?between(52,90):
-    kind==="helix"?between(54,108):long?between(140,270):between(34,120);
-  const dir=rand()<.5?-1:1;
-  let yaw=0,pitch=0,roll=0;
-  if(kind==="yaw")yaw=dir*between(.018,.060)*turnStrength;
-  if(kind==="mixed"){
-   yaw=dir*between(.022,.082)*turnStrength;
-   pitch=(rand()<.5?-1:1)*between(.015,.052)*hillStrength;
-  }
-  if(kind==="pitch")pitch=dir*between(.024,.092)*hillStrength;
-  if(kind==="loop"){
-   // A complete 360° loop on high settings, without using screen-space warps.
-   pitch=dir*(TAU/(len-10))*hillStrength*(.55+.53*turnStrength);
-   yaw=(rand()<.5?-1:1)*between(.005,.018)*turnStrength;
-  }
-  if(kind==="helix"){
-   yaw=dir*(TAU/(len-12))*(.35+.55*turnStrength);
-   pitch=(rand()<.5?-1:1)*between(.025,.070)*hillStrength;
-   roll=dir*(TAU/(len-12))*Math.min(1.6,.35+.52*turnStrength);
-  }
-  segments.push({start:cursor,end:cursor+len,yaw,pitch,roll});
-  cursor+=len;segmentIndex++;
+ const key=[c.turns,c.frequency,c.randomness,c.hills,c.bank,c.seed].join("|");
+ if(modelCache.has(key)){const value=modelCache.get(key);modelCache.delete(key);modelCache.set(key,value);return value}
+ const power=clamp(c.turns/30,0,1),chaos=clamp(c.randomness/2,0,1),hill=clamp(c.hills/8,0,1);
+ const magnitude=1.44*Math.pow(power,.55),w=.014+.0056*c.frequency,strength=1.06*Math.pow(hill,.8);
+ const seed=(c.seed|0)^92341;
+ function noiseSeed(s,ch){return noise(s,ch+(seed&31)*31)}
+ function yawRaw(s){
+  const regular=Math.sin(w*s+.26);
+  const random=clamp(.78*noiseSeed(s*w*.43,4)+.36*Math.sin(s*w*.53+1.1)+.30*noiseSeed(s*w*.9,12),-1,1);
+  return magnitude*mix(regular,random,chaos);
  }
- const X=new Float64Array(COUNT),Y=new Float64Array(COUNT),Z=new Float64Array(COUNT);
- const RX=new Float64Array(COUNT),RY=new Float64Array(COUNT),RZ=new Float64Array(COUNT);
- const UX=new Float64Array(COUNT),UY=new Float64Array(COUNT),UZ=new Float64Array(COUNT);
- const FX=new Float64Array(COUNT),FY=new Float64Array(COUNT),FZ=new Float64Array(COUNT);
- let right=[1,0,0],up=[0,1,0],forward=[0,0,1],segment=0;
- function baseYaw(s){return c.turns*.34*Math.sin(s*.085+.20)}
- function basePitch(s){
-  const grade=c.hills*(.14*Math.sin(s*.045+.52)+.065*Math.sin(s*.088-1.15));
-  return Math.atan(grade);
+ function pitchRaw(s){
+  return strength*mix(Math.sin(.029*s+.36),
+   clamp(.74*noiseSeed(s*.012,14)+.28*Math.sin(.018*s+1.8),-1,1),chaos);
  }
- function save(i){
-  RX[i]=right[0];RY[i]=right[1];RZ[i]=right[2];
-  UX[i]=up[0];UY[i]=up[1];UZ[i]=up[2];
-  FX[i]=forward[0];FY[i]=forward[1];FZ[i]=forward[2];
+ const yaw0=yawRaw(0),pitch0=pitchRaw(0);
+ function heading(s){
+  // The last 45m smoothly matches the first orientation before rigid tiling.
+  const seam=smooth(clamp((ROUTE_PERIOD-s)/45,0,1));
+  return [mix(yaw0,yawRaw(s),seam),mix(pitch0,pitchRaw(s),seam)];
  }
- save(0);
- const randomMix=Math.pow(clamp(c.randomness,0,1),1.15);
- for(let i=1;i<COUNT;i++){
-  const s=i*DS;
-  while(segment<segments.length-1&&s>=segments[segment].end)segment++;
-  const seg=segments[segment],edge=Math.min(s-seg.start,seg.end-s);
-  const envelope=smooth(clamp(edge/Math.min(12,(seg.end-seg.start)*.22),0,1));
-  const seam=smooth(clamp(Math.min(s,period-s)/32,0,1));
-  const yawDelta=((1-randomMix)*(baseYaw(s)-baseYaw(s-DS))+
-   randomMix*seg.yaw*DS*envelope)*seam;
-  const pitchDelta=((1-randomMix)*(basePitch(s)-basePitch(s-DS))+
-   randomMix*seg.pitch*DS*envelope)*seam;
-  const rollDelta=randomMix*seg.roll*DS*envelope*seam;
-  const old=forward;
-  let ca=Math.cos(yawDelta),sa=Math.sin(yawDelta);
-  let nf=[ca*forward[0]+sa*right[0],ca*forward[1]+sa*right[1],ca*forward[2]+sa*right[2]];
-  let nr=[ca*right[0]-sa*forward[0],ca*right[1]-sa*forward[1],ca*right[2]-sa*forward[2]];
-  ca=Math.cos(pitchDelta);sa=Math.sin(pitchDelta);
-  const nf2=[ca*nf[0]+sa*up[0],ca*nf[1]+sa*up[1],ca*nf[2]+sa*up[2]];
-  let nu=[ca*up[0]-sa*nf[0],ca*up[1]-sa*nf[1],ca*up[2]-sa*nf[2]];
-  ca=Math.cos(rollDelta);sa=Math.sin(rollDelta);
-  right=[ca*nr[0]+sa*nu[0],ca*nr[1]+sa*nu[1],ca*nr[2]+sa*nu[2]];
-  up=[ca*nu[0]-sa*nr[0],ca*nu[1]-sa*nr[1],ca*nu[2]-sa*nr[2]];
-  forward=nf2;
-  if(i%128===0){
-   forward=unit(forward);right=unit([
-    right[0]-forward[0]*dot3(right,forward),
-    right[1]-forward[1]*dot3(right,forward),
-    right[2]-forward[2]*dot3(right,forward)
-   ]);
-   up=unit(cross3(forward,right));
-  }
-  X[i]=X[i-1]+DS*(old[0]+forward[0])*.5;
-  Y[i]=Y[i-1]+DS*(old[1]+forward[1])*.5;
-  Z[i]=Z[i-1]+DS*(old[2]+forward[2])*.5;
-  save(i);
+ const X=new Float64Array(ROUTE_COUNT),Y=new Float64Array(ROUTE_COUNT),Z=new Float64Array(ROUTE_COUNT);
+ for(let i=1;i<ROUTE_COUNT;i++){
+  const s=(i-.5)*PATH_STEP,[yaw,pitch]=heading(s),cp=Math.cos(pitch);
+  X[i]=X[i-1]+Math.sin(yaw)*cp*PATH_STEP;
+  Y[i]=Y[i-1]+Math.sin(pitch)*PATH_STEP;
+  Z[i]=Z[i-1]+Math.cos(yaw)*cp*PATH_STEP;
  }
- // A repeating route is a *rigid 3D transform*, not a world-space translation.
- // This preserves road pose even when the previous tile ends upside-down.
- const endR=[RX[COUNT-1],UX[COUNT-1],FX[COUNT-1],
-             RY[COUNT-1],UY[COUNT-1],FY[COUNT-1],
-             RZ[COUNT-1],UZ[COUNT-1],FZ[COUNT-1]];
- const endT=[X[COUNT-1],Y[COUNT-1],Z[COUNT-1]],transformCache=new Map([[0,{m:I3,t:[0,0,0]}]]);
+ function localPos(s){
+  const q=clamp(s/PATH_STEP,0,ROUTE_COUNT-1),i=Math.min(ROUTE_COUNT-2,Math.floor(q)),t=q-i;
+  return[mix(X[i],X[i+1],t),mix(Y[i],Y[i+1],t),mix(Z[i],Z[i+1],t)];
+ }
+ function localFrame(s){
+  const p=localPos(s),a=localPos(Math.max(0,s-.26)),b=localPos(Math.min(ROUTE_PERIOD,s+.26));
+  const forward=unit([b[0]-a[0],b[1]-a[1],b[2]-a[2]]);
+  let right=unit(cross3([0,1,0],forward)),up=unit(cross3(forward,right));
+  const roll=(c.hills/8)*chaos*Math.min(.48,c.turns*.035)*Math.sin(s*.020)+
+   c.bank*(1.42*Math.sin(s*.024+.25)+.40*Math.sin(s*.041-.7));
+  const cs=Math.cos(roll),sn=Math.sin(roll);
+  const r=right.map((v,i)=>v*cs+up[i]*sn);
+  const u=up.map((v,i)=>v*cs-right[i]*sn);
+  return {p,f:forward,r,u};
+ }
+ const head=localFrame(0),tail=localFrame(ROUTE_PERIOD);
+ const matrix=fr=>[fr.r[0],fr.u[0],fr.f[0],fr.r[1],fr.u[1],fr.f[1],fr.r[2],fr.u[2],fr.f[2]];
+ const seamRotation=mm(matrix(tail),transpose(matrix(head)));
+ const endTranslation=tail.p;
+ const transforms=new Map([[0,{m:I3,t:[0,0,0]}]]);
  function compose(a,b){
-  const moved=mv(a.m,b.t);
-  return {m:mm(a.m,b.m),t:[a.t[0]+moved[0],a.t[1]+moved[1],a.t[2]+moved[2]]};
+  const q=mv(a.m,b.t);
+  return{m:mm(a.m,b.m),t:[a.t[0]+q[0],a.t[1]+q[1],a.t[2]+q[2]]};
  }
- function tilePose(n){
-  if(transformCache.has(n))return transformCache.get(n);
-  let out={m:I3,t:[0,0,0]},base={m:endR,t:endT},count=n;
+ function tilePose(tile){
+  if(transforms.has(tile))return transforms.get(tile);
+  let out={m:I3,t:[0,0,0]},base={m:seamRotation,t:endTranslation},count=tile;
   while(count>0){if(count%2)out=compose(out,base);base=compose(base,base);count=Math.floor(count/2);}
-  transformCache.set(n,out);if(transformCache.size>24)transformCache.delete(transformCache.keys().next().value);
+  transforms.set(tile,out);if(transforms.size>30)transforms.delete(transforms.keys().next().value);
   return out;
  }
  function at(s){
-  const tile=Math.max(0,Math.floor(s/period)),q=clamp((s-tile*period)/DS,0,COUNT-1),i=Math.min(COUNT-2,Math.floor(q)),t=q-i;
-  const mix=a=>a[i]+(a[i+1]-a[i])*t;
-  const pose=tilePose(tile);
-  const local=[mix(X),mix(Y),mix(Z)],world=mv(pose.m,local),m=pose.m;
-  const r=mv(m,[mix(RX),mix(RY),mix(RZ)]),u=mv(m,[mix(UX),mix(UY),mix(UZ)]),f=mv(m,[mix(FX),mix(FY),mix(FZ)]);
-  return {x:world[0]+pose.t[0],y:world[1]+pose.t[1],z:world[2]+pose.t[2],
+  s=Math.max(0,s);
+  const tile=Math.floor(s/ROUTE_PERIOD),local=clamp(s-tile*ROUTE_PERIOD,0,ROUTE_PERIOD);
+  const base=localFrame(local),pose=tilePose(tile);
+  const p=mv(pose.m,base.p),r=mv(pose.m,base.r),u=mv(pose.m,base.u),f=mv(pose.m,base.f);
+  return {x:p[0]+pose.t[0],y:p[1]+pose.t[1],z:p[2]+pose.t[2],
    rx:r[0],ry:r[1],rz:r[2],ux:u[0],uy:u[1],uz:u[2],fx:f[0],fy:f[1],fz:f[2]};
  }
- const model={at};modelCache.set(key,model);if(modelCache.size>3)modelCache.delete(modelCache.keys().next().value);return model;
+ const model={at,key};
+ modelCache.set(key,model);
+ if(modelCache.size>3)modelCache.delete(modelCache.keys().next().value);
+ return model;
 }
 // Each sphere is permanently fixed to a world-space road slab. Unlike a
 // modulo-recycled cloud, dots never teleport through the near/far planes.
@@ -444,23 +457,31 @@ function particles(seed,cell){
  if(particleCache.size>SLAB_CACHE)particleCache.delete(particleCache.keys().next().value);
  return arr;
 }
+
 const spriteCache=new Map();
-function sprites(mode){
- if(spriteCache.has(mode))return spriteCache.get(mode);
- const a=Array.from({length:60},(_,i)=>{
-  const can=document.createElement("canvas");can.width=can.height=36;
-  const g=can.getContext("2d"),col=color(i/59,mode),h=col[0],s=col[1],l=col[2],gr=g.createRadialGradient(18,18,0,18,18,17);
-  gr.addColorStop(0,"hsla("+h+","+s+"%,"+Math.min(90,l+11)+"%,1)");
-  gr.addColorStop(.40,"hsla("+h+","+s+"%,"+l+"%,.93)");
-  gr.addColorStop(.58,"hsla("+h+","+s+"%,"+(l-4)+"%,.78)");
-  gr.addColorStop(.74,"hsla("+h+","+s+"%,"+(l-7)+"%,.12)");
-  gr.addColorStop(1,"hsla("+h+","+s+"%,"+(l-7)+"%,0)");
-  g.fillStyle=gr;g.fillRect(0,0,36,36);
+function sprites(mode,solid){
+ const key=mode+"|"+Math.round(solid*100);
+ if(spriteCache.has(key))return spriteCache.get(key);
+ const arr=Array.from({length:60},(_,i)=>{
+  const can=document.createElement("canvas");can.width=can.height=48;
+  const g=can.getContext("2d"),col=color(i/59,mode),h=col[0],ss=col[1],l=col[2];
+  const gr=g.createRadialGradient(24,24,0,24,24,24);
+  gr.addColorStop(0,"hsla("+h+","+ss+"%,"+Math.min(90,l+10)+"%,.98)");
+  gr.addColorStop(.35,"hsla("+h+","+ss+"%,"+l+"%,.89)");
+  gr.addColorStop(.66,"hsla("+h+","+ss+"%,"+(l-7)+"%,.20)");
+  gr.addColorStop(1,"hsla("+h+","+ss+"%,"+(l-7)+"%,0)");
+  g.globalAlpha=1-solid;g.fillStyle=gr;g.fillRect(0,0,48,48);
+  if(solid>0){
+   g.globalAlpha=solid;g.fillStyle="hsl("+h+","+ss+"%,"+l+"%)";
+   g.beginPath();g.arc(24,24,17.8,0,TAU);g.fill();
+   g.globalAlpha=solid*.21;g.fillStyle="white";g.beginPath();
+   g.ellipse(19,18,6,4,-.6,0,TAU);g.fill();
+  }
   return can;
  });
- spriteCache.set(mode,a);return a;
+ spriteCache.set(key,arr);if(spriteCache.size>27)spriteCache.delete(spriteCache.keys().next().value);
+ return arr;
 }
-
 function render(ctx,w,h,c,frame,preview=false){
  const width=Math.max(1,w),height=Math.max(1,h),f=Math.max(0,Number(frame)||0);
  const model=buildModel(c),at=model.at,camS=48+f*12.8*c.speed/60;
