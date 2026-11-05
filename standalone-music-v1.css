@@ -35,7 +35,7 @@
  padding:8px 5px 5px;cursor:grab;touch-action:none;box-shadow:0 0 10px rgba(255,255,255,.20)}
 .sm-source:active{cursor:grabbing}
 .sm-source-icon,.sm-source-icon svg,.sm-source-icon img{display:block;width:34px;height:34px;object-fit:contain;pointer-events:none}
-.sm-source .sm-dots{top:auto;bottom:5px}
+.sm-source .sm-dots{top:-7px;bottom:auto}
 .sm-motion-row{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:3px;justify-items:center;width:100%;min-height:40px;align-items:center}
 .sm-motion{border:0;padding:3px;background:none;color:#777;display:grid;place-items:center;width:36px;height:36px;cursor:pointer}
 .sm-motion svg{width:30px;height:30px}
