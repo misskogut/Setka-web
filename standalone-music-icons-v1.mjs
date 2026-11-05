@@ -1,11 +1,11 @@
 // Shared, immutable SETKA Music vector symbol dictionary.
 // Vector data is local code, not user-supplied SVG markup.
 export const ICONS=Object.freeze({
-  hand:'<path d="M5 12.5V8.5a1 1 0 0 1 2 0v3M7 12V4.5a1 1 0 0 1 2 0V11M9 11V3.5a1 1 0 0 1 2 0V11M11 11V5a1 1 0 0 1 2 0v7l2-2a1.3 1.3 0 0 1 2 1.6l-3.5 5.1c-.5.8-1.4 1.3-2.4 1.3H9c-3 0-5-2.2-5-5.5v-.1a1 1 0 0 1 1-1Z"/><path d="M7 19c1.5-1.5 5.5-1.5 7 0"/><path d="M9 20c1-1 2-1 3 0"/>',
-  eye:'<path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3.5"/>',
-  sleep:'<path d="M3 10c5 6 13 6 18 0M6 14l-1 3m5-1v3m5-3v3m4-5 2 3"/>',
-  "8d":'<path d="M4 13V11a8 8 0 0 1 16 0v2M3 13v6h4v-6zm14 0v6h4v-6z"/><text x="12" y="15.5" stroke="none" fill="currentColor" font-size="7" font-weight="400" font-family="Arial" text-anchor="middle">8D</text>',
-  orbits:'<circle cx="11.8" cy="12" r="5.5"/><ellipse cx="12" cy="12" rx="10" ry="3.9" transform="rotate(-29 12 12)"/>',
+  hand:'<path d="M7 20c-2.5-1.1-3.8-3.3-3.8-6.2v-2.3a1.1 1.1 0 0 1 2.2 0V8.1a1.1 1.1 0 0 1 2.2 0V5.6a1.1 1.1 0 0 1 2.2 0V4.3a1.1 1.1 0 0 1 2.2 0v6.5a1.1 1.1 0 0 1 2.2 0v2l2.1-1.7a1.2 1.2 0 0 1 1.7 1.7l-3.6 5.4a5.3 5.3 0 0 1-4.7 2.1H7Z"/><path d="M6.8 16.6c1.2-1.4 2.3-1.9 3.7-1.9s2.5.5 3.7 1.9c-1.2 1.3-2.3 1.8-3.7 1.8s-2.5-.5-3.7-1.8Z"/><circle cx="10.5" cy="16.6" r=".85"/>',
+  eye:'<path d="M2 12c3.2-4.4 6.5-6.4 10-6.4S18.8 7.6 22 12c-3.2 4.4-6.5 6.4-10 6.4S5.2 16.4 2 12Z"/><circle cx="12" cy="12" r="3.5"/>',
+  sleep:'<path d="M2.5 9.2C7.5 15.3 16.5 15.3 21.5 9.2M6.3 12.4l-1.8 3.1m6.2-1.3-.4 3.2m5.1-3.3.5 3.1m4-4.6 1.6 2.9"/>',
+  "8d":'<path d="M4 13.2V11a8 8 0 0 1 16 0v2.2M3.1 13h3.7v6H3.1zm14.1 0h3.7v6h-3.7z"/><text x="12" y="15.5" stroke="none" fill="currentColor" font-size="6.1" font-family="Arial,sans-serif" text-anchor="middle">8D</text>',
+  orbits:'<circle cx="12" cy="12" r="5.3"/><ellipse cx="12" cy="12" rx="10.5" ry="4.2" transform="rotate(-28 12 12)"/>',
   cat:'<path d="M6 19a6 6 0 0 1-2-5.3L5 8l2.5-2 2.5 2a6.5 6.5 0 0 1 7 6.5V19H6Z"/><path d="M6 18.5c-5 3.5-7-4-3-6M8 11h.1M12 11h.1M10 13l1 1-1 1M15 19v-4"/>',
   bird:'<path d="M3 16c2-2 4-3 6-3 1-4 5-6 8-3l4 1-4 2c0 4-3 6-7 6H8L5 21M10 19l-1 2M15 11h.1M5 13l5 1"/>',
   wave:'<path d="M2 17c2-6 4-8 8-8 1-4 4-5 7-3-2 0-4 3-3 5 4 0 6 2 8 6-4-3-6-2-9 0-4 3-7 3-11 0Z"/>',
@@ -30,11 +30,11 @@ export const ICONS=Object.freeze({
   star:'<path d="m12 1 2 9 9 2-9 2-2 9-2-9-9-2 9-2z"/>',
   mountain:'<path d="m2 20 7-12 4 6 3-4 6 10H2ZM3 20h18"/>',
   beads:'<path d="M12 2c-10 3-8 11-3 14l3 2 3-2c5-3 7-11-3-14ZM12 18v4M7 5h.1M16 5h.1M5 9h.1M19 9h.1M7 13h.1M17 13h.1"/>',
-  music:'<path d="M9 17V5l11-2v12M9 7l11-2"/><ellipse cx="6" cy="18" rx="3" ry="2"/><ellipse cx="17" cy="16" rx="3" ry="2"/>'
+  music:'<path d="M9 17.8V5.4L20.5 3v12.5M9 7.3l11.5-2.4"/><ellipse cx="6.1" cy="18.2" rx="3.1" ry="2.1"/><ellipse cx="17.6" cy="16" rx="3.1" ry="2.1"/>'
 });
 export const ICON_NAMES=Object.freeze(Object.keys(ICONS));
 export function iconSvg(name,className=""){
   const key=Object.prototype.hasOwnProperty.call(ICONS,name)?name:"music";
   const cl=String(className).replace(/[^a-z0-9 _-]/gi,"");
-  return '<svg class="'+cl+'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none" aria-hidden="true"><g transform="translate(8 8) scale(4.666667)" stroke="currentColor" stroke-width=".95" stroke-linecap="round" stroke-linejoin="round">'+ICONS[key]+'</g></svg>';
+  return '<svg class="'+cl+'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none" aria-hidden="true"><g transform="translate(8 8) scale(4.666667)" stroke="currentColor" stroke-width="1.15" stroke-linecap="round" stroke-linejoin="round">'+ICONS[key]+'</g></svg>';
 }

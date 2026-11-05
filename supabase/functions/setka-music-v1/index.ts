@@ -27,10 +27,13 @@ const authorized=async key=>{
   const rows=await rowQuery("admin_keys","select=id&active=eq.true&key_hash=eq."+await sha(key.trim())+"&limit=2");
   return rows.length===1;
 };
+const UI_SLOTS = new Set(["nav-note","orbit-tab","listener","motion-static","motion-cw","motion-ccw","motion-counter","motion-eight","motion-chaos","motion-spiral","motion-breath","speed-slow","speed-fast","power"]);
+const iconFile = path => typeof path==="string" && /^icons\/[a-f0-9-]{36}\.(png|webp)$/.test(path);
 const catalogue=async manage=>{
   const cats=await rowQuery("setka_music_categories_v1","select=id,title,icon_path,sort_order,visible,is_system,updated_at"+(manage?"":"&visible=eq.true")+"&order=sort_order.asc,id.asc");
+  const icons=await rowQuery("setka_music_ui_icons_v1","select=slot,icon_path,updated_at&order=slot.asc");
   const tracks=await rowQuery("setka_music_tracks_v1","select=id,title,audio_path,icon_key,icon_path,category_ids,sort_order,published,loop,duration_seconds,revision,updated_at"+(manage?"":"&published=eq.true")+"&order=sort_order.asc,created_at.asc");
-  return {ok:true,categories:cats,tracks:tracks.map(t=>({...t,audio_url:PROJECT+"/storage/v1/object/public/"+BUCKET+"/"+t.audio_path,icon_url:t.icon_path?PROJECT+"/storage/v1/object/public/"+BUCKET+"/"+t.icon_path:null}))};
+  return {ok:true,categories:cats,ui_icons:icons.map(i=>({...i,icon_url:PROJECT+"/storage/v1/object/public/"+BUCKET+"/"+i.icon_path})),tracks:tracks.map(t=>({...t,audio_url:PROJECT+"/storage/v1/object/public/"+BUCKET+"/"+t.audio_path,icon_url:t.icon_path?PROJECT+"/storage/v1/object/public/"+BUCKET+"/"+t.icon_path:null}))};
 };
 const ensureObject=async path=>{
   const response=await fetch(PROJECT+"/storage/v1/object/info/"+BUCKET+"/"+path,{headers:adminHeaders});
@@ -48,6 +51,19 @@ Deno.serve(async request=>{
     if(b?.action==="catalog")return json(await catalogue(false),200,origin);
     if(!await authorized(b?.adminKey))return json({error:"invalid_admin_key"},403,origin);
     if(b.action==="manage")return json(await catalogue(true),200,origin);
+    if(b.action==="save-ui-icon"){
+      const slot=String(b.slot||""),path=b.icon_path;
+      if(!UI_SLOTS.has(slot)||!iconFile(path))return json({error:"bad_request"},400,origin);
+      await ensureObject(path);
+      const saved=await mutate("setka_music_ui_icons_v1","POST",{slot,icon_path:path,updated_at:new Date().toISOString()},"on_conflict=slot");
+      return json({ok:true,icon:saved[0]},200,origin);
+    }
+    if(b.action==="reset-ui-icon"){
+      const slot=String(b.slot||"");
+      if(!UI_SLOTS.has(slot))return json({error:"bad_request"},400,origin);
+      await mutate("setka_music_ui_icons_v1","DELETE",null,"slot=eq."+encodeURIComponent(slot));
+      return json({ok:true},200,origin);
+    }
     if(b.action==="upload-intent"){
       const mime=String(b.mime||"").toLowerCase(),ext=mimeExt[mime],size=Number(b.size);
       const prefix=mime.startsWith("audio/")?"audio":"icons";

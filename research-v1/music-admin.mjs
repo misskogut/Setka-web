@@ -1,4 +1,5 @@
-import {ICON_NAMES,iconSvg} from "../standalone-music-icons-v1.mjs";
+import {ICON_NAMES,iconSvg} from "../standalone-music-icons-v1.mjs?v=2";
+import {UI_ICON_SLOTS,uiIconHTML,assetIconMask} from "../standalone-music-ui-icons-v2.mjs";
 const API="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-music-v1";
 const PUBLIC="https://gfchgaphzhxufwdhrcis.supabase.co/storage/v1/object/public/setka-music/";
 const el=(tag,cls,txt)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(txt!==undefined)n.textContent=txt;return n};
@@ -9,7 +10,7 @@ let epoch=0;
 export function mountMusicAdmin(container,getAdminKey){
  const generation=++epoch;
  container.replaceChildren(el("p","muted","Загружаем музыкальную библиотеку…"));
- let model={categories:[],tracks:[]},currentTrack=null,currentCategory=null;
+ let model={categories:[],tracks:[],ui_icons:[]},currentTrack=null,currentCategory=null;
  async function req(action,fields={}){
   const res=await fetch(API,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action,adminKey:getAdminKey(),...fields}),cache:"no-store"});
   const value=await res.json().catch(()=>({}));
@@ -26,6 +27,24 @@ export function mountMusicAdmin(container,getAdminKey){
   if(!result.ok)throw Error("upload_failed_"+result.status);
   return intent.path;
  }
+ async function validateInterfaceImage(file){
+  const type=file.type||(file.name.toLowerCase().endsWith(".png")?"image/png":file.name.toLowerCase().endsWith(".webp")?"image/webp":"");
+  if(!["image/png","image/webp"].includes(type)||file.size<1||file.size>2000000)
+   throw Error("Для системного значка нужен PNG или WebP до 2 МБ");
+  const url=URL.createObjectURL(file);
+  try{
+   const img=new Image();img.src=url;
+   if(img.decode)await img.decode();else await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject});
+   if(img.naturalWidth!==img.naturalHeight||img.naturalWidth<128||img.naturalWidth>2048)
+    throw Error("Значок должен быть квадратным: от 128×128 до 2048×2048");
+   const canvas=document.createElement("canvas");canvas.width=canvas.height=img.naturalWidth;
+   const ctx=canvas.getContext("2d",{willReadFrequently:true});if(!ctx)throw Error("Недоступна проверка прозрачности");
+   ctx.drawImage(img,0,0);
+   const w=canvas.width,pts=[[0,0],[w-1,0],[0,w-1],[w-1,w-1]];
+   if(pts.some(([x,y])=>ctx.getImageData(x,y,1,1).data[3]>12))
+    throw Error("Уберите фон: углы изображения должны быть прозрачными");
+  }finally{URL.revokeObjectURL(url)}
+ }
  const connected=()=>container.isConnected&&epoch===generation;
  async function reload(){
   try{const d=await req("manage");if(!connected())return;model=d;render()}
@@ -36,7 +55,8 @@ export function mountMusicAdmin(container,getAdminKey){
   const wrap=el("div","sm-admin");
   const intro=el("p","muted","Все изменения сохраняются на сервере. Аудио и значки загружаются в отдельное хранилище SETKA. Не публикуйте записи без права на их использование.");
   wrap.append(intro);
-  const sectionCats=el("section","sm-admin-section"),sectionTracks=el("section","sm-admin-section");
+  const sectionIcons=el("section","sm-admin-section"),sectionCats=el("section","sm-admin-section"),sectionTracks=el("section","sm-admin-section");
+  renderIconEditor(sectionIcons);
   sectionCats.append(el("h2","","Категории музыки"));
   const catBar=el("div","row");
   catBar.append(btn("Добавить категорию",()=>{currentCategory=null;render()}));
@@ -57,8 +77,7 @@ export function mountMusicAdmin(container,getAdminKey){
   for(const track of model.tracks){
    const item=el("div","sm-admin-track");
    const icon=el("span","sm-admin-icon");
-   if(track.icon_url){const im=el("img");im.src=track.icon_url;im.alt="";icon.append(im)}
-   else icon.innerHTML=iconSvg(track.icon_key);
+   icon.innerHTML=assetIconMask(track.icon_path)||iconSvg(track.icon_key);
    const label=el("span","",track.title+" — "+(track.published?"опубликован":"скрыт"));item.append(icon,label);
    item.append(btn("Изменить",()=>{currentTrack=track;render()}));
    item.append(btn("Удалить",async()=>{
@@ -70,7 +89,42 @@ export function mountMusicAdmin(container,getAdminKey){
   }
   if(!model.tracks.length)list.append(el("p","muted","Треки пока не загружены."));
   sectionTracks.append(list);renderTrackForm(sectionTracks);
-  wrap.append(sectionCats,sectionTracks);container.append(wrap);
+  wrap.append(sectionIcons,sectionCats,sectionTracks);container.append(wrap);
+ }
+ function renderIconEditor(section){
+  section.append(el("h2","","Значки интерфейса"));
+  section.append(el("p","muted","Здесь меняются нота, орбита, слушатель, режимы движения, черепаха, заяц и Power. Исходные SVG остаются запасным вариантом. Загружайте квадратные PNG или WebP с прозрачным фоном — SETKA сама задаёт белый цвет, приглушение и свечение."));
+  const overrides=Object.fromEntries((model.ui_icons||[]).map(x=>[x.slot,x.icon_path]));
+  const gallery=el("div","sm-admin-icon-grid");
+  for(const slot of UI_ICON_SLOTS){
+   const item=el("div","sm-admin-glyph-card"),preview=el("div","sm-admin-glyph-preview");
+   preview.innerHTML=uiIconHTML(slot.id,overrides);
+   item.append(preview,el("div","sm-admin-glyph-name",slot.label));
+   const picker=input("file");picker.accept=".png,.webp,image/png,image/webp";picker.setAttribute("aria-label","Изображение для "+slot.label);
+   item.append(picker);
+   const feedback=el("p","sm-admin-feedback");
+   const save=btn("Заменить",async()=>{
+    if(!picker.files?.[0]){feedback.textContent="Сначала выберите PNG/WebP";return}
+    save.disabled=true;feedback.textContent="Проверяю и загружаю…";
+    try{
+     await validateInterfaceImage(picker.files[0]);
+     const path=await upload(picker.files[0]);
+     await req("save-ui-icon",{slot:slot.id,icon_path:path});
+     await reload();
+    }catch(e){feedback.textContent="Ошибка: "+e.message}
+    finally{save.disabled=false}
+   });
+   const controls=el("div","sm-admin-glyph-actions");controls.append(save);
+   if(overrides[slot.id]){
+    const reset=btn("Вернуть исходный",async()=>{
+     reset.disabled=true;feedback.textContent="Возвращаю стандартный значок…";
+     try{await req("reset-ui-icon",{slot:slot.id});await reload()}
+     catch(e){feedback.textContent="Ошибка: "+e.message;reset.disabled=false}
+    });controls.append(reset);
+   }
+   item.append(controls,feedback);gallery.append(item);
+  }
+  section.append(gallery);
  }
  function renderCategoryForm(section){
   const c=currentCategory||{};
@@ -82,6 +136,9 @@ export function mountMusicAdmin(container,getAdminKey){
   const visible=field(form,"Отображается на фронте",input("checkbox",c.visible!==false));
   const icon=field(form,"Иконка PNG / SVG / WebP (необязательно)",input("file"));icon.accept=".png,.svg,.webp,image/png,image/svg+xml,image/webp";
   const note=el("p","muted",c.icon_path?"Текущая иконка сохранена. Не выбирайте новый файл, чтобы оставить её.":"Без файла используется встроенный символ SETKA.");
+  const iconPreview=el("div","sm-admin-preview-icon");
+  iconPreview.innerHTML=assetIconMask(c.icon_path)||iconSvg(c.id||"hand");
+  form.append(iconPreview);
   const msg=el("p","sm-admin-feedback");const save=btn("Сохранить категорию",()=>{});
   save.onclick=async()=>{
    save.disabled=true;msg.textContent="Сохраняем…";
