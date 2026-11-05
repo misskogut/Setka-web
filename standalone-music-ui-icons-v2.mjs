@@ -1,3 +1,4 @@
+import {selectedMusicCategorySVG} from "./standalone-music-approved-icons-v1.mjs";
 // SETKA Music · mono vector controls v2. A single 24x24 stroke grammar.
 // The glow belongs to UI state, never to the image: uploaded transparent art
 // is used as an alpha mask and inherits currentColor (white/gray).
@@ -50,5 +51,5 @@ export function uiIconHTML(slot,overrides={},extraClass=""){
  const override=overrides?.[slot];
  // For system icons use raster-only uploads, no arbitrary public SVG.
  const image=(typeof override==="string"&&/\.((?:png|webp))$/.test(override))?assetIconMask(override,extraClass):null;
- return image||defaultIconSVG(slot,extraClass);
+ return image||(slot==="orbit-tab"?selectedMusicCategorySVG("orbits"):null)||defaultIconSVG(slot,extraClass);
 }
