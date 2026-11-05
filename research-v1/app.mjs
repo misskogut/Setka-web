@@ -111,8 +111,12 @@ function startPreviews(){
    for(let i=0;i<count;i++){
     const c=list[(cursor+i)%list.length],p=exactPattern(c.dataset.pattern);if(!p)continue;
     let config=p.defaults;try{if(c.dataset.config)config=JSON.parse(c.dataset.config)}catch(_){continue}
-    const frame=c.dataset.editorClock!==undefined?Math.max(0,(now-Number(c.dataset.editorClock))/16.6667):(num(c.dataset.frame,44)??44)+phase;
+    const baseFrame=num(c.dataset.frame,44)??44;
+    const requested=c.dataset.editorClock!==undefined?Math.max(0,(now-Number(c.dataset.editorClock))/16.6667):baseFrame+phase;
+    const bounded=p.capabilities?.sequentialPhysics;
+    const frame=bounded?(c.dataset.displayedFrame===undefined?baseFrame:registry.clockFrame(p.id,Number(c.dataset.displayedFrame),requested)):requested;
     draw(c,config,frame,p.id,true);
+    if(bounded)c.dataset.displayedFrame=String(frame);
    }
    if(list.length)cursor=(cursor+count)%list.length;
   }

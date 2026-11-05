@@ -44,7 +44,7 @@
     try {
       const R=window.SetkaPatternRegistryV1;
       const actual=R?.get(item.patternId)?.capabilities?.sequentialPhysics
-        ?R.clockFrame(item.patternId,item.drawFrame??item.frame,frame):frame;
+        ?(item.drawFrame===undefined?item.frame:R.clockFrame(item.patternId,item.drawFrame,frame)):frame;
       item.drawFrame=actual;
       draw(canvas, item.config, actual, item.patternId);
       canvas.dataset.setkaLivePreview = "true";

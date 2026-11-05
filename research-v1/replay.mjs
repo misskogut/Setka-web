@@ -48,7 +48,13 @@ export function mountReplay(root,data,{title='Воспроизведение с�
     interfaceRoot.hidden=!visible||!ui||ui.kind==='restricted';
     if(canRender){
       canvas.hidden=false;message.hidden=true;
-      const frame=Number(state.frame)+Math.max(0,t-entry.tMs)/16.6667;
+      const requested=Number(state.frame)+Math.max(0,t-entry.tMs)/16.6667;
+      const registry=globalThis.SetkaPatternRegistryV1;
+      // A cold seek opens the recorded physics anchor. Between anchors only
+      // admit displayed frames, rather than stalling the timeline to catch up.
+      const frame=registry?.get(recipe.renderId)?.capabilities?.sequentialPhysics
+        ?(seek||entry!==lastState||lastFrame===null?Number(state.frame):registry.clockFrame(recipe.renderId,lastFrame,requested))
+        :requested;
       if(seek||entry!==lastState||lastFrame!==null&&frame<lastFrame){canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);}
       drawRecordedCanvas(canvas,patternSurface,recipe,state,frame,seek||entry!==lastState||lastFrame!==null&&frame<lastFrame);lastFrame=frame;
       caption.textContent=`${patternName(recipe.renderId)} · ${recipe.config.colorModeIndex===undefined?'':`цвет ${Number(recipe.config.colorModeIndex)+1}`}`;
