@@ -2,7 +2,8 @@
 {
  "id":"fractal-portal",
  "title":"Фрактальный портал",
- "version":2,
+ "version":3,
+ "legacyVersions":[1,2],
  "legacyVersions":[1],
  "schemaVersion":1,
  "introducedAt":"2026-11-05T04:54:00.000Z",
@@ -38,6 +39,8 @@ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 function render(ctx,width,height,c,frame,preview){
  const w=Math.max(1,width),h=Math.max(1,height),tick=Math.max(0,Number(frame)||0);
  const speed=Number(c.speedFactor)||0;
+ // The SETKA host passes a wall-clock-derived frame (RAF timestamp / 16.6667),
+ // not a frame counter. Thus this timebase is independent of actual display FPS.
  const time=tick/60*speed;
  const n=Math.max(20,Math.round(Number(c.depth)||80));
  const zoom=clamp(Number.isFinite(Number(c.zoom))?Number(c.zoom):1,.3,3);
@@ -53,7 +56,8 @@ function render(ctx,width,height,c,frame,preview){
  const warpX=Number(c.warpX)||0,warpY=Number(c.warpY)||0;
  ctx.save();ctx.fillStyle="#000";ctx.fillRect(0,0,w,h);
  ctx.translate(w/2,h/2);ctx.globalCompositeOperation="lighter";
- const maxR=Math.hypot(w,h)*1.15*zoom;
+ // Match the approved canvas preview: scale against the longer viewport side.
+ const maxR=Math.max(w,h)*1.1*zoom;
  const offset=time*.12;
  // Each ring is phase-shifted by a fixed spacing. Boundary opacity goes to zero
  // at both ends, so recycling never produces a visible pop.
@@ -68,7 +72,9 @@ function render(ctx,width,height,c,frame,preview){
   // The rainbow mode cycles hue continuously through the depth of the tunnel.
   // All other modes preserve the original palette choices.
   if(mode===4){
-   const hue=((phase*360+time*28)%360+360)%360;
+   // Exact approved rainbow: hue follows layer identity and elapsed time,
+   // not the ring depth (which previously changed the whole palette).
+   const hue=((i*7+time*25)%360+360)%360;
    ctx.strokeStyle="hsla("+hue.toFixed(1)+",100%,65%,"+alpha.toFixed(4)+")";
   }else{
    ctx.strokeStyle="rgba("+rgb[0]+","+rgb[1]+","+rgb[2]+","+alpha.toFixed(4)+")";
