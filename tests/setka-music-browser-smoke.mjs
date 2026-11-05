@@ -93,7 +93,7 @@ try{
  assert.equal(await admin.locator(".sm-admin input[type=file]").count(),17,"14 system icons plus category icon, track audio and track icon can be uploaded");
  assert.equal(await admin.locator(".sm-admin-glyph-card").nth(3).locator(".sm-asset-icon").count(),0,"stock icon is still vector");
  await admin.getByRole("button",{name:"Вернуть исходный"}).click();
- await admin.locator(".sm-admin-glyph-card").first().waitFor();
+ await admin.getByRole("button",{name:"Вернуть исходный"}).waitFor({state:"detached"});
  assert.equal(await admin.getByRole("button",{name:"Вернуть исходный"}).count(),0,"server reset restored stock glyph");
  assert.equal(await admin.getByText("Опубликовать на фронте",{exact:true}).count(),1);
  await admin.close();
