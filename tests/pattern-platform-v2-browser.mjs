@@ -428,8 +428,16 @@ try{
   await page.mouse.move(b.x+b.width*.49+84,b.y+b.height*.56-74,{steps:9});
   await page.mouse.up();
   const after=await page.evaluate(()=>window.SetkaApp.getConfig());
-  assert.ok(after.steerX>start.steerX&&after.steerY>start.steerY,
-   'one real canvas drag physically bends 3D route on both axes');
+  if(Array.isArray(after.roadBends)){
+   assert.equal(after.roadBends.length,3,'real canvas drag creates one anchored physical road bend');
+   assert.ok(after.roadBends[1]>0&&after.roadBends[2]>0,
+    'real canvas drag sculpts 3D road sideways and vertically');
+   assert.deepEqual([after.steerX,after.steerY],[start.steerX,start.steerY],
+    'a gesture does not overwrite configured steering sliders');
+  }else{
+   assert.ok(after.steerX>start.steerX&&after.steerY>start.steerY,
+    'older physical roads use the earlier drag steering fields');
+  }
   assert.equal(after.yawOffset,start.yawOffset,'road dragging does not secretly steer the head');
   console.log('REAL STEERABLE TUNNEL GESTURES PASS',bendableRoad);
  }
