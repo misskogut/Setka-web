@@ -631,15 +631,19 @@ test('unknown steerable 3D tunnels bend the physical road under touch and keep e
    assert.equal(settings.randomness,0,'default cycling path is deterministic');
    const touch=R.interact(p.id,settings,{type:'gesture',phase:'move',fingers:1,zone:'center',
     startX:195,startY:260,dx:100,dy:-95,width:390,height:844,frame:51});
-   assert.ok(touch.steerX>0&&touch.steerY>0,'one-finger XY drag bends the road in both dimensions');
+   assert.ok(touch.touchX>0&&touch.touchY>0,'one-finger drag bends the road transiently');
+   assert.equal(touch.steerX,settings.steerX,'drag keeps horizontal slider unchanged');
+   assert.equal(touch.steerY,settings.steerY,'drag keeps vertical slider unchanged');
    assert.equal(touch.yawOffset,settings.yawOffset,'one-finger road steering does not rotate the head');
    const pinch=R.interact(p.id,touch,{type:'gesture',phase:'move',fingers:2,
     dx:60,dy:-110,width:390,height:844,frame:52});
-   assert.ok(pinch.zoom>touch.zoom,'two fingers retain independent zoom');
+   assert.ok(pinch.touchScale>1,'two fingers change temporary scale');
+   assert.equal(pinch.zoom,touch.zoom,'pinch keeps baseline zoom');
    assert.equal(pinch.steerX,touch.steerX,'two-finger touch never adds road steering');
    assert.equal(pinch.steerY,touch.steerY,'two-finger touch never changes vertical steering');
    const saved=R.snapshot({patternId:p.id,config:pinch,frame:66});
-   assert.equal(R.restore(saved).ok,true,'new route steering is in immutable note/replay snapshots');
+   assert.equal(R.restore(saved).ok,true,'saved preset keeps durable configuration');
+   for(const key of p.transientFields)assert.equal(saved.config[key],settings[key],'transient field is reset on snapshot: '+key);
    const legacy={...saved,patternVersion:2,config:{...saved.config}};
    delete legacy.config.steerX;delete legacy.config.steerY;delete legacy.config.sensitivity;
    const restored=R.restore(legacy);
@@ -663,7 +667,13 @@ test('unknown steerable 3D tunnels bend the physical road under touch and keep e
    }
    const base=paint(settings,91),bent=paint(touch,91);
    assert.ok(base.dots>200&&base.marks>100,'initial road and distant point marks are visible');
-   assert.notDeepEqual(bent.positions,base.positions,'touch curves actual perspective geometry, not only a slider number');
+   assert.notDeepEqual(bent.positions,base.positions,'touch curves physical road');
+   const released=R.interact(p.id,touch,{type:'gesture',phase:'end',fingers:1,frame:92});
+   assert.equal(released.touchMode,0,'releasing a finger starts recovery');
+   const returned=paint(released,270),original=paint(settings,270);
+   assert.equal(returned.positions.length,original.positions.length,'same visible markings after release');
+   for(let i=0;i<returned.positions.length;i++)for(let k=0;k<2;k++)
+    assert.ok(Math.abs(returned.positions[i][k]-original.positions[i][k])<.05,'temporary deformation decays');
    const wild={...settings,turns:turns[3],randomness:1,hills:3,steerX:1.1,steerY:-.9};
    for(const frame of [91,1000,120000,500000]){
     const once=paint(wild,frame),again=paint(wild,frame);
@@ -691,6 +701,8 @@ test('future serpentine road modules separate turn power, turn frequency, random
    const d=registry.defaults(p.id),fields=new Map(p.controls.map(x=>[x[1],x]));
    assert.ok(fields.get('turns')[3]>=30,'actual turning power is substantially extended');
    assert.ok(fields.get('frequency')[3]>=10,'frequency is independent of turn angle');
+   assert.ok(fields.get('hillsFrequency')[3]>=10,'vertical hill frequency can change independently');
+   assert.equal(p.capabilities.pairedSettings,true,'two-column settings opt-in is metadata-driven');
    assert.ok(fields.get('hills')[3]>=8,'vertical range is substantially extended');
    assert.ok(fields.get('randomness')[3]>=2,'randomness range is extended');
    assert.ok(fields.has('bank')&&fields.has('solid')&&fields.has('size'),'full V15 visual controls are included');
@@ -719,6 +731,9 @@ test('future serpentine road modules separate turn power, turn frequency, random
    const black=probe({...d,opacity:1,roadOpacity:1});
    assert.ok(black.blackPolygons>100,'fully opaque tunnel/road render true-black faces');
    assert.ok(white.markPolygons>150&&black.markPolygons>150,'flat road markings remain drawn on both opaque and transparent road');
+   const highHills=probe({...d,turns:0,hills:8,hillsFrequency:10,opacity:0,roadOpacity:0},2400);
+   const lowHills=probe({...d,turns:0,hills:8,hillsFrequency:0,opacity:0,roadOpacity:0},2400);
+   assert.notDeepEqual(lowHills.marks,highHills.marks,'hill frequency changes height variation');
    const angle=probe({...d,turns:30,frequency:5,hills:0,opacity:0,roadOpacity:0},2400);
    const rare=probe({...d,turns:30,frequency:0,hills:0,opacity:0,roadOpacity:0},2400);
    const frequent=probe({...d,turns:30,frequency:10,hills:0,opacity:0,roadOpacity:0},2400);
@@ -729,13 +744,47 @@ test('future serpentine road modules separate turn power, turn frequency, random
    const restored=registry.restore(snapshot);
    assert.equal(restored.ok,true,'V15 configs survive serialization and research replay');
    for(const key of ['frequency','bank','solid','size'])assert.equal(restored.snapshot.config[key],snapshot.config[key]);
-   for(const version of [1,2,3]){
+   assert.equal(restored.snapshot.config.hillsFrequency,d.hillsFrequency,'hill frequency is durable');
+   for(const version of [1,2,3,4]){
     const old={...snapshot,patternVersion:version,config:{...d}};
-    for(const key of ['frequency','bank','solid','size'])delete old.config[key];
+    for(const key of ['hillsFrequency','touchX','touchY','touchScale','touchMode','touchReleaseFrame'])delete old.config[key];
+    if(version<4)for(const key of ['frequency','bank','solid','size'])delete old.config[key];
     if(version<3)for(const key of ['steerX','steerY','sensitivity'])delete old.config[key];
     const compat=registry.restore(old);
     assert.equal(compat.ok,true,'older published v'+version+' snapshots remain accessible');
    }
+  }
+ }finally{fs.rmSync(dir,{recursive:true,force:true});}
+});
+
+test('free temporary gesture state stays independent of all sliders, restores and never persists',()=>{
+ const dir=workspace();
+ try{
+  const {source}=build(dir),R=loadRegistry(source);
+  const modules=R.list().filter(p=>p.module&&p.transientFields?.length);
+  assert.ok(modules.length>0,'unknown module can declare independent temporary gestures');
+  for(const p of modules){
+   const document={currentScript:{dataset:{patternId:p.id}}};
+   vm.runInNewContext(fs.readFileSync(path.join(dir,p.module),'utf8'),
+    {window:{SetkaPatternRegistryV1:R},document,Math},{timeout:1500});
+   const d=R.defaults(p.id),flat={...d,turns:0,hills:0,frequency:10,hillsFrequency:10,randomness:2};
+   let one=R.interact(p.id,flat,{type:'gesture',phase:'start',fingers:1,frame:90});
+   one=R.interact(p.id,one,{type:'gesture',phase:'move',fingers:1,frame:91,
+    dx:160,dy:-130,width:390,height:844});
+   assert.ok(one.touchX>0&&one.touchY>0,'manual steering works even on a flat straight course');
+   for(const key of ['turns','hills','steerX','steerY','zoom'])assert.equal(one[key],flat[key],
+    'touch never changes underlying setting '+key);
+   const permanent=R.persistentConfig(one,p.id);
+   for(const key of p.transientFields)assert.equal(permanent[key],d[key],'transient state is not persisted '+key);
+   const end=R.interact(p.id,one,{type:'gesture',phase:'end',fingers:1,frame:92});
+   assert.equal(end.touchMode,0);
+   let two=R.interact(p.id,end,{type:'gesture',phase:'start',fingers:2,frame:95});
+   two=R.interact(p.id,two,{type:'gesture',phase:'move',fingers:2,frame:96,
+    pinch:1.3,pinchDistance:130,previousPinchDistance:100});
+   assert.ok(two.touchScale>1&&two.zoom===flat.zoom,'pinch zooms temporarily only');
+   assert.equal(R.interact(p.id,two,{type:'gesture',phase:'end',fingers:2,frame:98}).touchMode,0);
+   assert.equal(R.snapshot({patternId:p.id,config:two,frame:96}).config.touchScale,1);
+   assert.equal(R.validate({...two,touchX:100},p.id).ok,false,'corrupt gesture values cannot be saved');
   }
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
