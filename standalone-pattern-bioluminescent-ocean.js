@@ -189,6 +189,24 @@ function makeShader(gl,type,source){const s=gl.createShader(type);gl.shaderSourc
 function create(ctx){const canvas=document.createElement("canvas");const gl=canvas.getContext("webgl",{alpha:false,antialias:false,preserveDrawingBuffer:true,powerPreference:"low-power"});if(!gl)return null;const prog=gl.createProgram();gl.attachShader(prog,makeShader(gl,gl.VERTEX_SHADER,vertex));gl.attachShader(prog,makeShader(gl,gl.FRAGMENT_SHADER,fragment));gl.linkProgram(prog);if(!gl.getProgramParameter(prog,gl.LINK_STATUS))return null;gl.useProgram(prog);const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]),gl.STATIC_DRAW);const a=gl.getAttribLocation(prog,"a");gl.enableVertexAttribArray(a);gl.vertexAttribPointer(a,2,gl.FLOAT,false,0,0);const u={};for(const k of ["res","origin","impact","t","waves","refraction","depth","brightness","zoom","mode","impulse"])u[k]=gl.getUniformLocation(prog,k);return{canvas,gl,u};}
 function render(ctx,width,height,c,frame,preview){
  const w=Math.max(1,Number(width)||1),h=Math.max(1,Number(height)||1),f=Math.max(0,Number(frame)||0);
+ if(typeof document!=="undefined"&&typeof document.createElement==="function"&&typeof ctx.drawImage==="function"){
+  let cache=caches.get(ctx);
+  if(!cache){try{cache=create(ctx);}catch(_){cache=null;}if(cache)caches.set(ctx,cache);}
+  if(cache){
+   const {canvas,gl,u}=cache,scale=Math.min(preview?.75:1,Math.sqrt(900000/(w*h)));
+   const rw=Math.max(1,Math.round(w*scale)),rh=Math.max(1,Math.round(h*scale));
+   if(canvas.width!==rw||canvas.height!==rh){canvas.width=rw;canvas.height=rh;gl.viewport(0,0,rw,rh);}
+   const t=f/60*c.speed,age=Math.max(0,(f-c.impactFrame)/60),impulse=c.impulse*Math.exp(-age*1.8);
+   gl.uniform2f(u.res,rw,rh);gl.uniform2f(u.origin,c.originX,c.originY);
+   gl.uniform2f(u.impact,c.impactX,c.impactY);gl.uniform1f(u.t,t);
+   for(const k of ["waves","refraction","depth","brightness","zoom"])gl.uniform1f(u[k],c[k]);
+   gl.uniform1f(u.mode,c.colorModeIndex);gl.uniform1f(u.impulse,impulse);
+   gl.drawArrays(gl.TRIANGLES,0,6);
+   ctx.save();ctx.drawImage(canvas,0,0,w,h);ctx.restore();return;
+  }
+ }
+ // Deterministic Canvas fallback for environments without WebGL and contract replay.
+ 
  ctx.save();ctx.fillStyle="#000";ctx.fillRect(0,0,w,h);
  const t=f/60*c.speed,unit=Math.min(w,h),spacing=Math.max(9,unit/(preview?17:26)),cols=Math.ceil(w/spacing)+3,rows=Math.ceil(h/spacing)+3;
  const age=Math.max(0,(f-c.impactFrame)/60),strength=c.impulse*Math.exp(-age*1.8);
