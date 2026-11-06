@@ -45,15 +45,15 @@
 .sm-power svg,.sm-power .sm-asset-icon{width:33px;height:33px}
 .sm-power:active{color:#fff;filter:drop-shadow(0 0 7px #fff)}
 .sm-orbits{display:flex;flex:1;min-height:0;align-items:center;justify-content:space-evenly;flex-direction:column;padding-top:3px}
-.sm-stage{width:min(80vw,43svh,350px);height:min(80vw,43svh,350px);position:relative;flex:0 0 auto;aspect-ratio:1/1;touch-action:none;overflow:visible}
+.sm-stage{width:min(88vw,45svh,420px);height:min(88vw,45svh,420px);position:relative;flex:0 0 auto;aspect-ratio:1/1;touch-action:none;overflow:visible}
 .sm-ring{position:absolute;left:50%;top:50%;border:1px solid rgba(255,255,255,.25);border-radius:50%;transform:translate(-50%,-50%);pointer-events:none}
-.sm-ring-inner{width:38%;height:38%}.sm-ring-middle{width:66%;height:66%}.sm-ring-outer{width:89%;height:89%}
+.sm-ring-inner{width:38%;height:38%}.sm-ring-middle{width:68%;height:68%}.sm-ring-outer{width:96%;height:96%}
 .sm-listener{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:52px;height:52px;color:#fff;pointer-events:none}
 .sm-listener svg,.sm-listener .sm-asset-icon{width:100%;height:100%}
-.sm-source{position:absolute;transform:translate(-50%,-50%);display:grid;place-items:center;width:57px;height:57px;border:1px solid rgba(255,255,255,.5);border-radius:50%;background:#080808;color:#fff;
- padding:8px 5px 5px;cursor:grab;touch-action:none;box-shadow:0 0 10px rgba(255,255,255,.20)}
+.sm-source{position:absolute;transform:translate(-50%,-50%);display:grid;place-items:center;width:57px;height:57px;border:0;border-radius:0;background:transparent;color:#fff;
+ padding:0;cursor:grab;touch-action:none;box-shadow:none}
 .sm-source:active{cursor:grabbing}
-.sm-source-icon,.sm-source-icon svg,.sm-source-icon img,.sm-source-icon .sm-asset-icon{display:block;width:34px;height:34px;object-fit:contain;pointer-events:none}
+.sm-source-icon,.sm-source-icon svg,.sm-source-icon img,.sm-source-icon .sm-asset-icon{display:block;width:40px;height:40px;object-fit:contain;pointer-events:none}
 .sm-source .sm-dots{top:auto;bottom:-10px}
 .sm-motion-row{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;justify-items:center;width:100%;min-height:40px;align-items:center}
 .sm-motion{border:0;padding:3px;background:none;color:#777;display:grid;place-items:center;width:36px;height:36px;cursor:pointer}
@@ -97,14 +97,15 @@
   }
   #libraryScreen .sm-categories { flex-basis:78px; }
   #libraryScreen .sm-category { height:75px; }
-  #libraryScreen .sm-orbits {padding-top:10px;}
+  #libraryScreen .sm-orbits {padding-top:0;}
   #libraryScreen .sm-stage {
-    width:min(78vw,38svh,320px);
-    height:min(78vw,38svh,320px);
+    /* Fill available orbit area, reserving space for motion, speed and power. */
+    width:min(93vw,43svh,375px,calc(100svh - var(--safe-top) - var(--safe-bottom) - 441px));
+    height:min(93vw,43svh,375px,calc(100svh - var(--safe-top) - var(--safe-bottom) - 441px));
   }
-  #libraryScreen .sm-motion-row {margin-top:14px;}
-  #libraryScreen .sm-speed {margin-top:10px;}
-  #libraryScreen .sm-power {margin-top:16px;margin-bottom:2px;}
+  #libraryScreen .sm-motion-row {margin-top:8px;}
+  #libraryScreen .sm-speed {margin-top:6px;}
+  #libraryScreen .sm-power {margin-top:10px;margin-bottom:2px;}
 }
 /* Compact iPhones: retain a strictly square stage while protecting the
    speed slider and power button from the permanent bottom dock. */
@@ -117,8 +118,8 @@
   #libraryScreen .sm-category {height:70px;}
   #libraryScreen .sm-orbits {padding-top:6px;}
   #libraryScreen .sm-stage {
-    width:min(60vw,30svh,250px);
-    height:min(60vw,30svh,250px);
+    width:min(83vw,36svh,315px,calc(100svh - var(--safe-top) - var(--safe-bottom) - 408px));
+    height:min(83vw,36svh,315px,calc(100svh - var(--safe-top) - var(--safe-bottom) - 408px));
   }
   #libraryScreen .sm-motion-row {margin-top:8px;}
   #libraryScreen .sm-speed {margin-top:6px;}
