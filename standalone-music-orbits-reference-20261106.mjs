@@ -32,7 +32,7 @@ export function createOrbitUI(mixer,trackHTML,uiIcons={}){
   for(const s of mixer.items.values()){
    const node=document.createElement("button");node.type="button";node.className="sm-source";
    node.setAttribute("aria-label",s.track.title+": уровень "+s.level+"; переместить по орбите");
-   node.innerHTML='<span class="sm-source-icon">'+trackHTML(s.track)+'</span><span class="sm-dots">'+new Array(s.level).fill('<i></i>').join("")+'</span>';
+   node.innerHTML='<span class="sm-source-icon">'+trackHTML(s.track)+'<span class="sm-dots">'+new Array(s.level).fill('<i></i>').join("")+'</span></span>';
    let touch=null;
    node.addEventListener("pointerdown",e=>{touch={id:e.pointerId,x:e.clientX,y:e.clientY,moved:false};node.setPointerCapture(e.pointerId);e.preventDefault()});
    node.addEventListener("pointermove",e=>{
