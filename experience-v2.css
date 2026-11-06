@@ -40,10 +40,11 @@
 #communityPanel .empty-favorites .big-heart{font-size:32px}
 @media(max-width:360px){.library-pager{gap:10px!important}.community-count{font-size:8px}}
 
-/* Keep the pattern grid slightly higher without compressing the rows:
-   original 28px vertical rhythm remains intact. */
+/* Shared vertical baseline for Patterns and Saved: preserve the original
+   thumbnail dimensions and 28px gap while lifting both grids together. */
 @media (max-width:767px) {
-  #libraryScreen #allPatternsPanel {
+  #libraryScreen #allPatternsPanel,
+  #libraryScreen #favoritesPanel {
     padding-top:24px;
     row-gap:28px;
   }
