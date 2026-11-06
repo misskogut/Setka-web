@@ -44,7 +44,7 @@
    original 28px vertical rhythm remains intact. */
 @media (max-width:767px) {
   #libraryScreen #allPatternsPanel {
-    padding-top:30px;
+    padding-top:24px;
     row-gap:28px;
   }
 }
