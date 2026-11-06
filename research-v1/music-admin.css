@@ -59,7 +59,7 @@
 .sm-order-save{background:#161616;color:#fff}
 .sm-order-save:disabled{background:#ededed;color:#999}
 .sm-order-message{min-height:20px;font-size:13px;color:#444;margin:10px 0 0}
-.sm-order-empty{border:1px dashed #d1d1d1;border-radius:12px;padding:25px 12px;background:#fafafa;color:#777;font-size:14px}
+.sm-order-empty{grid-column:1/-1;border:1px dashed #d1d1d1;border-radius:12px;padding:25px 12px;background:#fafafa;color:#777;font-size:14px}
 .sm-admin-track-form{scroll-margin-top:30px}
 .sm-admin-track-list{gap:12px}
 .sm-admin-track{background:#fafafa}
