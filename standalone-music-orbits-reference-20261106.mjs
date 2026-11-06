@@ -1,5 +1,5 @@
 import {MOTION,MOTION_LABELS} from "./standalone-music-audio-v1.mjs";
-import {uiIconHTML} from "./standalone-music-ui-icons-v2.mjs";
+import {uiIconHTML} from "./standalone-music-ui-icons-v2.mjs?v=3-approved-turtle3-hare2";
 export function createOrbitUI(mixer,trackHTML,uiIcons={}){
  const root=document.createElement("section");root.className="sm-orbits";root.hidden=true;
  const stage=document.createElement("div");stage.className="sm-stage";stage.setAttribute("aria-label","Пространственное расположение активных звуков");
@@ -20,9 +20,10 @@ export function createOrbitUI(mixer,trackHTML,uiIcons={}){
  function updateMotions(){
   row.replaceChildren();
   for(const mode of MOTION){
+   if(mode==="static")continue; // Re-tap any active motion icon to stop; no static-dot icon.
    const b=document.createElement("button");b.type="button";b.className="sm-motion"+(mixer.mode===mode?" active":"");
    b.title=MOTION_LABELS[mode];b.setAttribute("aria-label",MOTION_LABELS[mode]);b.innerHTML=uiIconHTML("motion-"+mode,uiIcons);
-   b.onclick=()=>{mixer.motion(mode);updateMotions()};
+   b.onclick=()=>{mixer.motion(mixer.mode===mode?"static":mode);updateMotions()};
    row.append(b);
   }
  }
