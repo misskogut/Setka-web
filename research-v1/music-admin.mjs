@@ -178,7 +178,8 @@ export function mountMusicAdmin(container,getAdminKey){
   const t=currentTrack||{};
   const form=el("form","sm-admin-form sm-admin-track-form");form.append(el("h3","",t.id?"Редактировать трек":"Добавить трек"));
   const title=field(form,"Название",input("text",t.title||""));title.required=true;title.maxLength=120;
-  const file=field(form,"Аудиофайл (до 20 МБ, MP3/M4A/WAV/OGG)",input("file"));file.accept=".mp3,.m4a,.wav,.ogg,audio/*";if(!t.audio_path)file.required=true;
+  const file=field(form,"Оригинальный аудиофайл (до 20 МБ, MP3/M4A/WAV/OGG)",input("file"));file.accept=".mp3,.m4a,.wav,.ogg,audio/*";if(!t.audio_path)file.required=true;
+  form.append(el("p","sm-admin-lossless-note muted","Загружаем исходный файл без перекодирования, сжатия и изменения битрейта. Для максимального качества можно использовать WAV. MP3/M4A сохраняются в исходном виде."));
   const iconSelect=el("select");for(const name of ICON_NAMES){const o=el("option","",name);o.value=name;iconSelect.append(o)}iconSelect.value=t.icon_key||"music";
   field(form,"Значок из набора SETKA",iconSelect);
   const icon=field(form,"Собственный значок SVG/PNG/WebP",input("file"));icon.accept=".svg,.png,.webp,image/svg+xml,image/png,image/webp";
