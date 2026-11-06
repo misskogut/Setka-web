@@ -12,9 +12,15 @@ export function createOrbitUI(mixer,trackHTML,uiIcons={}){
  root.append(speed);
  const elements=new Map();
  function pos(el,a,r){
-  if(!el)return;const rect=stage.getBoundingClientRect();const dist=Math.min(rect.width,rect.height)*.5*r;
-  el.style.left="calc(50% + "+(Math.sin(a)*dist).toFixed(1)+"px)";
-  el.style.top="calc(50% - "+(Math.cos(a)*dist).toFixed(1)+"px)";
+  if(!el)return;
+  // Safari iOS: keep the button on its own composited layer and move only
+  // that layer. Updating left/top was repainting vector/mask edges into trails.
+  const rect=stage.getBoundingClientRect(),dist=Math.min(rect.width,rect.height)*.5*r;
+  const dpr=Math.max(1,window.devicePixelRatio||1);
+  const dx=Math.round(Math.sin(a)*dist*dpr)/dpr;
+  const dy=Math.round(-Math.cos(a)*dist*dpr)/dpr;
+  const transform="translate3d("+dx+"px,"+dy+"px,0) translate(-50%,-50%)";
+  if(el.style.transform!==transform)el.style.transform=transform;
  }
  function updatePositions(){if(root.hidden)return;for(const s of mixer.items.values())pos(elements.get(s.id),s.angle,s.radius)}
  function updateMotions(){
@@ -34,7 +40,13 @@ export function createOrbitUI(mixer,trackHTML,uiIcons={}){
    node.setAttribute("aria-label",s.track.title+": уровень "+s.level+"; переместить по орбите");
    node.innerHTML='<span class="sm-source-icon">'+trackHTML(s.track)+'<span class="sm-dots">'+new Array(s.level).fill('<i></i>').join("")+'</span></span>';
    let touch=null;
-   node.addEventListener("pointerdown",e=>{touch={id:e.pointerId,x:e.clientX,y:e.clientY,moved:false};node.setPointerCapture(e.pointerId);e.preventDefault()});
+   node.addEventListener("pointerdown",e=>{
+    if(e.button!==undefined&&e.button!==0)return;
+    touch={id:e.pointerId,x:e.clientX,y:e.clientY,moved:false};
+    node.classList.add("dragging");
+    node.setPointerCapture(e.pointerId);
+    e.preventDefault();
+   });
    node.addEventListener("pointermove",e=>{
     if(!touch||e.pointerId!==touch.id)return;
     if(Math.hypot(e.clientX-touch.x,e.clientY-touch.y)>7)touch.moved=true;
@@ -46,9 +58,12 @@ export function createOrbitUI(mixer,trackHTML,uiIcons={}){
    node.addEventListener("pointerup",e=>{
     if(!touch||touch.id!==e.pointerId)return;
     const dragged=touch.moved;touch=null;
+    node.classList.remove("dragging");
+    if(node.hasPointerCapture?.(e.pointerId))node.releasePointerCapture(e.pointerId);
     if(!dragged){const item=mixer.items.get(s.id);if(item)mixer.change(item.track,item.level===3?0:item.level+1)}
    });
-   node.addEventListener("pointercancel",()=>touch=null);
+   node.addEventListener("pointercancel",()=>{touch=null;node.classList.remove("dragging")});
+   node.addEventListener("lostpointercapture",()=>{touch=null;node.classList.remove("dragging")});
    elements.set(s.id,node);stage.append(node);
    pos(node,s.angle,s.radius);
   }
