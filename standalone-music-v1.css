@@ -112,16 +112,18 @@
   #libraryScreen .sm-power {margin-top:10px;margin-bottom:2px;}
 }
 
-/* Orbit-only vertical alignment: lower the selected composition as one unit.
-   Keep the shared top pager, circular ring dimensions, and power button fixed. */
+/* Fix the category-row jump when switching music tabs.
+   The orbit screen defines the shared category position: every category uses
+   that exact offset, regardless of the active content panel.
+   Move orbit-specific controls only, keeping circles and fixed nav untouched. */
 @media (max-width:767px) {
-  #libraryScreen.setka-music-open #setkaMusicPage:has(.sm-orbits:not([hidden])) .sm-categories,
+  #libraryScreen.setka-music-open #setkaMusicPage .sm-categories,
   #libraryScreen.setka-music-open #setkaMusicPage .sm-orbits:not([hidden]) {
     transform:translateY(18px);
   }
 }
 @media (max-width:767px) and (max-height:730px) {
-  #libraryScreen.setka-music-open #setkaMusicPage:has(.sm-orbits:not([hidden])) .sm-categories,
+  #libraryScreen.setka-music-open #setkaMusicPage .sm-categories,
   #libraryScreen.setka-music-open #setkaMusicPage .sm-orbits:not([hidden]) {
     transform:translateY(10px);
   }
