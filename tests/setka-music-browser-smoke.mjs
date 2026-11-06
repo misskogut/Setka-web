@@ -242,8 +242,9 @@ try{
  await selectedIcon.click();
  assert.equal(await admin.locator(".sm-admin-icon-option").count(),ICON_NAMES.length,"all registered SETKA glyphs are offered visually");
  assert.equal(await admin.locator(".sm-admin-icon-option svg").count(),ICON_NAMES.length,"every option includes its actual SVG");
- await admin.locator('.sm-admin-icon-option[data-icon-key="rain"]').click();
- assert.match(await selectedIcon.innerText(),/rain/,"selection is reflected in the large visible preview");
+ assert.ok(ICON_NAMES.length>=50,"twenty old-app sound icons extend the original thirty");
+ await admin.locator('.sm-admin-icon-option[data-icon-key="old-cat"]').click();
+ assert.match(await selectedIcon.innerText(),/old-cat/,"screenshot-traced selection is reflected in the preview");
  assert.equal(await selectedIcon.locator("svg").count(),1);
  assert.equal(await admin.locator(".sm-admin-icon-picker").evaluate(node=>node.open),false,"picker closes after choosing");
  await admin.locator('.sm-admin-track-form input[type="text"]').fill("Тестовый дождь");
@@ -254,7 +255,7 @@ try{
  const posted=admin.waitForResponse(response=>response.url().includes("setka-music-v1")&&response.request().postData()?.includes('"action":"save-track"'));
  await admin.getByRole("button",{name:"Сохранить трек"}).click();
  await posted;
- assert.equal(savedTrackPayload?.icon_key,"rain","selected collection key is saved without changing the backend contract");
+ assert.equal(savedTrackPayload?.icon_key,"old-cat","screenshot icon saves using the original icon_key contract");
  assert.equal(await admin.locator(".sm-admin input[type=file]").count(),17,"14 system icons plus category icon, track audio and track icon can be uploaded");
  assert.equal(await admin.locator(".sm-admin-glyph-card").nth(3).locator(".sm-asset-icon").count(),0,"stock icon is still vector");
  await admin.getByRole("button",{name:"Вернуть исходный"}).click();
