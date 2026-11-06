@@ -40,11 +40,11 @@
 #communityPanel .empty-favorites .big-heart{font-size:32px}
 @media(max-width:360px){.library-pager{gap:10px!important}.community-count{font-size:8px}}
 
-/* SETKA pattern library: five balanced rows fit above the fixed bottom dock.
-   Preserve four columns, thumbnail size, and natural scroll for further patterns. */
+/* Keep the pattern grid slightly higher without compressing the rows:
+   original 28px vertical rhythm remains intact. */
 @media (max-width:767px) {
   #libraryScreen #allPatternsPanel {
     padding-top:30px;
-    row-gap:22px;
+    row-gap:28px;
   }
 }
