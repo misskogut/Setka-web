@@ -1,7 +1,30 @@
 // SETKA Music: one persistent WebAudio mixer shared by the catalog and orbit editor.
+// A short deterministic, stereo room impulse: early wall reflections plus
+// a diffuse, exponentially decaying tail. Generated in memory once; no uploads,
+// transcoding, or changes to the source audio.
+function setkaRoomImpulse(ctx){
+ const rate=ctx.sampleRate,seconds=1.22;
+ const buffer=ctx.createBuffer(2,Math.ceil(rate*seconds),rate);
+ const taps=[[.019,.20],[.033,-.14],[.047,.11],[.061,-.095],[.084,.075],[.108,-.052]];
+ let seed=0x5345544b;
+ const rand=()=>{seed=(Math.imul(1664525,seed)+1013904223)>>>0;return seed/4294967296*2-1;};
+ for(let channel=0;channel<2;channel++){
+  const data=buffer.getChannelData(channel);
+  for(let i=0;i<taps.length;i++){
+   const [delay,amplitude]=taps[i];
+   const at=Math.round(rate*(delay+(channel?((i%3)-1)*.003:0)));
+   if(at>0&&at<data.length)data[at]+=amplitude*(channel&&i%2?-.82:1);
+  }
+  for(let i=Math.round(rate*.055);i<data.length;i++){
+   const t=i/rate,entrance=Math.min(1,(t-.055)/.065);
+   data[i]+=rand()*.0065*entrance*Math.exp(-5.65*(t-.055));
+  }
+ }
+ return buffer;
+}
 export class SetkaMusicMixer {
  constructor() {
-  this.ctx=null; this.master=null; this.items=new Map();
+  this.ctx=null; this.master=null; this.room=null; this.roomOutput=null; this.items=new Map();
   this.mode="static"; this.speed=40; this.started=performance.now()/1000;
   this.changed=()=>{}; this.moved=()=>{}; this.onTrackEvent=()=>{}; this.clock=null;
  }
@@ -16,6 +39,14 @@ export class SetkaMusicMixer {
    this.master.knee.value=0;this.master.ratio.value=3;
    this.master.attack.value=.003;this.master.release.value=.16;
    this.master.connect(this.ctx.destination);
+   try{
+    const room=this.ctx.createConvolver(),output=this.ctx.createGain();
+    room.normalize=false;
+    room.buffer=setkaRoomImpulse(this.ctx);
+    output.gain.value=.86;
+    room.connect(output);output.connect(this.master);
+    this.room=room;this.roomOutput=output;
+   }catch(_){this.room=null;this.roomOutput=null}
   }
   this.ctx.resume().catch(()=>{});
  }
@@ -39,6 +70,10 @@ export class SetkaMusicMixer {
    // not the former aggressive low-pass that made music dull from behind.
    rearFilter.type="highshelf";rearFilter.frequency.value=7500;rearFilter.gain.value=0;
    gain.connect(rearFilter);rearFilter.connect(panner);panner.connect(this.master);gain.gain.value=0;
+   // Post-volume, pre-HRTF room send: the original direct path stays untouched.
+   const roomSend=this.room?this.ctx.createGain():null;
+   if(roomSend){roomSend.gain.value=0;gain.connect(roomSend);roomSend.connect(this.room)}
+   if(this.roomOutput)this.roomOutput.gain.setTargetAtTime(.86,this.ctx.currentTime,.04);
    const makeDeck=(volume)=>{
     const el=new Audio();
     el.loop=false;el.crossOrigin="anonymous";el.preload="auto";el.src=track.audio_url;
@@ -51,7 +86,7 @@ export class SetkaMusicMixer {
    if(track.loop!==false)decks.push(makeDeck(0));
    state={id,track,level:0,playTracked:false,completed:false,angle,radius:.62+(index%3)*.08,
     anchorAngle:angle,anchorRadius:.62+(index%3)*.08,manual:false,
-    el:decks[0].el,src:decks[0].src,gain,rearFilter,panner,decks,activeDeck:0,transition:null,pendingLoop:false};
+    el:decks[0].el,src:decks[0].src,gain,rearFilter,panner,roomSend,decks,activeDeck:0,transition:null,pendingLoop:false};
    this.items.set(id,state);this.position(state,angle,state.radius);
    for(let deckIndex=0;deckIndex<decks.length;deckIndex++){
     const {el}=decks[deckIndex];
@@ -166,8 +201,12 @@ export class SetkaMusicMixer {
     d.src.disconnect();d.fade.disconnect();
    }
    s.gain.disconnect();s.rearFilter.disconnect();s.panner.disconnect();
+   s.roomSend?.disconnect();
   },220);
-  if(!this.items.size){clearInterval(this.clock);this.clock=null;this.mode="static"}
+  if(!this.items.size){
+   if(this.roomOutput)this.roomOutput.gain.setTargetAtTime(0,this.ctx.currentTime,.035);
+   clearInterval(this.clock);this.clock=null;this.mode="static"
+  }
   this.changed();
  }
  stopAll(){for(const id of [...this.items.keys()])this.remove(id);this.mode="static";this.changed()}
@@ -187,6 +226,12 @@ export class SetkaMusicMixer {
   const behind=smooth(-.28,.82,-Math.cos(a))*smooth(.06,.32,r);
   const gentleRearDb=-1.5*behind;
   const t=this.ctx.currentTime;
+  // Near = mainly direct sound; far = more room reflections and reverberation.
+  // A smoothed, modest send preserves transients and full-band clarity.
+  if(s.roomSend){
+   const wet=.012+.19*Math.pow(depth,1.4);
+   s.roomSend.gain.setTargetAtTime(wet,t,.24);
+  }
   if(s.rearFilter?.gain?.setTargetAtTime){
    s.rearFilter.gain.setTargetAtTime(gentleRearDb,t,.16);
   }else if(s.rearFilter?.gain){s.rearFilter.gain.value=gentleRearDb}
