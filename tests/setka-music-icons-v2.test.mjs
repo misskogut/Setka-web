@@ -2,7 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {UI_ICON_SLOTS,UI_ICON_IDS,uiIconHTML,assetIconMask,defaultIconSVG} from "../standalone-music-ui-icons-v2.mjs";
-import {iconSvg} from "../standalone-music-icons-v1.mjs";
+import {ICON_NAMES,iconSvg} from "../standalone-music-icons-v1.mjs";
+import {LEGACY_MUSIC_ICON_NAMES,legacyMusicSVG} from "../standalone-music-legacy-icons-v1.mjs";
 import {selectedMusicCategorySVG} from "../standalone-music-approved-icons-v1.mjs";
 const read=path=>readFileSync(new URL("../"+path,import.meta.url),"utf8");
 test("all SETKA music system controls have a consistent white-line vector default",()=>{
@@ -81,4 +82,29 @@ test("nature category uses user's exact option 7: five bars and two leaves",()=>
  const admin=read("research-v1/music-admin.mjs");
  assert.match(admin,/selectedMusicCategorySVG\(c\.id\|\|"hand"\)/,
    "the same option 7 is used in admin category previews");
+});
+
+test("all twenty old-app music symbols are screenshot-traced vectors, not replacements for category tabs",()=>{
+ const names=["old-cat","old-mandala","old-hamsa","old-wheel-flowers",
+  "old-bonfire","old-singing-bowl","old-seascape","old-mala",
+  "old-forest","old-triple-drop","old-planet-orbit","old-sound-bowl",
+  "old-storm","old-spark","old-meditation-sun","old-dharma-wheel",
+  "old-heart","old-endless-knot","old-candle","old-lotus"];
+ assert.deepEqual(LEGACY_MUSIC_ICON_NAMES,names,"screenshot rows 2–6 are preserved in reading order");
+ assert.equal(LEGACY_MUSIC_ICON_NAMES.length,20);
+ assert.equal(new Set(ICON_NAMES).size,ICON_NAMES.length,"never duplicate existing icon keys");
+ for(const id of names){
+  assert.ok(ICON_NAMES.includes(id),"new screenshot icon must be selectable in track gallery: "+id);
+  const svg=iconSvg(id);
+  assert.match(svg,/viewBox="0 0 90 90"/);
+  assert.match(svg,/fill-rule="evenodd"/,"contour holes must remain open");
+  assert.match(svg,/fill="currentColor"/);
+  assert.match(svg,/<path d="M[0-9]/,"trace is a real vector, not a data URL or an emoji");
+  assert.equal(svg,legacyMusicSVG(id));
+ }
+ assert.notEqual(iconSvg("old-cat"),iconSvg("cat"),"preserve existing icon while adding exact old glyph");
+ for(const id of ["hand","eye","sleep","8d","orbits"]){
+  assert.ok(!LEGACY_MUSIC_ICON_NAMES.includes(id),"old top tabs aren't re-added to track collection");
+ }
+ assert.match(iconSvg("onload='alert(1)"),/viewBox="0 0 128 128"/,"unknown key uses safe fallback");
 });
