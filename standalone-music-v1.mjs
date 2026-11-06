@@ -2,7 +2,7 @@ import {iconSvg} from "./standalone-music-icons-v1.mjs?v=2";
 import {selectedMusicCategorySVG} from "./standalone-music-approved-icons-v1.mjs?v=nature-optical-size-20261106";
 import {uiIconHTML,assetIconMask,UI_ICON_IDS} from "./standalone-music-ui-icons-v2.mjs";
 import {SetkaMusicMixer} from "./standalone-music-audio-v1.mjs";
-import {createOrbitUI} from "./standalone-music-orbits-v1.mjs?v=5-original-portrait-restored-20261106";
+import {createOrbitUI} from "./standalone-music-orbits-reference-20261106.mjs?v=1";
 const API="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-music-v1";
 const $=id=>document.getElementById(id);
 const escapeText=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
