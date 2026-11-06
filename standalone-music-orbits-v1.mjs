@@ -3,7 +3,7 @@ import {uiIconHTML} from "./standalone-music-ui-icons-v2.mjs";
 export function createOrbitUI(mixer,trackHTML,uiIcons={}){
  const root=document.createElement("section");root.className="sm-orbits";root.hidden=true;
  const stage=document.createElement("div");stage.className="sm-stage";stage.setAttribute("aria-label","Пространственное расположение активных звуков");
- stage.innerHTML='<span class="sm-ring sm-ring-inner"></span><span class="sm-ring sm-ring-middle"></span><span class="sm-ring sm-ring-outer"></span><span class="sm-listener">'+uiIconHTML("listener",uiIcons)+'</span>';
+ stage.innerHTML='<span class="sm-ring sm-ring-inner"></span><span class="sm-ring sm-ring-middle"></span><span class="sm-ring sm-ring-outer"></span><span class="sm-listener" aria-label="Радужная девушка в позе лотоса с наушниками"><span class="sm-lotus-portrait" aria-hidden="true"></span></span>';
  root.append(stage);
  const row=document.createElement("div");row.className="sm-motion-row";row.setAttribute("role","group");row.setAttribute("aria-label","Режим движения звуков");root.append(row);
  const speed=document.createElement("div");speed.className="sm-speed";
@@ -55,7 +55,7 @@ export function createOrbitUI(mixer,trackHTML,uiIcons={}){
   requestAnimationFrame(updatePositions);
  }
  function refreshIcons(){
-  stage.querySelector(".sm-listener").innerHTML=uiIconHTML("listener",uiIcons);
+  // Keep the approved animated lotus portrait; refreshing admin icons must not reset it.
   speed.querySelector(".sm-speed-slow").innerHTML=uiIconHTML("speed-slow",uiIcons);
   speed.querySelector(".sm-speed-fast").innerHTML=uiIconHTML("speed-fast",uiIcons);
   updateMotions();
