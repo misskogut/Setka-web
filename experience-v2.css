@@ -39,3 +39,12 @@
 #favoriteButton.saved{background:rgba(255,255,255,.10)}
 #communityPanel .empty-favorites .big-heart{font-size:32px}
 @media(max-width:360px){.library-pager{gap:10px!important}.community-count{font-size:8px}}
+
+/* SETKA pattern library: five balanced rows fit above the fixed bottom dock.
+   Preserve four columns, thumbnail size, and natural scroll for further patterns. */
+@media (max-width:767px) {
+  #libraryScreen #allPatternsPanel {
+    padding-top:30px;
+    row-gap:22px;
+  }
+}
