@@ -86,7 +86,14 @@ try{
  await front.locator('#st34Nav [data-p="symptoms"]').click();await front.locator('.st34-add-state').click();await front.getByRole('button',{name:'Усталость',exact:true}).tap();await front.locator('.st34-state-card').waitFor();
  await front.locator('.st34-mark-btn').click();await front.locator('.st34-mark-editor.open input').fill('6');await front.getByRole('button',{name:'Сохранить отметку',exact:true}).tap();
  await front.getByRole('button',{name:'Проверить сохранение',exact:true}).click();await front.getByText(/Состояния и отметки сохранены в аккаунте/).waitFor();
- const paused=await front.locator('.base-tile[data-pattern-id="dandelion"] .thumb-canvas').evaluate(c=>c.toDataURL());await new Promise(r=>setTimeout(r,180));assert.equal(await front.locator('.base-tile[data-pattern-id="dandelion"] .thumb-canvas').evaluate(c=>c.toDataURL()),paused,'previews pause behind a sheet');
+ // A partly lowered sheet must not freeze visible library thumbnails.
+ await front.locator('#st34Layer').evaluate(layer=>{
+   layer.style.height='260px';layer.style.maxHeight='260px';
+ });
+ const framesBefore=await front.evaluate(()=>window.SetkaApp.previewStatus().frames);
+ await front.waitForFunction(before=>window.SetkaApp.previewStatus().frames>before+3,framesBefore,{timeout:5000});
+ assert.ok(await front.evaluate(()=>document.getElementById('libraryScreen').classList.contains('active')),
+   'a partially open bottom sheet keeps the library visible');
  await stale.locator('#st34Nav [data-p="today"]').click();assert.ok(await stale.evaluate(()=>JSON.parse((window.SetkaDataScopeV1?.storage||localStorage).getItem('setka-standalone:v34')).symptoms.some(x=>x.name==='Усталость')));
  await front.reload();await front.locator('#st34Nav [data-p="symptoms"]').click();await front.getByText('Усталость',{exact:true}).waitFor();assert.match(await front.locator('.st34-state-now').innerText(),/6\/10/);
  const other=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});other.on('pageerror',e=>errors.push({page:'other-device',message:e.message}));await other.addInitScript(localApiTransport);await other.addInitScript(()=>localStorage.setItem('setka-v40:cabinet-session',JSON.stringify({token:'isolated-fixture-only',testerId:'T-OWNERAAA'})));await other.goto(base+'/standalone-v34.html');await other.waitForFunction(()=>!!window.__SETKA_PRIVATE_CORPUS_V40__);await other.evaluate(()=>window.__SETKA_PRIVATE_CORPUS_V40__.sync());await other.locator('#st34Nav [data-p="symptoms"]').click();await other.getByText('Усталость',{exact:true}).waitFor();assert.match(await other.locator('.st34-state-now').innerText(),/6\/10/);

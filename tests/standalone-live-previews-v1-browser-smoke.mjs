@@ -86,6 +86,47 @@ try {
   await page.waitForTimeout(140);
   const detached=await page.evaluate(()=>window.SetkaLivePreviewsV1.status().active);
   assert.equal(detached,0,"detached preview canvases should not keep animating");
+
+  // Regression: opening any bottom navigation sheet must NOT freeze the
+  // native canvas thumbnails that remain visibly exposed above that sheet.
+  // Previously canAnimateLibrary() stopped the clock for every open overlay.
+  const tabs=["today","notes","pulse","symptoms","me"];
+  await page.locator("#allPatternsPanel canvas.thumb-canvas").first().waitFor();
+  await page.waitForFunction(()=>window.SetkaApp?.previewStatus()?.frames>2);
+  for(const tab of tabs){
+    await page.locator('#st34Nav button[data-p="'+tab+'"]').click();
+    await page.locator('#st34Layer:not(.hidden)').waitFor({state:"visible"});
+    // Simulate the normal partially lowered mobile sheet; the dock's
+    // resizable panels support this geometry on iOS Safari.
+    await page.locator("#st34Layer").evaluate(layer=>{
+      layer.style.height="260px";
+      layer.style.maxHeight="260px";
+    });
+    const exposed=await page.evaluate(()=>{
+      const sheet=document.getElementById("st34Layer").getBoundingClientRect();
+      const tiles=[...document.querySelectorAll("#allPatternsPanel .thumb-canvas")];
+      return {
+        libraryActive:document.getElementById("libraryScreen").classList.contains("active"),
+        sheetTop:sheet.top,
+        exposed:tiles.filter(c=>{
+          const r=c.getBoundingClientRect();
+          return r.width>4&&r.top<sheet.top-6&&r.bottom>0;
+        }).length
+      };
+    });
+    assert.equal(exposed.libraryActive,true,"background library remains visible under "+tab);
+    assert.ok(exposed.exposed>0,"there must be exposed thumbnails above the "+tab+" sheet: "+JSON.stringify(exposed));
+    const before=await page.evaluate(()=>window.SetkaApp.previewStatus().frames);
+    await page.waitForFunction(b=>window.SetkaApp.previewStatus().frames>b+3,before,{timeout:4500});
+    const after=await page.evaluate(()=>window.SetkaApp.previewStatus().frames);
+    assert.ok(after>before+3,"visible thumbnails must continue painting under "+tab+" sheet");
+  }
+  // Collapse the last sheet and confirm no preview renderer gets stuck.
+  await page.locator('#st34Nav button[data-p="me"]').click();
+  await page.locator("#st34Layer.hidden").waitFor();
+  const beforeCollapse=await page.evaluate(()=>window.SetkaApp.previewStatus().frames);
+  await page.waitForFunction(b=>window.SetkaApp.previewStatus().frames>b+3,beforeCollapse,{timeout:4500});
+
   assert.deepEqual(errors,[]);
   console.log("FOUR LIVE CANVAS PREVIEWS / IMMUTABLE NOTE REPLAY / NO VIDEO / CLEANUP PASS",after.status);
 }finally{
