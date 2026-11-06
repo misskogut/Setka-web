@@ -59,8 +59,8 @@
 .sm-motion svg,.sm-motion .sm-asset-icon{width:30px;height:30px}
 .sm-motion.active{color:white;filter:drop-shadow(0 0 6px rgba(255,255,255,.7))}
 .sm-speed{display:flex;align-items:center;gap:10px;width:min(96%,360px);height:36px;color:#ddd}
-.sm-speed-slow,.sm-speed-fast{display:grid;place-items:center;width:30px;height:28px;flex:none}
-.sm-speed-slow svg,.sm-speed-fast svg,.sm-speed-slow .sm-asset-icon,.sm-speed-fast .sm-asset-icon{width:27px;height:27px;display:block}
+.sm-speed-slow,.sm-speed-fast{display:grid;place-items:center;width:43px;height:34px;flex:none}
+.sm-speed-slow svg,.sm-speed-fast svg,.sm-speed-slow .sm-asset-icon,.sm-speed-fast .sm-asset-icon{width:43px;height:34px;display:block;overflow:visible}
 .sm-speed input{flex:1;min-width:0;width:auto;margin:0;accent-color:#fff;cursor:pointer;touch-action:pan-x}
 @media(max-width:365px){#setkaMusicPage{left:8px;right:8px}.sm-category svg,.sm-category img,.sm-category .sm-asset-icon{width:65px;height:65px}.sm-track-icon,.sm-track-icon svg,.sm-track-icon img,.sm-track-icon .sm-asset-icon{width:45px;height:45px}.sm-motion{width:32px;height:32px}.sm-motion svg,.sm-motion .sm-asset-icon{width:26px;height:26px}}
 @media(max-height:730px){#setkaMusicPage{top:calc(var(--safe-top) + 111px);bottom:calc(var(--safe-bottom) + 90px)}.sm-categories{flex-basis:78px}.sm-category{height:73px}.sm-stage{width:min(67vw,35svh,290px);height:min(67vw,35svh,290px)}.sm-track{min-height:73px}}
