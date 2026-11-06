@@ -2,8 +2,8 @@
    Alpha was extracted from the supplied reference, not redrawn; rainbow flows
    over the full figure while all other interface elements stay monochrome. */
 #libraryScreen .sm-stage .sm-listener{
-  width:min(28%,92px);
-  height:min(28%,92px);
+  width:min(22%,70px)!important;
+  height:min(22%,70px)!important;
   display:block;
   pointer-events:none;
 }
