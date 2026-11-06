@@ -71,32 +71,43 @@
  #libraryScreen .library-title{top:calc(var(--safe-top) + 96px)}
 }
 
-/* Orbit page: deliberate vertical rhythm on touch-sized screens.
-   Move the two navigation rows up, but let the stage, motion modes, speed and
-   power breathe independently. All existing hit targets and controls remain. */
-@media (max-width:767px) and (min-height:731px) {
-  #libraryScreen.setka-music-open .library-pager { top:-19px }
-  #libraryScreen #setkaMusicPage { top:calc(var(--safe-top) + 109px) }
-  #libraryScreen .sm-orbits { padding-top:13px }
-  #libraryScreen .sm-stage {
-    width:min(76vw,41svh,332px);
-    height:min(76vw,41svh,332px);
-  }
-  #libraryScreen .sm-motion-row { margin-top:12px }
-  #libraryScreen .sm-speed { margin-top:9px }
-  #libraryScreen .sm-power { margin-top:15px; margin-bottom:7px }
+/* Mobile music composition: the shared four-button pager must NEVER move
+   when music opens. Lift the music categories instead of compressing orbits.
+   A non-shrinking square stage is essential: its percentages draw true rings. */
+@media (max-width:767px) {
+  #libraryScreen .sm-stage {flex:0 0 auto;aspect-ratio:1/1;}
 }
-/* On shorter iPhones, preserve every mode, slider and power button without
-   running them under the permanent navigation dock. */
-@media (max-width:767px) and (max-height:730px) {
-  #libraryScreen.setka-music-open .library-pager { top:-15px }
-  #libraryScreen #setkaMusicPage { top:calc(var(--safe-top) + 103px) }
-  #libraryScreen .sm-orbits { padding-top:8px }
-  #libraryScreen .sm-stage {
-    width:min(64vw,33svh,276px);
-    height:min(64vw,33svh,276px);
+@media (max-width:767px) and (min-height:731px) {
+  #libraryScreen #setkaMusicPage {
+    top:calc(var(--safe-top) + 78px);
+    bottom:calc(var(--safe-bottom) + 87px);
   }
-  #libraryScreen .sm-motion-row { margin-top:7px }
-  #libraryScreen .sm-speed { margin-top:6px }
-  #libraryScreen .sm-power { margin-top:9px; margin-bottom:4px }
+  #libraryScreen .sm-categories { flex-basis:78px; }
+  #libraryScreen .sm-category { height:75px; }
+  #libraryScreen .sm-orbits {padding-top:10px;}
+  #libraryScreen .sm-stage {
+    width:min(78vw,38svh,320px);
+    height:min(78vw,38svh,320px);
+  }
+  #libraryScreen .sm-motion-row {margin-top:14px;}
+  #libraryScreen .sm-speed {margin-top:10px;}
+  #libraryScreen .sm-power {margin-top:16px;margin-bottom:2px;}
+}
+/* Compact iPhones: retain a strictly square stage while protecting the
+   speed slider and power button from the permanent bottom dock. */
+@media (max-width:767px) and (max-height:730px) {
+  #libraryScreen #setkaMusicPage {
+    top:calc(var(--safe-top) + 76px);
+    bottom:calc(var(--safe-bottom) + 82px);
+  }
+  #libraryScreen .sm-categories {flex-basis:74px;}
+  #libraryScreen .sm-category {height:70px;}
+  #libraryScreen .sm-orbits {padding-top:6px;}
+  #libraryScreen .sm-stage {
+    width:min(60vw,30svh,250px);
+    height:min(60vw,30svh,250px);
+  }
+  #libraryScreen .sm-motion-row {margin-top:8px;}
+  #libraryScreen .sm-speed {margin-top:6px;}
+  #libraryScreen .sm-power {margin-top:10px;margin-bottom:2px;}
 }
