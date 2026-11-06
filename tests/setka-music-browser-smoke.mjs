@@ -83,12 +83,38 @@ try{
  assert.ok(geometry.tabSize>=64,"category symbols are clearly larger than tracks");
  assert.ok(geometry.tabSize>=geometry.trackSize+12,"large filters remain visually distinct from sound icons");
  assert.ok(geometry.noteSize<=26,"note is optically smaller and matches neighboring top icons");
- assert.equal(geometry.pagerTop,"-9px","all top navigation icons are lifted together");
+ assert.equal(geometry.pagerTop,"-19px","upper music navigation is raised to create breathing room");
  assert.match(geometry.stripTouch,/pan-x/,"finger may swipe music categories horizontally");
  assert.match(geometry.appTouch,/pan-x/,"top-level touch contract must allow horizontal swipes");
  // Opening the offscreen orbit tab must keep the user's horizontal scroll position.
  await page.locator(".sm-category").last().click();
  assert.equal(await page.locator(".sm-orbits").isVisible(),true);
+ const geometryOf=async()=>page.evaluate(()=>{
+  const box=q=>{const r=document.querySelector(q)?.getBoundingClientRect();return r?{top:r.top,bottom:r.bottom,left:r.left,right:r.right,height:r.height}:null};
+  return {categories:box(".sm-categories"),stage:box(".sm-stage"),
+   modes:box(".sm-motion-row"),speed:box(".sm-speed"),power:box(".sm-power"),
+   dock:box("#st34Nav"),pager:box(".library-pager")};
+ });
+ const assertAir=(g,small=false)=>{
+  const min=small?5:12;
+  assert.ok(g.stage.top-g.categories.bottom>=min,
+    "room between music categories and orbits: "+JSON.stringify(g));
+  assert.ok(g.modes.top-g.stage.bottom>=min,
+    "room between orbits and movement controls: "+JSON.stringify(g));
+  assert.ok(g.speed.top-g.modes.bottom>=min,
+    "room between movement modes and speed: "+JSON.stringify(g));
+  assert.ok(g.power.top-g.speed.bottom>=min,
+    "room between speed and power: "+JSON.stringify(g));
+  assert.ok(g.dock.top-g.power.bottom>=8,
+    "power button must never collide with bottom navigation: "+JSON.stringify(g));
+ };
+ assertAir(await geometryOf());
+ // Compact iPhone layout must retain every touch target and preserve the same
+ // top-to-bottom ordering instead of clipping slider/power under the dock.
+ await page.setViewportSize({width:360,height:700});
+ assertAir(await geometryOf(),true);
+ await page.setViewportSize({width:390,height:844});
+
  const scrollAtOrbit=await page.locator(".sm-categories").evaluate(el=>el.scrollLeft);
  assert.ok(scrollAtOrbit>25,"rightmost tab is reached by horizontal scrolling");
  await page.locator(".sm-category").last().click();
