@@ -39,3 +39,46 @@
 .sm-admin .sm-asset-icon{display:block;background:currentColor;
  -webkit-mask:var(--sm-icon-image) center / contain no-repeat;
  mask:var(--sm-icon-image) center / contain no-repeat}
+
+/* Music catalogue ordering: one independently saved sequence per frontend category. */
+.sm-admin-order{background:#fff}
+.sm-order-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin:18px 0 15px}
+.sm-order-tab{border:1px solid #e5e5e5;background:#f7f7f7;border-radius:10px;padding:12px 7px;min-height:47px;font:600 13px/1.2 inherit;cursor:pointer}
+.sm-order-tab.active{background:#161616;border-color:#161616;color:#fff}
+.sm-order-topline{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:0 0 11px;font-size:13px;color:#444}
+.sm-order-gallery{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px;touch-action:pan-y}
+.sm-order-card{min-width:0;border:1px solid #dedede;background:#fcfcfc;border-radius:14px;padding:11px 6px 7px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;position:relative}
+.sm-order-card.unpublished{background:#f4f4f3;color:#999}
+.sm-order-card.dragging{opacity:.64;border:2px solid #222;z-index:2;cursor:grabbing;background:#e7e7e5}
+.sm-order-thumb{height:57px;width:57px;display:grid;place-items:center;background:#080808;color:#fff;border-radius:10px;pointer-events:none;flex:none}
+.sm-order-thumb svg,.sm-order-thumb img,.sm-order-thumb .sm-asset-icon{width:43px;height:43px;display:block;max-width:100%}
+.sm-order-thumb .sm-asset-icon{background:currentColor;-webkit-mask:var(--sm-icon-image) center/contain no-repeat;mask:var(--sm-icon-image) center/contain no-repeat}
+.sm-order-name{font-size:12px;text-align:center;font-weight:600;min-height:29px;max-width:100%;overflow-wrap:anywhere;line-height:1.25;pointer-events:none}
+.sm-order-arrows{display:flex;justify-content:center;gap:4px;width:100%}
+.sm-order-step{font:600 23px/1 system-ui;min-width:35px;min-height:32px;padding:2px 6px;border:1px solid #dedede;background:#fff;color:#333;border-radius:7px;touch-action:manipulation}
+.sm-order-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:15px}
+.sm-order-actions button{padding:10px 15px;border-radius:9px;cursor:pointer}
+.sm-order-save{background:#161616;color:#fff}
+.sm-order-save:disabled{background:#ededed;color:#999}
+.sm-order-message{min-height:20px;font-size:13px;color:#444;margin:10px 0 0}
+.sm-order-empty{border:1px dashed #d1d1d1;border-radius:12px;padding:25px 12px;background:#fafafa;color:#777;font-size:14px}
+.sm-admin-track-form{scroll-margin-top:30px}
+.sm-admin-track-list{gap:12px}
+.sm-admin-track{background:#fafafa}
+.sm-track-stat-details{flex-basis:100%;font-size:13px;border-top:1px solid #e5e5e5;padding-top:10px}
+.sm-track-stat-details summary{font-weight:600;cursor:pointer;list-style:disclosure-closed;min-height:30px}
+.sm-track-stat-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:11px 0}
+.sm-track-stat-metric{display:flex;flex-direction:column;gap:3px;border:1px solid #ededed;border-radius:9px;background:#fff;padding:10px;min-width:0}
+.sm-track-stat-metric strong{font-size:18px}
+.sm-track-stat-metric span{font-size:11px;color:#777}
+@media(max-width:720px){
+ .sm-order-tabs{gap:4px}
+ .sm-order-tab{font-size:11px;padding:8px 3px}
+ .sm-order-gallery{gap:6px}
+ .sm-order-card{padding:8px 3px 5px;gap:5px}
+ .sm-order-thumb{width:49px;height:49px}
+ .sm-order-thumb svg,.sm-order-thumb img,.sm-order-thumb .sm-asset-icon{width:38px;height:38px}
+ .sm-order-name{font-size:10px}
+ .sm-order-step{min-width:27px;min-height:30px;font-size:20px;padding:1px}
+ .sm-track-stat-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
