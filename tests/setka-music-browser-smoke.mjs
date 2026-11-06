@@ -56,6 +56,15 @@ try{
  assert.equal(await page.locator(".library-pager .pager-button").count(),4,"four permanent upper tabs");
  await page.locator("#setkaMusicPagerButton").click();
  await page.locator(".sm-track").first().waitFor();
+ const topGlow=await page.evaluate(()=>{
+  const note=document.querySelector("#setkaMusicPagerButton");
+  const adjacent=document.querySelector("#libraryPagerButton");
+  const icon=note.querySelector("svg,.sm-asset-icon");
+  return {note:getComputedStyle(note).filter,adjacent:getComputedStyle(adjacent).filter,
+   icon:getComputedStyle(icon).filter};
+ });
+ assert.equal(topGlow.note,topGlow.adjacent,"active music tab uses the same no-extra-glow treatment as the other tabs");
+ assert.equal(topGlow.icon,"none","note icon does not get a second glow");
  const topNavMusic=await page.locator("#libraryScreen .library-pager").boundingBox();
  assert.ok(Math.abs(topNavMusic.y-topNavBefore.y)<1,
   "four shared top tabs must not jump when selecting the music note");
@@ -151,10 +160,12 @@ try{
  const trackDots=await cat.evaluate(el=>{
   const icon=el.querySelector(".sm-track-icon").getBoundingClientRect();
   const dots=el.querySelector(".sm-dots").getBoundingClientRect();
-  return {gap:dots.top-icon.bottom,alignment:Math.abs((dots.left+dots.right-icon.left-icon.right)/2)};
+  return {gap:icon.top-dots.bottom,alignment:Math.abs((dots.left+dots.right-icon.left-icon.right)/2),
+   dotShadow:getComputedStyle(el.querySelector(".sm-dots i")).boxShadow};
  });
- assert.ok(trackDots.gap>=4,"volume dots stay below the sound icon");
- assert.ok(trackDots.alignment<1,"volume dots are centered under their own icon");
+ assert.ok(trackDots.gap>=4,"volume dots stay above the sound icon");
+ assert.ok(trackDots.alignment<1,"volume dots are centered above their own icon");
+ assert.equal(trackDots.dotShadow,"none","volume dots do not add a second shadow to the active icon glow");
 
  await cat.click();assert.equal(await page.locator(".sm-dots").count(),0,"fourth tap turns track off and removes all dots");
  await page.locator(".sm-track").nth(0).click();await page.locator(".sm-track").nth(1).click();
@@ -174,10 +185,12 @@ try{
  const orbitDots=await page.locator(".sm-source").first().evaluate(el=>{
   const icon=el.querySelector(".sm-source-icon").getBoundingClientRect();
   const dots=el.querySelector(".sm-dots").getBoundingClientRect();
-  return {gap:dots.top-icon.bottom,alignment:Math.abs((dots.left+dots.right-icon.left-icon.right)/2)};
+  return {gap:icon.top-dots.bottom,alignment:Math.abs((dots.left+dots.right-icon.left-icon.right)/2),
+   dotShadow:getComputedStyle(el.querySelector(".sm-dots i")).boxShadow};
  });
- assert.ok(orbitDots.gap>=0,"orbital dots stay below the source icon");
- assert.ok(orbitDots.alignment<1,"orbital dots are centered");
+ assert.ok(orbitDots.gap>=4,"orbital dots stay above the source icon");
+ assert.ok(orbitDots.alignment<1,"orbital dots are centered over their sound icon");
+ assert.equal(orbitDots.dotShadow,"none","orbital dots inherit the source icon glow");
 
  assert.equal(await page.locator(".sm-motion").nth(3).locator(".sm-asset-icon").count(),1,"server-supplied transparent icon skin displayed as mask");
  await page.screenshot({path:"tests/visual-smoke/music-orbits-"+(process.env.SETKA_BROWSER||"chromium")+".png"});
