@@ -1,122 +1,123 @@
-// SETKA Music · four independent front-end orders, touch/pointer friendly.
+// SETKA Music · one global track-icon order, independent of category filters.
 import {iconSvg} from "../standalone-music-icons-v1.mjs?v=2";
 import {assetIconMask} from "../standalone-music-ui-icons-v2.mjs?v=4-exact-approved-vector-20261106";
 
-const TABS=[["hand","Природные"],["eye","Открытый глаз"],["sleep","Закрытый глаз"],["8d","8D"]];
-let activeCategory="hand";
-const drafts=new Map();
-const text=(tag,cls,value)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(value!=null)e.textContent=value;return e};
-const orderedTracks=(model,cat)=>{
-  const items=model.tracks.filter(t=>Array.isArray(t.category_ids)&&t.category_ids.includes(cat));
-  const saved=(model.orders||[]).find(o=>o.category_id===cat);
-  const priorities=[...(saved?.track_ids||[]),...items.map(t=>t.id)];
-  const rank=new Map(priorities.map((id,i)=>[id,i]));
-  return items.sort((a,b)=>(rank.get(a.id)??1e9)-(rank.get(b.id)??1e9));
+const element=(tag,cls,value)=>{
+ const node=document.createElement(tag);
+ if(cls)node.className=cls;
+ if(value!==undefined)node.textContent=value;
+ return node;
 };
 
 export function mountMusicOrder(root,model,req,reload){
  root.replaceChildren();
- root.append(text("h2","","Порядок музыкальных значков"));
- root.append(text("p","muted","Расположение иконок на фронте SETKA. В каждой из четырёх категорий свой порядок. Перемещайте миниатюры пальцем или стрелками, затем сохраните."));
- const tabs=text("div","sm-order-tabs");
- tabs.setAttribute("role","tablist");
- const body=text("div","sm-order-body");
- const message=text("p","sm-order-message");
+ root.append(element("h2","","Общий порядок музыкальных значков"));
+ root.append(element("p","muted","Одна последовательность для всех треков. Когда на фронте все фильтры выключены, иконки идут в этом порядке. При выборе категории показываются только её треки, но в том же порядке. Перетаскивайте пальцем и сохраните."));
+ const top=element("div","sm-order-topline");
+ const all=Array.isArray(model.tracks)?model.tracks:[];
+ const byId=new Map(all.map(t=>[t.id,t]));
+ const stored=model.global_order||{};
+ const order=[...new Set([...(stored.track_ids||[]).filter(id=>byId.has(id)),...all.map(t=>t.id)])];
+ const draft={ids:order,dirty:false};
+ const categoryLabels=new Map((model.categories||[]).map(c=>[c.id,c.title]));
+ top.append(element("span","",all.length+" иконок · общий порядок"));
+ top.append(element("span","muted",all.filter(t=>t.published).length+" опубликовано"));
+ const gallery=element("div","sm-order-gallery");
+ gallery.setAttribute("aria-label","Общий порядок: перемещайте иконки пальцем");
+ const actions=element("div","sm-order-actions");
+ const save=element("button","sm-order-save","Сохранить порядок");
+ save.type="button";
+ const reset=element("button","sm-order-discard","Отменить");
+ reset.type="button";
+ const message=element("p","sm-order-message");
  message.setAttribute("role","status");
- root.append(tabs,body,message);
- let busy=false;
- function draw(){
-  tabs.replaceChildren();body.replaceChildren();
-  for(const [id,title] of TABS){
-   const tab=text("button","sm-order-tab"+(activeCategory===id?" active":""),title);
-   tab.type="button";tab.setAttribute("role","tab");tab.setAttribute("aria-selected",activeCategory===id?"true":"false");
-   tab.onclick=()=>{if(!busy){activeCategory=id;message.textContent="";draw()}};
-   tabs.append(tab);
-  }
-  const cat=activeCategory;
-  const all=orderedTracks(model,cat);
-  const byId=new Map(all.map(t=>[t.id,t]));
-  const server=(model.orders||[]).find(o=>o.category_id===cat);
-  const source=drafts.get(cat)?.ids||all.map(t=>t.id);
-  const ids=[...new Set([...source.filter(id=>byId.has(id)),...all.map(t=>t.id)])];
-  const draft=drafts.get(cat)||{ids,dirty:false};
-  draft.ids=ids;drafts.set(cat,draft);
-  const top=text("div","sm-order-topline");
-  top.append(text("span","",all.length+" иконок · порядок только для этой вкладки"));
-  const countPublished=all.filter(t=>t.published).length;
-  top.append(text("span","muted",countPublished+" опубликовано"));
-  body.append(top);
-  if(!all.length){
-   const empty=text("div","sm-order-empty","Пока нет треков. Добавьте первый ниже, выберите эту категорию — миниатюра появится здесь.");
-   body.append(empty);
-  }else{
-   const gallery=text("div","sm-order-gallery");
-   gallery.setAttribute("aria-label","Переставьте иконки пальцем");
-   for(const id of ids){
-    const t=byId.get(id),card=text("div","sm-order-card"+(t.published?"":" unpublished"));
-    card.dataset.orderId=id;
-    const thumb=text("span","sm-order-thumb");
-    thumb.innerHTML=assetIconMask(t.icon_path)||iconSvg(t.icon_key||"music");
-    const name=text("span","sm-order-name",t.title);
-    const controls=text("span","sm-order-arrows");
-    for(const [direction,symbol] of [[-1,"‹"],[1,"›"]]){
-     const b=text("button","sm-order-step",symbol);b.type="button";
-     b.setAttribute("aria-label",(direction<0?"Сдвинуть раньше: ":"Сдвинуть позже: ")+t.title);
-     b.onclick=e=>{e.stopPropagation();if(busy)return;const at=draft.ids.indexOf(id),to=at+direction;
-      if(to<0||to>=draft.ids.length)return;
-      draft.ids.splice(at,1);draft.ids.splice(to,0,id);draft.dirty=true;draw();
-     };
-     controls.append(b);
-    }
-    card.append(thumb,name,controls);gallery.append(card);
+ let saving=false;
+ root.append(top,gallery,actions,message);
+ actions.append(save,reset);
+ const render=()=>{
+  gallery.replaceChildren();
+  for(const id of draft.ids){
+   const track=byId.get(id);if(!track)continue;
+   const card=element("div","sm-order-card"+(track.published?"":" unpublished"));
+   card.dataset.orderId=id;
+   const thumb=element("span","sm-order-thumb");
+   thumb.innerHTML=assetIconMask(track.icon_path)||iconSvg(track.icon_key||"music");
+   const name=element("span","sm-order-name",track.title);
+   const categoryText=(track.category_ids||[]).map(x=>categoryLabels.get(x)).filter(Boolean).join(" · ")||"Без категории";
+   const category=element("span","sm-order-category-label",categoryText);
+   const steps=element("span","sm-order-arrows");
+   for(const [direction,symbol] of [[-1,"‹"],[1,"›"]]){
+    const button=element("button","sm-order-step",symbol);
+    button.type="button";
+    button.setAttribute("aria-label",(direction<0?"Переместить раньше: ":"Переместить позже: ")+track.title);
+    button.onclick=e=>{
+     e.stopPropagation();
+     if(saving)return;
+     const from=draft.ids.indexOf(id),to=from+direction;
+     if(to<0||to>=draft.ids.length)return;
+     draft.ids.splice(from,1);draft.ids.splice(to,0,id);
+     draft.dirty=true;render();
+    };
+    steps.append(button);
    }
-   let pointer=null;
-   gallery.addEventListener("pointerdown",e=>{
-    if(busy||e.target.closest("button"))return;
-    const card=e.target.closest(".sm-order-card");if(!card||!gallery.contains(card))return;
-    pointer={id:e.pointerId,card,originX:e.clientX,originY:e.clientY,moved:false};
-    card.classList.add("dragging");
-    card.setPointerCapture(e.pointerId);
-    e.preventDefault();
-   });
-   gallery.addEventListener("pointermove",e=>{
-    if(!pointer||pointer.id!==e.pointerId)return;
-    if(Math.hypot(e.clientX-pointer.originX,e.clientY-pointer.originY)>5)pointer.moved=true;
-    if(!pointer.moved)return;
-    const target=document.elementFromPoint(e.clientX,e.clientY)?.closest(".sm-order-card");
-    if(!target||target===pointer.card||target.parentElement!==gallery)return;
-    const bounds=target.getBoundingClientRect();
-    const midpoint=bounds.left+bounds.width/2;
-    const before=e.clientX<midpoint;
-    gallery.insertBefore(pointer.card,before?target:target.nextSibling);
-    const next=[...gallery.children].map(el=>el.dataset.orderId);
-    if(next.some((id,i)=>id!==draft.ids[i])){draft.ids=next;draft.dirty=true}
-   });
-   const finish=e=>{
-    if(!pointer||e.pointerId!==pointer.id)return;
-    pointer.card.classList.remove("dragging");
-    try{pointer.card.releasePointerCapture(e.pointerId)}catch(_){}
-    pointer=null;
-    if(draft.dirty)draw();
-   };
-   gallery.addEventListener("pointerup",finish);
-   gallery.addEventListener("pointercancel",finish);
-   body.append(gallery);
+   card.append(thumb,name,category,steps);
+   gallery.append(card);
   }
-  const actions=text("div","sm-order-actions");
-  const save=text("button","sm-order-save","Сохранить порядок");save.type="button";
-  save.disabled=busy||!draft.dirty||!all.length;
-  save.onclick=async()=>{
-   if(busy||!draft.dirty)return;busy=true;save.disabled=true;message.textContent="Сохраняем порядок на сервере…";
-   try{
-    await req("save-order",{category_id:cat,track_ids:draft.ids,expected_revision:server?.revision||0});
-    drafts.delete(cat);message.textContent="Порядок сохранён. Эти позиции применены на фронте.";
-    await reload();
-   }catch(e){message.textContent="Не удалось сохранить: "+e.message+" · обновите список и повторите.";busy=false;draw()}
+  save.disabled=saving||!draft.dirty||!draft.ids.length;
+  reset.disabled=saving||!draft.dirty;
+ };
+ if(!all.length)gallery.append(element("div","sm-order-empty","Треков пока нет. Добавьте первый ниже — его иконка появится здесь."));
+ else{
+  let gesture=null;
+  gallery.addEventListener("pointerdown",event=>{
+   if(saving||event.target.closest("button"))return;
+   const card=event.target.closest(".sm-order-card");
+   if(!card||!gallery.contains(card))return;
+   gesture={pointerId:event.pointerId,card,startX:event.clientX,startY:event.clientY,moved:false};
+   card.classList.add("dragging");
+   gallery.setPointerCapture(event.pointerId);
+   event.preventDefault();
+  });
+  gallery.addEventListener("pointermove",event=>{
+   if(!gesture||event.pointerId!==gesture.pointerId)return;
+   if(Math.hypot(event.clientX-gesture.startX,event.clientY-gesture.startY)>4)gesture.moved=true;
+   if(!gesture.moved)return;
+   const target=document.elementFromPoint(event.clientX,event.clientY)?.closest(".sm-order-card");
+   if(!target||target===gesture.card||target.parentElement!==gallery)return;
+   const r=target.getBoundingClientRect();
+   const midpointX=r.left+r.width/2;
+   const insertBefore=event.clientY>r.bottom?false:event.clientX<midpointX;
+   gallery.insertBefore(gesture.card,insertBefore?target:target.nextSibling);
+   const next=[...gallery.children].map(node=>node.dataset.orderId);
+   if(next.some((id,i)=>id!==draft.ids[i])){
+    draft.ids=next;draft.dirty=true;save.disabled=false;reset.disabled=false;
+   }
+  });
+  const finish=event=>{
+   if(!gesture||event.pointerId!==gesture.pointerId)return;
+   gesture.card.classList.remove("dragging");
+   try{gallery.releasePointerCapture(event.pointerId)}catch(_){}
+   gesture=null;
+   if(draft.dirty)render();
   };
-  const discard=text("button","sm-order-discard","Отменить");discard.type="button";discard.disabled=busy||!draft.dirty;
-  discard.onclick=()=>{drafts.delete(cat);message.textContent="Черновик порядка отменён.";draw()};
-  actions.append(save,discard);body.append(actions);
+  gallery.addEventListener("pointerup",finish);
+  gallery.addEventListener("pointercancel",finish);
+  render();
  }
- draw();
+ save.onclick=async()=>{
+  if(saving||!draft.dirty)return;
+  saving=true;render();message.textContent="Сохраняем единый порядок на сервере…";
+  try{
+   await req("save-global-order",{track_ids:draft.ids,expected_revision:stored.revision||1});
+   message.textContent="Общий порядок сохранён и применён на фронте.";
+   await reload();
+  }catch(error){
+   saving=false;render();
+   message.textContent="Не удалось сохранить: "+error.message+". Обновите музыкальный список и повторите.";
+  }
+ };
+ reset.onclick=()=>{
+  if(saving)return;
+  draft.ids=[...order];draft.dirty=false;message.textContent="Изменения порядка отменены.";render();
+ };
 }
