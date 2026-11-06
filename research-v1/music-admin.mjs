@@ -76,7 +76,7 @@ export function mountMusicAdmin(container,getAdminKey){
   sectionCats.append(catBar);renderCategoryForm(sectionCats);
   sectionTracks.append(el("h2","","Музыкальные треки"));
   const toolbar=el("div","row");
-  toolbar.append(btn("Новый трек",()=>{currentTrack=null;render()}),btn("Обновить список",reload));
+  toolbar.append(btn("Новый трек",()=>{currentTrack=null;render();requestAnimationFrame(()=>container.querySelector(".sm-admin-track-form")?.scrollIntoView({behavior:"smooth",block:"start"}))}),btn("Обновить список",reload));
   sectionTracks.append(toolbar);
   const list=el("div","sm-admin-track-list");
   for(const track of model.tracks){
@@ -100,6 +100,7 @@ export function mountMusicAdmin(container,getAdminKey){
    addMetric("За 7 дней",Number(stats?.plays_7d||0).toLocaleString("ru-RU"));
    addMetric("Прослушано ≥95%",Number(stats?.completions||0).toLocaleString("ru-RU"));
    addMetric("Длительность",Number(track.duration_seconds)>0?Math.round(Number(track.duration_seconds))+" с":"—");
+   if(stats?.last_activity_at)addMetric("Последняя активность",new Date(stats.last_activity_at).toLocaleDateString("ru-RU"));
    details.append(metrics);
    details.append(el("p","muted","Статистика фиксируется при реальном запуске аудио и после 95% длительности. Без идентификации слушателей."));
    item.append(details);
@@ -187,12 +188,15 @@ export function mountMusicAdmin(container,getAdminKey){
   save.onclick=async()=>{
    save.disabled=true;msg.textContent="Загружаем и сохраняем…";
    try{
+    const chosenCategories=checks.filter(x=>x.ch.checked).map(x=>x.id);
+    if(!chosenCategories.length)throw Error("Выберите хотя бы одну категорию для размещения трека");
+    if(!title.value.trim())throw Error("Введите название трека");
     let audioPath=t.audio_path,iconPath=t.icon_path||null;
     if(file.files[0])audioPath=await upload(file.files[0]);
     if(icon.files[0])iconPath=await upload(icon.files[0]);
     if(!audioPath)throw Error("Выберите аудиофайл");
     await req("save-track",{id:t.id||undefined,title:title.value.trim(),audio_path:audioPath,
-     icon_key:iconSelect.value,icon_path:iconPath,category_ids:checks.filter(x=>x.ch.checked).map(x=>x.id),
+     icon_key:iconSelect.value,icon_path:iconPath,category_ids:chosenCategories,
      sort_order:Number(sort.value)||0,published:published.checked,loop:loop.checked});
     currentTrack=null;await reload();
    }catch(e){msg.textContent="Ошибка: "+e.message}finally{save.disabled=false}
