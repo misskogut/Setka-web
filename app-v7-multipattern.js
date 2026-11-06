@@ -224,7 +224,16 @@
       setScreen("game",initialFrame);emit("pattern-open",{patternId:runtimePatternId,sourceType:activeSource.type,sourceId:activeSource.id,communityId:activeSource.communityId,frame:initialFrame});return true;
     }catch(error){showToast("Не удалось открыть этот паттерн. Сохранённая запись остаётся доступна.");window.dispatchEvent(new CustomEvent("setka:pattern-error",{detail:{patternId:source.patternId||config?.patternId||null,reason:error.code||error.message}}));return false}
   }
-  function canAnimateLibrary(){const overlay=document.getElementById("st34Layer");return !window.__SETKA_RENDER_ONLY__&&!document.hidden&&!reducedPreviewMotion.matches&&libraryScreen.classList.contains("active")&&(!overlay||overlay.classList.contains("hidden"));}
+  function canAnimateLibrary(){
+    const overlay=document.getElementById("st34Layer");
+    // The dock's bottom sheet occupies only part of the screen. Do not pause
+    // thumbnails that are still visible above it. Keep the old pause behavior
+    // for genuinely full-screen overlays, background tabs and reduced motion.
+    const partialSheet=document.body.classList.contains("setka-sheet-layout");
+    return !window.__SETKA_RENDER_ONLY__&&!document.hidden&&!reducedPreviewMotion.matches&&
+      libraryScreen.classList.contains("active")&&
+      (!overlay||overlay.classList.contains("hidden")||partialSheet);
+  }
   function stopLibraryPreviews(){
     if(previewAnimation)cancelAnimationFrame(previewAnimation);
     previewAnimation=0;previewLastPaint=0;previewLastTick=0;
@@ -253,12 +262,20 @@
         // advancing its animation phase without actually drawing its frame.
         // The cursor must advance WHEN painting, not on every idle rAF.
         const visible=[];
+        const sheet=document.body.classList.contains("setka-sheet-layout")
+          ?document.getElementById("st34Layer"):null;
+        const covered=sheet&&!sheet.classList.contains("hidden")
+          ?sheet.getBoundingClientRect():null;
         for(const [canvas,item] of previewTiles){
           if(!canvas.isConnected){previewTiles.delete(canvas);continue}
           const panel=canvas.closest('.pattern-panel');
           if(panel?.classList.contains('hidden-left')||panel?.classList.contains('hidden-right'))continue;
           const rect=canvas.getBoundingClientRect();
           if(rect.width<4||rect.height<4||rect.bottom<0||rect.top>innerHeight||rect.right<0||rect.left>innerWidth)continue;
+          // Do not spend Canvas rendering work on thumbnails fully obscured
+          // by the expanded bottom sheet. Partly exposed cards keep moving.
+          if(covered&&rect.left>=covered.left&&rect.right<=covered.right&&
+             rect.top>=covered.top&&rect.bottom<=covered.bottom)continue;
           visible.push([canvas,item]);
         }
         const optimizer=window.SetkaAutoOptimizerV1;
