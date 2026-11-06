@@ -1,4 +1,4 @@
-import {mountMusicAdmin} from './music-admin.mjs?v=11-one-global-order-final-20261107';
+import {mountMusicAdmin} from './music-admin.mjs?v=12-original-quality-upload-20261107';
 import {mountPatternOrder} from './pattern-order.mjs';
 import {mountPublication,publicationLabel} from './publication.mjs';
 import {mountPatternEditor} from './pattern-editor.mjs';
