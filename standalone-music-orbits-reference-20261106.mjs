@@ -3,7 +3,7 @@ import {uiIconHTML} from "./standalone-music-ui-icons-v2.mjs";
 export function createOrbitUI(mixer,trackHTML,uiIcons={}){
  const root=document.createElement("section");root.className="sm-orbits";root.hidden=true;
  const stage=document.createElement("div");stage.className="sm-stage";stage.setAttribute("aria-label","Пространственное расположение активных звуков");
- stage.innerHTML='<span class="sm-ring sm-ring-inner"></span><span class="sm-ring sm-ring-middle"></span><span class="sm-ring sm-ring-outer"></span><span class="sm-listener" style="width:min(35%,115px)!important;height:min(35%,115px)!important;" aria-label="Радужная девушка в позе лотоса с наушниками"><span class="sm-lotus-portrait" aria-hidden="true"></span></span>';
+ stage.innerHTML='<span class="sm-ring sm-ring-inner"></span><span class="sm-ring sm-ring-middle"></span><span class="sm-ring sm-ring-outer"></span><span class="sm-listener" style="width:min(33%,108px)!important;height:min(33%,108px)!important;" aria-label="Радужная девушка в позе лотоса с наушниками"><span class="sm-lotus-portrait" aria-hidden="true"></span></span>';
  root.append(stage);
  const row=document.createElement("div");row.className="sm-motion-row";row.setAttribute("role","group");row.setAttribute("aria-label","Режим движения звуков");root.append(row);
  const speed=document.createElement("div");speed.className="sm-speed";
