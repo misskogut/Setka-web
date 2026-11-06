@@ -56,6 +56,13 @@ test("off has no dots: dots render only with active > 0 level",()=>{
  assert.match(ui,/old===3\?0:old\+1/);
  assert.match(ui,/power\.onclick/);
 });
+test("orbit source has no disc and stage expands without flattening rings",()=>{
+ const css=file("standalone-music-v1.css");
+ assert.match(css,/\.sm-source\{[^}]*border:0;border-radius:0;background:transparent;[^}]*box-shadow:none\}/s);
+ assert.match(css,/\.sm-ring-outer\{width:96%;height:96%\}/);
+ assert.match(css,/width:min\(93vw,43svh,375px,calc\(100svh - var\(--safe-top\) - var\(--safe-bottom\) - 441px\)\)/);
+ assert.match(css,/width:min\(83vw,36svh,315px,calc\(100svh - var\(--safe-top\) - var\(--safe-bottom\) - 408px\)\)/);
+});
 test("server uses checked admin key and does not expose service role to public clients",()=>{
  const edge=file("supabase/functions/setka-music-v1/index.ts");
  assert.match(edge,/if\(!await authorized\(b\?\.adminKey\)\)/);
