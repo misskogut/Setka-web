@@ -143,10 +143,26 @@ try{
  await cat.click();assert.equal(await page.locator(".sm-track.active .sm-dots i").count(),1);
  await cat.click();assert.equal(await page.locator(".sm-track.active .sm-dots i").count(),2);
  await cat.click();assert.equal(await page.locator(".sm-track.active .sm-dots i").count(),3);
+ const trackDots=await cat.evaluate(el=>{
+  const icon=el.querySelector(".sm-track-icon").getBoundingClientRect();
+  const dots=el.querySelector(".sm-dots").getBoundingClientRect();
+  return {gap:dots.top-icon.bottom,alignment:Math.abs((dots.left+dots.right-icon.left-icon.right)/2)};
+ });
+ assert.ok(trackDots.gap>=4,"volume dots stay below the sound icon");
+ assert.ok(trackDots.alignment<1,"volume dots are centered under their own icon");
+
  await cat.click();assert.equal(await page.locator(".sm-dots").count(),0,"fourth tap turns track off and removes all dots");
  await page.locator(".sm-track").nth(0).click();await page.locator(".sm-track").nth(1).click();
  await page.locator(".sm-category").last().click();
  assert.equal(await page.locator(".sm-source").count(),2,"two active tracks appear on orbits");
+ const orbitDots=await page.locator(".sm-source").first().evaluate(el=>{
+  const icon=el.querySelector(".sm-source-icon").getBoundingClientRect();
+  const dots=el.querySelector(".sm-dots").getBoundingClientRect();
+  return {gap:dots.top-icon.bottom,alignment:Math.abs((dots.left+dots.right-icon.left-icon.right)/2)};
+ });
+ assert.ok(orbitDots.gap>=0,"orbital dots stay below the source icon");
+ assert.ok(orbitDots.alignment<1,"orbital dots are centered");
+
  assert.equal(await page.locator(".sm-motion").nth(3).locator(".sm-asset-icon").count(),1,"server-supplied transparent icon skin displayed as mask");
  await page.screenshot({path:"tests/visual-smoke/music-orbits-"+(process.env.SETKA_BROWSER||"chromium")+".png"});
  await page.locator(".sm-motion").nth(1).click();
