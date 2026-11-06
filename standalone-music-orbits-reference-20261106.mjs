@@ -1,4 +1,4 @@
-import {MOTION,MOTION_LABELS} from "./standalone-music-audio-v1.mjs?v=4-hrtf-rear-depth-smooth-20261107";
+import {MOTION,MOTION_LABELS} from "./standalone-music-audio-v1.mjs?v=5-clear-rear-audio-no-extra-compression-20261107";
 import {uiIconHTML} from "./standalone-music-ui-icons-v2.mjs?v=4-exact-approved-vector-20261106";
 export function createOrbitUI(mixer,trackHTML,uiIcons={}){
  const root=document.createElement("section");root.className="sm-orbits";root.hidden=true;
