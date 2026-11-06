@@ -180,8 +180,41 @@ export function mountMusicAdmin(container,getAdminKey){
   const title=field(form,"Название",input("text",t.title||""));title.required=true;title.maxLength=120;
   const file=field(form,"Оригинальный аудиофайл (до 20 МБ, MP3/M4A/WAV/OGG)",input("file"));file.accept=".mp3,.m4a,.wav,.ogg,audio/*";if(!t.audio_path)file.required=true;
   form.append(el("p","sm-admin-lossless-note muted","Загружаем исходный файл без перекодирования, сжатия и изменения битрейта. Для максимального качества можно использовать WAV. MP3/M4A сохраняются в исходном виде."));
-  const iconSelect=el("select");for(const name of ICON_NAMES){const o=el("option","",name);o.value=name;iconSelect.append(o)}iconSelect.value=t.icon_key||"music";
-  field(form,"Значок из набора SETKA",iconSelect);
+  // The native select showed glyph names only: render every actual SETKA vector before choosing.
+  let selectedIconKey=ICON_NAMES.includes(t.icon_key)?t.icon_key:"music";
+  const iconField=el("div","sm-admin-field sm-admin-icon-picker-field");
+  const picker=el("details","sm-admin-icon-picker");
+  const summary=el("summary","sm-admin-icon-picker-current");
+  const gallery=el("div","sm-admin-icon-options");
+  gallery.setAttribute("role","group");
+  gallery.setAttribute("aria-label","Иконки из коллекции SETKA");
+  const iconButtons=[];
+  const showSelection=()=>{
+   summary.replaceChildren();
+   const art=el("span","sm-admin-icon-selected-art");art.innerHTML=iconSvg(selectedIconKey);
+   summary.append(art,el("span","sm-admin-icon-selected-name",selectedIconKey));
+   summary.setAttribute("aria-label","Текущий значок: "+selectedIconKey+". Открыть галерею");
+   for(const b of iconButtons){
+    const active=b.dataset.iconKey===selectedIconKey;
+    b.classList.toggle("is-active",active);
+    b.setAttribute("aria-pressed",String(active));
+   }
+  };
+  for(const name of ICON_NAMES){
+   const choice=btn("",()=>{
+    selectedIconKey=name;showSelection();picker.open=false;summary.focus();
+   });
+   choice.className="sm-admin-icon-option";
+   choice.dataset.iconKey=name;
+   choice.setAttribute("aria-label","Выбрать значок "+name);
+   const art=el("span","sm-admin-icon-option-art");art.innerHTML=iconSvg(name);
+   choice.append(art,el("span","sm-admin-icon-option-name",name));
+   iconButtons.push(choice);gallery.append(choice);
+  }
+  picker.append(summary,gallery);
+  iconField.append(el("span","","Значок из набора SETKA"),picker);
+  form.append(iconField);
+  showSelection();
   const icon=field(form,"Собственный значок SVG/PNG/WebP",input("file"));icon.accept=".svg,.png,.webp,image/svg+xml,image/png,image/webp";
   const checkArea=el("fieldset","sm-admin-cats");checkArea.append(el("legend","","Категории"));
   const checks=[];
@@ -203,7 +236,7 @@ export function mountMusicAdmin(container,getAdminKey){
     if(icon.files[0])iconPath=await upload(icon.files[0]);
     if(!audioPath)throw Error("Выберите аудиофайл");
     await req("save-track",{id:t.id||undefined,title:title.value.trim(),audio_path:audioPath,
-     icon_key:iconSelect.value,icon_path:iconPath,category_ids:chosenCategories,
+     icon_key:selectedIconKey,icon_path:iconPath,category_ids:chosenCategories,
      sort_order:Number(sort.value)||0,published:published.checked,loop:loop.checked});
     currentTrack=null;await reload();
    }catch(e){msg.textContent="Ошибка: "+e.message}finally{save.disabled=false}
