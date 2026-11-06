@@ -67,7 +67,9 @@ test("closed-eye endpoints align vertically with open-eye corners (without movin
 
 test("nature category uses user's exact option 7: five bars and two leaves",()=>{
  const nature=selectedMusicCategorySVG("hand");
- assert.match(nature,/viewBox="75 35 190 190"/);
+ assert.match(nature,/viewBox="54 14 232 232"/,"keep nature option 7 optically 18% smaller without changing artwork");
+ const firstRowNeighbor=selectedMusicCategorySVG("eye");
+ assert.match(firstRowNeighbor,/viewBox="-0.5 -20.5 176 176"/,"other category shapes remain unchanged");
  assert.match(nature,/M169,55 166,57/,"long central sound bar");
  assert.match(nature,/M86,113 84,122/,"left leaf");
  assert.match(nature,/M253,113 240,125/,"right leaf");
