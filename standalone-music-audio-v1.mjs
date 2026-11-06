@@ -264,9 +264,10 @@ export class SetkaMusicMixer {
    // finger moves across the left/right and front/rear meridians.
    const tracking=s.manual?.025:.05;
    s.panner.positionX.setTargetAtTime(x,t,tracking);
-   s.panner.positionY?.setTargetAtTime(.48*behind*nearCenter,t,tracking);
+   // Orbit is a horizontal plane: no unpictured "above head" displacement.
+   s.panner.positionY?.setTargetAtTime(0,t,tracking);
    s.panner.positionZ.setTargetAtTime(z,t,tracking);
-  }else{s.panner.setPosition(x,.48*behind*nearCenter,z)}
+  }else{s.panner.setPosition(x,0,z)}
  }
  drag(id,a,r){
   const s=this.items.get(id);if(!s)return;
