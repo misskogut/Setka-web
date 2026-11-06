@@ -1,4 +1,4 @@
-import {mountMusicAdmin} from './music-admin.mjs?v=6-nature-optical-size-20261106';
+import {mountMusicAdmin} from './music-admin.mjs?v=7-music-order-stats-20261107';
 import {mountPatternOrder} from './pattern-order.mjs';
 import {mountPublication,publicationLabel} from './publication.mjs';
 import {mountPatternEditor} from './pattern-editor.mjs';
