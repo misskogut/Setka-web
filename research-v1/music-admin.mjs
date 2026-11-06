@@ -1,4 +1,5 @@
 import {ICON_NAMES,iconSvg} from "../standalone-music-icons-v1.mjs?v=2";
+import {mountMusicOrder} from "./music-order.mjs?v=1-four-tabs-20261107";
 import {selectedMusicCategorySVG} from "../standalone-music-approved-icons-v1.mjs?v=nature-optical-size-20261106";
 import {UI_ICON_SLOTS,uiIconHTML,assetIconMask} from "../standalone-music-ui-icons-v2.mjs";
 const API="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-music-v1";
@@ -20,10 +21,12 @@ export function mountMusicAdmin(container,getAdminKey){
  }
  async function upload(file){
   if(!file)return null;
-  let type=file.type||(file.name.toLowerCase().endsWith(".mp3")?"audio/mpeg":file.name.toLowerCase().endsWith(".svg")?"image/svg+xml":"");
+  const extensions={mp3:"audio/mpeg",m4a:"audio/mp4",wav:"audio/wav",ogg:"audio/ogg",png:"image/png",webp:"image/webp",svg:"image/svg+xml"};
+  const ext=file.name.toLowerCase().split(".").pop();
+  let type=file.type||extensions[ext]||"";
   if(type==="audio/x-wav")type="audio/wav";if(type==="audio/x-m4a"||type==="audio/m4a")type="audio/mp4";
   const intent=await req("upload-intent",{mime:type,size:file.size});
-  const data=new FormData();data.append("cacheControl","3600");data.append("file",type===file.type?file:new File([file],file.name,{type}));
+  const data=new FormData();data.append("cacheControl","3600");data.append("",type===file.type?file:new File([file],file.name,{type}));
   const result=await fetch(intent.upload_url,{method:"PUT",headers:{"x-upsert":"false"},body:data});
   if(!result.ok)throw Error("upload_failed_"+result.status);
   return intent.path;
@@ -56,7 +59,8 @@ export function mountMusicAdmin(container,getAdminKey){
   const wrap=el("div","sm-admin");
   const intro=el("p","muted","Все изменения сохраняются на сервере. Аудио и значки загружаются в отдельное хранилище SETKA. Не публикуйте записи без права на их использование.");
   wrap.append(intro);
-  const sectionIcons=el("section","sm-admin-section"),sectionCats=el("section","sm-admin-section"),sectionTracks=el("section","sm-admin-section");
+  const sectionOrder=el("section","sm-admin-section sm-admin-order"),sectionIcons=el("section","sm-admin-section"),sectionCats=el("section","sm-admin-section"),sectionTracks=el("section","sm-admin-section");
+  mountMusicOrder(sectionOrder,model,req,reload);
   renderIconEditor(sectionIcons);
   sectionCats.append(el("h2","","Категории музыки"));
   const catBar=el("div","row");
@@ -80,17 +84,30 @@ export function mountMusicAdmin(container,getAdminKey){
    const icon=el("span","sm-admin-icon");
    icon.innerHTML=assetIconMask(track.icon_path)||iconSvg(track.icon_key);
    const label=el("span","",track.title+" — "+(track.published?"опубликован":"скрыт"));item.append(icon,label);
-   item.append(btn("Изменить",()=>{currentTrack=track;render()}));
+   item.append(btn("Изменить",()=>{currentTrack=track;render();requestAnimationFrame(()=>container.querySelector(".sm-admin-track-form")?.scrollIntoView({behavior:"smooth",block:"start"}))}));
    item.append(btn("Удалить",async()=>{
     if(!confirm("Удалить трек «"+track.title+"» из каталога?"))return;
     try{await req("delete-track",{id:track.id});currentTrack=null;await reload()}catch(e){alert("Не удалось удалить: "+e.message)}
    }));
    const player=el("audio");player.controls=true;player.preload="none";player.src=track.audio_url;player.setAttribute("aria-label","Прослушать "+track.title);item.append(player);
+   const stats=(model.stats||[]).find(x=>x.track_id===track.id);
+   const details=el("details","sm-track-stat-details");
+   const summary=el("summary","","Статистика · "+Number(stats?.plays||0).toLocaleString("ru-RU")+" запусков");
+   details.append(summary);
+   const metrics=el("div","sm-track-stat-metrics");
+   const addMetric=(name,value)=>{const b=el("div","sm-track-stat-metric");b.append(el("strong","",String(value)),el("span","",name));metrics.append(b)};
+   addMetric("Запусков",Number(stats?.plays||0).toLocaleString("ru-RU"));
+   addMetric("За 7 дней",Number(stats?.plays_7d||0).toLocaleString("ru-RU"));
+   addMetric("Прослушано ≥95%",Number(stats?.completions||0).toLocaleString("ru-RU"));
+   addMetric("Длительность",Number(track.duration_seconds)>0?Math.round(Number(track.duration_seconds))+" с":"—");
+   details.append(metrics);
+   details.append(el("p","muted","Статистика фиксируется при реальном запуске аудио и после 95% длительности. Без идентификации слушателей."));
+   item.append(details);
    list.append(item);
   }
-  if(!model.tracks.length)list.append(el("p","muted","Треки пока не загружены."));
+   if(!model.tracks.length)list.append(el("p","muted","Треки пока не загружены. Ниже можно добавить первый трек, иконку и выбрать категории."));
   sectionTracks.append(list);renderTrackForm(sectionTracks);
-  wrap.append(sectionIcons,sectionCats,sectionTracks);container.append(wrap);
+  wrap.append(sectionOrder,sectionTracks,sectionCats,sectionIcons);container.append(wrap);
  }
  function renderIconEditor(section){
   section.append(el("h2","","Значки интерфейса"));
@@ -152,7 +169,7 @@ export function mountMusicAdmin(container,getAdminKey){
  }
  function renderTrackForm(section){
   const t=currentTrack||{};
-  const form=el("form","sm-admin-form");form.append(el("h3","",t.id?"Редактировать трек":"Добавить трек"));
+  const form=el("form","sm-admin-form sm-admin-track-form");form.append(el("h3","",t.id?"Редактировать трек":"Добавить трек"));
   const title=field(form,"Название",input("text",t.title||""));title.required=true;title.maxLength=120;
   const file=field(form,"Аудиофайл (до 20 МБ, MP3/M4A/WAV/OGG)",input("file"));file.accept=".mp3,.m4a,.wav,.ogg,audio/*";if(!t.audio_path)file.required=true;
   const iconSelect=el("select");for(const name of ICON_NAMES){const o=el("option","",name);o.value=name;iconSelect.append(o)}iconSelect.value=t.icon_key||"music";
