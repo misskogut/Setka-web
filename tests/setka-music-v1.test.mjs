@@ -72,10 +72,14 @@ test("server uses checked admin key and does not expose service role to public c
  assert.match(edge,/action==="save-track"/);
 });
 
-test("volume dots are anchored below icons in the catalog and orbits",()=>{
- const ui=file("standalone-music-v1.mjs"),css=file("standalone-music-v1.css");
+test("volume dots are centered above their own sound icons and match their glow",()=>{
+ const ui=file("standalone-music-v1.mjs"),orbit=file("standalone-music-orbits-reference-20261106.mjs"),css=file("standalone-music-v1.css");
  assert.match(ui,/trackHTML\(track\)\+dots\(level\)\+'<\/span>'/);
+ assert.match(orbit,/trackHTML\(s\.track\)\+'<span class="sm-dots"/,"orbit dots share the source-icon anchor");
  assert.match(css,/\.sm-track-icon\{position:relative;/);
- assert.match(css,/\.sm-track \.sm-dots\{top:calc\(100% \+ 6px\);bottom:auto\}/);
- assert.match(css,/\.sm-source \.sm-dots\{top:auto;bottom:-10px\}/);
+ assert.match(css,/\.sm-source-icon\{position:relative\}/);
+ assert.match(css,/\.sm-dots\{position:absolute;top:auto;bottom:calc\(100% \+ 6px\);/);
+ assert.match(css,/\.sm-dots i\{[^}]*background:currentColor;box-shadow:none\}/,"no extra glow only for the dots");
+ assert.match(css,/#libraryScreen\.setka-music-open #setkaMusicPagerButton\{opacity:1!important;filter:none!important\}/);
+ assert.match(css,/#libraryScreen #setkaMusicPagerButton\.active svg,[^{]*\{filter:none!important\}/,"note has no second glow");
 });
