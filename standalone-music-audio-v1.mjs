@@ -22,6 +22,11 @@ function setkaRoomImpulse(ctx){
  }
  return buffer;
 }
+// Same unit vector drives the screen and the acoustic source:
+// top/front = -Z, right = +X, bottom/rear = +Z, left = -X.
+export function orbitUnit(angle){
+ return {x:Math.sin(angle),z:-Math.cos(angle)};
+}
 export class SetkaMusicMixer {
  constructor() {
   this.ctx=null; this.master=null; this.room=null; this.roomOutput=null; this.items=new Map();
@@ -39,6 +44,20 @@ export class SetkaMusicMixer {
    this.master.knee.value=0;this.master.ratio.value=3;
    this.master.attack.value=.003;this.master.release.value=.16;
    this.master.connect(this.ctx.destination);
+   // Explicitly align the acoustic listener with the central person shown in
+   // the orbit UI: facing screen-up/front (-Z), +X to the right.
+   const listener=this.ctx.listener,time=this.ctx.currentTime;
+   if(listener?.forwardZ?.setValueAtTime){
+    listener.positionX?.setValueAtTime(0,time);
+    listener.positionY?.setValueAtTime(0,time);
+    listener.positionZ?.setValueAtTime(0,time);
+    listener.forwardX?.setValueAtTime(0,time);
+    listener.forwardY?.setValueAtTime(0,time);
+    listener.forwardZ.setValueAtTime(-1,time);
+    listener.upX?.setValueAtTime(0,time);
+    listener.upY?.setValueAtTime(1,time);
+    listener.upZ?.setValueAtTime(0,time);
+   }
    try{
     const room=this.ctx.createConvolver(),output=this.ctx.createGain();
     room.normalize=false;
@@ -70,9 +89,12 @@ export class SetkaMusicMixer {
    // not the former aggressive low-pass that made music dull from behind.
    rearFilter.type="highshelf";rearFilter.frequency.value=7500;rearFilter.gain.value=0;
    gain.connect(rearFilter);rearFilter.connect(panner);panner.connect(this.master);gain.gain.value=0;
-   // Post-volume, pre-HRTF room send: the original direct path stays untouched.
+   // Spatialize BEFORE the room send. A direct pre-HRTF send made distant
+   // sources sound centered because their diffuse stereo echo had no bearing.
+   // Convolving the HRTF-placed stereo signal keeps the reflections linked
+   // to the visible orbital angle while preserving the original dry signal.
    const roomSend=this.room?this.ctx.createGain():null;
-   if(roomSend){roomSend.gain.value=0;gain.connect(roomSend);roomSend.connect(this.room)}
+   if(roomSend){roomSend.gain.value=0;panner.connect(roomSend);roomSend.connect(this.room)}
    if(this.roomOutput)this.roomOutput.gain.setTargetAtTime(.86,this.ctx.currentTime,.04);
    const makeDeck=(volume)=>{
     const el=new Audio();
@@ -220,7 +242,8 @@ export class SetkaMusicMixer {
   const depth=smooth(.14,.94,r);
   const nearCenter=smooth(0,.16,r);
   const distance=(2.05+7.25*Math.pow(depth,1.15))*nearCenter;
-  const x=Math.sin(a)*distance,z=-Math.cos(a)*distance;
+  const unit=orbitUnit(a);
+  const x=unit.x*distance,z=unit.z*distance;
   // HRTF supplies the spatial front/back cue. Keep source timbre intact:
   // attenuate only the extreme highs by <=1.5 dB at the rear.
   const behind=smooth(-.28,.82,-Math.cos(a))*smooth(.06,.32,r);
@@ -230,15 +253,19 @@ export class SetkaMusicMixer {
   // A smoothed, modest send preserves transients and full-band clarity.
   if(s.roomSend){
    const wet=.012+.19*Math.pow(depth,1.4);
-   s.roomSend.gain.setTargetAtTime(wet,t,.24);
+   s.roomSend.gain.setTargetAtTime(wet,t,s.manual?.085:.14);
   }
   if(s.rearFilter?.gain?.setTargetAtTime){
-   s.rearFilter.gain.setTargetAtTime(gentleRearDb,t,.16);
+   s.rearFilter.gain.setTargetAtTime(gentleRearDb,t,.07);
   }else if(s.rearFilter?.gain){s.rearFilter.gain.value=gentleRearDb}
   if(s.panner.positionX?.setTargetAtTime){
-   s.panner.positionX.setTargetAtTime(x,t,.15);
-   s.panner.positionY?.setTargetAtTime(.48*behind*nearCenter,t,.15);
-   s.panner.positionZ.setTargetAtTime(z,t,.15);
+   // The old .15 s time constant left sound ~0.45 s behind a dragged icon.
+   // Tight but smooth tracking synchronizes hearing and UI, including fast
+   // finger moves across the left/right and front/rear meridians.
+   const tracking=s.manual?.025:.05;
+   s.panner.positionX.setTargetAtTime(x,t,tracking);
+   s.panner.positionY?.setTargetAtTime(.48*behind*nearCenter,t,tracking);
+   s.panner.positionZ.setTargetAtTime(z,t,tracking);
   }else{s.panner.setPosition(x,.48*behind*nearCenter,z)}
  }
  drag(id,a,r){
