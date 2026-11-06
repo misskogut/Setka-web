@@ -64,3 +64,11 @@ test("server uses checked admin key and does not expose service role to public c
  assert.match(edge,/action==="upload-intent"/);
  assert.match(edge,/action==="save-track"/);
 });
+
+test("volume dots are anchored below icons in the catalog and orbits",()=>{
+ const ui=file("standalone-music-v1.mjs"),css=file("standalone-music-v1.css");
+ assert.match(ui,/trackHTML\(track\)\+dots\(level\)\+'<\/span>'/);
+ assert.match(css,/\.sm-track-icon\{position:relative;/);
+ assert.match(css,/\.sm-track \.sm-dots\{top:calc\(100% \+ 6px\);bottom:auto\}/);
+ assert.match(css,/\.sm-source \.sm-dots\{top:auto;bottom:-10px\}/);
+});
