@@ -11,11 +11,11 @@ export function createOrbitUI(mixer,trackHTML,uiIcons={}){
  const input=speed.querySelector("input");input.addEventListener("input",()=>mixer.setSpeed(input.value));
  root.append(speed);
  const elements=new Map();
- function pos(el,a,r){
+ function pos(el,a,r,frame){
   if(!el)return;
   // Safari iOS: keep the button on its own composited layer and move only
   // that layer. Updating left/top was repainting vector/mask edges into trails.
-  const rect=stage.getBoundingClientRect(),dist=Math.min(rect.width,rect.height)*.5*r;
+  const rect=frame||stage.getBoundingClientRect(),dist=Math.min(rect.width,rect.height)*.5*r;
   const dpr=Math.max(1,window.devicePixelRatio||1);
   const direction=orbitUnit(a);
   const dx=Math.round(direction.x*dist*dpr)/dpr;
@@ -23,7 +23,11 @@ export function createOrbitUI(mixer,trackHTML,uiIcons={}){
   const transform="translate3d("+dx+"px,"+dy+"px,0) translate(-50%,-50%)";
   if(el.style.transform!==transform)el.style.transform=transform;
  }
- function updatePositions(){if(root.hidden)return;for(const s of mixer.items.values())pos(elements.get(s.id),s.angle,s.radius)}
+ function updatePositions(){
+  if(root.hidden)return;
+  const frame=stage.getBoundingClientRect();
+  for(const s of mixer.items.values())pos(elements.get(s.id),s.angle,s.radius,frame);
+ }
  function updateMotions(){
   row.replaceChildren();
   for(const mode of MOTION){
@@ -54,7 +58,8 @@ export function createOrbitUI(mixer,trackHTML,uiIcons={}){
     if(!touch.moved)return;
     const box=stage.getBoundingClientRect(),x=e.clientX-box.left-box.width/2,y=e.clientY-box.top-box.height/2;
     const radius=Math.max(.22,Math.min(.88,Math.hypot(x,y)/(.5*Math.min(box.width,box.height))));
-    const angle=Math.atan2(x,-y);mixer.drag(s.id,angle,radius);pos(node,angle,radius);
+    // mixer.drag updates both audio and screen through the same state/callback.
+    const angle=Math.atan2(x,-y);mixer.drag(s.id,angle,radius);
    });
    node.addEventListener("pointerup",e=>{
     if(!touch||touch.id!==e.pointerId)return;
