@@ -120,11 +120,16 @@ try{
   assert.ok(g.dock.top-g.power.bottom>=8,
     "power button must never collide with bottom navigation: "+JSON.stringify(g));
  };
- assertAir(await geometryOf());
+ const wideOrbit=await geometryOf();
+ assertAir(wideOrbit);
+ assert.ok(wideOrbit.stage.height>=350,"tall phone gets an expanded orbit workspace");
+ assert.ok(wideOrbit.rings[2].width>=wideOrbit.stage.height*.95,"outer orbit fills the new workspace");
  // Compact iPhone layout must retain every touch target and preserve the same
  // top-to-bottom ordering instead of clipping slider/power under the dock.
  await page.setViewportSize({width:360,height:700});
- assertAir(await geometryOf(),true);
+ const compactOrbit=await geometryOf();
+ assertAir(compactOrbit,true);
+ assert.ok(compactOrbit.stage.height>=245,"compact phone also expands its orbit without collisions");
  await page.setViewportSize({width:390,height:844});
 
  const scrollAtOrbit=await page.locator(".sm-categories").evaluate(el=>el.scrollLeft);
@@ -155,6 +160,17 @@ try{
  await page.locator(".sm-track").nth(0).click();await page.locator(".sm-track").nth(1).click();
  await page.locator(".sm-category").last().click();
  assert.equal(await page.locator(".sm-source").count(),2,"two active tracks appear on orbits");
+ const sourceSkin=await page.locator(".sm-source").first().evaluate(el=>{
+  const c=getComputedStyle(el),size=el.getBoundingClientRect();
+  return {background:c.backgroundColor,border:c.borderTopWidth,shadow:c.boxShadow,
+   radius:c.borderTopLeftRadius,width:size.width,height:size.height,icon:el.querySelector(".sm-source-icon").getBoundingClientRect().width};
+ });
+ assert.match(sourceSkin.background,/^(transparent|rgba\(0, 0, 0, 0\))$/,"no background disc behind orbit source");
+ assert.equal(sourceSkin.border,"0px","no visible source ring border");
+ assert.equal(sourceSkin.radius,"0px","no circular hit-target silhouette");
+ assert.equal(sourceSkin.shadow,"none","no circular glow backdrop");
+ assert.ok(sourceSkin.width>=44&&sourceSkin.height>=44,"borderless source keeps an accessible drag target");
+ assert.ok(sourceSkin.icon>=40,"source glyph remains visible without its former disc");
  const orbitDots=await page.locator(".sm-source").first().evaluate(el=>{
   const icon=el.querySelector(".sm-source-icon").getBoundingClientRect();
   const dots=el.querySelector(".sm-dots").getBoundingClientRect();
