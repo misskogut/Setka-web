@@ -1,4 +1,4 @@
-import {mountMusicAdmin} from './music-admin.mjs?v=8-first-tracks-ready-20261107';
+import {mountMusicAdmin} from './music-admin.mjs?v=9-ios-file-upload-ready-20261107';
 import {mountPatternOrder} from './pattern-order.mjs';
 import {mountPublication,publicationLabel} from './publication.mjs';
 import {mountPatternEditor} from './pattern-editor.mjs';
