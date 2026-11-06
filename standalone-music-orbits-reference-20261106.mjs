@@ -1,5 +1,5 @@
 import {MOTION,MOTION_LABELS} from "./standalone-music-audio-v1.mjs";
-import {uiIconHTML} from "./standalone-music-ui-icons-v2.mjs?v=3-approved-turtle3-hare2";
+import {uiIconHTML} from "./standalone-music-ui-icons-v2.mjs?v=4-exact-approved-vector-20261106";
 export function createOrbitUI(mixer,trackHTML,uiIcons={}){
  const root=document.createElement("section");root.className="sm-orbits";root.hidden=true;
  const stage=document.createElement("div");stage.className="sm-stage";stage.setAttribute("aria-label","Пространственное расположение активных звуков");
