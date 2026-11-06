@@ -11,7 +11,7 @@ const mixer=new SetkaMusicMixer();
 // Only real audio playback events are counted; no identifying listener data.
 mixer.onTrackEvent=event=>{fetch(API,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"track-event",...event}),keepalive:true}).catch(()=>{})};
 const uiIcons=Object.create(null);
-let categories=BASE_CATEGORIES,tracks=[],orders=[],selected=null,visible=false,loading=false,status="";
+let categories=BASE_CATEGORIES,tracks=[],globalOrder={track_ids:[]},selected=null,visible=false,loading=false,status="";
 let root=null,categoriesRow=null,grid=null,catalog=null,orbit=null,note=null,title=null,patternPanels=null,powerButton=null;
 function trackHTML(track){
  const custom=assetIconMask(track.icon_path);
@@ -25,11 +25,9 @@ function redrawCatalog(){
  if(status){const el=document.createElement("p");el.className="sm-status";el.textContent=status;grid.append(el)}
  if(loading)return;
  const display=tracks.filter(t=>!selected||selected==="orbits"||t.category_ids?.includes(selected));
- if(selected&&selected!=="orbits"){
-  const categoryOrder=orders.find(o=>o.category_id===selected)?.track_ids||[];
-  const priority=new Map(categoryOrder.map((id,index)=>[id,index]));
-  display.sort((a,b)=>(priority.get(a.id)??1e9)-(priority.get(b.id)??1e9));
- }
+ // The one admin-defined order applies to the unfiltered gallery and every filtered category.
+ const priority=new Map((globalOrder.track_ids||[]).map((id,index)=>[id,index]));
+ display.sort((a,b)=>(priority.get(a.id)??1e9)-(priority.get(b.id)??1e9));
  if(!display.length){
   const e=document.createElement("p");e.className="sm-empty";
   e.textContent=status?"":tracks.length?"В этой категории пока нет звуков.":"Музыка ещё не загружена через админку.";
@@ -75,7 +73,7 @@ async function reload(){
  try{
   const r=await fetch(API,{cache:"no-store"});if(!r.ok)throw Error("unavailable");
   const d=await r.json();if(!d.ok||!Array.isArray(d.categories)||!Array.isArray(d.tracks))throw Error("invalid_catalog");
-  categories=d.categories;tracks=d.tracks.filter(t=>t.id&&t.audio_url);orders=Array.isArray(d.orders)?d.orders:[];
+  categories=d.categories;tracks=d.tracks.filter(t=>t.id&&t.audio_url);globalOrder=d.global_order||{track_ids:[]};
   for(const key of UI_ICON_IDS)delete uiIcons[key];
   for(const item of Array.isArray(d.ui_icons)?d.ui_icons:[]){
    if(UI_ICON_IDS.includes(item.slot)&&typeof item.icon_path==="string")uiIcons[item.slot]=item.icon_path;
