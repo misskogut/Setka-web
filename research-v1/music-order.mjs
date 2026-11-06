@@ -66,8 +66,10 @@ export function mountMusicOrder(root,model,req,reload){
   save.disabled=saving||!draft.dirty||!draft.ids.length;
   reset.disabled=saving||!draft.dirty;
  };
- if(!all.length)gallery.append(element("div","sm-order-empty","Треков пока нет. Добавьте первый ниже — его иконка появится здесь."));
- else{
+ if(!all.length){
+  gallery.append(element("div","sm-order-empty","Треков пока нет. Добавьте первый ниже — его иконка появится здесь."));
+  save.disabled=true;reset.disabled=true;
+ }else{
   let gesture=null;
   gallery.addEventListener("pointerdown",event=>{
    if(saving||event.target.closest("button"))return;
