@@ -147,7 +147,7 @@ export class SetkaMusicMixer {
   state.level=Math.max(1,Math.min(3,level));state.track=track;
   const now=this.ctx.currentTime;state.gain.gain.cancelScheduledValues(now);
   state.gain.gain.setTargetAtTime([0,.20,.45,.75][state.level],now,.045);
-  if(!this.clock)this.clock=setInterval(()=>this.tick(),75);
+  if(!this.clock)this.clock=setInterval(()=>this.tick(),40);
   this.changed();
  }
  // Advance a deck independently of orbital motion: even a static sound loops.
@@ -252,17 +252,17 @@ export class SetkaMusicMixer {
   // Near = mainly direct sound; far = more room reflections and reverberation.
   // A smoothed, modest send preserves transients and full-band clarity.
   if(s.roomSend){
-   const wet=.012+.19*Math.pow(depth,1.4);
-   s.roomSend.gain.setTargetAtTime(wet,t,s.manual?.085:.14);
+   const wet=.008+.105*Math.pow(depth,1.3);
+   s.roomSend.gain.setTargetAtTime(wet,t,s.manual?.055:.095);
   }
   if(s.rearFilter?.gain?.setTargetAtTime){
-   s.rearFilter.gain.setTargetAtTime(gentleRearDb,t,.07);
+   s.rearFilter.gain.setTargetAtTime(gentleRearDb,t,s.manual?.028:.055);
   }else if(s.rearFilter?.gain){s.rearFilter.gain.value=gentleRearDb}
   if(s.panner.positionX?.setTargetAtTime){
    // The old .15 s time constant left sound ~0.45 s behind a dragged icon.
    // Tight but smooth tracking synchronizes hearing and UI, including fast
    // finger moves across the left/right and front/rear meridians.
-   const tracking=s.manual?.025:.05;
+   const tracking=s.manual?.018:.036;
    s.panner.positionX.setTargetAtTime(x,t,tracking);
    // Orbit is a horizontal plane: no unpictured "above head" displacement.
    s.panner.positionY?.setTargetAtTime(0,t,tracking);
