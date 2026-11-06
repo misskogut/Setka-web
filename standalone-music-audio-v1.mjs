@@ -28,10 +28,15 @@ export class SetkaMusicMixer {
   let state=old;
   if(!state){
    const index=this.items.size,angle=index*2.399963229728653;
-   const gain=this.ctx.createGain(),panner=this.ctx.createPanner();
+   const gain=this.ctx.createGain(),rearFilter=this.ctx.createBiquadFilter(),panner=this.ctx.createPanner();
+   // HRTF needs a directional/mono input; explicit one-channel input avoids
+   // stereo beds masking the front/back positional cues.
    panner.panningModel="HRTF";panner.distanceModel="inverse";
-   panner.refDistance=1;panner.maxDistance=35;panner.rolloffFactor=.42;
-   gain.connect(panner);panner.connect(this.master);gain.gain.value=0;
+   try{panner.channelCount=1;panner.channelCountMode="explicit"}catch(_){}
+   // A wider near/far acoustic range than the previous 1+7*r / .42 rolloff.
+   panner.refDistance=2.05;panner.maxDistance=19;panner.rolloffFactor=.9;
+   rearFilter.type="lowpass";rearFilter.frequency.value=17000;rearFilter.Q.value=.65;
+   gain.connect(rearFilter);rearFilter.connect(panner);panner.connect(this.master);gain.gain.value=0;
    const makeDeck=(volume)=>{
     const el=new Audio();
     el.loop=false;el.crossOrigin="anonymous";el.preload="auto";el.src=track.audio_url;
@@ -44,7 +49,7 @@ export class SetkaMusicMixer {
    if(track.loop!==false)decks.push(makeDeck(0));
    state={id,track,level:0,playTracked:false,completed:false,angle,radius:.62+(index%3)*.08,
     anchorAngle:angle,anchorRadius:.62+(index%3)*.08,manual:false,
-    el:decks[0].el,src:decks[0].src,gain,panner,decks,activeDeck:0,transition:null,pendingLoop:false};
+    el:decks[0].el,src:decks[0].src,gain,rearFilter,panner,decks,activeDeck:0,transition:null,pendingLoop:false};
    this.items.set(id,state);this.position(state,angle,state.radius);
    for(let deckIndex=0;deckIndex<decks.length;deckIndex++){
     const {el}=decks[deckIndex];
@@ -158,7 +163,7 @@ export class SetkaMusicMixer {
     d.el.pause();d.el.removeAttribute("src");d.el.load();
     d.src.disconnect();d.fade.disconnect();
    }
-   s.gain.disconnect();s.panner.disconnect();
+   s.gain.disconnect();s.rearFilter.disconnect();s.panner.disconnect();
   },220);
   if(!this.items.size){clearInterval(this.clock);this.clock=null;this.mode="static"}
   this.changed();
@@ -166,11 +171,28 @@ export class SetkaMusicMixer {
  stopAll(){for(const id of [...this.items.keys()])this.remove(id);this.mode="static";this.changed()}
  position(s,a,r){
   s.angle=a;s.radius=r;
-  const distance=1+7*r,x=Math.sin(a)*distance,z=-Math.cos(a)*distance,t=this.ctx.currentTime;
+  const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
+  const smooth=(a,b,x)=>{const u=clamp((x-a)/(b-a),0,1);return u*u*(3-2*u)};
+  // The inner ring is genuinely close; the outer ring is distinctly distant.
+  // Keep the physical target continuous through 8D crossings at the listener:
+  // the old fixed minimum radius caused an audible 180-degree teleport.
+  const depth=smooth(.14,.94,r);
+  const nearCenter=smooth(0,.16,r);
+  const distance=(2.05+7.25*Math.pow(depth,1.15))*nearCenter;
+  const x=Math.sin(a)*distance,z=-Math.cos(a)*distance;
+  // A muffled, slightly elevated rear image supplies a perceptual cue that
+  // generic browser HRTFs alone often fail to distinguish from straight ahead.
+  const behind=smooth(-.28,.82,-Math.cos(a))*smooth(.06,.32,r);
+  const cutoff=clamp(17000-12400*behind-3800*depth,2600,17000);
+  const t=this.ctx.currentTime;
+  if(s.rearFilter?.frequency?.setTargetAtTime){
+   s.rearFilter.frequency.setTargetAtTime(cutoff,t,.16);
+  }else if(s.rearFilter?.frequency){s.rearFilter.frequency.value=cutoff}
   if(s.panner.positionX?.setTargetAtTime){
-   s.panner.positionX.setTargetAtTime(x,t,.07);
-   s.panner.positionZ.setTargetAtTime(z,t,.07);
-  }else{s.panner.setPosition(x,0,z)}
+   s.panner.positionX.setTargetAtTime(x,t,.15);
+   s.panner.positionY?.setTargetAtTime(.48*behind*nearCenter,t,.15);
+   s.panner.positionZ.setTargetAtTime(z,t,.15);
+  }else{s.panner.setPosition(x,.48*behind*nearCenter,z)}
  }
  drag(id,a,r){
   const s=this.items.get(id);if(!s)return;
@@ -201,18 +223,18 @@ export class SetkaMusicMixer {
    if(this.mode==="cw")a+=w*t;
    else if(this.mode==="ccw")a-=w*t;
    else if(this.mode==="counter")a+=(j%2?-1:1)*w*t;
-   else if(this.mode==="breath")r=Math.max(.33,Math.min(.87,rad+.15*(Math.sin(w*t+phase)-Math.sin(phase))));
-   else if(this.mode==="spiral"){a+=w*t;r=rad*(1-blend)+(.34+.48*(.5-.5*Math.cos(.6*w*t+phase)))*blend}
+   else if(this.mode==="breath")r=Math.max(.22,Math.min(.94,rad+.20*(Math.sin(w*t+phase)-Math.sin(phase))));
+   else if(this.mode==="spiral"){a+=w*t;r=rad*(1-blend)+(.22+.70*(.5-.5*Math.cos(.6*w*t+phase)))*blend}
    else {
     const q=w*t+phase;
-    if(this.mode==="eight"){x=.77*Math.sin(q);y=-.60*Math.sin(2*q)}
+    if(this.mode==="eight"){x=.77*Math.sin(q);y=-.60*Math.sin(2*q)-.20*Math.cos(q)}
     else if(this.mode==="chaos"){
      x=.43*Math.sin(q*.81)+.26*Math.sin(q*1.37+phase);
      y=.46*Math.cos(q*.59)+.23*Math.cos(q*1.67+phase*2);
     }
     x=Math.sin(base)*rad*(1-blend)+x*blend;
     y=-Math.cos(base)*rad*(1-blend)+y*blend;
-    a=Math.atan2(x,-y);r=Math.max(.33,Math.min(.86,Math.hypot(x,y)));
+    a=Math.atan2(x,-y);r=Math.min(.94,Math.hypot(x,y));
    }
    this.position(s,a,r);
   }
