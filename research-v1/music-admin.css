@@ -43,7 +43,7 @@
 /* Music catalogue ordering: one independently saved sequence per frontend category. */
 .sm-admin-order{background:#fff}
 .sm-order-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin:18px 0 15px}
-.sm-order-tab{border:1px solid #e5e5e5;background:#f7f7f7;border-radius:10px;padding:12px 7px;min-height:47px;font:600 13px/1.2 inherit;cursor:pointer}
+.sm-order-tab{border:1px solid #e5e5e5;background:#f7f7f7;border-radius:10px;padding:12px 7px;min-height:47px;font-family:inherit;font-weight:600;font-size:13px;line-height:1.2;cursor:pointer}
 .sm-order-tab.active{background:#161616;border-color:#161616;color:#fff}
 .sm-order-topline{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:0 0 11px;font-size:13px;color:#444}
 .sm-order-gallery{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px;touch-action:pan-y}
