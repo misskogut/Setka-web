@@ -11,9 +11,10 @@ export class SetkaMusicMixer {
    if(!A)throw Error("audio_unsupported");
    this.ctx=new A();
    this.master=this.ctx.createDynamicsCompressor();
-   this.master.threshold.value=-10;
-   this.master.knee.value=3;this.master.ratio.value=12;
-   this.master.attack.value=.003;this.master.release.value=.25;
+   // Transparent peak safety only; do not crush the music's dynamics.
+   this.master.threshold.value=-2;
+   this.master.knee.value=0;this.master.ratio.value=3;
+   this.master.attack.value=.003;this.master.release.value=.16;
    this.master.connect(this.ctx.destination);
   }
   this.ctx.resume().catch(()=>{});
@@ -29,13 +30,14 @@ export class SetkaMusicMixer {
   if(!state){
    const index=this.items.size,angle=index*2.399963229728653;
    const gain=this.ctx.createGain(),rearFilter=this.ctx.createBiquadFilter(),panner=this.ctx.createPanner();
-   // HRTF needs a directional/mono input; explicit one-channel input avoids
-   // stereo beds masking the front/back positional cues.
+   // Let the browser retain the original decoded source channel configuration.
+   // Never force an additional explicit mono downmix before HRTF processing.
    panner.panningModel="HRTF";panner.distanceModel="inverse";
-   try{panner.channelCount=1;panner.channelCountMode="explicit"}catch(_){}
    // A wider near/far acoustic range than the previous 1+7*r / .42 rolloff.
    panner.refDistance=2.05;panner.maxDistance=19;panner.rolloffFactor=.9;
-   rearFilter.type="lowpass";rearFilter.frequency.value=17000;rearFilter.Q.value=.65;
+   // Very gentle rear head-shadow: only a 1.5 dB high-shelf difference,
+   // not the former aggressive low-pass that made music dull from behind.
+   rearFilter.type="highshelf";rearFilter.frequency.value=7500;rearFilter.gain.value=0;
    gain.connect(rearFilter);rearFilter.connect(panner);panner.connect(this.master);gain.gain.value=0;
    const makeDeck=(volume)=>{
     const el=new Audio();
@@ -180,14 +182,14 @@ export class SetkaMusicMixer {
   const nearCenter=smooth(0,.16,r);
   const distance=(2.05+7.25*Math.pow(depth,1.15))*nearCenter;
   const x=Math.sin(a)*distance,z=-Math.cos(a)*distance;
-  // A muffled, slightly elevated rear image supplies a perceptual cue that
-  // generic browser HRTFs alone often fail to distinguish from straight ahead.
+  // HRTF supplies the spatial front/back cue. Keep source timbre intact:
+  // attenuate only the extreme highs by <=1.5 dB at the rear.
   const behind=smooth(-.28,.82,-Math.cos(a))*smooth(.06,.32,r);
-  const cutoff=clamp(17000-11000*behind-3800*depth,2600,17000);
+  const gentleRearDb=-1.5*behind;
   const t=this.ctx.currentTime;
-  if(s.rearFilter?.frequency?.setTargetAtTime){
-   s.rearFilter.frequency.setTargetAtTime(cutoff,t,.16);
-  }else if(s.rearFilter?.frequency){s.rearFilter.frequency.value=cutoff}
+  if(s.rearFilter?.gain?.setTargetAtTime){
+   s.rearFilter.gain.setTargetAtTime(gentleRearDb,t,.16);
+  }else if(s.rearFilter?.gain){s.rearFilter.gain.value=gentleRearDb}
   if(s.panner.positionX?.setTargetAtTime){
    s.panner.positionX.setTargetAtTime(x,t,.15);
    s.panner.positionY?.setTargetAtTime(.48*behind*nearCenter,t,.15);
