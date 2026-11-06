@@ -24,7 +24,13 @@ export function mountMusicAdmin(container,getAdminKey){
   const extensions={mp3:"audio/mpeg",m4a:"audio/mp4",wav:"audio/wav",ogg:"audio/ogg",png:"image/png",webp:"image/webp",svg:"image/svg+xml"};
   const ext=file.name.toLowerCase().split(".").pop();
   let type=file.type||extensions[ext]||"";
-  if(type==="audio/x-wav")type="audio/wav";if(type==="audio/x-m4a"||type==="audio/m4a")type="audio/mp4";
+  if(type==="audio/mp3")type="audio/mpeg";
+  if(type==="audio/x-wav")type="audio/wav";
+  if(type==="audio/x-m4a"||type==="audio/m4a")type="audio/mp4";
+  if(!["audio/mpeg","audio/mp4","audio/wav","audio/ogg","image/png","image/webp","image/svg+xml"].includes(type))
+   type=extensions[ext]||type;
+  if(!type||file.size<1||file.size>(type.startsWith("audio/")?20000000:2000000))
+   throw Error("Неподдерживаемый формат или размер файла");
   const intent=await req("upload-intent",{mime:type,size:file.size});
   const data=new FormData();data.append("cacheControl","3600");data.append("",type===file.type?file:new File([file],file.name,{type}));
   const result=await fetch(intent.upload_url,{method:"PUT",headers:{"x-upsert":"false"},body:data});
