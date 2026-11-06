@@ -183,7 +183,7 @@ export class SetkaMusicMixer {
   // A muffled, slightly elevated rear image supplies a perceptual cue that
   // generic browser HRTFs alone often fail to distinguish from straight ahead.
   const behind=smooth(-.28,.82,-Math.cos(a))*smooth(.06,.32,r);
-  const cutoff=clamp(17000-12400*behind-3800*depth,2600,17000);
+  const cutoff=clamp(17000-11000*behind-3800*depth,2600,17000);
   const t=this.ctx.currentTime;
   if(s.rearFilter?.frequency?.setTargetAtTime){
    s.rearFilter.frequency.setTargetAtTime(cutoff,t,.16);
