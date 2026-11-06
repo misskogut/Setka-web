@@ -9,10 +9,10 @@
 #libraryScreen.setka-music-open #libraryTitle{visibility:hidden!important}
 #libraryScreen.setka-music-open #setkaMusicPagerButton{color:#fff!important}
 #libraryScreen.setka-music-open .library-pager .pager-button{opacity:.25!important;filter:none!important}
-#libraryScreen.setka-music-open #setkaMusicPagerButton{opacity:1!important;filter:drop-shadow(0 0 5px rgba(255,255,255,.45))!important}
+#libraryScreen.setka-music-open #setkaMusicPagerButton{opacity:1!important;filter:none!important}
 /* SETKA Music is an additive page inside the existing library, not a replacement. */
 #libraryScreen #setkaMusicPagerButton svg,#libraryScreen #setkaMusicPagerButton .sm-asset-icon{width:25px;height:25px;display:block}
-#libraryScreen #setkaMusicPagerButton.active svg,#libraryScreen #setkaMusicPagerButton.active .sm-asset-icon{filter:drop-shadow(0 0 5px rgba(255,255,255,.36))}
+#libraryScreen #setkaMusicPagerButton.active svg,#libraryScreen #setkaMusicPagerButton.active .sm-asset-icon{filter:none!important}
 #libraryScreen .library-pager{gap:18px!important;position:relative;top:-9px}
 #setkaMusicPage{position:absolute;top:calc(var(--safe-top) + 117px);left:12px;right:12px;bottom:calc(var(--safe-bottom) + 104px);
  display:flex;flex-direction:column;align-items:stretch;min-height:0;background:#000;color:#fff;z-index:2;touch-action:pan-x pan-y}
@@ -36,9 +36,9 @@
 .sm-track-icon{position:relative;display:grid;place-items:center;width:52px;height:52px}
 .sm-track-icon svg,.sm-track-icon img,.sm-track-icon .sm-asset-icon{width:52px;height:52px;object-fit:contain}
 .sm-track.active{color:#fff;filter:drop-shadow(0 0 5px rgba(255,255,255,.35))}
-.sm-dots{position:absolute;top:0;left:50%;transform:translateX(-50%);display:flex;justify-content:center;gap:4px;white-space:nowrap;pointer-events:none}
-.sm-track .sm-dots{top:calc(100% + 6px);bottom:auto}
-.sm-dots i{display:block;width:5px;height:5px;border-radius:50%;background:#fff;box-shadow:0 0 5px #fff}
+.sm-dots{position:absolute;top:auto;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);display:flex;justify-content:center;gap:4px;white-space:nowrap;pointer-events:none}
+/* One shared placement and glow model: dots inherit their icon's visual treatment. */
+.sm-dots i{display:block;width:5px;height:5px;border-radius:50%;background:currentColor;box-shadow:none}
 .sm-empty,.sm-status{grid-column:1/-1;text-align:center;font-size:12px;line-height:1.6;letter-spacing:.03em;color:#777;margin:28px 16px}
 .sm-status{color:#ccc}
 .sm-power{flex:0 0 48px;align-self:center;display:grid;place-items:center;width:52px;height:48px;border:0;background:none;color:#aaa;cursor:pointer}
@@ -53,8 +53,8 @@
 .sm-source{position:absolute;transform:translate(-50%,-50%);display:grid;place-items:center;width:57px;height:57px;border:0;border-radius:0;background:transparent;color:#fff;
  padding:0;cursor:grab;touch-action:none;box-shadow:none}
 .sm-source:active{cursor:grabbing}
+.sm-source-icon{position:relative}
 .sm-source-icon,.sm-source-icon svg,.sm-source-icon img,.sm-source-icon .sm-asset-icon{display:block;width:40px;height:40px;object-fit:contain;pointer-events:none}
-.sm-source .sm-dots{top:auto;bottom:-10px}
 .sm-motion-row{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;justify-items:center;width:100%;min-height:40px;align-items:center}
 .sm-motion{border:0;padding:3px;background:none;color:#777;display:grid;place-items:center;width:36px;height:36px;cursor:pointer}
 .sm-motion svg,.sm-motion .sm-asset-icon{width:30px;height:30px}
