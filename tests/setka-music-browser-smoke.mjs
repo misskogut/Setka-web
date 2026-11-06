@@ -5,6 +5,7 @@ import {deflateSync} from "node:zlib";
 import {chromium,webkit} from "playwright";
 import {installPublicationCatalog} from "./publication-fixture.mjs";
 import {buildData} from "../research-v1/model.mjs";
+import {ICON_NAMES} from "../standalone-music-icons-v1.mjs";
 const port=49417,base="http://127.0.0.1:"+port,server=spawn("python3",["-m","http.server",String(port),"--bind","127.0.0.1"],{stdio:"ignore"});
 const browserType=process.env.SETKA_BROWSER==="webkit"?webkit:chromium;
 function wav(){
@@ -210,6 +211,7 @@ try{
  assert.equal(await page.locator("#allPatternsPanel .pattern-tile").count()>0,true);
  await mkdir("tests/visual-smoke",{recursive:true});
  await page.screenshot({path:"tests/visual-smoke/music-"+(process.env.SETKA_BROWSER||"chromium")+".png"});
+ let savedTrackPayload=null;
  const admin=await browser.newPage({viewport:{width:980,height:900}});
  await admin.route("**/storage/v1/object/upload/sign/**",async route=>route.fulfill({status:200,headers:{"access-control-allow-origin":"*","access-control-allow-methods":"PUT,OPTIONS","access-control-allow-headers":"x-upsert,content-type"},body:JSON.stringify({ok:true})}));
  await admin.route("**/functions/v1/**",async route=>{
@@ -220,6 +222,7 @@ try{
   else if(body.action==="reset-ui-icon"){uiStub=uiStub.filter(x=>x.slot!==body.slot);out={ok:true}}
   else if(body.action==="upload-intent")out={ok:true,path:"icons/00000000-0000-4000-8000-000000000123.png",upload_url:"https://gfchgaphzhxufwdhrcis.supabase.co/storage/v1/object/upload/sign/setka-music/icons/00000000-0000-4000-8000-000000000123.png?token=fixture"};
   else if(body.action==="save-ui-icon"){uiStub=[...uiStub.filter(x=>x.slot!==body.slot),{slot:body.slot,icon_path:body.icon_path}];out={ok:true}}
+  else if(body.action==="save-track"){savedTrackPayload=body;out={ok:true,id:"00000000-0000-4000-8000-000000000777"}}
   else if(body.action==="manage-catalog")out={ok:true,items:[],defaults:[],publication:[]};
   else if(body.action==="overview")out={ok:true,data:buildData({},[])};
   return route.fulfill({status:200,contentType:"application/json",headers:{"access-control-allow-origin":"*"},body:JSON.stringify(out)});
@@ -232,6 +235,26 @@ try{
  await admin.locator(".sm-admin").waitFor();
  assert.equal(await admin.locator(".sm-admin-section").count(),3,"system icons, music categories and tracks have separate admin editors");
  assert.equal(await admin.locator(".sm-admin-glyph-card").count(),14,"all system icons have replaceable image upload");
+ // The built-in track glyph selector must be visual, not a native text-only dropdown.
+ const selectedIcon=admin.locator(".sm-admin-icon-picker-current");
+ assert.equal(await selectedIcon.locator("svg").count(),1,"the currently selected glyph is visible");
+ assert.match(await selectedIcon.innerText(),/music/);
+ await selectedIcon.click();
+ assert.equal(await admin.locator(".sm-admin-icon-option").count(),ICON_NAMES.length,"all registered SETKA glyphs are offered visually");
+ assert.equal(await admin.locator(".sm-admin-icon-option svg").count(),ICON_NAMES.length,"every option includes its actual SVG");
+ await admin.locator('.sm-admin-icon-option[data-icon-key="rain"]').click();
+ assert.match(await selectedIcon.innerText(),/rain/,"selection is reflected in the large visible preview");
+ assert.equal(await selectedIcon.locator("svg").count(),1);
+ assert.equal(await admin.locator(".sm-admin-icon-picker").evaluate(node=>node.open),false,"picker closes after choosing");
+ await admin.locator('.sm-admin-track-form input[type="text"]').fill("Тестовый дождь");
+ await admin.locator('.sm-admin-track-form input[type="file"]').first().setInputFiles({
+  name:"test.wav",mimeType:"audio/wav",buffer:Buffer.from(audio.split(",")[1],"base64")
+ });
+ await admin.locator(".sm-admin-cats input[type=checkbox]").first().check();
+ const posted=admin.waitForResponse(response=>response.url().includes("setka-music-v1")&&response.request().postData()?.includes('"action":"save-track"'));
+ await admin.getByRole("button",{name:"Сохранить трек"}).click();
+ await posted;
+ assert.equal(savedTrackPayload?.icon_key,"rain","selected collection key is saved without changing the backend contract");
  assert.equal(await admin.locator(".sm-admin input[type=file]").count(),17,"14 system icons plus category icon, track audio and track icon can be uploaded");
  assert.equal(await admin.locator(".sm-admin-glyph-card").nth(3).locator(".sm-asset-icon").count(),0,"stock icon is still vector");
  await admin.getByRole("button",{name:"Вернуть исходный"}).click();
