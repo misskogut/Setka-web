@@ -229,7 +229,7 @@
     // The dock's bottom sheet occupies only part of the screen. Do not pause
     // thumbnails that are still visible above it. Keep the old pause behavior
     // for genuinely full-screen overlays, background tabs and reduced motion.
-    const partialSheet=document.body.classList.contains("setka-sheet-layout");
+    const partialSheet=document.body?.classList?.contains("setka-sheet-layout");
     return !window.__SETKA_RENDER_ONLY__&&!document.hidden&&!reducedPreviewMotion.matches&&
       libraryScreen.classList.contains("active")&&
       (!overlay||overlay.classList.contains("hidden")||partialSheet);
@@ -262,7 +262,7 @@
         // advancing its animation phase without actually drawing its frame.
         // The cursor must advance WHEN painting, not on every idle rAF.
         const visible=[];
-        const sheet=document.body.classList.contains("setka-sheet-layout")
+        const sheet=document.body?.classList?.contains("setka-sheet-layout")
           ?document.getElementById("st34Layer"):null;
         const covered=sheet&&!sheet.classList.contains("hidden")
           ?sheet.getBoundingClientRect():null;
