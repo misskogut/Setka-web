@@ -37,7 +37,7 @@ function redrawCatalog(){
   const state=mixer.items.get(track.id),level=state?.level||0,button=document.createElement("button");
   button.type="button";button.className="sm-track"+(level?" active":"");
   button.setAttribute("aria-label",track.title+" — "+(level?"уровень "+level:"выключен"));
-  button.innerHTML='<span class="sm-track-icon">'+trackHTML(track)+'</span>'+dots(level);
+  button.innerHTML='<span class="sm-track-icon">'+trackHTML(track)+dots(level)+'</span>';
   button.onclick=()=>{const old=mixer.items.get(track.id)?.level||0;mixer.change(track,old===3?0:old+1)};
   grid.append(button);
  }
