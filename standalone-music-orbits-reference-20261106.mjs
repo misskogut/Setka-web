@@ -1,4 +1,4 @@
-import {MOTION,MOTION_LABELS} from "./standalone-music-audio-v1.mjs?v=6-depth-room-convolver-20261107";
+import {MOTION,MOTION_LABELS,orbitUnit} from "./standalone-music-audio-v1.mjs?v=7-matched-3d-position-20261107";
 import {uiIconHTML} from "./standalone-music-ui-icons-v2.mjs?v=4-exact-approved-vector-20261106";
 export function createOrbitUI(mixer,trackHTML,uiIcons={}){
  const root=document.createElement("section");root.className="sm-orbits";root.hidden=true;
@@ -17,8 +17,9 @@ export function createOrbitUI(mixer,trackHTML,uiIcons={}){
   // that layer. Updating left/top was repainting vector/mask edges into trails.
   const rect=stage.getBoundingClientRect(),dist=Math.min(rect.width,rect.height)*.5*r;
   const dpr=Math.max(1,window.devicePixelRatio||1);
-  const dx=Math.round(Math.sin(a)*dist*dpr)/dpr;
-  const dy=Math.round(-Math.cos(a)*dist*dpr)/dpr;
+  const direction=orbitUnit(a);
+  const dx=Math.round(direction.x*dist*dpr)/dpr;
+  const dy=Math.round(direction.z*dist*dpr)/dpr;
   const transform="translate3d("+dx+"px,"+dy+"px,0) translate(-50%,-50%)";
   if(el.style.transform!==transform)el.style.transform=transform;
  }
