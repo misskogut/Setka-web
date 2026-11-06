@@ -40,7 +40,7 @@ export function createOrbitUI(mixer,trackHTML,uiIcons={}){
     if(Math.hypot(e.clientX-touch.x,e.clientY-touch.y)>7)touch.moved=true;
     if(!touch.moved)return;
     const box=stage.getBoundingClientRect(),x=e.clientX-box.left-box.width/2,y=e.clientY-box.top-box.height/2;
-    const radius=Math.max(.33,Math.min(.84,Math.hypot(x,y)/(.5*Math.min(box.width,box.height))));
+    const radius=Math.max(.22,Math.min(.88,Math.hypot(x,y)/(.5*Math.min(box.width,box.height))));
     const angle=Math.atan2(x,-y);mixer.drag(s.id,angle,radius);pos(node,angle,radius);
    });
    node.addEventListener("pointerup",e=>{
