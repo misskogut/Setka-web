@@ -3,7 +3,7 @@ export class SetkaMusicMixer {
  constructor() {
   this.ctx=null; this.master=null; this.items=new Map();
   this.mode="static"; this.speed=40; this.started=performance.now()/1000;
-  this.changed=()=>{}; this.moved=()=>{}; this.clock=null;
+  this.changed=()=>{}; this.moved=()=>{}; this.onTrackEvent=()=>{}; this.clock=null;
  }
  init() {
   if (!this.ctx) {
@@ -32,9 +32,22 @@ export class SetkaMusicMixer {
    panner.panningModel="HRTF";panner.distanceModel="inverse";
    panner.refDistance=1;panner.maxDistance=35;panner.rolloffFactor=.42;
    src.connect(gain);gain.connect(panner);panner.connect(this.master);gain.gain.value=0;
-   state={id,track,level:0,angle,radius:.62+(index%3)*.08,
+   state={id,track,level:0,playTracked:false,completed:false,angle,radius:.62+(index%3)*.08,
     anchorAngle:angle,anchorRadius:.62+(index%3)*.08,manual:false,el,src,gain,panner};
    this.items.set(id,state);this.position(state,angle,state.radius);
+   el.addEventListener("playing",()=>{
+    if(state.playTracked||!this.items.has(id))return;
+    state.playTracked=true;
+    try{this.onTrackEvent({track_id:id,event_type:"play",event_id:crypto.randomUUID()})}catch(_){}
+   });
+   el.addEventListener("timeupdate",()=>{
+    if(!state.playTracked||state.completed||!this.items.has(id))return;
+    const d=Number(el.duration)||Number(state.track.duration_seconds)||0;
+    if(d>0&&el.currentTime>=d*.95){
+     state.completed=true;
+     try{this.onTrackEvent({track_id:id,event_type:"complete",event_id:crypto.randomUUID()})}catch(_){}
+    }
+   });
    el.play().catch(()=>{this.remove(id);this.changed("Не удалось воспроизвести аудиофайл")});
   }
   state.level=Math.max(1,Math.min(3,level));state.track=track;
