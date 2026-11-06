@@ -50,11 +50,15 @@ try{
  await installPublicationCatalog(page);
  await page.goto(base+"/standalone-v34.html",{waitUntil:"domcontentloaded"});
  await page.locator("#allPatternsPanel .pattern-tile").first().waitFor();
+ const topNavBefore=await page.locator("#libraryScreen .library-pager").boundingBox();
  assert.equal(await page.locator("#setkaMusicPagerButton").count(),1,"the music tab must exist on the default URL, no ?music=1");
  assert.equal(await page.locator("#setkaMusicPagerButton").isVisible(),true,"visible fourth tab on the normal SETKA home");
  assert.equal(await page.locator(".library-pager .pager-button").count(),4,"four permanent upper tabs");
  await page.locator("#setkaMusicPagerButton").click();
  await page.locator(".sm-track").first().waitFor();
+ const topNavMusic=await page.locator("#libraryScreen .library-pager").boundingBox();
+ assert.ok(Math.abs(topNavMusic.y-topNavBefore.y)<1,
+  "four shared top tabs must not jump when selecting the music note");
  assert.equal(await page.locator(".library-pager .pager-button").count(),4);
  assert.equal(await page.locator(".sm-categories .sm-category").count(),5);
  assert.equal(await page.locator(".sm-categories .sm-category").first().locator("svg").getAttribute("viewBox"),"54 14 232 232","first category preserves option 7 at balanced smaller scale");
@@ -83,7 +87,7 @@ try{
  assert.ok(geometry.tabSize>=64,"category symbols are clearly larger than tracks");
  assert.ok(geometry.tabSize>=geometry.trackSize+12,"large filters remain visually distinct from sound icons");
  assert.ok(geometry.noteSize<=26,"note is optically smaller and matches neighboring top icons");
- assert.equal(geometry.pagerTop,"-19px","upper music navigation is raised to create breathing room");
+ assert.equal(geometry.pagerTop,"-9px","top pager uses the exact same vertical position across all library tabs");
  assert.match(geometry.stripTouch,/pan-x/,"finger may swipe music categories horizontally");
  assert.match(geometry.appTouch,/pan-x/,"top-level touch contract must allow horizontal swipes");
  // Opening the offscreen orbit tab must keep the user's horizontal scroll position.
@@ -92,11 +96,19 @@ try{
  const geometryOf=async()=>page.evaluate(()=>{
   const box=q=>{const r=document.querySelector(q)?.getBoundingClientRect();return r?{top:r.top,bottom:r.bottom,left:r.left,right:r.right,height:r.height}:null};
   return {categories:box(".sm-categories"),stage:box(".sm-stage"),
+   rings:[...document.querySelectorAll(".sm-ring")].map(r=>{
+     const a=r.getBoundingClientRect();return {width:a.width,height:a.height};
+   }),
    modes:box(".sm-motion-row"),speed:box(".sm-speed"),power:box(".sm-power"),
    dock:box("#st34Nav"),pager:box(".library-pager")};
  });
  const assertAir=(g,small=false)=>{
   const min=small?5:12;
+  assert.ok(Math.abs((g.stage.right-g.stage.left)-g.stage.height)<1,
+   "orbit interaction stage must remain exactly square, never flattened: "+JSON.stringify(g));
+  assert.equal(g.rings.length,3,"three orbital rings must remain visible");
+  for(const ring of g.rings)assert.ok(Math.abs(ring.width-ring.height)<1,
+   "all orbit rings must be circles rather than ovals: "+JSON.stringify(g));
   assert.ok(g.stage.top-g.categories.bottom>=min,
     "room between music categories and orbits: "+JSON.stringify(g));
   assert.ok(g.modes.top-g.stage.bottom>=min,
