@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {ICON_NAMES,iconSvg} from "../standalone-music-icons-v1.mjs";
+import {readFileSync,existsSync} from "node:fs";
+import {createHash} from "node:crypto";
 import {smoothTracedIcon} from "../standalone-music-trace-smoothing-v1.mjs";
 import {LEGACY_MUSIC_ICON_NAMES,legacyMusicSVG} from "../standalone-music-legacy-icons-v1.mjs";
 import {VINTAGE_SOUND_ICON_KEYS,vintageSoundSVG} from "../standalone-music-vintage-icons-v2.mjs";
@@ -48,5 +50,21 @@ test("smoother rejects non-vector input and keeps original system/categorical ic
   const svg=iconSvg(key);
   assert.match(svg,/viewBox="0 0 128 128"/);
   assert.doesNotMatch(svg,/shape-rendering="geometricPrecision"/);
+ }
+});
+
+test("owner-approved rollback: both icon libraries match exact pre-manual-redraw Git blobs",()=>{
+ const gitBlob=(path)=>{
+  const data=readFileSync(new URL("../"+path,import.meta.url));
+  return createHash("sha1").update("blob "+data.length+"\0").update(data).digest("hex");
+ };
+ assert.equal(gitBlob("standalone-music-legacy-icons-v1.mjs"),"b3d791326c99fd5fca59f0048fb1dd99a099177c",
+ "20 original glyphs must stay at their exact previous geometry until reviewed one by one");
+ assert.equal(gitBlob("standalone-music-vintage-icons-v2.mjs"),"b7aba84a3188f2f1e4cfa5f18fd1b478f68e4fcc",
+ "26 vintage glyphs must stay at their exact previous geometry until reviewed one by one");
+ for(const path of ["standalone-music-master-icons-v1.mjs","standalone-music-master-old-v1.mjs",
+ "standalone-music-master-vintage-v1.mjs","standalone-music-master-utils-v1.mjs"]){
+  assert.equal(existsSync(new URL("../"+path,import.meta.url)),false,
+   "rejected freehand redraw must not remain in the live repository: "+path);
  }
 });
