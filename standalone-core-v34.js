@@ -75,7 +75,7 @@
     const before=JSON.stringify([data.symptoms,data.checkins]);data.symptoms=mergeStateRecords(data.symptoms,stored.symptoms);data.checkins=mergeStateRecords(data.checkins,stored.checkins);return before!==JSON.stringify([data.symptoms,data.checkins]);
   }
   function save(){
-    if(gestureSaveTimer){clearTimeout(gestureSaveTimer);gestureSaveTimer=0}
+    if(typeof gestureSaveTimer!=="undefined"&&gestureSaveTimer){clearTimeout(gestureSaveTimer);gestureSaveTimer=0}
     if(storageState?.resetting)return false;
     const generation=++saveGeneration;let stored=null;try{stored=JSON.parse(localStorage.getItem(KEY)||"null")}catch(_){}mergeStoredStates(stored);
     try{
