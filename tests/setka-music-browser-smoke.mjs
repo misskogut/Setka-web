@@ -237,7 +237,7 @@ try{
  await admin.locator("#workspace").waitFor();
  await admin.locator('.nav[data-page="music"]').click();
  await admin.locator(".sm-admin").waitFor();
- assert.equal(await admin.locator(".sm-admin-section").count(),3,"system icons, music categories and tracks have separate admin editors");
+ assert.equal(await admin.locator(".sm-admin-section").count(),4,"global order, tracks, categories and system icons each retain their own admin section");
  assert.equal(await admin.locator(".sm-admin-glyph-card").count(),14,"all system icons have replaceable image upload");
  // The built-in track glyph selector must be visual, not a native text-only dropdown.
  const selectedIcon=admin.locator(".sm-admin-icon-picker-current");
