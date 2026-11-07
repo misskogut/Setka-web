@@ -36,7 +36,7 @@ test("smoothing removes pixel stepping while preserving intentional sharp corner
  const out=smoothTracedIcon(stairs,ALPHABET);
  assert.ok(out.length>0);
  assert.ok((out.match(/[LC]/g)||[]).length<13,"long pixel staircase is simplified");
- assert.ok(out.includes("C"),"remaining contour has subpixel control points");
+ assert.match(out,/L19 14/,"raster stair steps become a clean single diagonal edge");
  const hole=smoothTracedIcon(square+"|"+encode([[17,17],[25,17],[25,25],[17,25]]),ALPHABET);
  assert.equal((hole.match(/Z/g)||[]).length,2,"separate outer and inner boundaries");
 });
