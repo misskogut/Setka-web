@@ -193,7 +193,7 @@ try{
  assert.ok(orbitDots.alignment<1,"orbital dots are centered over their sound icon");
  assert.equal(orbitDots.dotShadow,"none","orbital dots inherit the source icon glow");
 
- assert.equal(await page.locator(".sm-motion").nth(3).locator(".sm-asset-icon").count(),1,"server-supplied transparent icon skin displayed as mask");
+ assert.equal(await page.locator(".sm-motion").nth(2).locator(".sm-asset-icon").count(),1,"server-supplied counter-motion icon skin displayed as mask (static has no button)");
  await page.screenshot({path:"tests/visual-smoke/music-orbits-"+(process.env.SETKA_BROWSER||"chromium")+".png"});
  await page.locator(".sm-motion").nth(1).click();
  let state=await page.evaluate(()=>window.SetkaMusicV1.state());
