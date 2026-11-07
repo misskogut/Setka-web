@@ -82,11 +82,11 @@ const refreshExternalAudio=async tracks=>{
  }catch(error){console.warn("setka-yandex-refresh-error",String(error?.message||"unavailable"))}
  return tracks;
 };
-// Range-limited same-origin-for-audio proxy: replaces non-browser-playable attachment
-// redirect from Yandex with actual inline PCM/MP3 media responses.
-// Every call is bounded to 2 MiB so large uncompressed files never require
-// buffering, conversion, or a minutes-long Edge Function execution.
-const MAX_AUDIO_CHUNK=2*1024*1024;
+// Browser-playable inline WAV/MP3 proxy. Yandex downloader redirects are not
+// CORS-playable. IMPORTANT: honor the COMPLETE range, including "bytes=0-":
+// WebKit uses the returned Content-Length to infer media duration. Truncating
+// the open-ended range to 2 MiB falsely makes 10-500 MB tracks end early.
+// Stream the upstream response body without buffering or transcoding it.
 const streamExternalTrack=async(request,origin,id)=>{
   if(!/^[a-f0-9-]{36}$/i.test(id||""))return json({error:"bad_track"},400,origin);
   const rows=await rowQuery("setka_music_tracks_v1",
@@ -105,10 +105,10 @@ const streamExternalTrack=async(request,origin,id)=>{
     "cross-origin-resource-policy":"cross-origin",
     "content-disposition":"inline"};
   if(request.method==="HEAD")return new Response(null,{status:200,headers:{...baseHeaders,"content-length":String(size)}});
-  // Media browsers seek using single byte ranges; honor any valid interval
-  // while preventing origin-wide downloads of >400 MiB in one Edge request.
+  // Preserve HTTP range semantics exactly. A 206 for a shorter-than-requested
+  // interval misreports duration to Safari (and can truncate the soundtrack).
   const range=request.headers.get("range");
-  let start=0,end=Math.min(size-1,MAX_AUDIO_CHUNK-1);
+  let start=0,end=size-1;
   if(range){
     const matched=/^bytes=(\d*)-(\d*)$/.exec(range.trim());
     if(!matched||(!matched[1]&&!matched[2]))
@@ -120,9 +120,9 @@ const streamExternalTrack=async(request,origin,id)=>{
       end=matched[2]?Math.min(size-1,Number(matched[2])):size-1;
       if(!Number.isSafeInteger(end)||end<start)
         return new Response(null,{status:416,headers:{...baseHeaders,"content-range":"bytes */"+size}});
-      end=Math.min(end,start+MAX_AUDIO_CHUNK-1);
+
     }else{
-      const suffix=Math.max(1,Math.min(size,MAX_AUDIO_CHUNK,Number(matched[2])));
+      const suffix=Math.max(1,Math.min(size,Number(matched[2])));
       start=size-suffix;end=size-1;
     }
   }
@@ -141,7 +141,7 @@ const streamExternalTrack=async(request,origin,id)=>{
       "id=eq."+encodeURIComponent(id));
   }
   const upstream=await fetch(file,{method:"GET",headers:{"range":"bytes="+start+"-"+end},
-    redirect:"follow",signal:AbortSignal.timeout(30000)});
+    redirect:"follow",signal:AbortSignal.timeout(140000)});
   if(upstream.status!==206||!upstream.body){
     await upstream.body?.cancel().catch(()=>{});
     return json({error:"audio_origin_unavailable"},502,origin);
@@ -152,8 +152,8 @@ const streamExternalTrack=async(request,origin,id)=>{
     await upstream.body.cancel().catch(()=>{});
     return json({error:"audio_range_mismatch"},502,origin);
   }
-  return new Response(upstream.body,{status:206,headers:{...baseHeaders,
-    "content-range":contentRange,
+  return new Response(upstream.body,{status:range?206:200,headers:{...baseHeaders,
+    ...(range?{"content-range":contentRange}:{}),
     "content-length":String(end-start+1)}});
 };
 const catalogue=async manage=>{
