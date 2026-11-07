@@ -180,7 +180,8 @@ export function mountMusicAdmin(container,getAdminKey){
   const title=field(form,"Название",input("text",t.title||""));title.required=true;title.maxLength=120;
   const file=field(form,"Оригинальный аудиофайл (до 20 МБ, MP3/M4A/WAV/OGG)",input("file"));file.accept=".mp3,.m4a,.wav,.ogg,audio/*";if(!t.audio_path)file.required=true;
   form.append(el("p","sm-admin-lossless-note muted","Загружаем исходный файл без перекодирования, сжатия и изменения битрейта. Для максимального качества можно использовать WAV. MP3/M4A сохраняются в исходном виде."));
-  // The native select showed glyph names only: render every actual SETKA vector before choosing.
+  // One protected server-managed picker: hiding a glyph removes it from choices,
+  // not from existing tracks or from the immutable renderer dictionary.
   let selectedIconKey=ICON_NAMES.includes(t.icon_key)?t.icon_key:"music";
   const iconField=el("div","sm-admin-field sm-admin-icon-picker-field");
   const picker=el("details","sm-admin-icon-picker");
@@ -188,33 +189,82 @@ export function mountMusicAdmin(container,getAdminKey){
   const gallery=el("div","sm-admin-icon-options");
   gallery.setAttribute("role","group");
   gallery.setAttribute("aria-label","Иконки из коллекции SETKA");
+  const hiddenRegion=el("div","sm-admin-hidden-icon-section");
+  const iconNotice=el("p","sm-admin-feedback sm-admin-icon-feedback");
   const iconButtons=[];
+  const hiddenSet=new Set((model.hidden_icon_keys||[]).filter(key=>ICON_NAMES.includes(key)));
+  const usedCount=key=>(model.tracks||[]).filter(track=>track.icon_key===key&&!track.icon_path).length;
   const showSelection=()=>{
    summary.replaceChildren();
    const art=el("span","sm-admin-icon-selected-art");art.innerHTML=iconSvg(selectedIconKey);
-   summary.append(art,el("span","sm-admin-icon-selected-name",selectedIconKey));
-   summary.setAttribute("aria-label","Текущий значок: "+selectedIconKey+". Открыть галерею");
+   const selectedName=hiddenSet.has(selectedIconKey)?selectedIconKey+" · скрыт в библиотеке":selectedIconKey;
+   summary.append(art,el("span","sm-admin-icon-selected-name",selectedName));
+   summary.setAttribute("aria-label","Текущий значок: "+selectedName+". Открыть галерею");
    for(const b of iconButtons){
     const active=b.dataset.iconKey===selectedIconKey;
     b.classList.toggle("is-active",active);
     b.setAttribute("aria-pressed",String(active));
    }
   };
-  for(const name of ICON_NAMES){
-   const choice=btn("",()=>{
-    selectedIconKey=name;showSelection();picker.open=false;summary.focus();
-   });
-   choice.className="sm-admin-icon-option";
-   choice.dataset.iconKey=name;
-   choice.setAttribute("aria-label","Выбрать значок "+name);
-   const art=el("span","sm-admin-icon-option-art");art.innerHTML=iconSvg(name);
-   choice.append(art,el("span","sm-admin-icon-option-name",name));
-   iconButtons.push(choice);gallery.append(choice);
-  }
+  const changeVisibility=async(name,hide,trigger)=>{
+   const usage=usedCount(name);
+   if(hide&&!confirm("Удалить значок «"+name+"» из библиотеки?"+(usage?"\\nОн используется в "+usage+" трек(ах). Эти треки продолжат показывать исходный значок.":"")+"\\nЗначок можно будет восстановить."))return;
+   trigger.disabled=true;
+   iconNotice.textContent=hide?"Убираем из коллекции…":"Восстанавливаем…";
+   try{
+    await req(hide?"hide-icon":"restore-icon",{icon_key:name});
+    const fresh=await req("manage");
+    const nowHidden=Array.isArray(fresh.hidden_icon_keys)&&fresh.hidden_icon_keys.includes(name);
+    if(nowHidden!==hide)throw Error("Изменение пока не подтверждено сервером");
+    model=fresh;
+    hiddenSet.clear();for(const key of fresh.hidden_icon_keys||[])if(ICON_NAMES.includes(key))hiddenSet.add(key);
+    if(hide&&selectedIconKey===name&&!t.id)selectedIconKey="music";
+    renderOptions();
+    iconNotice.textContent=hide?"Удалено из выбора. Назначенные трекам значки сохранены.":"Значок возвращён в коллекцию.";
+   }catch(e){trigger.disabled=false;iconNotice.textContent="Не удалось изменить библиотеку: "+e.message}
+  };
+  const renderOptions=()=>{
+   gallery.replaceChildren();hiddenRegion.replaceChildren();iconButtons.length=0;
+   for(const name of ICON_NAMES){
+    if(hiddenSet.has(name))continue;
+    const cell=el("div","sm-admin-icon-option-cell");
+    const choice=btn("",()=>{
+     selectedIconKey=name;showSelection();picker.open=false;summary.focus();
+    });
+    choice.className="sm-admin-icon-option";
+    choice.dataset.iconKey=name;
+    choice.setAttribute("aria-label","Выбрать значок "+name);
+    const art=el("span","sm-admin-icon-option-art");art.innerHTML=iconSvg(name);
+    choice.append(art,el("span","sm-admin-icon-option-name",name));
+    iconButtons.push(choice);cell.append(choice);
+    if(name!=="music"){
+     const remove=btn("Удалить",()=>changeVisibility(name,true,remove));
+     remove.className="sm-admin-icon-delete";
+     remove.setAttribute("aria-label","Удалить значок из библиотеки: "+name);
+     cell.append(remove);
+    }
+    gallery.append(cell);
+   }
+   if(hiddenSet.size){
+    hiddenRegion.append(el("strong","","Удалённые из библиотеки · "+hiddenSet.size));
+    const archived=el("div","sm-admin-hidden-icon-list");
+    for(const name of ICON_NAMES){
+     if(!hiddenSet.has(name))continue;
+     const restore=btn("",()=>changeVisibility(name,false,restore));
+     restore.className="sm-admin-icon-restore";
+     restore.setAttribute("aria-label","Восстановить значок "+name);
+     const art=el("span","sm-admin-icon-option-art");art.innerHTML=iconSvg(name);
+     restore.append(art,el("span","",name+" · Восстановить"));
+     archived.append(restore);
+    }
+    hiddenRegion.append(archived);
+   }
+   showSelection();
+  };
   picker.append(summary,gallery);
-  iconField.append(el("span","","Значок из набора SETKA"),picker);
+  iconField.append(el("span","","Значок из набора SETKA"),picker,hiddenRegion,iconNotice);
   form.append(iconField);
-  showSelection();
+  renderOptions();
   const icon=field(form,"Собственный значок SVG/PNG/WebP",input("file"));icon.accept=".svg,.png,.webp,image/svg+xml,image/png,image/webp";
   const checkArea=el("fieldset","sm-admin-cats");checkArea.append(el("legend","","Категории"));
   const checks=[];
