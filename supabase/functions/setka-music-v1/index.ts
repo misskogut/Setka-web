@@ -29,17 +29,71 @@ const authorized=async key=>{
 };
 const UI_SLOTS = new Set(["nav-note","orbit-tab","listener","motion-static","motion-cw","motion-ccw","motion-counter","motion-eight","motion-chaos","motion-spiral","motion-breath","speed-slow","speed-fast","power"]);
 const iconFile = path => typeof path==="string" && /^icons\/[a-f0-9-]{36}\.(png|webp)$/.test(path);
+
+const YANDEX_SOURCE="https://disk.yandex.ru/d/gmjwIQoHo6VxtQ";
+const YANDEX_FOLDERS=["8D","актив","пассив","звуки природы"];
+const validYandexAudioURL=value=>{
+ try{const url=new URL(value);return url.protocol==="https:"&&url.hostname==="downloader.disk.yandex.ru"&&url.pathname.startsWith("/disk/")}
+ catch(_){return false}
+};
+const yandexURLExpiry=value=>{
+ try{
+  const token=new URL(value).pathname.split("/")[3];
+  if(!/^[0-9a-f]{8}$/i.test(token))return 0;
+  return parseInt(token,16)*1000;
+ }catch(_){return 0}
+};
+// Cache temporary signed Yandex CDN links in a protected database row. Never
+// transcode, buffer or downsample audio; native WAV/MP3 remains on its source.
+// A short DB-wide lease prevents the app's readers from stampeding Yandex API.
+const refreshExternalAudio=async tracks=>{
+ const time=Date.now();
+ const linked=tracks.filter(t=>t.external_source_path);
+ if(!linked.length||linked.every(t=>validYandexAudioURL(t.external_audio_url)&&new Date(t.external_audio_url_expires).getTime()>time+25*60000))return tracks;
+ try{
+  const cutoff=new Date(time-8*60000).toISOString();
+  const leased=await mutate("setka_music_external_refresh_v1","PATCH",{attempted_at:new Date(time).toISOString()},"id=eq.1&attempted_at=lt."+encodeURIComponent(cutoff));
+  if(!leased.length)return tracks;
+  const known=new Set(linked.map(t=>t.external_source_path));
+  const pages=await Promise.allSettled(YANDEX_FOLDERS.map(async folder=>{
+   const url="https://cloud-api.yandex.net/v1/disk/public/resources?public_key="+encodeURIComponent(YANDEX_SOURCE)+"&path="+encodeURIComponent("/"+folder)+"&limit=150";
+   const response=await fetch(url,{cache:"no-store",signal:AbortSignal.timeout(16000)});
+   if(!response.ok)throw Error("yandex_listing_"+response.status);
+   const data=await response.json();
+   return Array.isArray(data?._embedded?.items)?data._embedded.items:[];
+  }));
+  const updates=[];
+  for(const page of pages){
+   if(page.status!=="fulfilled"){console.warn("setka-yandex-refresh",String(page.reason?.message||"unavailable"));continue}
+   for(const file of page.value){
+    if(file?.type!=="file"||file.media_type!=="audio"||!known.has(file.path)||!validYandexAudioURL(file.file))continue;
+    const expiry=yandexURLExpiry(file.file);
+    if(expiry<time+30*60000)continue;
+    updates.push({path:file.path,url:file.file,expiry:new Date(expiry).toISOString()});
+   }
+  }
+  for(let i=0;i<updates.length;i+=5){
+   const results=await Promise.allSettled(updates.slice(i,i+5).map(x=>
+    mutate("setka_music_tracks_v1","PATCH",{external_audio_url:x.url,external_audio_url_expires:x.expiry},"external_source_path=eq."+encodeURIComponent(x.path))
+   ));
+   if(results.some(x=>x.status==="rejected"))console.warn("setka-yandex-cache-partial-failure");
+  }
+  if(updates.length)return await rowQuery("setka_music_tracks_v1","select=id,title,audio_path,icon_key,icon_path,category_ids,sort_order,published,loop,duration_seconds,revision,updated_at,external_source_path,external_audio_url,external_audio_url_expires&order=sort_order.asc,created_at.asc");
+ }catch(error){console.warn("setka-yandex-refresh-error",String(error?.message||"unavailable"))}
+ return tracks;
+};
 const catalogue=async manage=>{
   const cats=await rowQuery("setka_music_categories_v1","select=id,title,icon_path,sort_order,visible,is_system,updated_at"+(manage?"":"&visible=eq.true")+"&order=sort_order.asc,id.asc");
   const icons=await rowQuery("setka_music_ui_icons_v1","select=slot,icon_path,updated_at&order=slot.asc");
-  const tracks=await rowQuery("setka_music_tracks_v1","select=id,title,audio_path,icon_key,icon_path,category_ids,sort_order,published,loop,duration_seconds,revision,updated_at"+(manage?"":"&published=eq.true")+"&order=sort_order.asc,created_at.asc");
+  let tracks=await rowQuery("setka_music_tracks_v1","select=id,title,audio_path,icon_key,icon_path,category_ids,sort_order,published,loop,duration_seconds,revision,updated_at,external_source_path,external_audio_url,external_audio_url_expires"+(manage?"":"&published=eq.true")+"&order=sort_order.asc,created_at.asc");
+  tracks=await refreshExternalAudio(tracks);
   const hiddenIcons=manage?await rowQuery("setka_music_hidden_icons_v1","select=icon_key&order=icon_key.asc"):[];
   const globalRows=await rowQuery("setka_music_global_order_v1","select=id,track_ids,revision,updated_at&id=eq.1");
   const visible=new Set(tracks.map(t=>t.id));
   const record=globalRows[0]||{id:1,track_ids:[],revision:1};
   const global_order={...record,track_ids:(record.track_ids||[]).filter(id=>visible.has(id))};
   const stats=manage?await rowQuery("setka_music_track_stats_v1","select=track_id,plays,completions,plays_7d,last_activity_at"):[];
-  return {ok:true,categories:cats,ui_icons:icons.map(i=>({...i,icon_url:PROJECT+"/storage/v1/object/public/"+BUCKET+"/"+i.icon_path})),tracks:tracks.map(t=>({...t,audio_url:PROJECT+"/storage/v1/object/public/"+BUCKET+"/"+t.audio_path,icon_url:t.icon_path?PROJECT+"/storage/v1/object/public/"+BUCKET+"/"+t.icon_path:null})),global_order,stats,hidden_icon_keys:hiddenIcons.map(x=>x.icon_key)};
+  return {ok:true,categories:cats,ui_icons:icons.map(i=>({...i,icon_url:PROJECT+"/storage/v1/object/public/"+BUCKET+"/"+i.icon_path})),tracks:tracks.map(t=>({...t,audio_url:t.external_source_path?(validYandexAudioURL(t.external_audio_url)&&new Date(t.external_audio_url_expires).getTime()>Date.now()+60000?t.external_audio_url:null):PROJECT+"/storage/v1/object/public/"+BUCKET+"/"+t.audio_path,icon_url:t.icon_path?PROJECT+"/storage/v1/object/public/"+BUCKET+"/"+t.icon_path:null})),global_order,stats,hidden_icon_keys:hiddenIcons.map(x=>x.icon_key)};
 };
 const ensureObject=async path=>{
   const response=await fetch(PROJECT+"/storage/v1/object/info/"+BUCKET+"/"+path,{headers:adminHeaders});
@@ -136,12 +190,15 @@ Deno.serve(async request=>{
       const title=cleanText(b.title,120),audio=b.audio_path,icon=b.icon_path||null;
       const iconKey=/^[a-z0-9_-]{1,40}$/.test(b.icon_key||"")?b.icon_key:"music";
       if(!title||!pathOK(audio,"audio")||icon&&!pathOK(icon,"icons"))return json({error:"bad_request"},400,origin);
-      await ensureObject(audio);if(icon)await ensureObject(icon);
+      const previous=await rowQuery("setka_music_tracks_v1","select=revision,audio_path,external_source_path&id=eq."+encodeURIComponent(id)+"&limit=1");
+      const keepRemote=!!previous[0]?.external_source_path&&previous[0].audio_path===audio;
+      if(!keepRemote)await ensureObject(audio);
+      if(icon)await ensureObject(icon);
       const cats=await rowQuery("setka_music_categories_v1","select=id");
       const allowed=new Set(cats.map(x=>x.id));
       const ids=Array.isArray(b.category_ids)?[...new Set(b.category_ids.filter(x=>typeof x==="string"&&allowed.has(x)))]:[];
-      const previous=await rowQuery("setka_music_tracks_v1","select=revision&id=eq."+encodeURIComponent(id)+"&limit=1");
       const row={id,title,audio_path:audio,icon_path:icon,icon_key:iconKey,category_ids:ids,sort_order:Number.isInteger(b.sort_order)?b.sort_order:0,published:b.published===true,loop:b.loop!==false,duration_seconds:Number.isFinite(b.duration_seconds)?Math.max(0,b.duration_seconds):null,updated_at:new Date().toISOString(),revision:(previous[0]?.revision||0)+1};
+      if(previous[0]?.external_source_path&&!keepRemote)Object.assign(row,{external_source_path:null,external_source_hash:null,external_source_bytes:null,external_audio_url:null,external_audio_url_expires:null});
       const saved=await mutate("setka_music_tracks_v1","POST",row,"on_conflict=id");
       return json({ok:true,track:saved[0]},200,origin);
     }
