@@ -44,6 +44,7 @@ try{
   const proto=Storage.prototype,original=proto.setItem;
   proto.setItem=function(k,v){if(k===dataKey)writes++;return original.call(this,k,v)};
   const before=C.getData().events.length;
+  const initialColor=S.getState().config.colorModeIndex;
   const canvas=document.getElementById("patternCanvas");
   const mk=(x,y,id)=>new Touch({identifier:id,target:canvas,clientX:x,clientY:y,pageX:x,pageY:y,screenX:x,screenY:y});
   const emit=(name,touches,changed)=>canvas.dispatchEvent(new TouchEvent(name,{
@@ -72,12 +73,14 @@ try{
    if(S.getState().view!=="game")throw Error("stray overlay click unexpectedly exited gameplay");
   }finally{proto.setItem=original}
   const after=C.getData().events.length;
-  return {writes,events:after-before,view:S.getState().view,pattern:S.getState().patternId};
+  return {writes,events:after-before,view:S.getState().view,pattern:S.getState().patternId,
+   colorUnchanged:S.getState().config.colorModeIndex===initialColor};
  },count);
  for(const count of [70,45]){
   const stats=await run(count);
   assert.equal(stats.view,"game","gameplay survives many consecutive rapid gestures");
   assert.equal(stats.pattern,"tentacle-orbit");
+  assert.equal(stats.colorUnchanged,true,"dragging must never count as a triple tap");
   assert.ok(stats.events>=count*2,"all start/end gestures are retained in live research archive");
   assert.ok(stats.writes<Math.ceil(count/5)+5,
    "rapid interactions must coalesce full archive writes: "+JSON.stringify(stats));
@@ -95,6 +98,19 @@ try{
     "a genuine press on Back still exits normally");
   }
  }
+ // Real short stationary taps still cycle color on the third release.
+ const triple=await page.evaluate(()=>{
+  const S=window.SetkaApp,C=window.SetkaStandaloneV34,canvas=document.getElementById("patternCanvas");
+  const prior=S.getState().config.colorModeIndex;
+  const mk=i=>new Touch({identifier:i,target:canvas,clientX:195,clientY:420});
+  for(let i=0;i<3;i++){
+   const t=mk(500+i);
+   canvas.dispatchEvent(new TouchEvent("touchstart",{bubbles:true,cancelable:true,touches:[t],targetTouches:[t],changedTouches:[t]}));
+   canvas.dispatchEvent(new TouchEvent("touchend",{bubbles:true,cancelable:true,touches:[],targetTouches:[],changedTouches:[t]}));
+  }
+  return {prior,after:S.getState().config.colorModeIndex,eventCount:C.getData().events.length};
+ });
+ assert.notEqual(triple.after,triple.prior,"three deliberate taps still cycle the pattern color");
  assert.deepEqual(errors,[],"no JS exceptions during or after rapid touch traffic");
  console.log("SETKA RAPID GAMEPLAY PASS",process.env.SETKA_BROWSER||"chromium");
 }finally{await browser?.close();server.kill("SIGTERM")}
