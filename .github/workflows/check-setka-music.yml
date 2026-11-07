@@ -69,7 +69,7 @@ jobs:
       - run: node tests/setka-music-restored-sheet-browser.mjs
         env:
           SETKA_BROWSER: ${{ matrix.browser }}
-      - name: Require full original 8D WAV playback in actual SETKA WebAudio
+      - name: Require original full-length 8D WAV playback in SETKA (native WebKit fallback)
         run: node tests/setka-music-big-webkit-probe.mjs
         env:
           SETKA_BROWSER: ${{ matrix.browser }}
