@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {SetkaMusicMixer,MOTION} from "../standalone-music-audio-v1.mjs";
+import {SetkaMusicMixer,MOTION,orbitDepthProfile} from "../standalone-music-audio-v1.mjs";
 import {ICONS,iconSvg} from "../standalone-music-icons-v1.mjs";
 const root=new URL("../",import.meta.url);
 const file=name=>readFileSync(new URL(name,root),"utf8");
@@ -82,4 +82,32 @@ test("volume dots are centered above their own sound icons and match their glow"
  assert.match(css,/\.sm-dots i\{[^}]*background:currentColor;box-shadow:none\}/,"no extra glow only for the dots");
  assert.match(css,/#libraryScreen\.setka-music-open #setkaMusicPagerButton\{opacity:1!important;filter:none!important\}/);
  assert.match(css,/#libraryScreen #setkaMusicPagerButton\.active svg,[^{]*\{filter:none!important\}/,"note has no second glow");
+});
+
+test("near-to-far spatial reverb survives post-HRTF distance attenuation",()=>{
+ const near=orbitDepthProfile(.22),middle=orbitDepthProfile(.62),far=orbitDepthProfile(.94);
+ assert.ok(near.distance<middle.distance&&middle.distance<far.distance,"orbit radius increases real audio distance");
+ assert.ok(near.directAttenuation>middle.directAttenuation&&middle.directAttenuation>far.directAttenuation,
+  "dry sound still recedes naturally");
+ for(const profile of [near,middle,far]){
+  assert.ok(profile.roomSend<=1,"room send remains bounded and cannot overload on the outer ring");
+  assert.ok(Math.abs(profile.roomSend*profile.directAttenuation-profile.originalRoomLevel)<1e-7,
+   "post-HRTF reflections must recover their intended distance response");
+ }
+ assert.ok(far.originalRoomLevel>middle.originalRoomLevel&&middle.originalRoomLevel>near.originalRoomLevel,
+  "ambient reflections grow with distance, not just dry volume falling");
+ const brokenFarSend=.008+.105*Math.pow(far.depth,1.3);
+ assert.ok(far.roomSend*far.directAttenuation>brokenFarSend*far.directAttenuation*6,
+  "far reflections no longer suffer their former ~7x regression");
+ assert.ok(Math.abs(far.originalRoomLevel-.202)<1e-6,"restores original far-room target without altering uploaded audio");
+ // Test the actual mixer wiring with the same far profile (not just the helper).
+ const send=[],pos=[],mixer=new SetkaMusicMixer();
+ mixer.ctx={currentTime:3};
+ const state={manual:true,panner:{setPosition(...xyz){pos.push(xyz)}},
+  rearFilter:{gain:{value:0}},roomSend:{gain:{setTargetAtTime(v){send.push(v)}}}};
+ mixer.position(state,Math.PI/3,.94);
+ assert.equal(send.length,1);
+ assert.ok(Math.abs(send[0]-far.roomSend)<1e-7,"live room-send gain follows compensated DSP profile");
+ assert.ok(Math.abs(Math.hypot(pos[0][0],pos[0][2])-far.distance)<1e-7,
+  "HRTF distance matches the same visual radius");
 });
