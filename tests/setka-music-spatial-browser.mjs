@@ -126,18 +126,25 @@ try{
   async function impulse(angle,radius,{left=1,right=null,path="dry"}={}){
    const ctx=new OfflineAudioContext(2,Math.ceil(rate*.32),rate),mixer=new SetkaMusicMixer();
    mixer.ctx=ctx;
-   const room=mixer.makeRoom(ctx.destination);
-   const voice=createOrbitVoice(ctx,ctx.destination,room,path==="wet"?"HRTF":undefined);
+   const wet=path==="wet",bus=ctx.createGain();
+   const room=wet?mixer.makeRoom(bus):null;
+   const voice=createOrbitVoice(ctx,bus,room,"HRTF");
    voice.gain.gain.value=.4;
    mixer.position(voice,angle,radius,true);
-   if(path==="wet")voice.panner.disconnect();
-   else{
-    voice.roomSend.disconnect();
-    for(const wall of voice.reflections)wall.delay.disconnect();
+   if(wet){
+    mixer.roomOutput.connect(ctx.destination);
+    for(const wall of voice.reflections)wall.delay.connect(ctx.destination);
+   }else voice.panner.connect(ctx.destination);
+   const source=ctx.createBufferSource(),buffer=ctx.createBuffer(right===null?1:2,256,rate);
+   // A short broadband burst also exercises engines which optimize away a
+   // one-sample buffer at the input of nodes with convolution tails.
+   let seed=123;
+   for(let i=0;i<buffer.length;i++){
+    seed=(Math.imul(seed,1664525)+1013904223)>>>0;
+    const v=(seed/2147483648-1)*.16;
+    buffer.getChannelData(0)[i]=left*v;
+    if(right!==null)buffer.getChannelData(1)[i]=right*v;
    }
-   const source=ctx.createBufferSource(),buffer=ctx.createBuffer(right===null?1:2,1,rate);
-   buffer.getChannelData(0)[0]=left;
-   if(right!==null)buffer.getChannelData(1)[0]=right;
    source.buffer=buffer;source.connect(voice.gain);source.start(.05);
    const rendered=await ctx.startRendering();
    return [rendered.getChannelData(0),rendered.getChannelData(1)];

@@ -73,6 +73,7 @@ jobs:
         env:
           SETKA_BROWSER: ${{ matrix.browser }}
       - name: Require spatial playback of original 496 MB WAV against the candidate audio code
+        if: ${{ !cancelled() }}
         run: node tests/setka-music-big-webkit-probe.mjs
         env:
           SETKA_BROWSER: ${{ matrix.browser }}
