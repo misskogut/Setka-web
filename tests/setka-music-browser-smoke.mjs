@@ -203,6 +203,7 @@ try{
   await page.mouse.down();
   await page.mouse.move(target.x,target.y,{steps:8});
   await page.mouse.up();
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
   return page.evaluate(()=>{
    const stage=document.querySelector(".sm-stage").getBoundingClientRect();
    const source=document.querySelector(".sm-source").getBoundingClientRect();
