@@ -1,4 +1,4 @@
-import {mountMusicAdmin} from './music-admin.mjs?v=20-restored-pre-master-20261107';
+import {mountMusicAdmin} from './music-admin.mjs?v=21-github-original-audio-20261107';
 import {mountPatternOrder} from './pattern-order.mjs';
 import {mountPublication,publicationLabel} from './publication.mjs';
 import {mountPatternEditor} from './pattern-editor.mjs';
