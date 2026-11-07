@@ -1,4 +1,5 @@
 import {LEGACY_MUSIC_ICON_NAMES,legacyMusicSVG} from "./standalone-music-legacy-icons-v1.mjs?v=1";
+import {VINTAGE_SOUND_ICON_KEYS,vintageSoundSVG} from "./standalone-music-vintage-icons-v2.mjs?v=1";
 // Shared, immutable SETKA Music vector symbol dictionary.
 // Vector data is local code, not user-supplied SVG markup.
 export const ICONS=Object.freeze({
@@ -33,10 +34,12 @@ export const ICONS=Object.freeze({
   beads:'<path d="M12 2c-10 3-8 11-3 14l3 2 3-2c5-3 7-11-3-14ZM12 18v4M7 5h.1M16 5h.1M5 9h.1M19 9h.1M7 13h.1M17 13h.1"/>',
   music:'<path d="M9 17.8V5.4L20.5 3v12.5M9 7.3l11.5-2.4"/><ellipse cx="6.1" cy="18.2" rx="3.1" ry="2.1"/><ellipse cx="17.6" cy="16" rx="3.1" ry="2.1"/>'
 });
-export const ICON_NAMES=Object.freeze([...Object.keys(ICONS),...LEGACY_MUSIC_ICON_NAMES]);
+export const ICON_NAMES=Object.freeze([...Object.keys(ICONS),...LEGACY_MUSIC_ICON_NAMES,...VINTAGE_SOUND_ICON_KEYS]);
 const LEGACY_ICON_KEYS=new Set(LEGACY_MUSIC_ICON_NAMES);
+const VINTAGE_ICON_KEYS=new Set(VINTAGE_SOUND_ICON_KEYS);
 export function iconSvg(name,className=""){
   if(LEGACY_ICON_KEYS.has(name))return legacyMusicSVG(name,className);
+  if(VINTAGE_ICON_KEYS.has(name))return vintageSoundSVG(name,className);
   const key=Object.prototype.hasOwnProperty.call(ICONS,name)?name:"music";
   const cl=String(className).replace(/[^a-z0-9 _-]/gi,"");
   return '<svg class="'+cl+'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none" aria-hidden="true"><g transform="translate(8 8) scale(4.666667)" stroke="currentColor" stroke-width="1.15" stroke-linecap="round" stroke-linejoin="round">'+ICONS[key]+'</g></svg>';
