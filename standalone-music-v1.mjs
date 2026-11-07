@@ -1,8 +1,8 @@
 import {iconSvg} from "./standalone-music-icons-v1.mjs?v=8-restored-pre-master-20261107";
 import {selectedMusicCategorySVG} from "./standalone-music-approved-icons-v1.mjs?v=nature-optical-size-20261106";
 import {uiIconHTML,assetIconMask,UI_ICON_IDS} from "./standalone-music-ui-icons-v2.mjs?v=4-exact-approved-vector-20261106";
-import {SetkaMusicMixer} from "./standalone-music-audio-v1.mjs?v=13-webkit-large-wav-native-fallback-20261107";
-import {createOrbitUI} from "./standalone-music-orbits-reference-20261106.mjs?v=14-directional-room-v2-20261107";
+import {SetkaMusicMixer} from "./standalone-music-audio-v1.mjs?v=14-spatial-clock-original-wav-20261107";
+import {createOrbitUI} from "./standalone-music-orbits-reference-20261106.mjs?v=15-spatial-clock-20261107";
 const API="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-music-v1";
 const $=id=>document.getElementById(id);
 const escapeText=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -130,7 +130,7 @@ function install(){
  power.onclick=()=>{mixer.stopAll();redraw()};root.append(power);library.append(root);
  mixer.changed=message=>{if(message)status=message;if(visible)redraw()};
  mixer.moved=()=>{if(visible&&selected==="orbits")orbit.updatePositions()};
- window.SetkaMusicV1={state:()=>({visible,filter:selected,mode:mixer.mode,speed:mixer.speed,tracks:tracks.length,active:[...mixer.items.values()].map(s=>({id:s.id,level:s.level,angle:s.angle,radius:s.radius,earlyReflections:s.reflections?.length||0}))}),reload,stopAll:()=>mixer.stopAll()};
+ window.SetkaMusicV1={state:()=>({visible,filter:selected,mode:mixer.mode,speed:mixer.speed,tracks:tracks.length,active:[...mixer.items.values()].map(s=>({id:s.id,level:s.level,angle:s.angle,radius:s.radius,spatial:!s.nativeOnly,transport:s.stream?"wav-range":s.nativeOnly?"native":"media",underruns:s.stream?.underruns,earlyReflections:s.reflections?.length||0}))}),reload,stopAll:()=>mixer.stopAll()};
  window.addEventListener("pageshow",()=>{if(visible)reload()});
  redraw();
 }

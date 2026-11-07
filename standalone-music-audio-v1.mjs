@@ -1,3 +1,5 @@
+import {createOrbitWavStream} from "./standalone-music-wav-stream-v1.mjs";
+
 // SETKA Music: one persistent WebAudio mixer shared by the catalog and orbit editor.
 // Diffuse stereo late-room tail. Directional first reflections are separate
 // HRTF wall images (below) and must not also appear in this impulse.
@@ -25,6 +27,7 @@ export function orbitUnit(angle){
 // Existing near/far distances and azimuths are unchanged.
 const ORBIT_REF_DISTANCE=2.05,ORBIT_ROLLOFF=.9,ORBIT_MAX_DISTANCE=19;
 const ROOM_HALF_WIDTH=12,SPEED_OF_SOUND=343,MAX_EARLY_HRTF_SOURCES=6;
+const ORBIT_TRACKING=.008;
 const clampOrbit=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
 const smoothOrbit=(a,b,x)=>{
  const u=clampOrbit((x-a)/(b-a),0,1);
@@ -48,8 +51,10 @@ export function orbitDepthProfile(radius){
 // the listener. Delay, high-frequency absorption and reflected arrival
 // direction all respond to the actual sound's radius and azimuth.
 export function orbitEarlyReflectionProfile(angle,radius){
- const {distance,depth}=orbitDepthProfile(radius),unit=orbitUnit(angle);
- const x=unit.x*distance,z=unit.z*distance;
+ const unit=orbitUnit(angle),profile=orbitDepthProfile(radius);
+ return wallImages(unit.x*profile.distance,unit.z*profile.distance,profile.distance,profile.depth);
+}
+function wallImages(x,z,distance,depth){
  return [-1,1].map((side,index)=>{
   const imageX=2*side*ROOM_HALF_WIDTH-x,imageZ=z;
   const pathLength=Math.hypot(imageX,imageZ);
@@ -76,28 +81,60 @@ export function createOrbitEarlyReflections(ctx,input,master,model="HRTF"){
    gain.gain.value=0;delay.delayTime.value=.035;
    panner.panningModel=model;panner.distanceModel="linear";
    panner.refDistance=1;panner.maxDistance=50;panner.rolloffFactor=0;
-   input.connect(delay);delay.connect(filter);filter.connect(gain);
-   gain.connect(panner);panner.connect(master);
+   input.connect(filter);filter.connect(gain);gain.connect(panner);
+   // Delay the already spatialized reflection. Direction and level describe
+   // the same emission before its excess wall-path travel time.
+   panner.connect(delay);delay.connect(master);
   }
   return reflections;
  }catch(_){
-  for(const r of reflections)for(const n of [r.delay,r.filter,r.gain,r.panner])
-   try{n.disconnect()}catch(_){}
+  for(const r of reflections){
+   try{input.disconnect(r.filter)}catch(_){}
+   for(const n of [r.delay,r.filter,r.gain,r.panner])try{n.disconnect()}catch(_){}
+  }
   return [];
  }
 }
-function setOrbitPosition(node,x,z,time,tracking){
+function orbitParam(param,value,time,snap){
+ if(snap&&param.setValueAtTime)param.setValueAtTime(value,time);
+ else param.setTargetAtTime(value,time,ORBIT_TRACKING);
+}
+function setOrbitPosition(node,x,z,time,snap){
  if(node.positionX?.setTargetAtTime){
-  node.positionX.setTargetAtTime(x,time,tracking);
-  node.positionY?.setTargetAtTime(0,time,tracking);
-  node.positionZ.setTargetAtTime(z,time,tracking);
+  orbitParam(node.positionX,x,time,snap);
+  orbitParam(node.positionY,0,time,snap);
+  orbitParam(node.positionZ,z,time,snap);
  }else node.setPosition(x,0,z);
+}
+export function createOrbitVoice(ctx,master,room,reflectionModel){
+ const gain=ctx.createGain(),mid=ctx.createGain(),sideMix=ctx.createGain(),focus=ctx.createGain();
+ const panner=ctx.createPanner();
+ gain.gain.value=0;
+ // WebKit and Chromium's stereo HRTF feed each ear from its matching
+ // channel. Keep a focused common signal and half the original stereo
+ // difference. Speakers mixing leaves true mono and dual mono unchanged.
+ mid.channelCount=1;mid.channelCountMode="explicit";mid.gain.value=.5;
+ sideMix.gain.value=.5;
+ gain.connect(mid);gain.connect(sideMix);mid.connect(focus);sideMix.connect(focus);
+ panner.panningModel="HRTF";panner.distanceModel="inverse";
+ panner.refDistance=ORBIT_REF_DISTANCE;panner.maxDistance=ORBIT_MAX_DISTANCE;panner.rolloffFactor=ORBIT_ROLLOFF;
+ focus.connect(panner);panner.connect(master);
+ const roomSend=room?ctx.createGain():null;
+ if(roomSend){roomSend.gain.value=0;gain.connect(roomSend);roomSend.connect(room)}
+ const reflections=createOrbitEarlyReflections(ctx,focus,master,reflectionModel);
+ return {gain,mid,sideMix,focus,panner,roomSend,reflections};
+}
+function disconnectOrbitVoice(voice){
+ for(const node of [voice.gain,voice.mid,voice.sideMix,voice.focus,voice.panner,voice.roomSend])node?.disconnect();
+ for(const r of voice.reflections)for(const node of [r.delay,r.filter,r.gain,r.panner])node.disconnect();
 }
 export class SetkaMusicMixer {
  constructor() {
   this.ctx=null; this.master=null; this.room=null; this.roomOutput=null; this.items=new Map();
   this.mode="static"; this.speed=40; this.started=performance.now()/1000;
   this.changed=()=>{}; this.moved=()=>{}; this.onTrackEvent=()=>{}; this.clock=null;
+  this.frame=null; this.motionSpeedAt=this.started; this.phaseOffset=0;this.nextMotionIndex=0;
+  this.nativeFallbacks=new Set();
  }
  init() {
   if (!this.ctx) {
@@ -124,16 +161,20 @@ export class SetkaMusicMixer {
     listener.upY?.setValueAtTime(1,time);
     listener.upZ?.setValueAtTime(0,time);
    }
-   try{
-    const room=this.ctx.createConvolver(),output=this.ctx.createGain();
-    room.normalize=false;
-    room.buffer=setkaRoomImpulse(this.ctx);
-    output.gain.value=.86;
-    room.connect(output);output.connect(this.master);
-    this.room=room;this.roomOutput=output;
-   }catch(_){this.room=null;this.roomOutput=null}
+   this.room=this.makeRoom(this.master);
   }
   this.ctx.resume().catch(()=>{});
+ }
+ makeRoom(destination){
+  try{
+   const room=this.ctx.createConvolver(),output=this.ctx.createGain();
+   room.normalize=false;
+   room.buffer=setkaRoomImpulse(this.ctx);
+   output.gain.value=.86;
+   room.connect(output);output.connect(destination);
+   this.roomOutput=output;
+   return room;
+  }catch(_){this.roomOutput=null;return null}
  }
  // Every looping track uses two independently buffered players.
  // Equal-power crossfade starts before the end, so the next loop overlaps the tail.
@@ -145,33 +186,19 @@ export class SetkaMusicMixer {
   let state=old;
   if(!state){
    const index=this.items.size,angle=index*2.399963229728653;
-   const gain=this.ctx.createGain(),rearFilter=this.ctx.createBiquadFilter(),panner=this.ctx.createPanner();
-   // Let the browser retain the original decoded source channel configuration.
-   // Never force an additional explicit mono downmix before HRTF processing.
-   panner.panningModel="HRTF";panner.distanceModel="inverse";
-   // A wider near/far acoustic range than the previous 1+7*r / .42 rolloff.
-   panner.refDistance=ORBIT_REF_DISTANCE;panner.maxDistance=ORBIT_MAX_DISTANCE;panner.rolloffFactor=ORBIT_ROLLOFF;
-   // Very gentle rear head-shadow: only a 1.5 dB high-shelf difference,
-   // not the former aggressive low-pass that made music dull from behind.
-   rearFilter.type="highshelf";rearFilter.frequency.value=7500;rearFilter.gain.value=0;
-   gain.connect(rearFilter);rearFilter.connect(panner);panner.connect(this.master);gain.gain.value=0;
-   // Direct HRTF retains its original unchanged signal and position.
-   // Diffuse late reflections branch BEFORE HRTF; early wall images have
-   // their own HRTF position, timing and path-dependent absorption.
-   const roomSend=this.room?this.ctx.createGain():null;
-   if(roomSend){roomSend.gain.value=0;rearFilter.connect(roomSend);roomSend.connect(this.room)}
-   const reflections=createOrbitEarlyReflections(this.ctx,rearFilter,this.master,
-    this.items.size<MAX_EARLY_HRTF_SOURCES?"HRTF":"equalpower");
-   if(this.roomOutput)this.roomOutput.gain.setTargetAtTime(.86,this.ctx.currentTime,.04);
-   // Never allocate two decoders for the original 25–500 MB WAV recordings.
-   // Safari/WebKit additionally crashes when a huge WAV enters its WebAudio
-   // MediaElementSource; its native HTMLAudioElement plays the SAME lossless bytes
-   // reliably. Use native output only for this large-file WebKit safety fallback.
-   // Small sources and Chromium retain the full HRTF/reflective audio graph.
+   // Keep the large-file WebKit path bounded, without routing the whole
+   // WAV through MediaElementSource. Unsupported/range-failed files can still
+   // play natively on the next tap, explicitly outside the spatial graph.
    const singleDeck=!!track.external_source_path&&/\.wav$/i.test(track.external_source_path)&&
      Number(track.external_source_bytes)>=24*1024*1024;
    const webkit=/AppleWebKit/i.test(navigator.userAgent)&&!/Chrom(?:e|ium)\//i.test(navigator.userAgent);
-   const nativeOnly=singleDeck&&webkit;
+   const streamWav=singleDeck&&webkit&&typeof AbortSignal.any==="function"&&
+    typeof AbortSignal.timeout==="function"&&!this.nativeFallbacks.has(id);
+   const nativeOnly=singleDeck&&webkit&&!streamWav;
+   const hrtfRooms=[...this.items.values()].filter(s=>s.reflections?.[0]?.panner.panningModel==="HRTF").length;
+   const reflectionModel=hrtfRooms<MAX_EARLY_HRTF_SOURCES?"HRTF":"equalpower";
+   const voice=nativeOnly?null:createOrbitVoice(this.ctx,this.master,this.room,reflectionModel);
+   if(voice&&this.roomOutput)this.roomOutput.gain.setTargetAtTime(.86,this.ctx.currentTime,.04);
    const makeDeck=(volume)=>{
     const el=new Audio();
     el.loop=singleDeck&&track.loop!==false;
@@ -179,29 +206,29 @@ export class SetkaMusicMixer {
     if(nativeOnly)return {el,src:null,fade:null};
     const src=this.ctx.createMediaElementSource(el);
     const fade=this.ctx.createGain();fade.gain.value=volume;
-    src.connect(fade);fade.connect(gain);
+    src.connect(fade);fade.connect(voice.gain);
     return {el,src,fade};
    };
-   const decks=[makeDeck(1)];
+   const decks=streamWav?[]:[makeDeck(1)];
    if(track.loop!==false&&!singleDeck)decks.push(makeDeck(0));
-   state={id,track,level:0,playTracked:false,completed:false,angle,radius:.62+(index%3)*.08,
-    anchorAngle:angle,anchorRadius:.62+(index%3)*.08,manual:false,
-    el:decks[0].el,src:decks[0].src,gain,rearFilter,panner,roomSend,reflections,decks,singleDeck,nativeOnly,activeDeck:0,transition:null,pendingLoop:false};
-   this.items.set(id,state);this.position(state,angle,state.radius);
+   state={...voice,id,track,level:0,playTracked:false,completed:false,angle,radius:.62+(index%3)*.08,
+    anchorAngle:angle,anchorRadius:.62+(index%3)*.08,manual:false,motionIndex:this.nextMotionIndex++,
+    el:decks[0]?.el,src:decks[0]?.src,decks,singleDeck,nativeOnly,activeDeck:0,transition:null,pendingLoop:false};
+   this.items.set(id,state);this.position(state,angle,state.radius,true);
+   if(streamWav)state.stream=createOrbitWavStream(this.ctx,state.gain,track,()=>{
+    if(this.items.get(id)!==state)return;
+    this.nativeFallbacks.add(id);this.remove(id);
+    this.changed("Пространственное воспроизведение недоступно. Повторный тап включит исходный звук.");
+   });
    for(let deckIndex=0;deckIndex<decks.length;deckIndex++){
     const {el}=decks[deckIndex];
     el.addEventListener("playing",()=>{
-     if(state.playTracked||this.items.get(id)!==state)return;
-     state.playTracked=true;
-     try{this.onTrackEvent({track_id:id,event_type:"play",event_id:crypto.randomUUID()})}catch(_){}
+     this.trackPlayback(state,"play");
     });
     el.addEventListener("timeupdate",()=>{
      if(this.items.get(id)!==state)return;
      const d=Number(el.duration)||Number(state.track.duration_seconds)||0;
-     if(state.playTracked&&!state.completed&&d>0&&el.currentTime>=d*.95){
-      state.completed=true;
-      try{this.onTrackEvent({track_id:id,event_type:"complete",event_id:crypto.randomUUID()})}catch(_){}
-     }
+     if(d>0&&el.currentTime>=d*.95)this.trackPlayback(state,"complete");
      if(state.activeDeck===deckIndex)this.advanceLoop(state);
     });
     el.addEventListener("ended",()=>{
@@ -210,7 +237,10 @@ export class SetkaMusicMixer {
      if(state.track.loop!==false)this.advanceLoop(state,true);
     });
    }
-   decks[0].el.play().catch(()=>{this.remove(id);this.changed("Не удалось воспроизвести аудиофайл")});
+   decks[0]?.el.play().catch(()=>{
+    if(this.items.get(id)!==state)return;
+    this.remove(id);this.changed("Не удалось воспроизвести аудиофайл");
+   });
    // Prime the silent second deck during the same user interaction for iOS Safari.
    // It remains inaudible (fade=0), then waits at the beginning until overlap.
    if(decks.length>1){
@@ -231,8 +261,33 @@ export class SetkaMusicMixer {
    const now=this.ctx.currentTime;state.gain.gain.cancelScheduledValues(now);
    state.gain.gain.setTargetAtTime(outputLevel,now,.045);
   }
-  if(!this.clock)this.clock=setInterval(()=>this.tick(),40);
+  if(!this.clock)this.clock=setInterval(()=>this.service(),40);
+  this.service();
   this.changed();
+ }
+ trackPlayback(state,event){
+  if(this.items.get(state.id)!==state)return;
+  if(event==="play"){
+   if(state.playTracked)return;
+   state.playTracked=true;
+  }else{
+   if(!state.playTracked||state.completed)return;
+   state.completed=true;
+  }
+  try{this.onTrackEvent({track_id:state.id,event_type:event,event_id:crypto.randomUUID()})}catch(_){}
+ }
+ service(){
+  for(const state of this.items.values()){
+   this.advanceLoop(state);
+   if(!state.stream)continue;
+   state.stream.pump();
+   const now=this.ctx.currentTime;
+   if(now>=state.stream.startedAt)this.trackPlayback(state,"play");
+   if(now>=state.stream.completedAt)this.trackPlayback(state,"complete");
+  }
+  // requestAnimationFrame stops in background tabs. Keep the graph current
+  // when the browser still allows audio and timers to run there.
+  if(document.hidden)this.tick();
  }
  // Advance a deck independently of orbital motion: even a static sound loops.
  advanceLoop(state,force=false){
@@ -300,86 +355,91 @@ export class SetkaMusicMixer {
  remove(id){
   const s=this.items.get(id);if(!s)return;
   this.items.delete(id);
-  s.gain.gain.setTargetAtTime(0,this.ctx.currentTime,.025);
+  const now=this.ctx.currentTime;
+  if(s.nativeOnly){for(const deck of s.decks)deck.el.pause()}
+  else s.gain.gain.setTargetAtTime(0,now,.025);
   setTimeout(()=>{
+   s.stream?.stop();
    for(const d of s.decks){
     d.el.pause();d.el.removeAttribute("src");d.el.load();
     d.src?.disconnect();d.fade?.disconnect();
    }
-   s.gain.disconnect();s.rearFilter.disconnect();s.panner.disconnect();
-   s.roomSend?.disconnect();
-   for(const r of s.reflections||[])for(const n of [r.delay,r.filter,r.gain,r.panner])n.disconnect();
+   if(!s.nativeOnly)disconnectOrbitVoice(s);
   },220);
   if(!this.items.size){
-   if(this.roomOutput)this.roomOutput.gain.setTargetAtTime(0,this.ctx.currentTime,.035);
-   clearInterval(this.clock);this.clock=null;this.mode="static"
+   if(this.roomOutput)this.roomOutput.gain.setTargetAtTime(0,now,.035);
+   clearInterval(this.clock);this.clock=null;this.mode="static";this.nextMotionIndex=0;
+   if(this.frame!==null){cancelAnimationFrame(this.frame);this.frame=null}
   }
   this.changed();
  }
  stopAll(){for(const id of [...this.items.keys()])this.remove(id);this.mode="static";this.changed()}
- position(s,a,r){
+ position(s,a,r,snap=false){
+  if(!snap&&s.angle===a&&s.radius===r)return;
   s.angle=a;s.radius=r;
-  // One radius now drives original dry HRTF distance, diffuse room and
-  // geometrically correct early wall reflections, without screen drift.
-  const {distance,roomSend}=orbitDepthProfile(r);
-  const unit=orbitUnit(a);
-  const x=unit.x*distance,z=unit.z*distance;
-  // HRTF supplies the spatial front/back cue. Keep source timbre intact:
-  // attenuate only the extreme highs by <=1.5 dB at the rear.
-  const behind=smoothOrbit(-.28,.82,-Math.cos(a))*smoothOrbit(.06,.32,r);
-  const gentleRearDb=-1.5*behind;
-  const t=this.ctx.currentTime;
-  // Diffuse late field and physically directed early reflections are
-  // independent paths. Smooth changes to prevent clicks on finger drags.
-  if(s.roomSend)s.roomSend.gain.setTargetAtTime(roomSend,t,s.manual?.055:.095);
-  const acoustic=orbitEarlyReflectionProfile(a,r);
-  for(let i=0;i<(s.reflections?.length||0);i++){
+  if(s.nativeOnly)return;
+  const {distance,depth,roomSend}=orbitDepthProfile(r),unit=orbitUnit(a);
+  const x=unit.x*distance,z=unit.z*distance,t=this.ctx.currentTime;
+  // One spatial sample, audio timestamp and response for all paths.
+  setOrbitPosition(s.panner,x,z,t,snap);
+  if(s.roomSend)orbitParam(s.roomSend.gain,roomSend,t,snap);
+  if(!s.reflections?.length)return;
+  const acoustic=wallImages(x,z,distance,depth);
+  for(let i=0;i<s.reflections.length;i++){
    const reflection=s.reflections[i],q=acoustic[i];
-   const response=s.manual?.05:.10;
-   reflection.gain.gain.setTargetAtTime(q.gain,t,response);
-   reflection.filter.frequency.setTargetAtTime(q.cutoff,t,.12);
-   reflection.delay.delayTime.setTargetAtTime(q.delay,t,.12);
-   setOrbitPosition(reflection.panner,q.x,q.z,t,response);
+   setOrbitPosition(reflection.panner,q.x,q.z,t,snap);
+   orbitParam(reflection.gain.gain,q.gain,t,snap);
+   orbitParam(reflection.filter.frequency,q.cutoff,t,snap);
+   orbitParam(reflection.delay.delayTime,q.delay,t,snap);
   }
-  if(s.rearFilter?.gain?.setTargetAtTime){
-   s.rearFilter.gain.setTargetAtTime(gentleRearDb,t,s.manual?.028:.055);
-  }else if(s.rearFilter?.gain){s.rearFilter.gain.value=gentleRearDb}
-  // Dry HRTF follows the icon without inheriting the long room tail.
-  setOrbitPosition(s.panner,x,z,t,s.manual?.018:.036);
  }
  drag(id,a,r){
   const s=this.items.get(id);if(!s)return;
-  s.manual=true;s.anchorAngle=a;s.anchorRadius=r;
-  this.position(s,a,r);this.moved();
+  s.manual=true;s.anchorAngle=a;s.anchorRadius=r;s.pendingPose={angle:a,radius:r};
+  this.scheduleFrame();
+ }
+ scheduleFrame(){
+  if(this.frame!==null||!this.items.size)return;
+  this.frame=requestAnimationFrame(()=>{
+   this.frame=null;this.tick();
+   if(this.mode!=="static")this.scheduleFrame();
+  });
  }
  omega(){return 2*Math.PI/(1200*Math.pow(1/40,this.speed/100))}
  motion(mode){
-  this.tick();this.mode=mode;this.started=performance.now()/1000;
+  const now=performance.now()/1000;
+  this.tick(now);this.mode=mode;this.started=now;
+  this.motionSpeedAt=now;this.phaseOffset=0;
   for(const s of this.items.values()){s.anchorAngle=s.angle;s.anchorRadius=s.radius;s.manual=false}
+  if(mode!=="static")this.scheduleFrame();
   this.changed();
  }
  setSpeed(speed){
-  this.tick();this.speed=Math.max(0,Math.min(100,Number(speed)||0));
-  if(this.mode!=="static"){this.started=performance.now()/1000;
-   for(const s of this.items.values()){s.anchorAngle=s.angle;s.anchorRadius=s.radius}}
+  const now=performance.now()/1000;
+  this.tick(now);
+  this.phaseOffset+=(now-this.motionSpeedAt)*this.omega();this.motionSpeedAt=now;
+  this.speed=Math.max(0,Math.min(100,Number(speed)||0));
  }
- tick(){
+ tick(now=performance.now()/1000){
   if(!this.items.size)return;
-  for(const s of this.items.values())this.advanceLoop(s);
-  if(this.mode==="static")return;
-  const t=Math.max(0,performance.now()/1000-this.started),w=this.omega(),blend=Math.min(1,t/.8);
-  let i=0;
+  let moved=false;
+  const t=Math.max(0,now-this.started),phaseTime=this.phaseOffset+(now-this.motionSpeedAt)*this.omega();
+  const blend=Math.min(1,t/.8);
   for(const s of this.items.values()){
-   const j=i++,base=s.anchorAngle,rad=s.anchorRadius,phase=j*1.71;
-   if(s.manual)continue;
+   const j=s.motionIndex,base=s.anchorAngle,rad=s.anchorRadius,phase=j*1.71;
+   if(s.pendingPose){
+    const {angle,radius}=s.pendingPose;s.pendingPose=null;
+    this.position(s,angle,radius);moved=true;
+   }
+   if(s.manual||this.mode==="static")continue;
    let a=base,r=rad,x=0,y=0;
-   if(this.mode==="cw")a+=w*t;
-   else if(this.mode==="ccw")a-=w*t;
-   else if(this.mode==="counter")a+=(j%2?-1:1)*w*t;
-   else if(this.mode==="breath")r=Math.max(.22,Math.min(.94,rad+.20*(Math.sin(w*t+phase)-Math.sin(phase))));
-   else if(this.mode==="spiral"){a+=w*t;r=rad*(1-blend)+(.22+.70*(.5-.5*Math.cos(.6*w*t+phase)))*blend}
+   if(this.mode==="cw")a+=phaseTime;
+   else if(this.mode==="ccw")a-=phaseTime;
+   else if(this.mode==="counter")a+=(j%2?-1:1)*phaseTime;
+   else if(this.mode==="breath")r=Math.max(.22,Math.min(.94,rad+.20*(Math.sin(phaseTime+phase)-Math.sin(phase))));
+   else if(this.mode==="spiral"){a+=phaseTime;r=rad*(1-blend)+(.22+.70*(.5-.5*Math.cos(.6*phaseTime+phase)))*blend}
    else {
-    const q=w*t+phase;
+    const q=phaseTime+phase;
     if(this.mode==="eight"){x=.77*Math.sin(q);y=-.60*Math.sin(2*q)-.20*Math.cos(q)}
     else if(this.mode==="chaos"){
      x=.43*Math.sin(q*.81)+.26*Math.sin(q*1.37+phase);
@@ -389,9 +449,9 @@ export class SetkaMusicMixer {
     y=-Math.cos(base)*rad*(1-blend)+y*blend;
     a=Math.atan2(x,-y);r=Math.min(.94,Math.hypot(x,y));
    }
-   this.position(s,a,r);
+   if(s.angle!==a||s.radius!==r){this.position(s,a,r);moved=true}
   }
-  this.moved();
+  if(moved)this.moved();
  }
 }
 export const MOTION=["static","cw","ccw","counter","eight","chaos","spiral","breath"];
