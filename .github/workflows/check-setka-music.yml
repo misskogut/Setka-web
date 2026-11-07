@@ -69,14 +69,12 @@ jobs:
       - run: node tests/setka-music-restored-sheet-browser.mjs
         env:
           SETKA_BROWSER: ${{ matrix.browser }}
-      - name: Verify 8D full WAV with fresh spatial audio context
+      - name: Require full original 8D WAV playback in actual SETKA WebAudio
         run: node tests/setka-music-big-webkit-probe.mjs
-        continue-on-error: true
         env:
           SETKA_BROWSER: ${{ matrix.browser }}
-      - name: Probe real Yandex and Storage audio playback (temporary diagnostic)
+      - name: Require real Yandex WAV, MP3 and Storage playback (no fake media events)
         run: node tests/setka-music-live-playback-probe.mjs
-        continue-on-error: true
         env:
           SETKA_BROWSER: ${{ matrix.browser }}
       - run: node tests/setka-music-browser-smoke.mjs
