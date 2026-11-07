@@ -4,6 +4,7 @@ import {readFileSync} from "node:fs";
 import {UI_ICON_SLOTS,UI_ICON_IDS,uiIconHTML,assetIconMask,defaultIconSVG} from "../standalone-music-ui-icons-v2.mjs";
 import {ICON_NAMES,iconSvg} from "../standalone-music-icons-v1.mjs";
 import {LEGACY_MUSIC_ICON_NAMES,legacyMusicSVG} from "../standalone-music-legacy-icons-v1.mjs";
+import {VINTAGE_SOUND_ICON_KEYS,vintageSoundSVG} from "../standalone-music-vintage-icons-v2.mjs";
 import {selectedMusicCategorySVG} from "../standalone-music-approved-icons-v1.mjs";
 const read=path=>readFileSync(new URL("../"+path,import.meta.url),"utf8");
 test("all SETKA music system controls have a consistent white-line vector default",()=>{
@@ -107,4 +108,35 @@ test("all twenty old-app music symbols are screenshot-traced vectors, not replac
   assert.ok(!LEGACY_MUSIC_ICON_NAMES.includes(id),"old top tabs aren't re-added to track collection");
  }
  assert.match(iconSvg("onload='alert(1)"),/viewBox="0 0 128 128"/,"unknown key uses safe fallback");
+});
+
+test("26 unique sound glyphs from newer screenshots extend 20 old app glyphs without duplicates",()=>{
+ assert.equal(VINTAGE_SOUND_ICON_KEYS.length,26);
+ assert.equal(ICON_NAMES.length,76,"30 stock + 20 first screenshot + 26 uniquely new icons");
+ assert.equal(new Set(ICON_NAMES).size,ICON_NAMES.length);
+ const old=new Set(LEGACY_MUSIC_ICON_NAMES);
+ for(const key of VINTAGE_SOUND_ICON_KEYS){
+  assert.ok(!old.has(key),"legacy duplicate key was re-added: "+key);
+  assert.match(iconSvg(key),/viewBox="0 0 90 90"/);
+  assert.match(iconSvg(key),/fill-rule="evenodd"/);
+  assert.equal(iconSvg(key),vintageSoundSVG(key));
+ }
+ for(const key of ["hand","eye","sleep","8d","orbits"]){
+  assert.ok(!VINTAGE_SOUND_ICON_KEYS.includes(key),"category tab isn't duplicated");
+ }
+});
+test("music admin supports persistent soft delete and restore without rewriting existing tracks",()=>{
+ const editor=read("research-v1/music-admin.mjs");
+ const edge=read("supabase/functions/setka-music-v1/index.ts");
+ const sql=read("supabase/migrations/20261107002549_setka_music_hidden_icon_library_v1.sql");
+ assert.match(editor,/req\(hide\?"hide-icon":"restore-icon"/);
+ assert.match(editor,/const fresh=await req\("manage"\)/);
+ assert.match(editor,/model\.hidden_icon_keys/);
+ assert.match(editor,/if\(hiddenSet\.has\(name\)\)continue/);
+ assert.match(editor,/Восстановить значок/);
+ assert.match(edge,/hiddenIcons=manage\?await rowQuery/);
+ assert.match(edge,/b\.action==="hide-icon"\|\|b\.action==="restore-icon"/);
+ assert.match(sql,/enable row level security/);
+ assert.match(sql,/revoke all.*anon, authenticated/);
+ assert.doesNotMatch(edge,/setka_music_tracks_v1","DELETE".*hide-icon/s,"icon removal must never delete tracks");
 });
