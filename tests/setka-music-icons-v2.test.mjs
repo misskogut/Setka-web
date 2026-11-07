@@ -11,7 +11,7 @@ test("all SETKA music system controls have a consistent white-line vector defaul
  assert.equal(UI_ICON_IDS.length,14);
  assert.equal(new Set(UI_ICON_IDS).size,UI_ICON_IDS.length);
  for(const {id} of UI_ICON_SLOTS){
-  assert.match(defaultIconSVG(id),/viewBox="0 0 24 24"/);
+  assert.match(defaultIconSVG(id),/viewBox="(?:0 0 24 24|25 46 212 116|9 22 222 153)"/,"approved speed glyphs retain their own optical viewBox");
   assert.match(uiIconHTML(id),/(?:stroke|fill)="currentColor"/);
  }
  for(const id of ["hand","eye","sleep","8d"]){
@@ -37,8 +37,8 @@ test("site masks user art instead of baking-in glow or a background",()=>{
  assert.match(front,/assetIconMask\(c\.icon_path\)/);
  assert.match(front,/uiIconHTML\("orbit-tab",uiIcons\)/);
  assert.match(front,/uiIconHTML\("power",uiIcons\)/);
- const orbit=read("standalone-music-orbits-v1.mjs");
- assert.match(orbit,/uiIconHTML\("listener",uiIcons\)/);
+ const orbit=read("standalone-music-orbits-reference-20261106.mjs");
+ assert.match(orbit,/sm-lotus-portrait/,"approved central listener portrait is retained");
  assert.match(orbit,/uiIconHTML\("motion-"\+mode,uiIcons\)/);
 });
 test("admin provides explicit uploading/reset, server protects fixed slots",()=>{
