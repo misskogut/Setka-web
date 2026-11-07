@@ -30,15 +30,19 @@ const ORBIT_REF_DISTANCE=2.05,ORBIT_ROLLOFF=.9,ORBIT_MAX_DISTANCE=19;
 const ROOM_HALF_WIDTH=12,SPEED_OF_SOUND=343,MAX_EARLY_HRTF_SOURCES=6;
 const ORBIT_TRACKING=.008;
 const clampOrbit=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
+export const ORBIT_RADIUS_MIN=.38,ORBIT_RADIUS_MAX=.96;
+export function clampOrbitRadius(radius){
+ const r=Number(radius);
+ return clampOrbit(Number.isFinite(r)?r:.62,ORBIT_RADIUS_MIN,ORBIT_RADIUS_MAX);
+}
 const smoothOrbit=(a,b,x)=>{
  const u=clampOrbit((x-a)/(b-a),0,1);
  return u*u*(3-2*u);
 };
 export function orbitDepthProfile(radius){
- const r=Number.isFinite(Number(radius))?Number(radius):.62;
- const depth=smoothOrbit(.14,.94,r);
- const nearCenter=smoothOrbit(0,.16,r);
- const distance=(ORBIT_REF_DISTANCE+7.25*Math.pow(depth,1.15))*nearCenter;
+ const r=clampOrbitRadius(radius);
+ const depth=smoothOrbit(ORBIT_RADIUS_MIN,ORBIT_RADIUS_MAX,r);
+ const distance=ORBIT_REF_DISTANCE+7.25*Math.pow(depth,1.15);
  const actual=Math.max(ORBIT_REF_DISTANCE,Math.min(ORBIT_MAX_DISTANCE,distance));
  const directAttenuation=ORBIT_REF_DISTANCE/
   (ORBIT_REF_DISTANCE+ORBIT_ROLLOFF*(actual-ORBIT_REF_DISTANCE));
@@ -384,6 +388,7 @@ export class SetkaMusicMixer {
  }
  stopAll(){for(const id of [...this.items.keys()])this.remove(id);this.mode="static";this.changed()}
  position(s,a,r,snap=false,t=this.ctx.currentTime){
+  r=clampOrbitRadius(r);
   if(!snap&&s.angle===a&&s.radius===r)return;
   s.angle=a;s.radius=r;
   if(s.nativeOnly)return;
@@ -404,7 +409,8 @@ export class SetkaMusicMixer {
  }
  drag(id,a,r){
   const s=this.items.get(id);if(!s)return;
-  s.manual=true;s.anchorAngle=a;s.anchorRadius=r;s.pendingPose={angle:a,radius:r};
+  const radius=clampOrbitRadius(r);
+  s.manual=true;s.anchorAngle=a;s.anchorRadius=radius;s.pendingPose={angle:a,radius};
   this.scheduleFrame();
  }
  scheduleFrame(){
@@ -445,8 +451,8 @@ export class SetkaMusicMixer {
    if(this.mode==="cw")a+=phaseTime;
    else if(this.mode==="ccw")a-=phaseTime;
    else if(this.mode==="counter")a+=(j%2?-1:1)*phaseTime;
-   else if(this.mode==="breath")r=Math.max(.22,Math.min(.94,rad+.20*(Math.sin(phaseTime+phase)-Math.sin(phase))));
-   else if(this.mode==="spiral"){a+=phaseTime;r=rad*(1-blend)+(.22+.70*(.5-.5*Math.cos(.6*phaseTime+phase)))*blend}
+   else if(this.mode==="breath")r=clampOrbitRadius(rad+.20*(Math.sin(phaseTime+phase)-Math.sin(phase)));
+   else if(this.mode==="spiral"){a+=phaseTime;r=rad*(1-blend)+(ORBIT_RADIUS_MIN+(ORBIT_RADIUS_MAX-ORBIT_RADIUS_MIN)*(.5-.5*Math.cos(.6*phaseTime+phase)))*blend}
    else {
     const q=phaseTime+phase;
     if(this.mode==="eight"){x=.77*Math.sin(q);y=-.60*Math.sin(2*q)-.20*Math.cos(q)}
@@ -456,7 +462,7 @@ export class SetkaMusicMixer {
     }
     x=Math.sin(base)*rad*(1-blend)+x*blend;
     y=-Math.cos(base)*rad*(1-blend)+y*blend;
-    a=Math.atan2(x,-y);r=Math.min(.94,Math.hypot(x,y));
+    a=Math.atan2(x,-y);r=clampOrbitRadius(Math.hypot(x,y));
    }
    if(s.angle!==a||s.radius!==r){this.position(s,a,r,false,audioTime);moved=true}
   }

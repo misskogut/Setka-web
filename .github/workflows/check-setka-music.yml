@@ -66,23 +66,26 @@ jobs:
       - run: npm install --no-save --ignore-scripts playwright@1.62.1
       - run: npx playwright install --with-deps ${{ matrix.browser }}
       - run: node scripts/build-pattern-manifest.mjs
+      - run: node scripts/build-pattern-manifest.mjs
       - run: node tests/setka-music-spatial-browser.mjs
         env:
           SETKA_BROWSER: ${{ matrix.browser }}
       - run: node tests/setka-music-restored-sheet-browser.mjs
         env:
           SETKA_BROWSER: ${{ matrix.browser }}
-      - name: Require spatial playback of original 496 MB WAV against the candidate audio code
-        if: ${{ !cancelled() }}
+      # Exercise the deterministic orbit DOM/touch geometry before opening
+      # enormous real WAV files: WebKit's native 500 MB decoder can crash the
+      # browser independently of orbit positioning, hiding geometry regressions.
+      - run: node tests/setka-music-browser-smoke.mjs
+        env:
+          SETKA_BROWSER: ${{ matrix.browser }}
+      - name: Require original full-length 8D WAV playback in SETKA (native WebKit fallback)
         run: node tests/setka-music-big-webkit-probe.mjs
         env:
           SETKA_BROWSER: ${{ matrix.browser }}
           SETKA_MUSIC_CANDIDATE: "1"
-      - name: Require real Release WAV, MP3 and Storage playback (no fake media events)
+      - name: Require real Yandex WAV, MP3 and Storage playback (no fake media events)
         run: node tests/setka-music-live-playback-probe.mjs
-        env:
-          SETKA_BROWSER: ${{ matrix.browser }}
-      - run: node tests/setka-music-browser-smoke.mjs
         env:
           SETKA_BROWSER: ${{ matrix.browser }}
       - uses: actions/upload-artifact@v4

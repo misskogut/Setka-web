@@ -32,6 +32,14 @@
   let data=load(),activeSession=null;
   const localRoot=data.createdAt,personalStore=window.SetkaPersonalStorageV1;
   let usingPersonalStore=false,persisting=Promise.resolve(true),saveGeneration=0,storageState={ok:true,pending:false,kind:"localStorage"};
+  // Touch telemetry stays visible to observers immediately but its durable
+  // archive is written at most once per short window. Re-serializing the
+  // entire multi-megabyte archive for every touchstart/end overwhelms Safari.
+  let gestureSaveTimer=0;
+  function scheduleGestureSave(){
+    if(gestureSaveTimer)return;
+    gestureSaveTimer=setTimeout(()=>{gestureSaveTimer=0;save()},420);
+  }
   const archiveFields=["sessions","notes","symptoms","checkins","events","patternExposures","activityIntervals","openedPatterns","invites"];
   function mergePersonalRows(old,row){
     if(!old||!(old.baseRoot===row.baseRoot||old.payload?.createdAt===row.payload?.createdAt))return row;
@@ -67,6 +75,7 @@
     const before=JSON.stringify([data.symptoms,data.checkins]);data.symptoms=mergeStateRecords(data.symptoms,stored.symptoms);data.checkins=mergeStateRecords(data.checkins,stored.checkins);return before!==JSON.stringify([data.symptoms,data.checkins]);
   }
   function save(){
+    if(typeof gestureSaveTimer!=="undefined"&&gestureSaveTimer){clearTimeout(gestureSaveTimer);gestureSaveTimer=0}
     if(storageState?.resetting)return false;
     const generation=++saveGeneration;let stored=null;try{stored=JSON.parse(localStorage.getItem(KEY)||"null")}catch(_){}mergeStoredStates(stored);
     try{
@@ -96,10 +105,11 @@
   function currentPhase(){return activeSession?.phase||"free"}
   function elapsed(){return activeSession?Math.max(0,Date.now()-Date.parse(activeSession.startedAt)):0}
   function stateSnapshot(){try{const s=Setka.getState?.(),rect=app.getBoundingClientRect();return s?{view:s.view,libraryPage:s.libraryPage,patternId:s.patternId,patternVersion:s.patternVersion||1,sourceType:s.sourceType,sourceId:s.sourceId,communityId:s.communityId||null,config:s.config?clone(s.config):null,configKey:s.configKey||null,frame:s.frame!=null&&Number.isFinite(Number(s.frame))?Number(s.frame):null,favoriteId:s.favoriteId||null,viewport:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio||1},registryRevision:window.SetkaPatternRegistryV1?.revision?.()||null,configSchemaVersion:2,rendererVersion:"setka-pattern-contract-2",canvasRect:{left:rect.left,top:rect.top,width:rect.width,height:rect.height}}:null}catch(_){return null}}
-  function recordEvent(type,payload={},sessionScoped=true){
+  function recordEvent(type,payload={},sessionScoped=true,batched=false){
     const now=Date.now(),sid=sessionScoped?activeSession?.id||null:null;
     const e={id:id("evt"),type,wallAt:new Date(now).toISOString(),sessionId:sid,phase:currentPhase(),tMs:sid?Math.max(0,now-Date.parse(activeSession.startedAt)):null,payload};
-    data.events.push(e);if(data.events.length>5000)data.events.splice(0,data.events.length-5000);save();
+    data.events.push(e);if(data.events.length>5000)data.events.splice(0,data.events.length-5000);
+    if(batched)scheduleGestureSave();else save();
     window.dispatchEvent(new CustomEvent("setka:standalone-event",{detail:e}));return e;
   }
   function updateSession(){const r=sessionRow();if(r)Object.assign(r,clone(activeSession));save();saveActive()}
@@ -212,9 +222,9 @@
   window.addEventListener("setka:view",e=>{recordEvent("view",{view:e.detail?.view,state:stateSnapshot()},false);updateGameControls()});
   window.addEventListener("setka:library-page",e=>recordEvent("library_page",{page:e.detail?.page,state:stateSnapshot()},false));
   window.addEventListener("setka:pattern-open",e=>recordEvent("pattern_open",{sourceType:e.detail?.sourceType||null,sourceId:e.detail?.sourceId||null,communityId:e.detail?.communityId||null,state:stateSnapshot()}));
-  window.addEventListener("setka:gesture-start",e=>recordEvent("gesture_start",{fingers:e.detail?.fingers,x:e.detail?.x,y:e.detail?.y,state:stateSnapshot()}));
-  window.addEventListener("setka:gesture-move",e=>{const now=Date.now();if(now-lastGestureSample<220)return;lastGestureSample=now;recordEvent("pattern_state",{reason:"gesture",fingers:e.detail?.fingers,state:stateSnapshot()})});
-  window.addEventListener("setka:gesture-end",e=>recordEvent("gesture_end",{fingers:e.detail?.fingers,state:stateSnapshot()}));
+  window.addEventListener("setka:gesture-start",e=>recordEvent("gesture_start",{fingers:e.detail?.fingers,x:e.detail?.x,y:e.detail?.y,state:stateSnapshot()},true,true));
+  window.addEventListener("setka:gesture-move",e=>{const now=Date.now();if(now-lastGestureSample<220)return;lastGestureSample=now;recordEvent("pattern_state",{reason:"gesture",fingers:e.detail?.fingers,state:stateSnapshot()},true,true)});
+  window.addEventListener("setka:gesture-end",e=>recordEvent("gesture_end",{fingers:e.detail?.fingers,state:stateSnapshot()},true,true));
   window.addEventListener("setka:color",e=>recordEvent("color",{from:e.detail?.from,to:e.detail?.to,state:stateSnapshot()}));
   window.addEventListener("setka:favorite-saved",e=>recordEvent("favorite_save",{favoriteId:e.detail?.favorite?.id||null,state:stateSnapshot()}));
   window.addEventListener("setka:favorite-removed",e=>recordEvent("favorite_remove",{favoriteId:e.detail?.favorite?.id||null,state:stateSnapshot()}));

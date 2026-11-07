@@ -76,7 +76,7 @@
   }
   function schedule(reason){clearTimeout(timer);timer=setTimeout(()=>capture(reason),100)}
   window.addEventListener('setka:standalone-event',e=>{if(e.detail?.type==='screen_pointer_up'){schedule('touch');return}if(['ui_snapshot','screen_pointer_move','screen_pointer_down','ui_tap','replay_consent'].includes(e.detail?.type))return;schedule(e.detail?.type)});
-  window.addEventListener('setka:pattern-special',e=>C.recordEvent('pattern_state',{reason:e.detail?.action||'special',state:C.stateSnapshot()}));
+  window.addEventListener('setka:pattern-special',e=>C.recordEvent('pattern_state',{reason:e.detail?.action||'special',state:C.stateSnapshot()},true,true));
   // The production deep-telemetry module already records each pointer once.
   if(!window.__SETKA_V34_DEEP_TELEMETRY__){
     document.addEventListener('pointerdown',e=>pointer('screen_pointer_down',e),{passive:true});
@@ -84,7 +84,14 @@
     document.addEventListener('pointercancel',e=>pointer('screen_pointer_cancel',e),{passive:true});
     document.addEventListener('pointermove',e=>{if(!e.buttons||Date.now()-lastMove<200)return;lastMove=Date.now();pointer('screen_pointer_move',e)},{passive:true});
   }
-  function pointer(type,e){if(!enabled()||screen()?.kind==='restricted'||e.target.closest('input,textarea,select,#stReplaySettings'))return;C.recordEvent(type,{replayCapture:true,nx:e.clientX/innerWidth,ny:e.clientY/innerHeight,pointerType:e.pointerType,fingers:1,viewport:viewport()},true);if(type==='screen_pointer_up')schedule('touch')}
+  function pointer(type,e){
+    // screen() walks + measures up to 120 elements. Running it on every
+    // pointerdown/up/move causes forced Safari layouts during fast gameplay.
+    // The privacy exclusion has its own small and equivalent DOM guard.
+    if(!enabled()||restricted()||e.target.closest('input,textarea,select,#stReplaySettings'))return;
+    C.recordEvent(type,{replayCapture:true,nx:e.clientX/innerWidth,ny:e.clientY/innerHeight,pointerType:e.pointerType,fingers:1,viewport:viewport()},true,true);
+    if(type==='screen_pointer_up')schedule('touch');
+  }
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)schedule('visible')});
   window.addEventListener('resize',()=>schedule('resize'));
   window.addEventListener('setka:sheet-settled',()=>schedule('sheet-settled'));

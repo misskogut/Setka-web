@@ -18,9 +18,11 @@
   };
 
   const originalRecord=C.recordEvent;
-  C.recordEvent=(type,payload,sessionScoped=true)=>{
+  C.recordEvent=(type,payload,sessionScoped=true,batched=false)=>{
     if(type==="physio")return null;
-    return originalRecord(type,payload,sessionScoped);
+    // Forward the coalesced-persistence flag; otherwise every rapid touch
+    // would still synchronously rewrite the full archive on WebKit.
+    return originalRecord(type,payload,sessionScoped,batched);
   };
 
   // v35.2 canonical entity: Pattern Exposure.

@@ -8,7 +8,7 @@ const type=name==="webkit"?webkit:chromium,port=name==="webkit"?49482:49481;
 const base="http://127.0.0.1:"+port;
 const server=spawn("python3",["-m","http.server",String(port),"--bind","127.0.0.1"],{stdio:"ignore"});
 const front="/standalone-v34.html";
-const radii=[.22,.55,.88],angles=Array.from({length:8},(_,i)=>i*Math.PI/4);
+const radii=[.38,.67,.96],angles=Array.from({length:8},(_,i)=>i*Math.PI/4);
 const percentile=(a,p)=>[...a].sort((x,y)=>x-y)[Math.ceil(p*a.length)-1];
 const catalog=Array.from({length:8},(_,i)=>({
  id:"spatial-"+i,title:"Signal "+i,icon_key:"wind",category_ids:["hand"],audio_url:base+"/spatial-fixture.wav",loop:false
@@ -172,7 +172,7 @@ try{
   const inverted=await impulse(0,.55,{right:-1});
   const difference=(a,b)=>a.reduce((total,ear,i)=>total+ear.reduce((s,x,j)=>s+(x-b[i][j])**2,0),0);
   const diagnostic={};
-  for(const path of ["dry","early","late"])diagnostic[path]=arrival(await impulse(0,.22,{path}));
+  for(const path of ["dry","early","late"])diagnostic[path]=arrival(await impulse(0,.38,{path}));
   const ctx=new OfflineAudioContext(2,12000,rate),delay=ctx.createDelay(.2),osc=ctx.createOscillator();
   delay.delayTime.value=.064;osc.connect(delay);delay.connect(ctx.destination);osc.start(.05);
   const trace=await ctx.startRendering();

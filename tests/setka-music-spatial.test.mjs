@@ -4,7 +4,7 @@ import {SetkaMusicMixer,orbitDepthProfile,orbitEarlyReflectionProfile} from "../
 import {readOrbitWavHeader,decodeOrbitWavBlock,createOrbitWavStream} from "../standalone-music-wav-stream-v1.mjs";
 
 const directions=[[0,-1],[1,-1],[1,0],[1,1],[0,1],[-1,1],[-1,0],[-1,-1]];
-const radii=[.22,.55,.88];
+const radii=[.38,.67,.96];
 const close=(actual,expected)=>assert.ok(Math.abs(actual-expected)<1e-9,`${actual} ≠ ${expected}`);
 function scene(){
  const writes=new Map(),param=name=>({setTargetAtTime(...values){writes.set(name,values)}});

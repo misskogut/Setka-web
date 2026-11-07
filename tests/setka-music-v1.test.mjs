@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {SetkaMusicMixer,MOTION,orbitDepthProfile,orbitEarlyReflectionProfile,createOrbitEarlyReflections} from "../standalone-music-audio-v1.mjs";
+import {SetkaMusicMixer,MOTION,orbitDepthProfile,orbitEarlyReflectionProfile,createOrbitEarlyReflections,ORBIT_RADIUS_MIN,ORBIT_RADIUS_MAX,clampOrbitRadius} from "../standalone-music-audio-v1.mjs";
 import {ICONS,iconSvg} from "../standalone-music-icons-v1.mjs";
 const root=new URL("../",import.meta.url);
 const file=name=>readFileSync(new URL(name,root),"utf8");
@@ -45,11 +45,43 @@ test("orbit presets are eight explicit, independent trajectories",()=>{
  assert.ok(pos.length>0,"spatial panner updated");
  mixer.drag("test",Math.PI/2,.35);mixer.tick();
  assert.equal(mixer.items.get("test").manual,true);
- assert.equal(mixer.items.get("test").radius,.35);
+ assert.equal(mixer.items.get("test").radius,ORBIT_RADIUS_MIN);
  mixer.motion("breath");assert.equal(mixer.items.get("test").manual,false);
  mixer.tick(mixer.started+3);
  assert.ok(mixer.items.get("test").radius>=.33);
 });
+test("source centers, manual positions and automatic motion share ring boundaries",()=>{
+ const css=file("standalone-music-v1.css");
+ assert.ok(css.includes(".sm-ring-inner{width:38%;height:38%}"));
+ assert.ok(css.includes(".sm-ring-outer{width:96%;height:96%}"));
+ assert.equal(ORBIT_RADIUS_MIN,.38);
+ assert.equal(ORBIT_RADIUS_MAX,.96);
+ for(const r of [-100,0,.22,.37,.38,.68,.96,1,100,NaN]){
+  const value=clampOrbitRadius(r);
+  assert.ok(value>=ORBIT_RADIUS_MIN&&value<=ORBIT_RADIUS_MAX);
+ }
+ const positions=[],mixer=new SetkaMusicMixer();mixer.ctx={currentTime:0};mixer.scheduleFrame=()=>{};
+ const s={id:"annulus",angle:0,radius:.62,anchorAngle:0,anchorRadius:.62,
+  manual:false,motionIndex:0,track:{loop:false},decks:[],panner:{setPosition(x,y,z){positions.push([x,y,z])}}};
+ mixer.items.set(s.id,s);
+ mixer.drag(s.id,Math.PI/2,0);mixer.tick();
+ assert.equal(s.radius,ORBIT_RADIUS_MIN,"finger on listener cannot move icon center inside inner circle");
+ assert.equal(s.anchorRadius,ORBIT_RADIUS_MIN);
+ assert.ok(Math.abs(positions.at(-1)[0]-orbitDepthProfile(ORBIT_RADIUS_MIN).distance)<1e-8);
+ mixer.drag(s.id,-Math.PI/2,20);mixer.tick();
+ assert.equal(s.radius,ORBIT_RADIUS_MAX,"finger outside the stage cannot move icon center beyond outer circle");
+ assert.equal(s.anchorRadius,ORBIT_RADIUS_MAX);
+ assert.ok(Math.abs(positions.at(-1)[0]+orbitDepthProfile(ORBIT_RADIUS_MAX).distance)<1e-8);
+ assert.ok(Math.abs(orbitDepthProfile(ORBIT_RADIUS_MIN).distance-2.05)<1e-8);
+ assert.ok(Math.abs(orbitDepthProfile(ORBIT_RADIUS_MAX).distance-9.30)<1e-8);
+ for(const mode of ["cw","ccw","counter","breath","spiral","eight","chaos"]){
+  s.angle=0;s.radius=.62;s.anchorAngle=0;s.anchorRadius=.62;s.manual=false;
+  mixer.mode=mode;mixer.started=performance.now()/1000-12.4;mixer.tick();
+  assert.ok(s.radius>=ORBIT_RADIUS_MIN&&s.radius<=ORBIT_RADIUS_MAX,mode+" exceeds visual rings");
+  assert.ok(Number.isFinite(s.angle));
+ }
+});
+
 test("off has no dots: dots render only with active > 0 level",()=>{
  const ui=file("standalone-music-v1.mjs");
  assert.match(ui,/return level\?'<span class="sm-dots"/);
@@ -85,7 +117,7 @@ test("volume dots are centered above their own sound icons and match their glow"
 });
 
 test("near-to-far spatial reverb survives post-HRTF distance attenuation",()=>{
- const near=orbitDepthProfile(.22),middle=orbitDepthProfile(.62),far=orbitDepthProfile(.94);
+ const near=orbitDepthProfile(ORBIT_RADIUS_MIN),middle=orbitDepthProfile(.62),far=orbitDepthProfile(ORBIT_RADIUS_MAX);
  assert.ok(near.distance<middle.distance&&middle.distance<far.distance,"orbit radius increases real audio distance");
  assert.ok(near.directAttenuation>middle.directAttenuation&&middle.directAttenuation>far.directAttenuation,
   "dry sound still recedes naturally");
@@ -104,8 +136,8 @@ test("near-to-far spatial reverb survives post-HRTF distance attenuation",()=>{
  const send=[],pos=[],mixer=new SetkaMusicMixer();
  mixer.ctx={currentTime:3};
  const state={manual:true,panner:{setPosition(...xyz){pos.push(xyz)}},
-  roomSend:{gain:{setTargetAtTime(v){send.push(v)}}}};
- mixer.position(state,Math.PI/3,.94);
+  rearFilter:{gain:{value:0}},roomSend:{gain:{setTargetAtTime(v){send.push(v)}}}};
+ mixer.position(state,Math.PI/3,ORBIT_RADIUS_MAX);
  assert.equal(send.length,1);
  assert.ok(Math.abs(send[0]-far.roomSend)<1e-7,"live diffuse room-send gain follows pre-HRTF target");
  assert.ok(Math.abs(Math.hypot(pos[0][0],pos[0][2])-far.distance)<1e-7,
@@ -157,8 +189,8 @@ test("wall reflections use individual spatialized WebAudio paths; late room is s
   assert.ok(input.connections.includes(path.filter));
   assert.ok(path.filter.connections.includes(path.gain));
   assert.ok(path.gain.connections.includes(path.panner));
-  assert.ok(path.panner.connections.includes(path.delay),"the spatialized emission traverses the wall delay");
-  assert.ok(path.delay.connections.includes(master),"each reflection mixes into master");
+  assert.ok(path.panner.connections.includes(path.delay));
+  assert.ok(path.delay.connections.includes(master));
  }
  const extra=createOrbitEarlyReflections(ctx,input,master,"equalpower");
  assert.ok(extra.every(p=>p.panner.panningModel==="equalpower"),"lower-cost overflow is supported on mobile");

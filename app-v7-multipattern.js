@@ -58,8 +58,42 @@
   function configKey(c,hint=null){return registry.configKey(c,hint)}
 
   const LAST_KEY="setka-patterns:last-config:v1",lastConfigs=readJSON(LAST_KEY,{})||{};
-  function remember(){if(window.__SETKA_RENDER_ONLY__)return;lastConfigs[runtimePatternId]={version:registry.get(runtimePatternId).version,config:registry.persistentConfig(runtimeConfig,runtimePatternId),updatedAt:new Date().toISOString()};writeJSON(LAST_KEY,lastConfigs);const core=window.SetkaStandaloneV34;if(core){const d=core.getData();d.settings=d.settings||{};d.settings.patternConfigs=JSON.parse(JSON.stringify(lastConfigs));core.save?.()}}
+  // Keep the most recent exact configuration in memory immediately. Heavy
+  // writes (full private research archive + lastConfigs) must not occur for
+  // every pointermove: Safari can terminate WebContent after a gesture storm.
+  let rememberTimer=0,rememberDirty=false;
+  function flushRemember(){
+    if(rememberTimer){clearTimeout(rememberTimer);rememberTimer=0}
+    if(!rememberDirty||window.__SETKA_RENDER_ONLY__)return;
+    rememberDirty=false;
+    writeJSON(LAST_KEY,lastConfigs);
+    const core=window.SetkaStandaloneV34;
+    if(core){
+      const d=core.getData();d.settings=d.settings||{};
+      d.settings.patternConfigs=JSON.parse(JSON.stringify(lastConfigs));
+      core.save?.();
+    }
+  }
+  function remember(event){
+    if(window.__SETKA_RENDER_ONLY__)return;
+    const id=runtimePatternId,p=registry.get(id);
+    if(!p)return;
+    const config=registry.persistentConfig(runtimeConfig,id),previous=lastConfigs[id];
+    // Finger release without a durable config change never rewrites storage.
+    // A malformed historical setting must never interrupt live gestures.
+    let unchanged=false;
+    try{unchanged=previous?.version===p.version&&configKey(previous.config,id)===configKey(config,id)}catch(_){}
+    if(unchanged)return;
+    lastConfigs[id]={version:p.version,config,updatedAt:new Date().toISOString()};
+    rememberDirty=true;
+    if(event?.type==="setka:pattern-open"||event?.type==="setka:color")flushRemember();
+    else if(!rememberTimer)rememberTimer=setTimeout(flushRemember,420);
+  }
   for(const event of ["setka:gesture-move","setka:gesture-end","setka:color","setka:pattern-open"])window.addEventListener(event,remember);
+  // Unlike a debounce reset on every move, this guarantees durability even
+  // during an uninterrupted drag; leaving the page flushes pending changes.
+  window.addEventListener("pagehide",flushRemember);
+  document.addEventListener("visibilitychange",()=>{if(document.hidden)flushRemember()});
   function restorePersonalConfigs(rows={}){
     for(const [id,row] of Object.entries(rows)){
       if(!registry.has(id)||row?.version!==registry.get(id).version||!row.config)continue;
@@ -475,13 +509,14 @@
     return changed;
   }
 
-  canvas.addEventListener("touchstart",e=>{e.preventDefault();const p0=primary(e.touches);if(!p0)return;if(e.touches.length>1&&touch.fingers===1)pluginPointerPhase("end",touch.x,touch.y,1,"touch",true);if(touch.primaryId===null)touch.primaryId=p0.identifier;const p=localTouch(p0);touch.fingers=e.touches.length;if(touch.fingers===1)touch.multiSession=false;else touch.multiSession=true;touch.x=touch.startX=p.x;touch.y=touch.startY=p.y;touch.tapEligible=e.touches.length===1;touch.tapStartedAt=performance.now();if(e.touches.length>1){const p2=localTouch(e.touches[1]);touch.secondX=p2.x;touch.secondY=p2.y;touch.lastStereoX=(p.x+p2.x)/2;touch.lastStereoY=(p.y+p2.y)/2}else{touch.secondX=touch.secondY=0;touch.lastStereoX=touch.lastStereoY=null}if(e.touches.length===1&&!registry.hasInteraction?.(runtimePatternId))patternTap(p.x,p.y);touch.lastDist=distance(e.touches);if(touch.fingers>=1)pluginPointerPhase("start",p.x,p.y,touch.fingers);emit("gesture-start",{fingers:touch.fingers,...norm(p.x,p.y)})},{passive:false});
+  canvas.addEventListener("touchstart",e=>{e.preventDefault();const p0=primary(e.touches);if(!p0)return;if(e.touches.length>1&&touch.fingers===1)pluginPointerPhase("end",touch.x,touch.y,1,"touch",true);if(touch.primaryId===null)touch.primaryId=p0.identifier;const p=localTouch(p0);touch.fingers=e.touches.length;if(touch.fingers===1)touch.multiSession=false;else touch.multiSession=true;touch.x=touch.startX=p.x;touch.y=touch.startY=p.y;touch.tapEligible=e.touches.length===1;touch.tapStartedAt=performance.now();if(e.touches.length>1){const p2=localTouch(e.touches[1]);touch.secondX=p2.x;touch.secondY=p2.y;touch.lastStereoX=(p.x+p2.x)/2;touch.lastStereoY=(p.y+p2.y)/2}else{touch.secondX=touch.secondY=0;touch.lastStereoX=touch.lastStereoY=null}// A swipe is not a tap: recognize short stationary taps only after release.
+  touch.lastDist=distance(e.touches);if(touch.fingers>=1)pluginPointerPhase("start",p.x,p.y,touch.fingers);emit("gesture-start",{fingers:touch.fingers,...norm(p.x,p.y)})},{passive:false});
   canvas.addEventListener("touchmove",e=>{e.preventDefault();const p0=primary(e.touches);if(!p0)return;const p=localTouch(p0),dx=p.x-touch.x,dy=p.y-touch.y,nd=distance(e.touches),ratio=nd&&touch.lastDist?nd/touch.lastDist:null;let stereoX=null,stereoY=null;if(e.touches.length>1){const p2=localTouch(e.touches[1]);touch.secondX=p2.x;touch.secondY=p2.y;stereoX=(p.x+p2.x)/2;stereoY=(p.y+p2.y)/2}touch.fingers=e.touches.length;if(touch.fingers>=2)touch.multiSession=true;if(e.touches.length!==1||Math.hypot(p.x-touch.startX,p.y-touch.startY)>12)touch.tapEligible=false;const centerMotion=touch.fingers>1&&customRenderers.has(runtimePatternId)&&Number.isFinite(touch.lastStereoX)&&Number.isFinite(touch.lastStereoY);const moveX=centerMotion?stereoX-touch.lastStereoX:dx,moveY=centerMotion?stereoY-touch.lastStereoY:dy;const changed=applyPatternGesture(p.x,p.y,moveX,moveY,touch.fingers,ratio,"touch",nd,stereoX);touch.x=p.x;touch.y=p.y;if(Number.isFinite(nd))touch.lastDist=nd;if(Number.isFinite(stereoX))touch.lastStereoX=stereoX;if(Number.isFinite(stereoY))touch.lastStereoY=stereoY;if(changed)emit("gesture-move",{fingers:touch.fingers,...norm(p.x,p.y),dx,dy})},{passive:false});
-  function endTouch(e){e.preventDefault();if(!e.touches.length){if((touch.fingers===1&&!touch.multiSession)||touch.fingers>=2)pluginPointerPhase("end",touch.x,touch.y,touch.fingers,"touch",e.type==="touchcancel");if(e.type==="touchend"&&touch.tapEligible&&performance.now()-touch.tapStartedAt<550){if(registry.hasInteraction?.(runtimePatternId))patternTap(touch.x,touch.y);applyPluginTap()}emit("gesture-end",{fingers:touch.fingers});touch.tapEligible=false;touch.fingers=0;touch.multiSession=false;touch.primaryId=null;touch.lastDist=null;touch.lastStereoX=touch.lastStereoY=null;touch.startX=touch.startY=0}else{const p0=primary(e.touches);if(p0){if(touch.fingers>1&&e.touches.length<2)pluginPointerPhase("end",touch.x,touch.y,touch.fingers,"touch",e.type==="touchcancel");const p=localTouch(p0);touch.fingers=e.touches.length;touch.x=touch.startX=p.x;touch.y=touch.startY=p.y;touch.lastDist=distance(e.touches);if(e.touches.length>1){const p2=localTouch(e.touches[1]);touch.lastStereoX=(p.x+p2.x)/2;touch.lastStereoY=(p.y+p2.y)/2}else touch.lastStereoX=touch.lastStereoY=null}}}
+  function endTouch(e){e.preventDefault();if(!e.touches.length){if((touch.fingers===1&&!touch.multiSession)||touch.fingers>=2)pluginPointerPhase("end",touch.x,touch.y,touch.fingers,"touch",e.type==="touchcancel");if(e.type==="touchend"&&touch.tapEligible&&performance.now()-touch.tapStartedAt<550){patternTap(touch.x,touch.y);applyPluginTap()}emit("gesture-end",{fingers:touch.fingers});touch.tapEligible=false;touch.fingers=0;touch.multiSession=false;touch.primaryId=null;touch.lastDist=null;touch.lastStereoX=touch.lastStereoY=null;touch.startX=touch.startY=0}else{const p0=primary(e.touches);if(p0){if(touch.fingers>1&&e.touches.length<2)pluginPointerPhase("end",touch.x,touch.y,touch.fingers,"touch",e.type==="touchcancel");const p=localTouch(p0);touch.fingers=e.touches.length;touch.x=touch.startX=p.x;touch.y=touch.startY=p.y;touch.lastDist=distance(e.touches);if(e.touches.length>1){const p2=localTouch(e.touches[1]);touch.lastStereoX=(p.x+p2.x)/2;touch.lastStereoY=(p.y+p2.y)/2}else touch.lastStereoX=touch.lastStereoY=null}}}
   canvas.addEventListener("touchend",endTouch,{passive:false});canvas.addEventListener("touchcancel",endTouch,{passive:false});
-  canvas.addEventListener("mousedown",e=>{e.preventDefault();const r=canvas.getBoundingClientRect();mouse.down=true;mouse.fingers=e.shiftKey?2:1;mouse.multiSession=mouse.fingers===2;mouse.x=mouse.startX=e.clientX-r.left;mouse.y=mouse.startY=e.clientY-r.top;mouse.tapStartedAt=performance.now();if(mouse.fingers===1&&!registry.hasInteraction?.(runtimePatternId))patternTap(mouse.x,mouse.y);pluginPointerPhase("start",mouse.x,mouse.y,mouse.fingers,"mouse");emit("gesture-start",{fingers:mouse.fingers,desktop:true,...norm(mouse.x,mouse.y)})});
+  canvas.addEventListener("mousedown",e=>{e.preventDefault();const r=canvas.getBoundingClientRect();mouse.down=true;mouse.fingers=e.shiftKey?2:1;mouse.multiSession=mouse.fingers===2;mouse.x=mouse.startX=e.clientX-r.left;mouse.y=mouse.startY=e.clientY-r.top;mouse.tapStartedAt=performance.now();pluginPointerPhase("start",mouse.x,mouse.y,mouse.fingers,"mouse");emit("gesture-start",{fingers:mouse.fingers,desktop:true,...norm(mouse.x,mouse.y)})});
   window.addEventListener("mousemove",e=>{if(!mouse.down)return;const r=canvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,dx=x-mouse.x,dy=y-mouse.y;mouse.fingers=e.shiftKey?2:1;if(mouse.fingers===2)mouse.multiSession=true;const changed=applyPatternGesture(x,y,dx,dy,mouse.fingers,null,"mouse",null,null);mouse.x=x;mouse.y=y;if(changed)emit("gesture-move",{fingers:mouse.fingers,desktop:true,...norm(x,y),dx,dy})});
-  window.addEventListener("mouseup",()=>{if(mouse.down)pluginPointerPhase("end",mouse.x,mouse.y,mouse.fingers,"mouse");if(mouse.down&&mouse.fingers===1&&!mouse.multiSession&&Math.hypot(mouse.x-mouse.startX,mouse.y-mouse.startY)<=12&&performance.now()-mouse.tapStartedAt<550){if(registry.hasInteraction?.(runtimePatternId))patternTap(mouse.x,mouse.y);applyPluginTap()}if(mouse.down)emit("gesture-end",{fingers:mouse.fingers,desktop:true});mouse.down=false;mouse.multiSession=false});
+  window.addEventListener("mouseup",()=>{if(mouse.down)pluginPointerPhase("end",mouse.x,mouse.y,mouse.fingers,"mouse");if(mouse.down&&mouse.fingers===1&&!mouse.multiSession&&Math.hypot(mouse.x-mouse.startX,mouse.y-mouse.startY)<=12&&performance.now()-mouse.tapStartedAt<550){patternTap(mouse.x,mouse.y);applyPluginTap()}if(mouse.down)emit("gesture-end",{fingers:mouse.fingers,desktop:true});mouse.down=false;mouse.multiSession=false});
 
   // An optional, declarative renderer may opt into desktop wheel gestures.
   // Patterns that do not change configuration leave native scroll untouched.

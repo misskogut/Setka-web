@@ -1,4 +1,4 @@
-import {MOTION,MOTION_LABELS,orbitUnit} from "./standalone-music-audio-v1.mjs?v=14-spatial-clock-original-wav-20261107";
+import {MOTION,MOTION_LABELS,orbitUnit,clampOrbitRadius} from "./standalone-music-audio-v1.mjs?v=14-orbit-centerline-bounds-20261107";
 import {uiIconHTML} from "./standalone-music-ui-icons-v2.mjs?v=4-exact-approved-vector-20261106";
 export function createOrbitUI(mixer,trackHTML,uiIcons={}){
  const root=document.createElement("section");root.className="sm-orbits";root.hidden=true;
@@ -57,7 +57,7 @@ export function createOrbitUI(mixer,trackHTML,uiIcons={}){
     if(Math.hypot(e.clientX-touch.x,e.clientY-touch.y)>7)touch.moved=true;
     if(!touch.moved)return;
     const box=stage.getBoundingClientRect(),x=e.clientX-box.left-box.width/2,y=e.clientY-box.top-box.height/2;
-    const radius=Math.max(.22,Math.min(.88,Math.hypot(x,y)/(.5*Math.min(box.width,box.height))));
+    const radius=clampOrbitRadius(Math.hypot(x,y)/(.5*Math.min(box.width,box.height)));
     // mixer.drag updates both audio and screen through the same state/callback.
     const angle=Math.atan2(x,-y);mixer.drag(s.id,angle,radius);
    });

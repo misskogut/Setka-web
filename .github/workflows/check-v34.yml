@@ -106,6 +106,9 @@ on:
       - 'supabase/functions/setka-standalone-v34/index.ts'
       - 'supabase/functions/setka-tester-archive-v37/index.ts'
       - 'tests/standalone-v34-browser-smoke.mjs'
+      - 'tests/setka-ios-rapid-gesture-smoke.mjs'
+      - 'tests/setka-gameplay-touch-write-gate.test.mjs'
+      - 'standalone-replay-capture-v1.js'
       - 'tests/setka-front-research-audit-browser.mjs'
       - 'tests/standalone-v34-admin-browser-smoke.mjs'
       - 'tests/standalone-v34-admin-integrity.test.mjs'
@@ -145,6 +148,7 @@ jobs:
       - run: node --check standalone-storage-v1.js
       - run: node --check standalone-inline-actions-v1.js
       - run: node --check standalone-runtime-v34.js
+      - run: node --check standalone-replay-capture-v1.js
       - run: node --check standalone-favorites-repair-v34.js
       - run: node --check standalone-favorite-native-guard-v34.js
       - run: node --check standalone-methodology-v34.js
@@ -190,6 +194,7 @@ jobs:
       - run: node --check standalone-admin-evolution-pattern-lab-v35.js
       - run: node --check admin-replay-first-v34.js
       - run: node --test tests/front-cloud-integrity-v1.test.mjs tests/standalone-v34-integrity.test.mjs
+      - run: node --test tests/setka-gameplay-touch-write-gate.test.mjs
       - run: node --test tests/standalone-v34-community-aggregate.test.mjs
       - run: node --test tests/standalone-v34-note-merge-integrity.test.mjs
       - run: node --test tests/setka-tester-account-ownership.test.mjs
@@ -207,6 +212,9 @@ jobs:
           node-version: '22'
       - run: npm install --no-save --ignore-scripts playwright@1.64.1 esbuild
       - run: node scripts/build-pattern-manifest.mjs
+      # A gameplay WebContent crash must fail fast before expensive analytics/UI suites.
+      - run: node tests/setka-ios-rapid-gesture-smoke.mjs
+      - run: SETKA_BROWSER=webkit node tests/setka-ios-rapid-gesture-smoke.mjs
       - run: node tests/research-management-v1-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/research-management-v1-browser-smoke.mjs
       # Fail fast on cross-surface contract issues before slower visual suites.
