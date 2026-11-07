@@ -69,15 +69,18 @@ jobs:
       - run: node tests/setka-music-restored-sheet-browser.mjs
         env:
           SETKA_BROWSER: ${{ matrix.browser }}
+      # Exercise the deterministic orbit DOM/touch geometry before opening
+      # enormous real WAV files: WebKit's native 500 MB decoder can crash the
+      # browser independently of orbit positioning, hiding geometry regressions.
+      - run: node tests/setka-music-browser-smoke.mjs
+        env:
+          SETKA_BROWSER: ${{ matrix.browser }}
       - name: Require original full-length 8D WAV playback in SETKA (native WebKit fallback)
         run: node tests/setka-music-big-webkit-probe.mjs
         env:
           SETKA_BROWSER: ${{ matrix.browser }}
       - name: Require real Yandex WAV, MP3 and Storage playback (no fake media events)
         run: node tests/setka-music-live-playback-probe.mjs
-        env:
-          SETKA_BROWSER: ${{ matrix.browser }}
-      - run: node tests/setka-music-browser-smoke.mjs
         env:
           SETKA_BROWSER: ${{ matrix.browser }}
       - uses: actions/upload-artifact@v4
