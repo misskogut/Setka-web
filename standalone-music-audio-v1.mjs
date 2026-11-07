@@ -78,7 +78,11 @@ export function createOrbitEarlyReflections(ctx,input,master,model="HRTF"){
    const path={delay,filter,gain,panner};
    reflections.push(path);
    filter.type="lowpass";filter.frequency.value=7500;filter.Q.value=.65;
-   gain.gain.value=0;delay.delayTime.value=.035;
+   gain.gain.value=0;
+   // Both ears use one delay value per render quantum, as does native HRTF
+   // positioning. This also avoids separate stereo a-rate delay kernels.
+   delay.delayTime.value=.035;
+   if("automationRate" in delay.delayTime)delay.delayTime.automationRate="k-rate";
    panner.panningModel=model;panner.distanceModel="linear";
    panner.refDistance=1;panner.maxDistance=50;panner.rolloffFactor=0;
    input.connect(filter);filter.connect(gain);gain.connect(panner);
@@ -96,7 +100,7 @@ export function createOrbitEarlyReflections(ctx,input,master,model="HRTF"){
  }
 }
 function orbitParam(param,value,time,snap){
- if(snap&&param.setValueAtTime)param.setValueAtTime(value,time);
+ if(snap)param.value=value;
  else param.setTargetAtTime(value,time,ORBIT_TRACKING);
 }
 function setOrbitPosition(node,x,z,time,snap){

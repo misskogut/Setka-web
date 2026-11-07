@@ -18,8 +18,18 @@ function loadModules(force=false){
     if(tried>=MAX_ATTEMPTS)continue;
     const script=document.createElement("script");
     const address=new URL(url,document.currentScript?.src||location.href);
-    const build=document.querySelector('meta[name="setka-release-build"]')?.content;
-    if(build&&build!=="development")address.searchParams.set("build",build);
+    // Pattern scripts are versioned by their own content, not every SETKA
+    // deployment. A change to audio/UI/docs must not evict all Canvas engines.
+    const hash=window.SetkaPatternModuleHashesV1?.[url.split("?")[0]];
+    if(typeof hash==="string"&&/^[a-f0-9]{20}$/.test(hash)){
+      address.searchParams.delete("build");
+      address.searchParams.set("content",hash);
+    }else{
+      // Unbuilt development shells and older cached registries stay safe:
+      // the previous deployment-scoped loading still refreshes their code.
+      const build=document.querySelector('meta[name="setka-release-build"]')?.content;
+      if(build&&build!=="development")address.searchParams.set("build",build);
+    }
     if(tried)address.searchParams.set("retry",String(tried));
     script.dataset.patternId=p.id;
     script.dataset.patternVersion=String(p.version);

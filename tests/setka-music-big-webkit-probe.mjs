@@ -14,6 +14,13 @@ const browser=await (name==="webkit"?webkit:chromium).launch({headless:true});
 try{
  const page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
  if(process.env.SETKA_MUSIC_CANDIDATE==="1"){
+  // Mount the real music entrypoint without the unrelated animated pattern
+  // library. Keep the production origin for the real catalogue and media CORS.
+  await page.route(FRONT,route=>route.fulfill({contentType:"text/html",body:`<!doctype html>
+   <main id="libraryScreen"><div class="library-pager">
+   <button id="setkaMusicPagerButton" aria-label="Музыка">Музыка</button></div>
+   <h1 id="libraryTitle"></h1><div id="librarySwipeArea"></div></main>
+   <script type="module" src="./standalone-music-v1.mjs"></script>`}));
   for(const file of ["standalone-music-v1.mjs","standalone-music-audio-v1.mjs",
    "standalone-music-orbits-reference-20261106.mjs","standalone-music-wav-stream-v1.mjs"]){
    const body=await readFile(new URL("../"+file,import.meta.url));
@@ -21,6 +28,7 @@ try{
   }
  }
  const ranges=[];
+ page.on("crash",()=>console.log("SETKA_WAV_PAGE_CRASH",JSON.stringify(ranges.slice(0,8))));
  page.on("pageerror",error=>console.log("SETKA_PAGE_ERROR",error.message.slice(0,150)));
  page.on("console",message=>{if(message.type()==="error")console.log("SETKA_CONSOLE",message.text().slice(0,180))});
  page.on("response",response=>{
@@ -45,13 +53,7 @@ try{
   };
   AudioContext.prototype.createPanner=function(){
    const node=createPanner.call(this);
-   if(window.wavProbe.analysers.length===0){
-    const splitter=this.createChannelSplitter(2);node.connect(splitter);
-    window.wavProbe.analysers=[0,1].map(channel=>{
-     const analyser=this.createAnalyser();
-     analyser.fftSize=1024;splitter.connect(analyser,channel);return analyser;
-    });
-   }
+   window.wavProbe.panner??=node;
    return node;
   };
  });
@@ -61,11 +63,20 @@ try{
   const diagnostic=await page.evaluate(()=>({
    open:!document.querySelector("#setkaMusicPage")?.hidden,
    status:document.querySelector(".sm-status")?.textContent,tracks:window.SetkaMusicV1?.state?.().tracks
-  }));
+  })).catch(()=>null);
   console.error("SETKA_8D_MUSIC_DIAGNOSTIC",JSON.stringify(diagnostic));
   throw error;
  });
  if(name==="webkit"){
+  await page.waitForFunction(()=>!!window.wavProbe.panner);
+  await page.evaluate(()=>{
+   const probe=window.wavProbe,{panner}=probe,ctx=panner.context;
+   const splitter=ctx.createChannelSplitter(2);panner.connect(splitter);
+   probe.analysers=[0,1].map(channel=>{
+    const analyser=ctx.createAnalyser();
+    analyser.fftSize=1024;splitter.connect(analyser,channel);return analyser;
+   });
+  });
   await page.waitForFunction(id=>{
    const s=SetkaMusicV1.state().active.find(t=>t.id===id),p=window.wavProbe;
    if(s?.transport!=="wav-range"||p.buffers.length<3||p.analysers.length!==2)return false;
@@ -73,7 +84,13 @@ try{
     const pcm=new Float32Array(a.fftSize);a.getFloatTimeDomainData(pcm);
     return pcm.some(x=>Math.abs(x)>1e-5);
    });
-  },track.id,{timeout:65000});
+  },track.id,{timeout:65000}).catch(async error=>{
+   const diagnostic=await page.evaluate(()=>({state:SetkaMusicV1.state(),buffers:window.wavProbe.buffers,
+    audioState:window.wavProbe.panner?.context.state,status:document.querySelector(".sm-status")?.textContent
+   })).catch(()=>null);
+   console.log("SETKA_WAV_PCM_DIAGNOSTIC",JSON.stringify({diagnostic,ranges:ranges.slice(0,12)}));
+   throw error;
+  });
   // Let the second chunk pass the graph's output clock before checking gaps.
   await page.waitForFunction(()=>{
    const p=window.wavProbe;
