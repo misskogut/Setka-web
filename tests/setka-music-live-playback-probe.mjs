@@ -7,14 +7,14 @@ const API="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-music-v1"
 const FRONT="https://misskogut.github.io/Setka-web/standalone-v34.html";
 const catalog=await fetch(API,{signal:AbortSignal.timeout(18000)}).then(r=>r.json());
 assert.ok(catalog.ok&&Array.isArray(catalog.tracks),"live music catalog");
-assert.ok(catalog.tracks.length>=3,"published catalog contains the playback samples");
+assert.ok(catalog.tracks.length>=27&&catalog.tracks.length<=28,"published only verified GitHub audio assets");
 const local=catalog.tracks.find(t=>!t.external_source_path);
 const remote=catalog.tracks.find(t=>t.external_source_path?.includes("утренний лес"));
 const mp3=catalog.tracks.find(t=>t.external_source_path?.endsWith(".mp3"));
 // Large 8D WAV is verified separately in a fresh WebKit AudioContext so
 // consecutive probe contexts do not artificially exhaust Safari resources.
 const samples=[local,remote,mp3];
-assert.ok(samples.every(Boolean),"Supabase local, GitHub Release WAV and MP3 present");
+assert.ok(samples.every(Boolean),"Supabase local, Yandex WAV and MP3 present");
 for(const t of [remote,mp3])assert.match(t.audio_url,/^https:\/\/gfchgaphzhxufwdhrcis\.supabase\.co\/functions\/v1\/setka-music-v1\?stream=/);
 const name=process.env.SETKA_BROWSER==="webkit"?"webkit":"chromium";
 const browser=await (name==="webkit"?webkit:chromium).launch({headless:true});
@@ -73,11 +73,11 @@ try{
     try{e.pause();e.removeAttribute("src");e.load();p.ctx?.close()}catch(_){}
     return out;
    });
-   const type=!track.external_source_path?"supabase-local":track.external_source_path.endsWith(".mp3")?"release-mp3":"release-wav";
+   const type=!track.external_source_path?"supabase-local":track.external_source_path.endsWith(".mp3")?"yandex-mp3":"yandex-wav";
    console.log("REAL_AUDIO_RESULT",JSON.stringify({browser:name,type,...result}));
    assert.ok(!result.missing&&!result.startError&&!result.mediaErrorCode&&result.seconds>0.8&&(!graph||result.ctx==="running"),
     name+" cannot actually play "+type+" in "+(graph?"WebAudio":"native audio"));
-   const minDuration=type==="release-wav"?40:type==="release-mp3"?600:30;
+   const minDuration=type==="yandex-wav"?40:type==="yandex-mp3"?600:30;
    assert.ok(result.duration>minDuration,
     name+" wrong "+type+" duration: this would prematurely cut off the soundtrack");
   }
@@ -86,8 +86,7 @@ try{
  await page.locator("#setka-real-probe").evaluate(el=>el.remove());
  await page.locator("#setkaMusicPagerButton").click();
  await page.locator(".sm-track").first().waitFor({timeout:22000});
- await page.waitForFunction(count=>SetkaMusicV1.state().tracks===count,catalog.tracks.length);
- assert.equal(await page.locator(".sm-track").count(),catalog.tracks.length,"every published track is visible");
+ assert.equal(await page.locator(".sm-track").count(),catalog.tracks.length,"all playable GitHub tracks visible in UI");
  const actual=page.locator(".sm-track").filter({hasText:remote.title});
  const trackButton=await actual.count()===1?actual:page.locator('.sm-track[aria-label^="Утренний лес"]');
  await trackButton.first().click();

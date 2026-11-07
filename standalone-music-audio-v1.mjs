@@ -374,12 +374,12 @@ export class SetkaMusicMixer {
   this.changed();
  }
  stopAll(){for(const id of [...this.items.keys()])this.remove(id);this.mode="static";this.changed()}
- position(s,a,r,snap=false){
+ position(s,a,r,snap=false,t=this.ctx.currentTime){
   if(!snap&&s.angle===a&&s.radius===r)return;
   s.angle=a;s.radius=r;
   if(s.nativeOnly)return;
   const {distance,depth,roomSend}=orbitDepthProfile(r),unit=orbitUnit(a);
-  const x=unit.x*distance,z=unit.z*distance,t=this.ctx.currentTime;
+  const x=unit.x*distance,z=unit.z*distance;
   // One spatial sample, audio timestamp and response for all paths.
   setOrbitPosition(s.panner,x,z,t,snap);
   if(s.roomSend)orbitParam(s.roomSend.gain,roomSend,t,snap);
@@ -424,12 +424,12 @@ export class SetkaMusicMixer {
   if(!this.items.size)return;
   let moved=false;
   const t=Math.max(0,now-this.started),phaseTime=this.phaseOffset+(now-this.motionSpeedAt)*this.omega();
-  const blend=Math.min(1,t/.8);
+  const blend=Math.min(1,t/.8),audioTime=this.ctx.currentTime;
   for(const s of this.items.values()){
    const j=s.motionIndex,base=s.anchorAngle,rad=s.anchorRadius,phase=j*1.71;
    if(s.pendingPose){
     const {angle,radius}=s.pendingPose;s.pendingPose=null;
-    this.position(s,angle,radius);moved=true;
+    this.position(s,angle,radius,false,audioTime);moved=true;
    }
    if(s.manual||this.mode==="static")continue;
    let a=base,r=rad,x=0,y=0;
@@ -449,7 +449,7 @@ export class SetkaMusicMixer {
     y=-Math.cos(base)*rad*(1-blend)+y*blend;
     a=Math.atan2(x,-y);r=Math.min(.94,Math.hypot(x,y));
    }
-   if(s.angle!==a||s.radius!==r){this.position(s,a,r);moved=true}
+   if(s.angle!==a||s.radius!==r){this.position(s,a,r,false,audioTime);moved=true}
   }
   if(moved)this.moved();
  }

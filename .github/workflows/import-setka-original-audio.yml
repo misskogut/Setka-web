@@ -7,6 +7,10 @@ on:
       - ".github/workflows/import-setka-original-audio.yml"
       - "scripts/import-setka-original-audio.py"
       - "docs/SETKA_MUSIC_GITHUB_ASSETS_20261107.json"
+  # Retry only missing originals while Yandex restores a temporarily unavailable source.
+  # Once present with exact SHA-256, the importer skips the file automatically.
+  schedule:
+    - cron: "17 */6 * * *"
   workflow_dispatch:
 
 permissions:
