@@ -195,6 +195,38 @@ try{
  assert.ok(orbitDots.gap>=4,"orbital dots stay above the source icon");
  assert.ok(orbitDots.alignment<1,"orbital dots are centered over their sound icon");
  assert.equal(orbitDots.dotShadow,"none","orbital dots inherit the source icon glow");
+ // Pointer drag bounds must align the ICON CENTER with real ring centerlines.
+ // Middle ring is a regular point in the continuum, not a snapping target.
+ const dragOrbitSource=async target=>{
+  const box=await page.locator(".sm-source").first().boundingBox();
+  await page.mouse.move(box.x+box.width/2,box.y+box.height/2);
+  await page.mouse.down();
+  await page.mouse.move(target.x,target.y,{steps:8});
+  await page.mouse.up();
+  return page.evaluate(()=>{
+   const stage=document.querySelector(".sm-stage").getBoundingClientRect();
+   const source=document.querySelector(".sm-source").getBoundingClientRect();
+   const rings=[...document.querySelectorAll(".sm-ring")].map(el=>el.getBoundingClientRect().width);
+   return {center:{x:stage.x+stage.width/2,y:stage.y+stage.height/2},
+    source:{x:source.x+source.width/2,y:source.y+source.height/2},
+    radius:window.SetkaMusicV1.state().active[0].radius,rings};
+  });
+ };
+ const stageBox=await page.locator(".sm-stage").boundingBox();
+ const center={x:stageBox.x+stageBox.width/2,y:stageBox.y+stageBox.height/2};
+ const inner=await dragOrbitSource(center);
+ assert.ok(Math.abs(inner.radius-.38)<1e-8,"inner ring clamps manual drag");
+ assert.ok(Math.abs(Math.hypot(inner.source.x-inner.center.x,inner.source.y-inner.center.y)-inner.rings[0]/2)<1.1,
+  "icon center lies on real inner ring");
+ const outer=await dragOrbitSource({x:center.x+stageBox.width*.4,y:center.y-stageBox.height*.4});
+ assert.ok(Math.abs(outer.radius-.96)<1e-8,"outer ring clamps manual drag");
+ assert.ok(Math.abs(Math.hypot(outer.source.x-outer.center.x,outer.source.y-outer.center.y)-outer.rings[2]/2)<1.1,
+  "icon center lies on real outer ring");
+ const middle=await dragOrbitSource({x:center.x,y:center.y+stageBox.height*.34});
+ assert.ok(Math.abs(middle.radius-.68)<.01,"middle distance remains freely available");
+ assert.ok(Math.abs(Math.hypot(middle.source.x-middle.center.x,middle.source.y-middle.center.y)-middle.rings[1]/2)<1.1,
+  "middle ring passes through icon center without snapping");
+
 
  assert.equal(await page.locator(".sm-motion").nth(2).locator(".sm-asset-icon").count(),1,"server-supplied counter-motion icon skin displayed as mask (static has no button)");
  await page.screenshot({path:"tests/visual-smoke/music-orbits-"+(process.env.SETKA_BROWSER||"chromium")+".png"});
