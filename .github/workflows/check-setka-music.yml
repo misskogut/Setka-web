@@ -69,8 +69,8 @@ jobs:
       - run: node tests/setka-music-restored-sheet-browser.mjs
         env:
           SETKA_BROWSER: ${{ matrix.browser }}
-      - name: Probe final Yandex CDN Safari duration (temporary diagnostic)
-        run: node tests/setka-music-mds-direct-probe.mjs
+      - name: Verify 8D full WAV with fresh spatial audio context
+        run: node tests/setka-music-big-webkit-probe.mjs
         continue-on-error: true
         env:
           SETKA_BROWSER: ${{ matrix.browser }}
