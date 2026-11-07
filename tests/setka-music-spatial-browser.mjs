@@ -126,15 +126,14 @@ try{
   async function impulse(angle,radius,{left=1,right=null,path="dry"}={}){
    const ctx=new OfflineAudioContext(2,Math.ceil(rate*.32),rate),mixer=new SetkaMusicMixer();
    mixer.ctx=ctx;
-   const wet=path==="wet",bus=ctx.createGain();
-   const room=wet?mixer.makeRoom(bus):null;
+   const early=path==="wet"||path==="early",late=path==="wet"||path==="late";
+   const bus=ctx.createGain(),room=late?mixer.makeRoom(bus):null;
    const voice=createOrbitVoice(ctx,bus,room,"HRTF");
    voice.gain.gain.value=.4;
    mixer.position(voice,angle,radius,true);
-   if(wet){
-    mixer.roomOutput.connect(ctx.destination);
-    for(const wall of voice.reflections)wall.delay.connect(ctx.destination);
-   }else voice.panner.connect(ctx.destination);
+   if(late)mixer.roomOutput.connect(ctx.destination);
+   if(early)for(const wall of voice.reflections)wall.delay.connect(ctx.destination);
+   if(!early&&!late)voice.panner.connect(ctx.destination);
    const source=ctx.createBufferSource(),buffer=ctx.createBuffer(right===null?1:2,256,rate);
    // A short broadband burst also exercises engines which optimize away a
    // one-sample buffer at the input of nodes with convolution tails.
@@ -151,6 +150,12 @@ try{
   }
   const energy=x=>x.reduce((a,v)=>a+v*v,0);
   const sum=x=>energy(x[0])+energy(x[1]);
+  const arrival=pair=>{
+   const amplitude=Array.from(pair[0],(l,i)=>Math.max(Math.abs(l),Math.abs(pair[1][i])));
+   const peak=Math.max(...amplitude);
+   return {at:amplitude.findIndex(v=>v>Math.max(peak*.002,1e-6))/rate-.05,peak,
+    beforeWall:amplitude.slice(0,Math.round(.1*rate)).reduce((a,v)=>a+v*v,0)};
+  };
   const results=[];
   for(const angle of angles){
    const byRadius=[];
@@ -166,10 +171,17 @@ try{
   const rear=await impulse(Math.PI,.55),hardPan=await impulse(0,.55,{right:0});
   const inverted=await impulse(0,.55,{right:-1});
   const difference=(a,b)=>a.reduce((total,ear,i)=>total+ear.reduce((s,x,j)=>s+(x-b[i][j])**2,0),0);
-  return {results,monoDelta:difference(mono,dual)/sum(mono),
+  const diagnostic={};
+  for(const path of ["dry","early","late"])diagnostic[path]=arrival(await impulse(0,.22,{path}));
+  const ctx=new OfflineAudioContext(2,12000,rate),delay=ctx.createDelay(.2),osc=ctx.createOscillator();
+  delay.delayTime.value=.064;osc.connect(delay);delay.connect(ctx.destination);osc.start(.05);
+  const trace=await ctx.startRendering();
+  diagnostic.nativeDelay=arrival([trace.getChannelData(0),trace.getChannelData(1)]);
+  return {results,diagnostic,monoDelta:difference(mono,dual)/sum(mono),
    frontBackDelta:difference(mono,rear)/sum(mono),
    hardPanRight:energy(hardPan[1])/energy(mono[1]),antiPhase:sum(inverted)/sum(mono)};
  },{angles,radii});
+ console.log("ORBIT_OFFLINE_PATHS",JSON.stringify(pcm.diagnostic));
  for(let i=0;i<8;i++){
   const row=pcm.results[i];
   for(const [j,{l,r,dry,wet,earliest,wall}] of row.entries()){
