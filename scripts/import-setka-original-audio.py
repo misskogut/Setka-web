@@ -67,6 +67,66 @@ def trusted_metadata(entry):
         raise ValueError("unexpected media host for " + entry["path"])
     return url
 
+# A source CDN can intermittently return 500 from a GitHub runner's region.
+# SETKA's existing CORS-enabled audio endpoint exposes verified byte ranges of
+# the same original media, so it is a safe alternate path to copy source bytes.
+EDGE_CATALOG="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-music-v1"
+_EDGE_AUDIO=None
+
+def edge_audio_url(path):
+    global _EDGE_AUDIO
+    if _EDGE_AUDIO is None:
+        req=urllib.request.Request(EDGE_CATALOG, headers={"User-Agent":"SETKA-GitHub-Import/1.0"})
+        with urllib.request.urlopen(req,timeout=45) as resp:
+            obj=json.load(resp)
+        if not obj.get("ok") or not isinstance(obj.get("tracks"),list):
+            raise RuntimeError("SETKA catalog is unavailable")
+        _EDGE_AUDIO={t["external_source_path"]:t["audio_url"] for t in obj["tracks"]
+                     if t.get("external_source_path") and t.get("audio_url")}
+    target=_EDGE_AUDIO.get(path)
+    if not target or not target.startswith(EDGE_CATALOG+"?stream="):
+        raise RuntimeError("no verified range source for "+path)
+    return target
+
+def download_via_verified_ranges(entry,dest):
+    uri=edge_audio_url(entry["path"])
+    checksum=hashlib.sha256()
+    size=entry["bytes"]
+    span=2*1024*1024
+    total=0
+    with dest.open("wb") as output:
+        for start in range(0,size,span):
+            end=min(size-1,start+span-1)
+            for attempt in range(1,5):
+                try:
+                    req=urllib.request.Request(uri,headers={
+                       "Range":f"bytes={start}-{end}",
+                       "User-Agent":"SETKA-GitHub-Original-Audio-Import/1.0"})
+                    with urllib.request.urlopen(req,timeout=90) as response:
+                        if response.status!=206:
+                            raise RuntimeError("missing range response")
+                        if response.headers.get("Content-Range","")!=f"bytes {start}-{end}/{size}":
+                            raise RuntimeError("range mismatch")
+                        body=response.read(end-start+2)
+                    if len(body)!=end-start+1:
+                        raise RuntimeError("truncated media range")
+                    output.write(body)
+                    checksum.update(body)
+                    total+=len(body)
+                    break
+                except Exception as error:
+                    if attempt==4:
+                        raise
+                    print(f"Retry verified range {start}-{end}, attempt {attempt}: "
+                          f"{type(error).__name__}",flush=True)
+                    time.sleep(attempt*3)
+            if total//(64*1024*1024)!=(total-(end-start+1))//(64*1024*1024):
+                print(f"Verified range transfer progress: {total:,}/{size:,} bytes",flush=True)
+    if total!=size or checksum.hexdigest().lower()!=entry["sha256"].lower():
+        raise ValueError("verified range source SHA-256 mismatch")
+    print(f"Copied original soundtrack through verified SETKA ranges: {total:,} bytes",flush=True)
+    return dest
+
 def download(entry):
     dest = OUT / entry["asset_name"]
     for attempt in range(1, 6):
@@ -101,6 +161,13 @@ def download(entry):
             http_code = getattr(error, "code", None)
             print(f"Download attempt {attempt}/5 failed at {stage} for {entry['asset_name']}: "
                   f"{type(error).__name__}, HTTP={http_code}", flush=True)
+            if attempt>=2 and not entry.get("existing_local"):
+                try:
+                    print("Switching this original audio to verified byte-range transfer",flush=True)
+                    return download_via_verified_ranges(entry,dest)
+                except Exception as alt:
+                    dest.unlink(missing_ok=True)
+                    print(f"Alternate source attempt failed: {type(alt).__name__}",flush=True)
             if attempt == 5:
                 raise
             time.sleep(5 * attempt)
