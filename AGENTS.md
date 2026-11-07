@@ -15,6 +15,8 @@
 6. Synchronization must be verified with server write/read-back, revision/cursor, reconnection, stale-response and real two-client/research tests; 30-second polling is **not** realtime. Measure p50/p95 latency and preview performance before promising instant or lag-free behavior.
 7. Changes must pass build/contract tests, Chromium and WebKit integrations, v34 smoke, non-destructive archive/reload, and appropriate real-device verification. No release with known required gate failing. Report `implemented`, `tested in CI`, `deployed` and `verified on actual device` as distinct states; avoid claiming one implies another.
 
+**Standing owner instruction (2026-11-07):** The SETKA owner delegates the execution of technical tasks end-to-end: inspect the repository and live services, implement, test, and deploy through available connected tools. Do not send code, instructions, or a to-do list back to the owner instead of doing the work. Ask only when an external permission or genuinely missing requirement blocks execution. Report real completion states accurately; never claim a deployment/device test without evidence. This rule is persistent across follow-up tasks.
+
 **Before coding:** state verified reality → risk → single reusable subsystem change → unaffected components. **After:** list proof (test names / build SHA / deployment / gaps). Prefer root-cause removal and backwards-compatible migration over wrappers; never delete old records or thin out the full research admin to make tests pass.
 
 ## Existing runtime / flight recorder rules
