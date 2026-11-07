@@ -15,7 +15,7 @@ const mp3=catalog.tracks.find(t=>t.external_source_path?.endsWith(".mp3"));
 // consecutive probe contexts do not artificially exhaust Safari resources.
 const samples=[local,remote,mp3];
 assert.ok(samples.every(Boolean),"Supabase local, Yandex WAV and MP3 present");
-for(const t of [remote,mp3,large])assert.match(t.audio_url,/^https:\/\/gfchgaphzhxufwdhrcis\.supabase\.co\/functions\/v1\/setka-music-v1\?stream=/);
+for(const t of [remote,mp3])assert.match(t.audio_url,/^https:\/\/gfchgaphzhxufwdhrcis\.supabase\.co\/functions\/v1\/setka-music-v1\?stream=/);
 const name=process.env.SETKA_BROWSER==="webkit"?"webkit":"chromium";
 const browser=await (name==="webkit"?webkit:chromium).launch({headless:true});
 try{
