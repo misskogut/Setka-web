@@ -66,7 +66,7 @@ jobs:
       - run: npx playwright install --with-deps ${{ matrix.browser }}
       - run: node scripts/build-pattern-manifest.mjs
       - run: node scripts/build-pattern-manifest.mjs
-      - run: node tests/setka-music-master-sheet-browser.mjs
+      - run: node tests/setka-music-restored-sheet-browser.mjs
         env:
           SETKA_BROWSER: ${{ matrix.browser }}
       - run: node tests/setka-music-browser-smoke.mjs
