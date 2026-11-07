@@ -40,12 +40,13 @@ jobs:
           node --check standalone-music-legacy-icons-v1.mjs
           node --check standalone-music-vintage-icons-v2.mjs
           node --check standalone-music-audio-v1.mjs
+          node --check standalone-music-wav-stream-v1.mjs
           node --check standalone-music-orbits-v1.mjs
           node --check standalone-music-v1.mjs
           node --check research-v1/music-admin.mjs
           node --check research-v1/app.mjs
       - name: Audio and admin contracts
-        run: node --test tests/setka-music-v1.test.mjs tests/setka-music-icons-v2.test.mjs tests/setka-music-trace-smoothing-v1.test.mjs tests/setka-music-yandex-stream-v1.test.mjs
+        run: node --test tests/setka-music-v1.test.mjs tests/setka-music-icons-v2.test.mjs tests/setka-music-trace-smoothing-v1.test.mjs tests/setka-music-yandex-stream-v1.test.mjs tests/setka-music-spatial.test.mjs
       - name: Verify public catalog API without credentials
         run: |
           curl --fail --silent --show-error --max-time 15 https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-music-v1 -o /tmp/setka-music-catalog.json
@@ -66,6 +67,9 @@ jobs:
       - run: npx playwright install --with-deps ${{ matrix.browser }}
       - run: node scripts/build-pattern-manifest.mjs
       - run: node scripts/build-pattern-manifest.mjs
+      - run: node tests/setka-music-spatial-browser.mjs
+        env:
+          SETKA_BROWSER: ${{ matrix.browser }}
       - run: node tests/setka-music-restored-sheet-browser.mjs
         env:
           SETKA_BROWSER: ${{ matrix.browser }}
@@ -79,6 +83,7 @@ jobs:
         run: node tests/setka-music-big-webkit-probe.mjs
         env:
           SETKA_BROWSER: ${{ matrix.browser }}
+          SETKA_MUSIC_CANDIDATE: "1"
       - name: Require real Yandex WAV, MP3 and Storage playback (no fake media events)
         run: node tests/setka-music-live-playback-probe.mjs
         env:

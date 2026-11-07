@@ -36,18 +36,18 @@ test("orbit presets are eight explicit, independent trajectories",()=>{
  assert.equal(mixer.omega()>0,true);
  mixer.speed=0;const slow=mixer.omega();mixer.speed=100;assert.ok(mixer.omega()>slow*30);
  const pos=[];
- mixer.ctx={currentTime:0};
- mixer.items.set("test",{id:"test",track:{loop:false},decks:[],angle:0,radius:.6,anchorAngle:0,anchorRadius:.6,manual:false,
+ mixer.ctx={currentTime:0};mixer.scheduleFrame=()=>{};
+ mixer.items.set("test",{id:"test",track:{loop:false},decks:[],angle:0,radius:.6,anchorAngle:0,anchorRadius:.6,manual:false,motionIndex:0,
   panner:{setPosition(x,y,z){pos.push([x,y,z])}}});
- mixer.motion("cw");mixer.started-=3;mixer.tick();
+ mixer.motion("cw");mixer.tick(mixer.started+3);
  assert.ok(mixer.items.get("test").angle>0,"clockwise advances from its existing anchor");
- mixer.motion("ccw");mixer.started-=3;mixer.tick();
+ mixer.motion("ccw");mixer.tick(mixer.started+3);
  assert.ok(pos.length>0,"spatial panner updated");
- mixer.drag("test",Math.PI/2,.35);
+ mixer.drag("test",Math.PI/2,.35);mixer.tick();
  assert.equal(mixer.items.get("test").manual,true);
  assert.equal(mixer.items.get("test").radius,ORBIT_RADIUS_MIN);
  mixer.motion("breath");assert.equal(mixer.items.get("test").manual,false);
- mixer.started-=3;mixer.tick();
+ mixer.tick(mixer.started+3);
  assert.ok(mixer.items.get("test").radius>=.33);
 });
 test("source centers, manual positions and automatic motion share ring boundaries",()=>{
@@ -60,15 +60,15 @@ test("source centers, manual positions and automatic motion share ring boundarie
   const value=clampOrbitRadius(r);
   assert.ok(value>=ORBIT_RADIUS_MIN&&value<=ORBIT_RADIUS_MAX);
  }
- const positions=[],mixer=new SetkaMusicMixer();mixer.ctx={currentTime:0};
+ const positions=[],mixer=new SetkaMusicMixer();mixer.ctx={currentTime:0};mixer.scheduleFrame=()=>{};
  const s={id:"annulus",angle:0,radius:.62,anchorAngle:0,anchorRadius:.62,
-  manual:false,track:{loop:false},decks:[],panner:{setPosition(x,y,z){positions.push([x,y,z])}}};
+  manual:false,motionIndex:0,track:{loop:false},decks:[],panner:{setPosition(x,y,z){positions.push([x,y,z])}}};
  mixer.items.set(s.id,s);
- mixer.drag(s.id,Math.PI/2,0);
+ mixer.drag(s.id,Math.PI/2,0);mixer.tick();
  assert.equal(s.radius,ORBIT_RADIUS_MIN,"finger on listener cannot move icon center inside inner circle");
  assert.equal(s.anchorRadius,ORBIT_RADIUS_MIN);
  assert.ok(Math.abs(positions.at(-1)[0]-orbitDepthProfile(ORBIT_RADIUS_MIN).distance)<1e-8);
- mixer.drag(s.id,-Math.PI/2,20);
+ mixer.drag(s.id,-Math.PI/2,20);mixer.tick();
  assert.equal(s.radius,ORBIT_RADIUS_MAX,"finger outside the stage cannot move icon center beyond outer circle");
  assert.equal(s.anchorRadius,ORBIT_RADIUS_MAX);
  assert.ok(Math.abs(positions.at(-1)[0]+orbitDepthProfile(ORBIT_RADIUS_MAX).distance)<1e-8);
@@ -186,23 +186,14 @@ test("wall reflections use individual spatialized WebAudio paths; late room is s
   assert.equal(path.panner.panningModel,"HRTF");
   assert.equal(path.panner.distanceModel,"linear");
   assert.equal(path.panner.rolloffFactor,0,"reflection gain is controlled once");
-  assert.ok(path.delay.connections.includes(path.filter));
+  assert.ok(input.connections.includes(path.filter));
   assert.ok(path.filter.connections.includes(path.gain));
   assert.ok(path.gain.connections.includes(path.panner));
-  assert.ok(path.panner.connections.includes(master),"each reflection mixes into master");
+  assert.ok(path.panner.connections.includes(path.delay));
+  assert.ok(path.delay.connections.includes(master));
  }
  const extra=createOrbitEarlyReflections(ctx,input,master,"equalpower");
  assert.ok(extra.every(p=>p.panner.panningModel==="equalpower"),"lower-cost overflow is supported on mobile");
  const failed=createOrbitEarlyReflections({createDelay(){throw Error("unsupported")}},input,master);
  assert.deepEqual(failed,[],"graceful fallback retains direct HRTF without effects");
-});
-test("spatial audio graph remains dry/HRTF plus directional reflections plus diffuse pre-HRTF late room",()=>{
- const js=file("standalone-music-audio-v1.mjs");
- assert.match(js,/gain\.connect\(rearFilter\);rearFilter\.connect\(panner\);panner\.connect\(this\.master\)/);
- assert.match(js,/rearFilter\.connect\(roomSend\);roomSend\.connect\(this\.room\)/,"late room is not doubly attenuated");
- assert.doesNotMatch(js,/panner\.connect\(roomSend\)/,"old same-direction echoes are forbidden");
- assert.match(js,/const reflections=createOrbitEarlyReflections\(this\.ctx,rearFilter,this\.master,/);
- assert.match(js,/reflection\.delay\.delayTime\.setTargetAtTime\(q\.delay,t,\.12\)/);
- assert.match(js,/reflection\.gain\.gain\.setTargetAtTime\(q\.gain,t,response\)/);
- assert.match(js,/for\(const r of s\.reflections\|\|\[\]\)/,"every effect is disconnected on removal");
 });
