@@ -1,5 +1,5 @@
 // SETKA Music · one global track-icon order, independent of category filters.
-import {iconSvg} from "../standalone-music-icons-v1.mjs?v=4-vintage-plus-hidden-20261107";
+import {iconSvg} from "../standalone-music-icons-v1.mjs?v=5-vintage-final-20261107";
 import {assetIconMask} from "../standalone-music-ui-icons-v2.mjs?v=4-exact-approved-vector-20261106";
 
 const element=(tag,cls,value)=>{
