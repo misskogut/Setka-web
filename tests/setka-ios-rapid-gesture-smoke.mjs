@@ -97,7 +97,12 @@ try{
    "rapid interactions must coalesce full archive writes: "+JSON.stringify(stats));
   assert.ok(stats.configWrites<Math.ceil(count/5)+5,
    "rapid interactions must also coalesce last-pattern-config writes: "+JSON.stringify(stats));
-  await page.waitForTimeout(1100);
+  // WebKit can throttle a callback behind a saturated Canvas main thread;
+  // observe whether the pending batch actually commits without intervening.
+  await page.waitForFunction(()=>{
+   const key=window.SetkaDataScopeV1?.key?.("setka-standalone:v34")||"setka-standalone:v34";
+   try{return !!JSON.parse(localStorage.getItem(key)||"null")?.events?.some(e=>e.type==="gesture_end")}catch(_){return false}
+  },null,{timeout:4500}).catch(()=>{});
   const durable=await page.evaluate(async()=>{
    const C=window.SetkaStandaloneV34;
    const key=window.SetkaDataScopeV1?.key?.("setka-standalone:v34")||"setka-standalone:v34";
@@ -109,12 +114,17 @@ try{
    if(status.kind==="indexedDB"){
     try{indexed=(await window.SetkaPersonalStorageV1?.read?.())?.payload||null}catch(_){}
    }
-   return {
-    saved:!!(local?.events?.some(e=>e.type==="gesture_end")||indexed?.events?.some(e=>e.type==="gesture_end")),
-    inMemory:C.getData().events.filter(e=>e.type==="gesture_end").length,
+   const saved=!!(local?.events?.some(e=>e.type==="gesture_end")||indexed?.events?.some(e=>e.type==="gesture_end"));
+   const info={
+    saved,inMemory:C.getData().events.filter(e=>e.type==="gesture_end").length,
     localEvents:local?.events?.length||0,indexedEvents:indexed?.events?.length||0,
-    storageStatus:status,scope:key
+    storageStatus:status,scope:key,visibility:document.visibilityState
    };
+   if(!saved){
+    info.manualSaveResult=C.save();
+    try{info.afterManualEvents=JSON.parse(localStorage.getItem(key)||"null")?.events?.length||0}catch(_){}
+   }
+   return info;
   });
   assert.equal(durable.saved,true,
    "batched touch events must be durable in localStorage or IndexedDB: "+JSON.stringify(durable));
