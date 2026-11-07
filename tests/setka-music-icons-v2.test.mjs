@@ -85,7 +85,7 @@ test("nature category uses user's exact option 7: five bars and two leaves",()=>
    "the same option 7 is used in admin category previews");
 });
 
-test("all twenty old-app music symbols are screenshot-traced vectors, not replacements for category tabs",()=>{
+test("all twenty old-app music symbols are clean authored vector masters, not replacements for tabs",()=>{
  const names=["old-cat","old-mandala","old-hamsa","old-wheel-flowers",
   "old-bonfire","old-singing-bowl","old-seascape","old-mala",
   "old-forest","old-triple-drop","old-planet-orbit","old-sound-bowl",
@@ -97,10 +97,10 @@ test("all twenty old-app music symbols are screenshot-traced vectors, not replac
  for(const id of names){
   assert.ok(ICON_NAMES.includes(id),"new screenshot icon must be selectable in track gallery: "+id);
   const svg=iconSvg(id);
-  assert.match(svg,/viewBox="0 0 90 90"/);
+  assert.match(svg,/viewBox="0 0 100 100"/);
   assert.match(svg,/fill-rule="evenodd"/,"contour holes must remain open");
-  assert.match(svg,/fill="currentColor"/);
-  assert.match(svg,/<path d="M[0-9]/,"trace is a real vector, not a data URL or an emoji");
+  assert.match(svg,/stroke="currentColor"/);
+  assert.match(svg,/<(?:path|circle|ellipse)\b/,"master consists of intentional vector geometry");
   assert.equal(svg,legacyMusicSVG(id));
  }
  assert.notEqual(iconSvg("old-cat"),iconSvg("cat"),"preserve existing icon while adding exact old glyph");
@@ -117,7 +117,7 @@ test("26 unique sound glyphs from newer screenshots extend 20 old app glyphs wit
  const old=new Set(LEGACY_MUSIC_ICON_NAMES);
  for(const key of VINTAGE_SOUND_ICON_KEYS){
   assert.ok(!old.has(key),"legacy duplicate key was re-added: "+key);
-  assert.match(iconSvg(key),/viewBox="0 0 90 90"/);
+  assert.match(iconSvg(key),/viewBox="0 0 100 100"/);
   assert.match(iconSvg(key),/fill-rule="evenodd"/);
   assert.equal(iconSvg(key),vintageSoundSVG(key));
  }
