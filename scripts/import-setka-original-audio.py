@@ -69,9 +69,11 @@ def trusted_metadata(entry):
 
 def download(entry):
     dest = OUT / entry["asset_name"]
-    for attempt in range(1, 5):
+    for attempt in range(1, 6):
+        stage = "metadata"
         try:
             link = trusted_metadata(entry)
+            stage = "download"
             request = urllib.request.Request(link, headers={"User-Agent": "SETKA-GitHub-Original-Audio-Import/1.0"})
             sha = hashlib.sha256()
             seen = 0
@@ -96,17 +98,19 @@ def download(entry):
         except Exception as error:
             dest.unlink(missing_ok=True)
             # Do not log signed Yandex URLs or credentials.
-            print(f"Download attempt {attempt}/4 failed for {entry['asset_name']}: "
-                  f"{type(error).__name__}", flush=True)
-            if attempt == 4:
+            http_code = getattr(error, "code", None)
+            print(f"Download attempt {attempt}/5 failed at {stage} for {entry['asset_name']}: "
+                  f"{type(error).__name__}, HTTP={http_code}", flush=True)
+            if attempt == 5:
                 raise
-            time.sleep(4 * attempt)
+            time.sleep(5 * attempt)
     raise RuntimeError("unreachable")
 
 def main():
     if not os.environ.get("GH_TOKEN"):
         raise RuntimeError("GH_TOKEN is needed from GitHub Actions permission contents:write")
     existing = ensure_release()
+    failures=[]
     for index, entry in enumerate(FILES, 1):
         name = entry["asset_name"]
         previous = existing.get(name)
@@ -119,22 +123,28 @@ def main():
             gh("api", "-X", "DELETE", f"repos/{REPO}/releases/assets/{previous['id']}")
         print(f"[{index}/{len(FILES)}] Importing {entry['path']} "
               f"({entry['bytes']:,} bytes)", flush=True)
-        dest = download(entry)
         try:
-            subprocess.run(["gh", "release", "upload", TAG, f"{dest}#{name}",
-                            "--repo", REPO], check=True, timeout=1800)
-        finally:
-            dest.unlink(missing_ok=True)
-        uploaded = release_assets() or {}
-        final = uploaded.get(name)
-        if not final or final.get("size") != entry["bytes"]:
-            raise RuntimeError("GitHub asset missing or wrong byte count after upload: "+name)
-        if final.get("digest") and final["digest"].lower() != "sha256:"+entry["sha256"].lower():
-            raise RuntimeError("GitHub asset sha256 mismatch: "+name)
-        existing = uploaded
-        print(f"Verified on GitHub: {name}, {entry['bytes']:,} bytes", flush=True)
+            dest = download(entry)
+            try:
+                subprocess.run(["gh", "release", "upload", TAG, f"{dest}#{name}",
+                                "--repo", REPO], check=True, timeout=1800)
+            finally:
+                dest.unlink(missing_ok=True)
+            uploaded = release_assets() or {}
+            final = uploaded.get(name)
+            if not final or final.get("size") != entry["bytes"]:
+                raise RuntimeError("GitHub asset missing or wrong byte count after upload: "+name)
+            if final.get("digest") and final["digest"].lower() != "sha256:"+entry["sha256"].lower():
+                raise RuntimeError("GitHub asset sha256 mismatch: "+name)
+            existing = uploaded
+            print(f"Verified on GitHub: {name}, {entry['bytes']:,} bytes", flush=True)
+        except Exception as error:
+            failures.append(name)
+            print(f"Deferring {name} to next retry pass: {type(error).__name__}", flush=True)
     final = release_assets() or {}
-    assert all(x["asset_name"] in final and final[x["asset_name"]]["size"] == x["bytes"] for x in FILES)
+    missing=[x["asset_name"] for x in FILES if x["asset_name"] not in final or final[x["asset_name"]]["size"] != x["bytes"]]
+    if failures or missing:
+        raise RuntimeError(f"Partial transfer: {len(final)}/28 assets, {len(missing)} missing; run again to resume")
     print("IMPORT COMPLETE: all 28 unchanged original audio assets verified on GitHub release.", flush=True)
 
 if __name__ == "__main__":
