@@ -1,0 +1,41 @@
+name: Upload original SETKA audio into this GitHub repository
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/import-setka-original-audio.yml"
+      - "scripts/import-setka-original-audio.py"
+      - "docs/SETKA_MUSIC_GITHUB_ASSETS_20261107.json"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: setka-original-audio-import
+  cancel-in-progress: false
+
+jobs:
+  upload-original-sounds:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify full original audio manifest
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,re
+          m=json.load(open("docs/SETKA_MUSIC_GITHUB_ASSETS_20261107.json"))
+          assert len(m["files"]) == 28
+          assert sum(t["bytes"] for t in m["files"]) == 2687247923
+          for t in m["files"]:
+              assert re.fullmatch(r"[0-9a-f]{64}",t["sha256"])
+              assert t["asset_name"] == "setka-original-"+t["sha256"][:24]+"."+t["path"].split(".")[-1].lower()
+          print("28 original files, verified inventory 2,687,247,923 bytes")
+          PY
+      - name: Transfer and verify every original WAV/MP3 on GitHub Release
+        run: python3 -u scripts/import-setka-original-audio.py
+        env:
+          GH_TOKEN: ${{ github.token }}
