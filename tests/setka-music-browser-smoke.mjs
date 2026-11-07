@@ -172,6 +172,9 @@ try{
  await page.locator(".sm-track").nth(0).click();await page.locator(".sm-track").nth(1).click();
  await page.locator(".sm-category").last().click();
  assert.equal(await page.locator(".sm-source").count(),2,"two active tracks appear on orbits");
+ const orbitAudio=await page.evaluate(()=>window.SetkaMusicV1.state().active);
+ assert.ok(orbitAudio.length===2&&orbitAudio.every(item=>item.earlyReflections===2),
+  "both live WebAudio sources have two independent directional early reflections");
  const sourceSkin=await page.locator(".sm-source").first().evaluate(el=>{
   const c=getComputedStyle(el),size=el.getBoundingClientRect();
   return {background:c.backgroundColor,border:c.borderTopWidth,shadow:c.boxShadow,
