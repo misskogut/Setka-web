@@ -69,6 +69,11 @@ jobs:
       - run: node tests/setka-music-restored-sheet-browser.mjs
         env:
           SETKA_BROWSER: ${{ matrix.browser }}
+      - name: Probe final Yandex CDN Safari duration (temporary diagnostic)
+        run: node tests/setka-music-mds-direct-probe.mjs
+        continue-on-error: true
+        env:
+          SETKA_BROWSER: ${{ matrix.browser }}
       - name: Probe real Yandex and Storage audio playback (temporary diagnostic)
         run: node tests/setka-music-live-playback-probe.mjs
         continue-on-error: true
