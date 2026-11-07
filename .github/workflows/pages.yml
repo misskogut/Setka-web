@@ -38,6 +38,8 @@ jobs:
         run: node --test tests/pattern-autodiscovery.test.mjs tests/pattern-platform-v2.test.mjs tests/pattern-settings-compact.test.mjs tests/pattern-publication.test.mjs tests/pattern-medusa.test.mjs tests/standalone-star-flight.test.mjs tests/standalone-radial-wave.test.mjs tests/standalone-hemispheric-spirals.test.mjs tests/standalone-interlaced-spirals.test.mjs tests/pattern-camera-proximity.test.mjs tests/standalone-matrix-trampoline.test.mjs tests/standalone-branching-impulse.test.mjs tests/standalone-genuary-16x16.test.mjs tests/standalone-hexwave.test.mjs
       - name: Verify warm-start caching and per-renderer asset invalidation
         run: node --test tests/setka-startup-cache-v1.test.mjs
+      - name: Reject Safari gesture crashes and synchronous archive rewrite storms
+        run: node --test tests/setka-gameplay-touch-write-gate.test.mjs
       - name: Verify music icon vector geometry before publishing
         run: node --test tests/setka-music-icons-v2.test.mjs tests/setka-music-trace-smoothing-v1.test.mjs
       - name: Setup Pages
