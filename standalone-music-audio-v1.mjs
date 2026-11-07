@@ -1,23 +1,17 @@
 // SETKA Music: one persistent WebAudio mixer shared by the catalog and orbit editor.
-// A short deterministic, stereo room impulse: early wall reflections plus
-// a diffuse, exponentially decaying tail. Generated in memory once; no uploads,
-// transcoding, or changes to the source audio.
+// Diffuse stereo late-room tail. Directional first reflections are separate
+// HRTF wall images (below) and must not also appear in this impulse.
+// Generated once in memory; uploaded audio is never changed or transcoded.
 function setkaRoomImpulse(ctx){
- const rate=ctx.sampleRate,seconds=1.22;
+ const rate=ctx.sampleRate,seconds=1.28;
  const buffer=ctx.createBuffer(2,Math.ceil(rate*seconds),rate);
- const taps=[[.019,.20],[.033,-.14],[.047,.11],[.061,-.095],[.084,.075],[.108,-.052]];
  let seed=0x5345544b;
  const rand=()=>{seed=(Math.imul(1664525,seed)+1013904223)>>>0;return seed/4294967296*2-1;};
  for(let channel=0;channel<2;channel++){
   const data=buffer.getChannelData(channel);
-  for(let i=0;i<taps.length;i++){
-   const [delay,amplitude]=taps[i];
-   const at=Math.round(rate*(delay+(channel?((i%3)-1)*.003:0)));
-   if(at>0&&at<data.length)data[at]+=amplitude*(channel&&i%2?-.82:1);
-  }
-  for(let i=Math.round(rate*.055);i<data.length;i++){
-   const t=i/rate,entrance=Math.min(1,(t-.055)/.065);
-   data[i]+=rand()*.0065*entrance*Math.exp(-5.65*(t-.055));
+  for(let i=Math.round(rate*.075);i<data.length;i++){
+   const t=i/rate,entrance=Math.min(1,(t-.075)/.08);
+   data[i]+=rand()*.007*entrance*Math.exp(-5.2*(t-.075));
   }
  }
  return buffer;
@@ -27,10 +21,10 @@ function setkaRoomImpulse(ctx){
 export function orbitUnit(angle){
  return {x:Math.sin(angle),z:-Math.cos(angle)};
 }
-// Shared physical distance model for the direct and spatialized room paths.
-// The room send is POST-HRTF (correct angle) and needs inverse-distance
-// compensation so reflections do not vanish a second time as sources recede.
+// Single acoustic geometry shared by sound placement and room rendering.
+// Existing near/far distances and azimuths are unchanged.
 const ORBIT_REF_DISTANCE=2.05,ORBIT_ROLLOFF=.9,ORBIT_MAX_DISTANCE=19;
+const ROOM_HALF_WIDTH=12,SPEED_OF_SOUND=343,MAX_EARLY_HRTF_SOURCES=6;
 const clampOrbit=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
 const smoothOrbit=(a,b,x)=>{
  const u=clampOrbit((x-a)/(b-a),0,1);
@@ -41,15 +35,63 @@ export function orbitDepthProfile(radius){
  const depth=smoothOrbit(.14,.94,r);
  const nearCenter=smoothOrbit(0,.16,r);
  const distance=(ORBIT_REF_DISTANCE+7.25*Math.pow(depth,1.15))*nearCenter;
- // WebAudio PannerNode inverse attenuation (distance <= maxDistance).
  const actual=Math.max(ORBIT_REF_DISTANCE,Math.min(ORBIT_MAX_DISTANCE,distance));
  const directAttenuation=ORBIT_REF_DISTANCE/
   (ORBIT_REF_DISTANCE+ORBIT_ROLLOFF*(actual-ORBIT_REF_DISTANCE));
- // Restore the 2026-11-07 pre-HRTF room-level curve while keeping the
- // room signal behind the HRTF panner, with correct lateral/rear location.
+ // Late diffuse room branches before the distance-attenuating dry Panner.
+ // The level reaches the shared convolver without a second attenuation.
  const originalRoomLevel=.012+.19*Math.pow(depth,1.4);
- const roomSend=Math.min(1,originalRoomLevel/directAttenuation);
+ const roomSend=originalRoomLevel;
  return {distance,depth,directAttenuation,roomSend,originalRoomLevel};
+}
+// First-order image-source model: side walls mirror the real sound around
+// the listener. Delay, high-frequency absorption and reflected arrival
+// direction all respond to the actual sound's radius and azimuth.
+export function orbitEarlyReflectionProfile(angle,radius){
+ const {distance,depth}=orbitDepthProfile(radius),unit=orbitUnit(angle);
+ const x=unit.x*distance,z=unit.z*distance;
+ return [-1,1].map((side,index)=>{
+  const imageX=2*side*ROOM_HALF_WIDTH-x,imageZ=z;
+  const pathLength=Math.hypot(imageX,imageZ);
+  const delay=clampOrbit((pathLength-distance)/SPEED_OF_SOUND,.009,.11);
+  const gain=Math.min(.16,(.075+.105*depth)*(distance+3)/(pathLength+3)*1.3);
+  const cutoff=clampOrbit(9100-180*(pathLength-10)-400*depth,3900,9000);
+  return {side,index,delay,gain,cutoff,
+   x:imageX/pathLength*ORBIT_REF_DISTANCE,
+   z:imageZ/pathLength*ORBIT_REF_DISTANCE,pathLength};
+ });
+}
+// Two independent wall images, HRTF on up to six simultaneous sources.
+// Equal-power reflected panners keep the app responsive for extra tracks.
+// The dry source always remains HRTF regardless of source count.
+export function createOrbitEarlyReflections(ctx,input,master,model="HRTF"){
+ const reflections=[];
+ try{
+  for(let i=0;i<2;i++){
+   const delay=ctx.createDelay(.2),filter=ctx.createBiquadFilter();
+   const gain=ctx.createGain(),panner=ctx.createPanner();
+   const path={delay,filter,gain,panner};
+   reflections.push(path);
+   filter.type="lowpass";filter.frequency.value=7500;filter.Q.value=.65;
+   gain.gain.value=0;delay.delayTime.value=.035;
+   panner.panningModel=model;panner.distanceModel="linear";
+   panner.refDistance=1;panner.maxDistance=50;panner.rolloffFactor=0;
+   input.connect(delay);delay.connect(filter);filter.connect(gain);
+   gain.connect(panner);panner.connect(master);
+  }
+  return reflections;
+ }catch(_){
+  for(const r of reflections)for(const n of [r.delay,r.filter,r.gain,r.panner])
+   try{n.disconnect()}catch(_){}
+  return [];
+ }
+}
+function setOrbitPosition(node,x,z,time,tracking){
+ if(node.positionX?.setTargetAtTime){
+  node.positionX.setTargetAtTime(x,time,tracking);
+  node.positionY?.setTargetAtTime(0,time,tracking);
+  node.positionZ.setTargetAtTime(z,time,tracking);
+ }else node.setPosition(x,0,z);
 }
 export class SetkaMusicMixer {
  constructor() {
@@ -113,12 +155,13 @@ export class SetkaMusicMixer {
    // not the former aggressive low-pass that made music dull from behind.
    rearFilter.type="highshelf";rearFilter.frequency.value=7500;rearFilter.gain.value=0;
    gain.connect(rearFilter);rearFilter.connect(panner);panner.connect(this.master);gain.gain.value=0;
-   // Spatialize BEFORE the room send. A direct pre-HRTF send made distant
-   // sources sound centered because their diffuse stereo echo had no bearing.
-   // Convolving the HRTF-placed stereo signal keeps the reflections linked
-   // to the visible orbital angle while preserving the original dry signal.
+   // Direct HRTF retains its original unchanged signal and position.
+   // Diffuse late reflections branch BEFORE HRTF; early wall images have
+   // their own HRTF position, timing and path-dependent absorption.
    const roomSend=this.room?this.ctx.createGain():null;
-   if(roomSend){roomSend.gain.value=0;panner.connect(roomSend);roomSend.connect(this.room)}
+   if(roomSend){roomSend.gain.value=0;rearFilter.connect(roomSend);roomSend.connect(this.room)}
+   const reflections=createOrbitEarlyReflections(this.ctx,rearFilter,this.master,
+    this.items.size<MAX_EARLY_HRTF_SOURCES?"HRTF":"equalpower");
    if(this.roomOutput)this.roomOutput.gain.setTargetAtTime(.86,this.ctx.currentTime,.04);
    const makeDeck=(volume)=>{
     const el=new Audio();
@@ -132,7 +175,7 @@ export class SetkaMusicMixer {
    if(track.loop!==false)decks.push(makeDeck(0));
    state={id,track,level:0,playTracked:false,completed:false,angle,radius:.62+(index%3)*.08,
     anchorAngle:angle,anchorRadius:.62+(index%3)*.08,manual:false,
-    el:decks[0].el,src:decks[0].src,gain,rearFilter,panner,roomSend,decks,activeDeck:0,transition:null,pendingLoop:false};
+    el:decks[0].el,src:decks[0].src,gain,rearFilter,panner,roomSend,reflections,decks,activeDeck:0,transition:null,pendingLoop:false};
    this.items.set(id,state);this.position(state,angle,state.radius);
    for(let deckIndex=0;deckIndex<decks.length;deckIndex++){
     const {el}=decks[deckIndex];
@@ -248,6 +291,7 @@ export class SetkaMusicMixer {
    }
    s.gain.disconnect();s.rearFilter.disconnect();s.panner.disconnect();
    s.roomSend?.disconnect();
+   for(const r of s.reflections||[])for(const n of [r.delay,r.filter,r.gain,r.panner])n.disconnect();
   },220);
   if(!this.items.size){
    if(this.roomOutput)this.roomOutput.gain.setTargetAtTime(0,this.ctx.currentTime,.035);
@@ -258,8 +302,8 @@ export class SetkaMusicMixer {
  stopAll(){for(const id of [...this.items.keys()])this.remove(id);this.mode="static";this.changed()}
  position(s,a,r){
   s.angle=a;s.radius=r;
-  // One mapping drives the acoustic distance and distance-compensated room.
-  // Keep the continuous center crossing and preserve all orbit angles.
+  // One radius now drives original dry HRTF distance, diffuse room and
+  // geometrically correct early wall reflections, without screen drift.
   const {distance,roomSend}=orbitDepthProfile(r);
   const unit=orbitUnit(a);
   const x=unit.x*distance,z=unit.z*distance;
@@ -268,25 +312,23 @@ export class SetkaMusicMixer {
   const behind=smoothOrbit(-.28,.82,-Math.cos(a))*smoothOrbit(.06,.32,r);
   const gentleRearDb=-1.5*behind;
   const t=this.ctx.currentTime;
-  // Keep rear/front room cues spatialized, but restore the lost distance
-  // response: the post-HRTF room send already carries Panner attenuation.
-  // Without compensation, far reflections were ~7x quieter than before.
-  if(s.roomSend){
-   s.roomSend.gain.setTargetAtTime(roomSend,t,s.manual?.055:.095);
+  // Diffuse late field and physically directed early reflections are
+  // independent paths. Smooth changes to prevent clicks on finger drags.
+  if(s.roomSend)s.roomSend.gain.setTargetAtTime(roomSend,t,s.manual?.055:.095);
+  const acoustic=orbitEarlyReflectionProfile(a,r);
+  for(let i=0;i<(s.reflections?.length||0);i++){
+   const reflection=s.reflections[i],q=acoustic[i];
+   const response=s.manual?.05:.10;
+   reflection.gain.gain.setTargetAtTime(q.gain,t,response);
+   reflection.filter.frequency.setTargetAtTime(q.cutoff,t,.12);
+   reflection.delay.delayTime.setTargetAtTime(q.delay,t,.12);
+   setOrbitPosition(reflection.panner,q.x,q.z,t,response);
   }
   if(s.rearFilter?.gain?.setTargetAtTime){
    s.rearFilter.gain.setTargetAtTime(gentleRearDb,t,s.manual?.028:.055);
   }else if(s.rearFilter?.gain){s.rearFilter.gain.value=gentleRearDb}
-  if(s.panner.positionX?.setTargetAtTime){
-   // The old .15 s time constant left sound ~0.45 s behind a dragged icon.
-   // Tight but smooth tracking synchronizes hearing and UI, including fast
-   // finger moves across the left/right and front/rear meridians.
-   const tracking=s.manual?.018:.036;
-   s.panner.positionX.setTargetAtTime(x,t,tracking);
-   // Orbit is a horizontal plane: no unpictured "above head" displacement.
-   s.panner.positionY?.setTargetAtTime(0,t,tracking);
-   s.panner.positionZ.setTargetAtTime(z,t,tracking);
-  }else{s.panner.setPosition(x,0,z)}
+  // Dry HRTF follows the icon without inheriting the long room tail.
+  setOrbitPosition(s.panner,x,z,t,s.manual?.018:.036);
  }
  drag(id,a,r){
   const s=this.items.get(id);if(!s)return;
