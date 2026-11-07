@@ -51,10 +51,16 @@ try{
   const before=C.getData().events.length;
   const initialColor=S.getState().config.colorModeIndex;
   const canvas=document.getElementById("patternCanvas");
-  const mk=(x,y,id)=>new Touch({identifier:id,target:canvas,clientX:x,clientY:y,pageX:x,pageY:y,screenX:x,screenY:y});
-  const emit=(name,touches,changed)=>canvas.dispatchEvent(new TouchEvent(name,{
-   bubbles:true,cancelable:true,touches,targetTouches:touches,changedTouches:changed
-  }));
+  // Touch constructors are intentionally unavailable in some automation
+  // browsers ("Illegal constructor"); synthetic UI events still exercise
+  // the exact app touch handlers without pretending to be trusted hardware.
+  const mk=(x,y,id)=>({identifier:id,target:canvas,clientX:x,clientY:y,pageX:x,pageY:y,screenX:x,screenY:y});
+  const emit=(name,touches,changed)=>{
+   const e=new Event(name,{bubbles:true,cancelable:true});
+   for(const [key,value] of Object.entries({touches,targetTouches:touches,changedTouches:changed}))
+    Object.defineProperty(e,key,{value});
+   return canvas.dispatchEvent(e);
+  };
   try{
    // Many real gesture lifecycles in one JS turn: an earlier implementation
    // rewrote the whole archive 2*N times and WebKit could terminate.
@@ -109,11 +115,17 @@ try{
  const triple=await page.evaluate(()=>{
   const S=window.SetkaApp,C=window.SetkaStandaloneV34,canvas=document.getElementById("patternCanvas");
   const prior=S.getState().config.colorModeIndex;
-  const mk=i=>new Touch({identifier:i,target:canvas,clientX:195,clientY:420});
+  const mk=i=>({identifier:i,target:canvas,clientX:195,clientY:420});
+  const emit=(type,active,changed)=>{
+   const event=new Event(type,{bubbles:true,cancelable:true});
+   for(const [key,value] of Object.entries({touches:active,targetTouches:active,changedTouches:changed}))
+    Object.defineProperty(event,key,{value});
+   canvas.dispatchEvent(event);
+  };
   for(let i=0;i<3;i++){
    const t=mk(500+i);
-   canvas.dispatchEvent(new TouchEvent("touchstart",{bubbles:true,cancelable:true,touches:[t],targetTouches:[t],changedTouches:[t]}));
-   canvas.dispatchEvent(new TouchEvent("touchend",{bubbles:true,cancelable:true,touches:[],targetTouches:[],changedTouches:[t]}));
+   emit("touchstart",[t],[t]);
+   emit("touchend",[],[t]);
   }
   return {prior,after:S.getState().config.colorModeIndex,eventCount:C.getData().events.length};
  });
