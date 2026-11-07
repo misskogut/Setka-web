@@ -33,7 +33,13 @@ const catalogue=async manage=>{
   const cats=await rowQuery("setka_music_categories_v1","select=id,title,icon_path,sort_order,visible,is_system,updated_at"+(manage?"":"&visible=eq.true")+"&order=sort_order.asc,id.asc");
   const icons=await rowQuery("setka_music_ui_icons_v1","select=slot,icon_path,updated_at&order=slot.asc");
   const tracks=await rowQuery("setka_music_tracks_v1","select=id,title,audio_path,icon_key,icon_path,category_ids,sort_order,published,loop,duration_seconds,revision,updated_at"+(manage?"":"&published=eq.true")+"&order=sort_order.asc,created_at.asc");
-  return {ok:true,categories:cats,ui_icons:icons.map(i=>({...i,icon_url:PROJECT+"/storage/v1/object/public/"+BUCKET+"/"+i.icon_path})),tracks:tracks.map(t=>({...t,audio_url:PROJECT+"/storage/v1/object/public/"+BUCKET+"/"+t.audio_path,icon_url:t.icon_path?PROJECT+"/storage/v1/object/public/"+BUCKET+"/"+t.icon_path:null}))};
+  const hiddenIcons=manage?await rowQuery("setka_music_hidden_icons_v1","select=icon_key&order=icon_key.asc"):[];
+  const globalRows=await rowQuery("setka_music_global_order_v1","select=id,track_ids,revision,updated_at&id=eq.1");
+  const visible=new Set(tracks.map(t=>t.id));
+  const record=globalRows[0]||{id:1,track_ids:[],revision:1};
+  const global_order={...record,track_ids:(record.track_ids||[]).filter(id=>visible.has(id))};
+  const stats=manage?await rowQuery("setka_music_track_stats_v1","select=track_id,plays,completions,plays_7d,last_activity_at"):[];
+  return {ok:true,categories:cats,ui_icons:icons.map(i=>({...i,icon_url:PROJECT+"/storage/v1/object/public/"+BUCKET+"/"+i.icon_path})),tracks:tracks.map(t=>({...t,audio_url:PROJECT+"/storage/v1/object/public/"+BUCKET+"/"+t.audio_path,icon_url:t.icon_path?PROJECT+"/storage/v1/object/public/"+BUCKET+"/"+t.icon_path:null})),global_order,stats,hidden_icon_keys:hiddenIcons.map(x=>x.icon_key)};
 };
 const ensureObject=async path=>{
   const response=await fetch(PROJECT+"/storage/v1/object/info/"+BUCKET+"/"+path,{headers:adminHeaders});
@@ -49,8 +55,40 @@ Deno.serve(async request=>{
     if(request.method!=="POST")return json({error:"method_not_allowed"},405,origin);
     const b=await request.json();
     if(b?.action==="catalog")return json(await catalogue(false),200,origin);
+    // Anonymous aggregate-only listener telemetry: no device, IP, email or profile stored.
+    // Only real playback starts and 95%-complete signals are submitted by the app.
+    if(b?.action==="track-event"){
+      const track_id=String(b.track_id||""),event_type=String(b.event_type||""),id=String(b.event_id||"");
+      if(!/^[a-f0-9-]{36}$/.test(track_id)||!/^[a-f0-9-]{36}$/.test(id)||!["play","complete"].includes(event_type))
+        return json({error:"bad_request"},400,origin);
+      const existing=await rowQuery("setka_music_tracks_v1","select=id&id=eq."+encodeURIComponent(track_id)+"&published=eq.true&limit=1");
+      if(existing.length!==1)return json({error:"not_found"},404,origin);
+      const response=await fetch(url("setka_music_listen_events_v1","on_conflict=id"),{
+        method:"POST",headers:{...adminHeaders,prefer:"resolution=ignore-duplicates,return=minimal"},
+        body:JSON.stringify({id,track_id,event_type})});
+      if(!response.ok)throw Error("write_rejected");
+      return json({ok:true},200,origin);
+    }
     if(!await authorized(b?.adminKey))return json({error:"invalid_admin_key"},403,origin);
     if(b.action==="manage")return json(await catalogue(true),200,origin);
+    if(b.action==="save-global-order"){
+      const allTracks=await rowQuery("setka_music_tracks_v1","select=id");
+      const allowed=new Set(allTracks.map(t=>t.id));
+      const requested=b.track_ids;
+      if(!Array.isArray(requested)||requested.length!==allowed.size||
+         requested.some(x=>typeof x!=="string"||!/^[a-f0-9-]{36}$/.test(x))||
+         new Set(requested).size!==requested.length||
+         requested.some(x=>!allowed.has(x)))
+         return json({error:"order_mismatch_refresh"},409,origin);
+      const rows=await rowQuery("setka_music_global_order_v1","select=revision&id=eq.1&limit=1");
+      const prior=rows[0]?.revision;
+      if(!prior||b.expected_revision!==prior)return json({error:"order_changed_refresh"},409,origin);
+      const saved=await mutate("setka_music_global_order_v1","PATCH",{
+        track_ids:requested,revision:prior+1,updated_at:new Date().toISOString()
+      },"id=eq.1&revision=eq."+prior);
+      if(saved.length!==1)return json({error:"order_changed_refresh"},409,origin);
+      return json({ok:true,global_order:saved[0]},200,origin);
+    }
     if(b.action==="save-ui-icon"){
       const slot=String(b.slot||""),path=b.icon_path;
       if(!UI_SLOTS.has(slot)||!iconFile(path))return json({error:"bad_request"},400,origin);
@@ -63,6 +101,16 @@ Deno.serve(async request=>{
       if(!UI_SLOTS.has(slot))return json({error:"bad_request"},400,origin);
       await mutate("setka_music_ui_icons_v1","DELETE",null,"slot=eq."+encodeURIComponent(slot));
       return json({ok:true},200,origin);
+    }
+    if(b.action==="hide-icon"||b.action==="restore-icon"){
+      const key=String(b.icon_key||"");
+      if(!/^[a-z0-9_-]{1,40}$/.test(key)||key==="music")return json({error:"bad_icon_key"},400,origin);
+      if(b.action==="hide-icon"){
+        await mutate("setka_music_hidden_icons_v1","POST",{icon_key:key,hidden_at:new Date().toISOString()},"on_conflict=icon_key");
+      }else{
+        await mutate("setka_music_hidden_icons_v1","DELETE",null,"icon_key=eq."+encodeURIComponent(key));
+      }
+      return json({ok:true,icon_key:key,hidden:b.action==="hide-icon"},200,origin);
     }
     if(b.action==="upload-intent"){
       const mime=String(b.mime||"").toLowerCase(),ext=mimeExt[mime],size=Number(b.size);
