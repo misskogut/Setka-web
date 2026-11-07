@@ -152,9 +152,21 @@
   function renderLibrary(){
     stopLibraryPreviews();
     const available=PATTERNS.filter(p=>registry.isActive(p.id));
-    reconcilePanel(allPatternsPanel,JSON.stringify([available.map(p=>[p.id,p.version,registry.defaults(p.id),registry.ready(p.id)]),[...recommendedPatterns]]),()=>{
-      for(const p of available){const tile=makePatternTile({kind:"base",id:p.id,baseId:p.id,patternId:p.id,config:registry.defaults(p.id),previewFrame:BASE_PREVIEW_FRAME,title:p.title,patternVersion:p.version});if(recommendedPatterns.has(p.id))tile.classList.add("recommended");allPatternsPanel.appendChild(tile)}
+    // Module readiness changes should upgrade ONLY the pending placeholder,
+    // not destroy and redraw every already-running Canvas preview. The old
+    // signature included registry.ready(id), invalidating all cards each time
+    // any of the independently fetched pattern scripts completed.
+    const baseTile=p=>{const tile=makePatternTile({kind:"base",id:p.id,baseId:p.id,patternId:p.id,config:registry.defaults(p.id),previewFrame:BASE_PREVIEW_FRAME,title:p.title,patternVersion:p.version});if(recommendedPatterns.has(p.id))tile.classList.add("recommended");return tile};
+    reconcilePanel(allPatternsPanel,JSON.stringify([available.map(p=>[p.id,p.version,registry.defaults(p.id)]),[...recommendedPatterns]]),()=>{
+      for(const p of available)allPatternsPanel.appendChild(baseTile(p));
     });
+    // Preserve all existing preview canvases, their animation phases, and
+    // pointer targets while newly downloaded renderers come online.
+    const pending=allPatternsPanel.querySelectorAll(':scope > .pattern-tile.unavailable-pattern');
+    for(const placeholder of pending){
+      const p=available.find(item=>item.id===placeholder.dataset.patternId);
+      if(p&&registry.ready(p.id))placeholder.replaceWith(baseTile(p));
+    }
     const activeCommunity=registry.activeItems(communityItems);
     reconcilePanel(communityPanel,JSON.stringify([activeCommunity,[...recommendedCommunity],registry.ids().filter(id=>registry.ready(id))]),()=>{
       if(!activeCommunity.length){emptyPanel(communityPanel,"◎","Здесь появятся конфигурации,<br>которые сохраняют участники");return}
