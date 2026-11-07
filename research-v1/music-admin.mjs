@@ -1,5 +1,5 @@
 import {ICON_NAMES,iconSvg} from "../standalone-music-icons-v1.mjs?v=5-vintage-final-20261107";
-import {mountMusicOrder} from "./music-order.mjs?v=5-vintage-plus-hidden-20261107";
+import {mountMusicOrder} from "./music-order.mjs?v=6-vintage-final-20261107";
 import {selectedMusicCategorySVG} from "../standalone-music-approved-icons-v1.mjs?v=nature-optical-size-20261106";
 import {UI_ICON_SLOTS,uiIconHTML,assetIconMask} from "../standalone-music-ui-icons-v2.mjs";
 const API="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-music-v1";
