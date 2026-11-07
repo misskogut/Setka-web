@@ -163,14 +163,20 @@ export class SetkaMusicMixer {
    const reflections=createOrbitEarlyReflections(this.ctx,rearFilter,this.master,
     this.items.size<MAX_EARLY_HRTF_SOURCES?"HRTF":"equalpower");
    if(this.roomOutput)this.roomOutput.gain.setTargetAtTime(.86,this.ctx.currentTime,.04);
-   // iOS/WebKit can exhaust decoder memory if a 50-500 MB original WAV is
-   // opened TWICE for loop crossfade. Keep the full-quality single media stream
-   // and native looping for large external WAVs; the same HRTF/room path remains.
+   // Never allocate two decoders for the original 25–500 MB WAV recordings.
+   // Safari/WebKit additionally crashes when a huge WAV enters its WebAudio
+   // MediaElementSource; its native HTMLAudioElement plays the SAME lossless bytes
+   // reliably. Use native output only for this large-file WebKit safety fallback.
+   // Small sources and Chromium retain the full HRTF/reflective audio graph.
    const singleDeck=!!track.external_source_path&&/\.wav$/i.test(track.external_source_path)&&
      Number(track.external_source_bytes)>=24*1024*1024;
+   const webkit=/AppleWebKit/i.test(navigator.userAgent)&&!/Chrom(?:e|ium)\//i.test(navigator.userAgent);
+   const nativeOnly=singleDeck&&webkit;
    const makeDeck=(volume)=>{
     const el=new Audio();
-    el.loop=singleDeck&&track.loop!==false;el.crossOrigin="anonymous";el.preload="auto";el.src=track.audio_url;
+    el.loop=singleDeck&&track.loop!==false;
+    el.crossOrigin="anonymous";el.preload=nativeOnly?"metadata":"auto";el.src=track.audio_url;
+    if(nativeOnly)return {el,src:null,fade:null};
     const src=this.ctx.createMediaElementSource(el);
     const fade=this.ctx.createGain();fade.gain.value=volume;
     src.connect(fade);fade.connect(gain);
@@ -180,7 +186,7 @@ export class SetkaMusicMixer {
    if(track.loop!==false&&!singleDeck)decks.push(makeDeck(0));
    state={id,track,level:0,playTracked:false,completed:false,angle,radius:.62+(index%3)*.08,
     anchorAngle:angle,anchorRadius:.62+(index%3)*.08,manual:false,
-    el:decks[0].el,src:decks[0].src,gain,rearFilter,panner,roomSend,reflections,decks,singleDeck,activeDeck:0,transition:null,pendingLoop:false};
+    el:decks[0].el,src:decks[0].src,gain,rearFilter,panner,roomSend,reflections,decks,singleDeck,nativeOnly,activeDeck:0,transition:null,pendingLoop:false};
    this.items.set(id,state);this.position(state,angle,state.radius);
    for(let deckIndex=0;deckIndex<decks.length;deckIndex++){
     const {el}=decks[deckIndex];
@@ -217,8 +223,14 @@ export class SetkaMusicMixer {
    }
   }
   state.level=Math.max(1,Math.min(3,level));state.track=track;
-  const now=this.ctx.currentTime;state.gain.gain.cancelScheduledValues(now);
-  state.gain.gain.setTargetAtTime([0,.20,.45,.75][state.level],now,.045);
+  const outputLevel=[0,.20,.45,.75][state.level];
+  if(state.nativeOnly){
+   // HTMLAudioElement volume is the fallback's actual audible gain.
+   for(const deck of state.decks)deck.el.volume=outputLevel;
+  }else{
+   const now=this.ctx.currentTime;state.gain.gain.cancelScheduledValues(now);
+   state.gain.gain.setTargetAtTime(outputLevel,now,.045);
+  }
   if(!this.clock)this.clock=setInterval(()=>this.tick(),40);
   this.changed();
  }
@@ -292,7 +304,7 @@ export class SetkaMusicMixer {
   setTimeout(()=>{
    for(const d of s.decks){
     d.el.pause();d.el.removeAttribute("src");d.el.load();
-    d.src.disconnect();d.fade.disconnect();
+    d.src?.disconnect();d.fade?.disconnect();
    }
    s.gain.disconnect();s.rearFilter.disconnect();s.panner.disconnect();
    s.roomSend?.disconnect();
