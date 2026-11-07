@@ -1,4 +1,4 @@
-import {mountMusicAdmin} from './music-admin.mjs?v=14-original-screenshot-collection-20261107';
+import {mountMusicAdmin} from './music-admin.mjs?v=15-vintage-plus-hidden-20261107';
 import {mountPatternOrder} from './pattern-order.mjs';
 import {mountPublication,publicationLabel} from './publication.mjs';
 import {mountPatternEditor} from './pattern-editor.mjs';
