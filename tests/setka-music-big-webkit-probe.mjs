@@ -21,6 +21,8 @@ try{
   }
  }
  const ranges=[];
+ page.on("pageerror",error=>console.log("SETKA_PAGE_ERROR",error.message.slice(0,150)));
+ page.on("console",message=>{if(message.type()==="error")console.log("SETKA_CONSOLE",message.text().slice(0,180))});
  page.on("response",response=>{
   if(response.url().includes("?stream="+track.id))ranges.push({
    status:response.status(),range:response.headers()["content-range"]
@@ -55,7 +57,14 @@ try{
  });
  await page.goto(FRONT,{waitUntil:"domcontentloaded",timeout:60000});
  await page.locator("#setkaMusicPagerButton").click();
- await page.locator('.sm-track[aria-label^="8D пассив Shavasana"]').click({timeout:25000});
+ await page.locator('.sm-track[aria-label^="8D пассив Shavasana"]').click({timeout:35000}).catch(async error=>{
+  const diagnostic=await page.evaluate(()=>({
+   open:!document.querySelector("#setkaMusicPage")?.hidden,
+   status:document.querySelector(".sm-status")?.textContent,tracks:window.SetkaMusicV1?.state?.().tracks
+  }));
+  console.error("SETKA_8D_MUSIC_DIAGNOSTIC",JSON.stringify(diagnostic));
+  throw error;
+ });
  if(name==="webkit"){
   await page.waitForFunction(id=>{
    const s=SetkaMusicV1.state().active.find(t=>t.id===id),p=window.wavProbe;
