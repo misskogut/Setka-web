@@ -112,3 +112,16 @@
 .sm-admin-icon-restore .sm-admin-icon-option-art{width:34px;height:34px}
 .sm-admin-icon-restore .sm-admin-icon-option-art svg{width:24px;height:24px}
 .sm-admin-icon-feedback{margin:0;font-size:12px;line-height:1.4;min-height:1em;color:#555}
+
+/* SVG anti-aliasing is applied at the source and in every admin preview surface.
+   Bitmap user uploads retain normal interpolation; never use crisp/pixelated mode. */
+.sm-admin .sm-admin-icon svg,
+.sm-admin .sm-admin-glyph-preview svg,
+.sm-admin .sm-admin-preview-icon svg,
+.sm-admin .sm-admin-icon-picker svg,
+.sm-admin .sm-order-thumb svg,
+.sm-admin .sm-admin-icon-restore svg{
+  shape-rendering:geometricPrecision;
+  image-rendering:auto;
+}
+.sm-admin .sm-asset-icon{image-rendering:auto}
