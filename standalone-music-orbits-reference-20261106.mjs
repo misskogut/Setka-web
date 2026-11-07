@@ -1,4 +1,4 @@
-import {MOTION,MOTION_LABELS,orbitUnit} from "./standalone-music-audio-v1.mjs?v=9-low-latency-position-sync-20261107";
+import {MOTION,MOTION_LABELS,orbitUnit} from "./standalone-music-audio-v1.mjs?v=11-directional-room-v2-20261107";
 import {uiIconHTML} from "./standalone-music-ui-icons-v2.mjs?v=4-exact-approved-vector-20261106";
 export function createOrbitUI(mixer,trackHTML,uiIcons={}){
  const root=document.createElement("section");root.className="sm-orbits";root.hidden=true;
