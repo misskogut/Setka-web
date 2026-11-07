@@ -19,8 +19,10 @@ try{
  for(const track of samples){
   const r=await fetch(track.external_audio_url,{redirect:"manual",headers:{range:"bytes=0-63"},signal:AbortSignal.timeout(14000)});
   const final=r.headers.get("location")||r.url;
-  const host=new URL(final).hostname;
+  const target=new URL(final);
+  const host=target.hostname;
   assert.equal(host,"mds.storage.yandex.net","resolve final media host");
+  target.searchParams.set("disposition","inline");
   await r.body?.cancel();
   await page.evaluate(url=>{
    window.__one=null;
@@ -32,7 +34,7 @@ try{
     el.play().catch(e=>{window.__one.error=e.name});
    };
    document.body.append(b);
-  },final);
+  },target.toString());
   await page.locator("#probe-mds").click();
   await page.waitForFunction(()=>window.__one&&(window.__one.el.currentTime>.8||window.__one.el.error||window.__one.error),null,{timeout:17000}).catch(()=>{});
   const info=await page.evaluate(()=>{
