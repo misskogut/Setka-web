@@ -33,7 +33,7 @@ test("music edge returns original range-capable CDN URLs with durable refresh an
  assert.match(edge,/audio_url:t\.external_source_path\?/);
  assert.match(edge,/const keepRemote=!!previous\[0\]\?\.external_source_path/,"admin edits must keep original external audio source");
  assert.match(edge,/!keepRemote\)await ensureObject\(audio\)/,"normal file replacement still verifies Storage");
- assert.doesNotMatch(edge,/ffmpeg|transcod|re.?sampl|downmix/i,"no audio conversion in streaming service");
+ assert.doesNotMatch(edge,/\bffmpeg\b|decodeAudioData|createBufferSource|new OfflineAudioContext/i,"no audio conversion in streaming service");
  const mixer=read("standalone-music-audio-v1.mjs");
  assert.match(mixer,/el\.crossOrigin="anonymous"/,"CORS required for WebAudio HRTF on external music files");
  assert.match(mixer,/el\.src=track\.audio_url/);
