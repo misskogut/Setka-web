@@ -101,8 +101,27 @@
     return finish(()=>C.showMe?.());
   }
 
+  // A real press on the top-right Back button is required to leave gameplay.
+  // Rapid drags can release over this floating control in WebKit and synthesize
+  // a stray click, especially when two fingers briefly overlap.
+  let gameGestureActive=false,backIntent=null;
+  window.addEventListener("setka:gesture-start",()=>{gameGestureActive=true});
+  window.addEventListener("setka:gesture-end",()=>{gameGestureActive=false});
+  libraryButton.addEventListener("pointerdown",e=>{
+    backIntent=gameGestureActive?null:{id:e.pointerId,x:e.clientX,y:e.clientY,at:performance.now(),moved:false,ended:false};
+  },true);
+  libraryButton.addEventListener("pointermove",e=>{
+    if(backIntent?.id===e.pointerId&&Math.hypot(e.clientX-backIntent.x,e.clientY-backIntent.y)>16)backIntent.moved=true;
+  },true);
+  libraryButton.addEventListener("pointerup",e=>{
+    if(backIntent?.id===e.pointerId)backIntent.ended=true;
+  },true);
+  libraryButton.addEventListener("pointercancel",()=>{backIntent=null},true);
   libraryButton.addEventListener("click",e=>{
     if(bypass)return;
+    const genuine=e.detail===0||(!gameGestureActive&&backIntent?.ended&&!backIntent.moved);
+    backIntent=null;
+    if(!genuine){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();return}
     e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
     const o=clone(origin)||completePanel(currentPanel,{});
     C.recordEvent?.("game_back",{to:o.kind,page:o.page||null,sessionId:o.sessionId||null},!!C.getActiveSession?.());
