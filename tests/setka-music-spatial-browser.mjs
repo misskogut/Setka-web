@@ -182,6 +182,7 @@ try{
    hardPanRight:energy(hardPan[1])/energy(mono[1]),antiPhase:sum(inverted)/sum(mono)};
  },{angles,radii});
  console.log("ORBIT_OFFLINE_PATHS",JSON.stringify(pcm.diagnostic));
+ assert.ok(pcm.diagnostic.late.at>=.073,JSON.stringify(pcm.diagnostic));
  for(let i=0;i<8;i++){
   const row=pcm.results[i];
   for(const [j,{l,r,dry,wet,earliest,wall}] of row.entries()){

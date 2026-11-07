@@ -4,16 +4,17 @@ import {createOrbitWavStream} from "./standalone-music-wav-stream-v1.mjs";
 // Diffuse stereo late-room tail. Directional first reflections are separate
 // HRTF wall images (below) and must not also appear in this impulse.
 // Generated once in memory; uploaded audio is never changed or transcoded.
+const ROOM_PREDELAY=.075;
 function setkaRoomImpulse(ctx){
- const rate=ctx.sampleRate,seconds=1.28;
+ const rate=ctx.sampleRate,seconds=1.28-ROOM_PREDELAY;
  const buffer=ctx.createBuffer(2,Math.ceil(rate*seconds),rate);
  let seed=0x5345544b;
  const rand=()=>{seed=(Math.imul(1664525,seed)+1013904223)>>>0;return seed/4294967296*2-1;};
  for(let channel=0;channel<2;channel++){
   const data=buffer.getChannelData(channel);
-  for(let i=Math.round(rate*.075);i<data.length;i++){
-   const t=i/rate,entrance=Math.min(1,(t-.075)/.08);
-   data[i]+=rand()*.007*entrance*Math.exp(-5.2*(t-.075));
+  for(let i=0;i<data.length;i++){
+   const t=i/rate,entrance=Math.min(1,t/.08);
+   data[i]=rand()*.007*entrance*Math.exp(-5.2*t);
   }
  }
  return buffer;
@@ -172,10 +173,14 @@ export class SetkaMusicMixer {
  makeRoom(destination){
   try{
    const room=this.ctx.createConvolver(),output=this.ctx.createGain();
+   const predelay=this.ctx.createDelay(.2);
+   // Keep the onset outside the impulse. WebKit's convolution can emit
+   // a precursor even when the supplied IR begins with 75 ms of zeros.
+   predelay.delayTime.value=ROOM_PREDELAY;
    room.normalize=false;
    room.buffer=setkaRoomImpulse(this.ctx);
    output.gain.value=.86;
-   room.connect(output);output.connect(destination);
+   room.connect(predelay);predelay.connect(output);output.connect(destination);
    this.roomOutput=output;
    return room;
   }catch(_){this.roomOutput=null;return null}
