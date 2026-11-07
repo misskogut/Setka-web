@@ -1,0 +1,231 @@
+{
+  "description": "SETKA original-quality streaming import from owner's Yandex Disk public folders",
+  "source": "https://disk.yandex.ru/d/gmjwIQoHo6VxtQ",
+  "imported_at": "2026-11-07",
+  "category_mapping": {
+    "звуки природы": "hand",
+    "актив": "eye",
+    "пассив": "sleep",
+    "8D": "8d"
+  },
+  "existing_track_preserved": "Мур",
+  "strategy": "Range-capable original WAV/MP3 on Yandex CDN, refreshed server-side; no transcoding, no duplicate storage",
+  "tracks": [
+    {
+      "path": "/8D/8D актив hang&sitar.mp3",
+      "bytes": 39897255,
+      "title": "8D актив hang&sitar",
+      "sha256": "4383c3e0ff9d31ea3f178e86bb4b4aff0c1d743ab4d73ec4276f9e03eeb0e564",
+      "category": "8d",
+      "icon_key": "old-planet-orbit"
+    },
+    {
+      "path": "/8D/8D актив Арабская.wav",
+      "bytes": 104181440,
+      "title": "8D актив Арабская",
+      "sha256": "d78475ee03867a5b333ae90b5686a1ef6eb622fcbcea900e5117119e2aded6c9",
+      "category": "8d",
+      "icon_key": "old-planet-orbit"
+    },
+    {
+      "path": "/8D/8D актив поиск.wav",
+      "bytes": 51561480,
+      "title": "8D актив поиск",
+      "sha256": "457bb0759514a5ae33b2fa37c1b89e529c6ed8f0b43b847c3a56e50768ea9f6e",
+      "category": "8d",
+      "icon_key": "old-planet-orbit"
+    },
+    {
+      "path": "/8D/8D пассив Om mantra & bowls.wav",
+      "bytes": 346942410,
+      "title": "8D пассив Om mantra & bowls",
+      "sha256": "77b8825e169a875534a4db576eb7729b781206857e4e1d78ac972e11ece74303",
+      "category": "8d",
+      "icon_key": "old-planet-orbit"
+    },
+    {
+      "path": "/8D/8D пассив Shavasana.wav",
+      "bytes": 496318392,
+      "title": "8D пассив Shavasana",
+      "sha256": "49e4897e244796a2c7fc66f71281e5b725e56cf9497c67931b3bf3efe2e22e2d",
+      "category": "8d",
+      "icon_key": "old-planet-orbit"
+    },
+    {
+      "path": "/8D/8D пассив.wav",
+      "bytes": 369535314,
+      "title": "8D пассив",
+      "sha256": "4115d02e6b1994762553acb20209a3d54c6aab02ffdf27499f36389b6a2b870e",
+      "category": "8d",
+      "icon_key": "old-planet-orbit"
+    },
+    {
+      "path": "/8D/8Dактив.луна.wav",
+      "bytes": 77470550,
+      "title": "8Dактив.луна",
+      "sha256": "df2792b712179bab95595a8177b3b232e8cc7f77cd2956788d95ecf5f7aaed12",
+      "category": "8d",
+      "icon_key": "old-planet-orbit"
+    },
+    {
+      "path": "/актив/актив Buddah тета_01.wav",
+      "bytes": 140371624,
+      "title": "Buddah тета",
+      "sha256": "b9d517a9f9d9ae46f62b73fed291ea85ad220790b7b0c0c20e8fc17fb5af0efb",
+      "category": "eye",
+      "icon_key": "old-mandala"
+    },
+    {
+      "path": "/актив/актив Gates of Paradise Gregorian Chants_01.wav",
+      "bytes": 24013728,
+      "title": "Gates of Paradise Gregorian Chants",
+      "sha256": "d35f37ededc0ba6eff3e6f60328517ac252e6654e001c2587e7a4217da479ed0",
+      "category": "eye",
+      "icon_key": "old-mandala"
+    },
+    {
+      "path": "/актив/актив Underwater тета_01.wav",
+      "bytes": 133913202,
+      "title": "Underwater тета",
+      "sha256": "d978c7c187bbbfcf3aa78269fd59ee830270ee3a84980f34d1c3d40868649626",
+      "category": "eye",
+      "icon_key": "old-mandala"
+    },
+    {
+      "path": "/актив/актив монахи_01.wav",
+      "bytes": 53210026,
+      "title": "Монахи",
+      "sha256": "8893480d85154840053d0d6b5c64478af58d017f43a07c1e5cd5d062d106f7d7",
+      "category": "eye",
+      "icon_key": "old-mandala"
+    },
+    {
+      "path": "/актив/актив пульс пустыни.wav",
+      "bytes": 167314170,
+      "title": "Пульс пустыни",
+      "sha256": "2bd72f08e36446dc78cbfe8b6b14ebb1f464f1013b8c645f758303691c7f3e09",
+      "category": "eye",
+      "icon_key": "old-mandala"
+    },
+    {
+      "path": "/пассив/пассив Ambient Meditative Relaxing Spiritual_01.wav",
+      "bytes": 50064394,
+      "title": "Ambient Meditative Relaxing Spiritual",
+      "sha256": "3ea70c863bb809a451227364e2a8505d4dc1f3f4cfb885c80e8e945401bdb1d9",
+      "category": "sleep",
+      "icon_key": "old-lotus"
+    },
+    {
+      "path": "/пассив/пассив For Meditation_01.wav",
+      "bytes": 100818298,
+      "title": "For Meditation",
+      "sha256": "ed559326aaa4781a475f6a4932c8868f7cdf27d5379716478403580256410101",
+      "category": "sleep",
+      "icon_key": "old-lotus"
+    },
+    {
+      "path": "/пассив/пассив meditation_01.wav",
+      "bytes": 102521154,
+      "title": "Meditation",
+      "sha256": "9ce5256a019f6021bc99d18f7fb142caaca8c006f6adb695cdee71e27cfa597d",
+      "category": "sleep",
+      "icon_key": "old-lotus"
+    },
+    {
+      "path": "/пассив/пассив Untitled Session 2_mixdown.wav",
+      "bytes": 108107594,
+      "title": "Untitled Session 2_mixdown",
+      "sha256": "be5bb86aaafc1d4618b83bd3e0b9644f7a28110db314cf4a3c18701864f393f8",
+      "category": "sleep",
+      "icon_key": "old-lotus"
+    },
+    {
+      "path": "/звуки природы/звук ветер.wav",
+      "bytes": 46838940,
+      "title": "Ветер",
+      "sha256": "5bebadf383425712a64925eda1549e90c28b30c8568028e3040a43439a61f8ef",
+      "category": "hand",
+      "icon_key": "vintage-wind"
+    },
+    {
+      "path": "/звуки природы/звук волна у берега.wav",
+      "bytes": 16293990,
+      "title": "Волна у берега",
+      "sha256": "97b02d8b4fcc64a91f53628f43e7aff2e9d6bf526a29ea12c9a61a458a7c411e",
+      "category": "hand",
+      "icon_key": "vintage-sea-wave"
+    },
+    {
+      "path": "/звуки природы/звук волны.wav",
+      "bytes": 25401644,
+      "title": "Волны",
+      "sha256": "b903f8da0af65acbb6ea64896684f37cd81261114e38de45ca331345a7561aa0",
+      "category": "hand",
+      "icon_key": "vintage-sea-wave"
+    },
+    {
+      "path": "/звуки природы/звук гроза (уже есть).wav",
+      "bytes": 20299386,
+      "title": "Гроза ",
+      "sha256": "d2d085eb0e4518ef1fdf7cb67a578cef88fe86d6c7fefe41786da2dc8deabea4",
+      "category": "hand",
+      "icon_key": "old-storm"
+    },
+    {
+      "path": "/звуки природы/звук дождь в лесу.wav",
+      "bytes": 20186094,
+      "title": "Дождь в лесу",
+      "sha256": "014a92a9e98cd264dd18b81296fea1595da891236c57f81db7fcd78de3ca3ed9",
+      "category": "hand",
+      "icon_key": "vintage-raindrops"
+    },
+    {
+      "path": "/звуки природы/звук лес(уже есть).wav",
+      "bytes": 29294366,
+      "title": "Лес",
+      "sha256": "ad00627af6cf0af66f08929ba7fc2c5b1d110826a6ea11458fa245a89a794c4a",
+      "category": "hand",
+      "icon_key": "old-forest"
+    },
+    {
+      "path": "/звуки природы/звук лесная река.wav",
+      "bytes": 41975662,
+      "title": "Лесная река",
+      "sha256": "fa5755c62cb882acf2f4c7362954302d210272d517c9dd2864eec2a73c29f3c0",
+      "category": "hand",
+      "icon_key": "vintage-round-landscape"
+    },
+    {
+      "path": "/звуки природы/звук ночь в лесу.wav",
+      "bytes": 22081850,
+      "title": "Ночь в лесу",
+      "sha256": "fa1d930689d88d829894f26391061b12acc1f6eacb4322bcbd4bb3678181f22d",
+      "category": "hand",
+      "icon_key": "vintage-crescent"
+    },
+    {
+      "path": "/звуки природы/звук Сердце глухое_01.wav",
+      "bytes": 57571782,
+      "title": "Сердце глухое",
+      "sha256": "a1984ee8ec95c7daa6b3429f41cc5406d0b9b0c6fabc315644228e20db73c542",
+      "category": "hand",
+      "icon_key": "old-heart"
+    },
+    {
+      "path": "/звуки природы/звук у дороги.wav",
+      "bytes": 17688724,
+      "title": "У дороги",
+      "sha256": "709aff821335b62035c0accf52ec8bdbc90785884c690a24605f81b4516b88a5",
+      "category": "hand",
+      "icon_key": "vintage-rolling-wheel"
+    },
+    {
+      "path": "/звуки природы/звук утренний лес.wav",
+      "bytes": 10070346,
+      "title": "Утренний лес",
+      "sha256": "39be4473f1898f88fa4e0139d21f61415bd646274ec664675dd39fe04b2415f2",
+      "category": "hand",
+      "icon_key": "old-forest"
+    }
+  ]
+}
