@@ -803,3 +803,26 @@ test('road sculpting stays spatially permanent until passing; pinch zoom persist
   }
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
+
+test("plugin source hashes remain stable across deployments and change only with the renderer",()=>{
+ const dir=workspace();
+ try{
+  const first=build(dir);
+  const extract=source=>{
+   const sandbox={window:{dispatchEvent(){}},CustomEvent:class{}};
+   vm.runInNewContext(source,sandbox,{timeout:1500});
+   return JSON.parse(JSON.stringify(sandbox.window.SetkaPatternModuleHashesV1||{}));
+  };
+  const a=extract(first.source),keys=Object.keys(a).sort();
+  assert.ok(keys.length>=1,"production registry advertises hashed plugin scripts");
+  for(const key of keys)assert.match(a[key],/^[a-f0-9]{20}$/,"every renderer has a source digest");
+  assert.deepEqual(extract(build(dir).source),a,"rebuild with identical bytes leaves cache URLs unchanged");
+  const target=keys[0],other=keys[1];
+  fs.appendFileSync(path.join(dir,target),"\\n// cache-only test: renderer changed\\n");
+  const changed=build(dir),b=extract(changed.source);
+  assert.notEqual(b[target],a[target],"edited renderer invalidates only its own cached source");
+  if(other)assert.equal(b[other],a[other],"unrelated renderer retains its browser cache");
+  assert.equal(changed.manifest.registryRevision,first.manifest.registryRevision,
+   "source cache invalidation cannot rewrite pattern identity/config revisions");
+ }finally{fs.rmSync(dir,{recursive:true,force:true})}
+});
