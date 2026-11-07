@@ -58,8 +58,39 @@
   function configKey(c,hint=null){return registry.configKey(c,hint)}
 
   const LAST_KEY="setka-patterns:last-config:v1",lastConfigs=readJSON(LAST_KEY,{})||{};
-  function remember(){if(window.__SETKA_RENDER_ONLY__)return;lastConfigs[runtimePatternId]={version:registry.get(runtimePatternId).version,config:registry.persistentConfig(runtimeConfig,runtimePatternId),updatedAt:new Date().toISOString()};writeJSON(LAST_KEY,lastConfigs);const core=window.SetkaStandaloneV34;if(core){const d=core.getData();d.settings=d.settings||{};d.settings.patternConfigs=JSON.parse(JSON.stringify(lastConfigs));core.save?.()}}
+  // Keep the most recent exact configuration in memory immediately. Heavy
+  // writes (full private research archive + lastConfigs) must not occur for
+  // every pointermove: Safari can terminate WebContent after a gesture storm.
+  let rememberTimer=0,rememberDirty=false;
+  function flushRemember(){
+    if(rememberTimer){clearTimeout(rememberTimer);rememberTimer=0}
+    if(!rememberDirty||window.__SETKA_RENDER_ONLY__)return;
+    rememberDirty=false;
+    writeJSON(LAST_KEY,lastConfigs);
+    const core=window.SetkaStandaloneV34;
+    if(core){
+      const d=core.getData();d.settings=d.settings||{};
+      d.settings.patternConfigs=JSON.parse(JSON.stringify(lastConfigs));
+      core.save?.();
+    }
+  }
+  function remember(event){
+    if(window.__SETKA_RENDER_ONLY__)return;
+    const id=runtimePatternId,p=registry.get(id);
+    if(!p)return;
+    const config=registry.persistentConfig(runtimeConfig,id),previous=lastConfigs[id];
+    // Finger release without a durable config change never rewrites storage.
+    if(previous?.version===p.version&&configKey(previous.config,id)===configKey(config,id))return;
+    lastConfigs[id]={version:p.version,config,updatedAt:new Date().toISOString()};
+    rememberDirty=true;
+    if(event?.type==="setka:pattern-open"||event?.type==="setka:color")flushRemember();
+    else if(!rememberTimer)rememberTimer=setTimeout(flushRemember,420);
+  }
   for(const event of ["setka:gesture-move","setka:gesture-end","setka:color","setka:pattern-open"])window.addEventListener(event,remember);
+  // Unlike a debounce reset on every move, this guarantees durability even
+  // during an uninterrupted drag; leaving the page flushes pending changes.
+  window.addEventListener("pagehide",flushRemember);
+  document.addEventListener("visibilitychange",()=>{if(document.hidden)flushRemember()});
   function restorePersonalConfigs(rows={}){
     for(const [id,row] of Object.entries(rows)){
       if(!registry.has(id)||row?.version!==registry.get(id).version||!row.config)continue;
