@@ -31,10 +31,18 @@ test("music edge returns original range-capable CDN URLs with durable refresh an
  assert.match(edge,/new Date\(t\.external_audio_url_expires\)/);
  assert.match(edge,/validYandexAudioURL\(t\.external_audio_url\)/);
  assert.match(edge,/audio_url:t\.external_source_path\?/);
+ assert.match(edge,/setka-music-v1\?stream=/,"browser gets stable playable same-origin audio endpoint");
+ assert.match(edge,/external_source_bytes/,"remote WAV sizes are returned to WebAudio mixer");
+ assert.match(edge,/const segmentSize=2\*1024\*1024/,"upstream media streamed in bounded chunks");
+ assert.match(edge,/"content-length":String\(end-start\+1\)/,"browser receives complete requested media range");
  assert.match(edge,/const keepRemote=!!previous\[0\]\?\.external_source_path/,"admin edits must keep original external audio source");
  assert.match(edge,/!keepRemote\)await ensureObject\(audio\)/,"normal file replacement still verifies Storage");
  assert.doesNotMatch(edge,/\bffmpeg\b|decodeAudioData|createBufferSource|new OfflineAudioContext/i,"no audio conversion in streaming service");
  const mixer=read("standalone-music-audio-v1.mjs");
  assert.match(mixer,/el\.crossOrigin="anonymous"/,"CORS required for WebAudio HRTF on external music files");
  assert.match(mixer,/el\.src=track\.audio_url/);
+ assert.match(mixer,/const singleDeck=!!track\.external_source_path/);
+ assert.match(mixer,/Number\(track\.external_source_bytes\)>=24\*1024\*1024/);
+ assert.match(mixer,/el\.loop=singleDeck&&track\.loop!==false/);
+ assert.match(mixer,/if\(track\.loop!==false&&!singleDeck\)decks\.push\(makeDeck\(0\)\)/,"avoid double 500 MB WAV decoding on iOS");
 });
