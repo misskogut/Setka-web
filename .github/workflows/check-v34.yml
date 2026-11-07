@@ -212,6 +212,9 @@ jobs:
           node-version: '22'
       - run: npm install --no-save --ignore-scripts playwright@1.64.1 esbuild
       - run: node scripts/build-pattern-manifest.mjs
+      # A gameplay WebContent crash must fail fast before expensive analytics/UI suites.
+      - run: node tests/setka-ios-rapid-gesture-smoke.mjs
+      - run: SETKA_BROWSER=webkit node tests/setka-ios-rapid-gesture-smoke.mjs
       - run: node tests/research-management-v1-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/research-management-v1-browser-smoke.mjs
       # Fail fast on cross-surface contract issues before slower visual suites.
@@ -223,8 +226,6 @@ jobs:
       - run: SETKA_BROWSER=webkit node tests/standalone-breathing-grid-browser-smoke.mjs
       - run: node tests/standalone-audio-reactive-v1-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/standalone-audio-reactive-v1-browser-smoke.mjs
-      - run: node tests/setka-ios-rapid-gesture-smoke.mjs
-      - run: SETKA_BROWSER=webkit node tests/setka-ios-rapid-gesture-smoke.mjs
       - run: node tests/standalone-v34-browser-smoke.mjs
       - run: node tests/standalone-sheets-v1-browser-smoke.mjs
       - run: node tests/standalone-live-previews-v1-browser-smoke.mjs
