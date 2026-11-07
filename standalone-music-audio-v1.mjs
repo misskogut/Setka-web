@@ -27,6 +27,30 @@ function setkaRoomImpulse(ctx){
 export function orbitUnit(angle){
  return {x:Math.sin(angle),z:-Math.cos(angle)};
 }
+// Shared physical distance model for the direct and spatialized room paths.
+// The room send is POST-HRTF (correct angle) and needs inverse-distance
+// compensation so reflections do not vanish a second time as sources recede.
+const ORBIT_REF_DISTANCE=2.05,ORBIT_ROLLOFF=.9,ORBIT_MAX_DISTANCE=19;
+const clampOrbit=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
+const smoothOrbit=(a,b,x)=>{
+ const u=clampOrbit((x-a)/(b-a),0,1);
+ return u*u*(3-2*u);
+};
+export function orbitDepthProfile(radius){
+ const r=Number.isFinite(Number(radius))?Number(radius):.62;
+ const depth=smoothOrbit(.14,.94,r);
+ const nearCenter=smoothOrbit(0,.16,r);
+ const distance=(ORBIT_REF_DISTANCE+7.25*Math.pow(depth,1.15))*nearCenter;
+ // WebAudio PannerNode inverse attenuation (distance <= maxDistance).
+ const actual=Math.max(ORBIT_REF_DISTANCE,Math.min(ORBIT_MAX_DISTANCE,distance));
+ const directAttenuation=ORBIT_REF_DISTANCE/
+  (ORBIT_REF_DISTANCE+ORBIT_ROLLOFF*(actual-ORBIT_REF_DISTANCE));
+ // Restore the 2026-11-07 pre-HRTF room-level curve while keeping the
+ // room signal behind the HRTF panner, with correct lateral/rear location.
+ const originalRoomLevel=.012+.19*Math.pow(depth,1.4);
+ const roomSend=Math.min(1,originalRoomLevel/directAttenuation);
+ return {distance,depth,directAttenuation,roomSend,originalRoomLevel};
+}
 export class SetkaMusicMixer {
  constructor() {
   this.ctx=null; this.master=null; this.room=null; this.roomOutput=null; this.items=new Map();
@@ -84,7 +108,7 @@ export class SetkaMusicMixer {
    // Never force an additional explicit mono downmix before HRTF processing.
    panner.panningModel="HRTF";panner.distanceModel="inverse";
    // A wider near/far acoustic range than the previous 1+7*r / .42 rolloff.
-   panner.refDistance=2.05;panner.maxDistance=19;panner.rolloffFactor=.9;
+   panner.refDistance=ORBIT_REF_DISTANCE;panner.maxDistance=ORBIT_MAX_DISTANCE;panner.rolloffFactor=ORBIT_ROLLOFF;
    // Very gentle rear head-shadow: only a 1.5 dB high-shelf difference,
    // not the former aggressive low-pass that made music dull from behind.
    rearFilter.type="highshelf";rearFilter.frequency.value=7500;rearFilter.gain.value=0;
@@ -234,26 +258,21 @@ export class SetkaMusicMixer {
  stopAll(){for(const id of [...this.items.keys()])this.remove(id);this.mode="static";this.changed()}
  position(s,a,r){
   s.angle=a;s.radius=r;
-  const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
-  const smooth=(a,b,x)=>{const u=clamp((x-a)/(b-a),0,1);return u*u*(3-2*u)};
-  // The inner ring is genuinely close; the outer ring is distinctly distant.
-  // Keep the physical target continuous through 8D crossings at the listener:
-  // the old fixed minimum radius caused an audible 180-degree teleport.
-  const depth=smooth(.14,.94,r);
-  const nearCenter=smooth(0,.16,r);
-  const distance=(2.05+7.25*Math.pow(depth,1.15))*nearCenter;
+  // One mapping drives the acoustic distance and distance-compensated room.
+  // Keep the continuous center crossing and preserve all orbit angles.
+  const {distance,roomSend}=orbitDepthProfile(r);
   const unit=orbitUnit(a);
   const x=unit.x*distance,z=unit.z*distance;
   // HRTF supplies the spatial front/back cue. Keep source timbre intact:
   // attenuate only the extreme highs by <=1.5 dB at the rear.
-  const behind=smooth(-.28,.82,-Math.cos(a))*smooth(.06,.32,r);
+  const behind=smoothOrbit(-.28,.82,-Math.cos(a))*smoothOrbit(.06,.32,r);
   const gentleRearDb=-1.5*behind;
   const t=this.ctx.currentTime;
-  // Near = mainly direct sound; far = more room reflections and reverberation.
-  // A smoothed, modest send preserves transients and full-band clarity.
+  // Keep rear/front room cues spatialized, but restore the lost distance
+  // response: the post-HRTF room send already carries Panner attenuation.
+  // Without compensation, far reflections were ~7x quieter than before.
   if(s.roomSend){
-   const wet=.008+.105*Math.pow(depth,1.3);
-   s.roomSend.gain.setTargetAtTime(wet,t,s.manual?.055:.095);
+   s.roomSend.gain.setTargetAtTime(roomSend,t,s.manual?.055:.095);
   }
   if(s.rearFilter?.gain?.setTargetAtTime){
    s.rearFilter.gain.setTargetAtTime(gentleRearDb,t,s.manual?.028:.055);
