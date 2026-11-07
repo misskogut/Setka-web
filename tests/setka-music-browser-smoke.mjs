@@ -195,7 +195,8 @@ try{
 
  assert.equal(await page.locator(".sm-motion").nth(2).locator(".sm-asset-icon").count(),1,"server-supplied counter-motion icon skin displayed as mask (static has no button)");
  await page.screenshot({path:"tests/visual-smoke/music-orbits-"+(process.env.SETKA_BROWSER||"chromium")+".png"});
- await page.locator(".sm-motion").nth(1).click();
+ // Static has no button: the first rendered motion is clockwise, the second is counter-clockwise.
+ await page.locator(".sm-motion").nth(0).click();
  let state=await page.evaluate(()=>window.SetkaMusicV1.state());
  assert.equal(state.mode,"cw");
  await page.locator(".sm-speed input").evaluate(el=>{el.value="80";el.dispatchEvent(new Event("input",{bubbles:true}))});
