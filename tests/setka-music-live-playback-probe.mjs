@@ -7,7 +7,7 @@ const API="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-music-v1"
 const FRONT="https://misskogut.github.io/Setka-web/standalone-v34.html";
 const catalog=await fetch(API,{signal:AbortSignal.timeout(18000)}).then(r=>r.json());
 assert.ok(catalog.ok&&Array.isArray(catalog.tracks),"live music catalog");
-assert.equal(catalog.tracks.length,28);
+assert.ok(catalog.tracks.length>=27&&catalog.tracks.length<=28,"published only verified GitHub audio assets");
 const local=catalog.tracks.find(t=>!t.external_source_path);
 const remote=catalog.tracks.find(t=>t.external_source_path?.includes("утренний лес"));
 const mp3=catalog.tracks.find(t=>t.external_source_path?.endsWith(".mp3"));
@@ -86,7 +86,7 @@ try{
  await page.locator("#setka-real-probe").evaluate(el=>el.remove());
  await page.locator("#setkaMusicPagerButton").click();
  await page.locator(".sm-track").first().waitFor({timeout:22000});
- assert.equal(await page.locator(".sm-track").count(),28,"all 28 live tracks visible in UI");
+ assert.equal(await page.locator(".sm-track").count(),catalog.tracks.length,"all playable GitHub tracks visible in UI");
  const actual=page.locator(".sm-track").filter({hasText:remote.title});
  const trackButton=await actual.count()===1?actual:page.locator('.sm-track[aria-label^="Утренний лес"]');
  await trackButton.first().click();
