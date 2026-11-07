@@ -87,10 +87,18 @@ const refreshExternalAudio=async tracks=>{
 // WebKit uses the returned Content-Length to infer media duration. Truncating
 // the open-ended range to 2 MiB falsely makes 10-500 MB tracks end early.
 // Stream the upstream response body without buffering or transcoding it.
+// Immutable audio attached to this SETKA repository's GitHub release.
+const GITHUB_AUDIO_RELEASE="https://github.com/misskogut/Setka-web/releases/download/setka-original-music-20261107/";
+const githubOriginalAsset=track=>{
+ const hash=String(track?.external_source_hash||"").toLowerCase();
+ const name=String(track?.external_source_path||"");
+ if(!/^[a-f0-9]{64}$/.test(hash)||!/\.(?:wav|mp3)$/i.test(name))return null;
+ return GITHUB_AUDIO_RELEASE+"setka-original-"+hash.slice(0,24)+(name.toLowerCase().endsWith(".mp3")?".mp3":".wav");
+};
 const streamExternalTrack=async(request,origin,id)=>{
   if(!/^[a-f0-9-]{36}$/i.test(id||""))return json({error:"bad_track"},400,origin);
   const rows=await rowQuery("setka_music_tracks_v1",
-    "select=id,published,external_source_path,external_source_bytes,external_audio_url,external_audio_url_expires&id=eq."+
+    "select=id,published,external_source_path,external_source_hash,external_source_bytes,external_audio_url,external_audio_url_expires&id=eq."+
     encodeURIComponent(id)+"&published=eq.true&limit=1");
   const t=rows[0],size=Number(t?.external_source_bytes);
   if(!t?.external_source_path||!Number.isSafeInteger(size)||size<=0||
@@ -144,9 +152,19 @@ const streamExternalTrack=async(request,origin,id)=>{
   // Internally fetch only 2 MiB Yandex ranges at a time, avoiding 500 MiB upstream stalls.
   // Forward byte-for-byte, never buffer the whole file or transcode audio.
   const segmentSize=2*1024*1024;
+  // Prefer completed, sha256-verified GitHub Release assets. The old source
+  // is retained only until the one-time bulk import finishes.
+  const githubAsset=githubOriginalAsset(t);
+  let sourceUrl=githubAsset||file;
   const source=async(first,last)=>{
-    const res=await fetch(file,{method:"GET",headers:{"range":"bytes="+first+"-"+last},
+    let res=await fetch(sourceUrl,{method:"GET",headers:{"range":"bytes="+first+"-"+last},
       redirect:"follow",signal:AbortSignal.timeout(45000)});
+    if((res.status!==206||!res.body)&&sourceUrl===githubAsset){
+      await res.body?.cancel().catch(()=>{});
+      sourceUrl=file;
+      res=await fetch(sourceUrl,{method:"GET",headers:{"range":"bytes="+first+"-"+last},
+        redirect:"follow",signal:AbortSignal.timeout(45000)});
+    }
     if(res.status!==206||!res.body)throw Error("audio_origin_unavailable");
     const header=res.headers.get("content-range");
     const m=header&&/^bytes (\d+)-(\d+)\/(\d+)$/.exec(header);
