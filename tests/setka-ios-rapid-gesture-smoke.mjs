@@ -39,10 +39,15 @@ try{
   // Recording every rapid swipe is still required, but cannot serialize the
   // entire personal research archive on every touch.
   C.getData().settings.replayDetailsEnabled=true;
-  let writes=0;
+  let writes=0,configWrites=0;
   const dataKey=window.SetkaDataScopeV1?.key?.("setka-standalone:v34")||"setka-standalone:v34";
+  const configsKey=window.SetkaDataScopeV1?.key?.("setka-patterns:last-config:v1")||"setka-patterns:last-config:v1";
   const proto=Storage.prototype,original=proto.setItem;
-  proto.setItem=function(k,v){if(k===dataKey)writes++;return original.call(this,k,v)};
+  proto.setItem=function(k,v){
+   if(k===dataKey)writes++;
+   if(k===configsKey)configWrites++;
+   return original.call(this,k,v);
+  };
   const before=C.getData().events.length;
   const initialColor=S.getState().config.colorModeIndex;
   const canvas=document.getElementById("patternCanvas");
@@ -73,7 +78,7 @@ try{
    if(S.getState().view!=="game")throw Error("stray overlay click unexpectedly exited gameplay");
   }finally{proto.setItem=original}
   const after=C.getData().events.length;
-  return {writes,events:after-before,view:S.getState().view,pattern:S.getState().patternId,
+  return {writes,configWrites,events:after-before,view:S.getState().view,pattern:S.getState().patternId,
    colorUnchanged:S.getState().config.colorModeIndex===initialColor};
  },count);
  for(const count of [70,45]){
@@ -84,6 +89,8 @@ try{
   assert.ok(stats.events>=count*2,"all start/end gestures are retained in live research archive");
   assert.ok(stats.writes<Math.ceil(count/5)+5,
    "rapid interactions must coalesce full archive writes: "+JSON.stringify(stats));
+  assert.ok(stats.configWrites<Math.ceil(count/5)+5,
+   "rapid interactions must also coalesce last-pattern-config writes: "+JSON.stringify(stats));
   await page.waitForTimeout(550);
   const saved=await page.evaluate(()=>{
    const key=window.SetkaDataScopeV1?.key?.("setka-standalone:v34")||"setka-standalone:v34";
