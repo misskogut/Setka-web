@@ -31,6 +31,6 @@ try{
  }),track.id);
  console.log("FRESH_8D_WEBKIT_REAL_UI",JSON.stringify({type,...result,statuses:statuses.slice(0,8)}));
  assert.ok(result.active?.level===1,"8D button becomes active");
- assert.ok(result.captured.some(e=>e.currentTime>0.8&&!e.error&&e.duration>1000),
+ assert.ok(result.captured.some(e=>e.seconds>0.8&&!e.error&&e.duration>1000),
   "8D full WAV must actually advance in Safari WebAudio without stalling");
 }finally{await browser.close()}
