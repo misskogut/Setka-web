@@ -37,7 +37,7 @@ test("orbit presets are eight explicit, independent trajectories",()=>{
  mixer.speed=0;const slow=mixer.omega();mixer.speed=100;assert.ok(mixer.omega()>slow*30);
  const pos=[];
  mixer.ctx={currentTime:0};
- mixer.items.set("test",{id:"test",angle:0,radius:.6,anchorAngle:0,anchorRadius:.6,manual:false,
+ mixer.items.set("test",{id:"test",track:{loop:false},decks:[],angle:0,radius:.6,anchorAngle:0,anchorRadius:.6,manual:false,
   panner:{setPosition(x,y,z){pos.push([x,y,z])}}});
  mixer.motion("cw");mixer.started-=3;mixer.tick();
  assert.ok(mixer.items.get("test").angle>0,"clockwise advances from its existing anchor");
@@ -58,7 +58,7 @@ test("off has no dots: dots render only with active > 0 level",()=>{
 });
 test("orbit source has no disc and stage expands without flattening rings",()=>{
  const css=file("standalone-music-v1.css");
- assert.match(css,/\.sm-source\{[^}]*border:0;border-radius:0;background:transparent;[^}]*box-shadow:none\}/s);
+ assert.match(css,/\.sm-source\{[^}]*border:0;border-radius:0;background:transparent;[^}]*box-shadow:none;/s);
  assert.match(css,/\.sm-ring-outer\{width:96%;height:96%\}/);
  assert.match(css,/width:min\(93vw,43svh,375px,calc\(100svh - var\(--safe-top\) - var\(--safe-bottom\) - 441px\)\)/);
  assert.match(css,/width:min\(83vw,36svh,315px,calc\(100svh - var\(--safe-top\) - var\(--safe-bottom\) - 408px\)\)/);
