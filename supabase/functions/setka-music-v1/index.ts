@@ -82,6 +82,80 @@ const refreshExternalAudio=async tracks=>{
  }catch(error){console.warn("setka-yandex-refresh-error",String(error?.message||"unavailable"))}
  return tracks;
 };
+// Range-limited same-origin-for-audio proxy: replaces non-browser-playable attachment
+// redirect from Yandex with actual inline PCM/MP3 media responses.
+// Every call is bounded to 2 MiB so large uncompressed files never require
+// buffering, conversion, or a minutes-long Edge Function execution.
+const MAX_AUDIO_CHUNK=2*1024*1024;
+const streamExternalTrack=async(request,origin,id)=>{
+  if(!/^[a-f0-9-]{36}$/i.test(id||""))return json({error:"bad_track"},400,origin);
+  const rows=await rowQuery("setka_music_tracks_v1",
+    "select=id,published,external_source_path,external_source_bytes,external_audio_url,external_audio_url_expires&id=eq."+
+    encodeURIComponent(id)+"&published=eq.true&limit=1");
+  const t=rows[0],size=Number(t?.external_source_bytes);
+  if(!t?.external_source_path||!Number.isSafeInteger(size)||size<=0||
+     !/^\/(?:8D|актив|пассив|звуки природы)\/.+\.(?:wav|mp3)$/i.test(t.external_source_path))
+    return json({error:"not_found"},404,origin);
+  const mp3=/\.mp3$/i.test(t.external_source_path);
+  const baseHeaders={...cors(origin),"vary":"Origin, Range","access-control-expose-headers":
+    "Content-Length, Content-Range, Accept-Ranges, Content-Type",
+    "content-type":mp3?"audio/mpeg":"audio/wav",
+    "accept-ranges":"bytes",
+    "cache-control":"private, no-store",
+    "cross-origin-resource-policy":"cross-origin",
+    "content-disposition":"inline"};
+  if(request.method==="HEAD")return new Response(null,{status:200,headers:{...baseHeaders,"content-length":String(size)}});
+  // Media browsers seek using single byte ranges; honor any valid interval
+  // while preventing origin-wide downloads of >400 MiB in one Edge request.
+  const range=request.headers.get("range");
+  let start=0,end=Math.min(size-1,MAX_AUDIO_CHUNK-1);
+  if(range){
+    const matched=/^bytes=(\d*)-(\d*)$/.exec(range.trim());
+    if(!matched||(!matched[1]&&!matched[2]))
+      return new Response(null,{status:416,headers:{...baseHeaders,"content-range":"bytes */"+size}});
+    if(matched[1]){
+      start=Number(matched[1]);
+      if(!Number.isSafeInteger(start)||start>=size)
+        return new Response(null,{status:416,headers:{...baseHeaders,"content-range":"bytes */"+size}});
+      end=matched[2]?Math.min(size-1,Number(matched[2])):size-1;
+      if(!Number.isSafeInteger(end)||end<start)
+        return new Response(null,{status:416,headers:{...baseHeaders,"content-range":"bytes */"+size}});
+      end=Math.min(end,start+MAX_AUDIO_CHUNK-1);
+    }else{
+      const suffix=Math.max(1,Math.min(size,MAX_AUDIO_CHUNK,Number(matched[2])));
+      start=size-suffix;end=size-1;
+    }
+  }
+  let file=t.external_audio_url;
+  if(!validYandexAudioURL(file)||new Date(t.external_audio_url_expires).getTime()<Date.now()+30000){
+    // A fresh metadata lookup is sufficient; never download or decode audio here.
+    const api="https://cloud-api.yandex.net/v1/disk/public/resources?public_key="+
+      encodeURIComponent(YANDEX_SOURCE)+"&path="+encodeURIComponent(t.external_source_path);
+    const response=await fetch(api,{cache:"no-store",signal:AbortSignal.timeout(18000)});
+    if(!response.ok)return json({error:"audio_source_unavailable"},502,origin);
+    const data=await response.json();
+    file=data.file;
+    if(!validYandexAudioURL(file))return json({error:"audio_source_unavailable"},502,origin);
+    await mutate("setka_music_tracks_v1","PATCH",{external_audio_url:file,
+      external_audio_url_expires:new Date(yandexURLExpiry(file)).toISOString()},
+      "id=eq."+encodeURIComponent(id));
+  }
+  const upstream=await fetch(file,{method:"GET",headers:{"range":"bytes="+start+"-"+end},
+    redirect:"follow",signal:AbortSignal.timeout(30000)});
+  if(upstream.status!==206||!upstream.body){
+    await upstream.body?.cancel().catch(()=>{});
+    return json({error:"audio_origin_unavailable"},502,origin);
+  }
+  const contentRange=upstream.headers.get("content-range");
+  const match=contentRange&&/^bytes (\d+)-(\d+)\/(\d+)$/.exec(contentRange);
+  if(!match||Number(match[1])!==start||Number(match[2])!==end||Number(match[3])!==size){
+    await upstream.body.cancel().catch(()=>{});
+    return json({error:"audio_range_mismatch"},502,origin);
+  }
+  return new Response(upstream.body,{status:206,headers:{...baseHeaders,
+    "content-range":contentRange,
+    "content-length":String(end-start+1)}});
+};
 const catalogue=async manage=>{
   const cats=await rowQuery("setka_music_categories_v1","select=id,title,icon_path,sort_order,visible,is_system,updated_at"+(manage?"":"&visible=eq.true")+"&order=sort_order.asc,id.asc");
   const icons=await rowQuery("setka_music_ui_icons_v1","select=slot,icon_path,updated_at&order=slot.asc");
@@ -93,7 +167,7 @@ const catalogue=async manage=>{
   const record=globalRows[0]||{id:1,track_ids:[],revision:1};
   const global_order={...record,track_ids:(record.track_ids||[]).filter(id=>visible.has(id))};
   const stats=manage?await rowQuery("setka_music_track_stats_v1","select=track_id,plays,completions,plays_7d,last_activity_at"):[];
-  return {ok:true,categories:cats,ui_icons:icons.map(i=>({...i,icon_url:PROJECT+"/storage/v1/object/public/"+BUCKET+"/"+i.icon_path})),tracks:tracks.map(t=>({...t,audio_url:t.external_source_path?(validYandexAudioURL(t.external_audio_url)&&new Date(t.external_audio_url_expires).getTime()>Date.now()+60000?t.external_audio_url:null):PROJECT+"/storage/v1/object/public/"+BUCKET+"/"+t.audio_path,icon_url:t.icon_path?PROJECT+"/storage/v1/object/public/"+BUCKET+"/"+t.icon_path:null})),global_order,stats,hidden_icon_keys:hiddenIcons.map(x=>x.icon_key)};
+  return {ok:true,categories:cats,ui_icons:icons.map(i=>({...i,icon_url:PROJECT+"/storage/v1/object/public/"+BUCKET+"/"+i.icon_path})),tracks:tracks.map(t=>({...t,audio_url:t.external_source_path?PROJECT+"/functions/v1/setka-music-v1?stream="+encodeURIComponent(t.id):PROJECT+"/storage/v1/object/public/"+BUCKET+"/"+t.audio_path,icon_url:t.icon_path?PROJECT+"/storage/v1/object/public/"+BUCKET+"/"+t.icon_path:null})),global_order,stats,hidden_icon_keys:hiddenIcons.map(x=>x.icon_key)};
 };
 const ensureObject=async path=>{
   const response=await fetch(PROJECT+"/storage/v1/object/info/"+BUCKET+"/"+path,{headers:adminHeaders});
@@ -102,10 +176,15 @@ const ensureObject=async path=>{
 const fail=e=>e?.message==="uploaded_file_missing"?"uploaded_file_missing":e?.message==="bad_request"?"bad_request":e?.message==="write_rejected"?"write_rejected":"service_unavailable";
 Deno.serve(async request=>{
   const origin=request.headers.get("origin")||"";
-  if(request.method==="OPTIONS")return new Response(null,{status:204,headers:{...cors(origin),"access-control-allow-headers":"content-type,apikey,authorization","access-control-allow-methods":"GET,POST,OPTIONS","access-control-max-age":"3600","vary":"Origin"}});
+  if(request.method==="OPTIONS")return new Response(null,{status:204,headers:{...cors(origin),"access-control-allow-headers":"content-type,apikey,authorization,range","access-control-allow-methods":"GET,HEAD,POST,OPTIONS","access-control-max-age":"3600","vary":"Origin"}});
   if(!PROJECT||!SECRET)return json({error:"service_unavailable"},503,origin);
   try{
-    if(request.method==="GET")return json(await catalogue(false),200,origin);
+    if(request.method==="GET"||request.method==="HEAD"){
+      const id=new URL(request.url).searchParams.get("stream");
+      if(id!==null)return streamExternalTrack(request,origin,id);
+      if(request.method==="HEAD")return new Response(null,{status:200,headers:cors(origin)});
+      return json(await catalogue(false),200,origin);
+    }
     if(request.method!=="POST")return json({error:"method_not_allowed"},405,origin);
     const b=await request.json();
     if(b?.action==="catalog")return json(await catalogue(false),200,origin);
