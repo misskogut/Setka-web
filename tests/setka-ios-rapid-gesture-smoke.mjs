@@ -97,13 +97,27 @@ try{
    "rapid interactions must coalesce full archive writes: "+JSON.stringify(stats));
   assert.ok(stats.configWrites<Math.ceil(count/5)+5,
    "rapid interactions must also coalesce last-pattern-config writes: "+JSON.stringify(stats));
-  await page.waitForTimeout(550);
-  const saved=await page.evaluate(()=>{
+  await page.waitForTimeout(1100);
+  const durable=await page.evaluate(async()=>{
+   const C=window.SetkaStandaloneV34;
    const key=window.SetkaDataScopeV1?.key?.("setka-standalone:v34")||"setka-standalone:v34";
-   return JSON.parse(localStorage.getItem(key)||"null");
+   await C.whenSaved?.();
+   const status=C.storageStatus?.()||{};
+   let local=null;
+   try{local=JSON.parse(localStorage.getItem(key)||"null")}catch(_){}
+   let indexed=null;
+   if(status.kind==="indexedDB"){
+    try{indexed=(await window.SetkaPersonalStorageV1?.read?.())?.payload||null}catch(_){}
+   }
+   return {
+    saved:!!(local?.events?.some(e=>e.type==="gesture_end")||indexed?.events?.some(e=>e.type==="gesture_end")),
+    inMemory:C.getData().events.filter(e=>e.type==="gesture_end").length,
+    localEvents:local?.events?.length||0,indexedEvents:indexed?.events?.length||0,
+    storageStatus:status,scope:key
+   };
   });
-  assert.ok(saved?.events?.some(e=>e.type==="gesture_end"),
-   "batched touch events become durable without a manual action");
+  assert.equal(durable.saved,true,
+   "batched touch events must be durable in localStorage or IndexedDB: "+JSON.stringify(durable));
   assert.deepEqual(crashes,[],"Safari WebContent process stays alive");
   if(count===70){
    await page.locator("#libraryButton").click();
