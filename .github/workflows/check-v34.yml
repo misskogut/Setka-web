@@ -106,6 +106,8 @@ on:
       - 'supabase/functions/setka-standalone-v34/index.ts'
       - 'supabase/functions/setka-tester-archive-v37/index.ts'
       - 'tests/standalone-v34-browser-smoke.mjs'
+      - 'tests/setka-ios-rapid-gesture-smoke.mjs'
+      - 'standalone-replay-capture-v1.js'
       - 'tests/setka-front-research-audit-browser.mjs'
       - 'tests/standalone-v34-admin-browser-smoke.mjs'
       - 'tests/standalone-v34-admin-integrity.test.mjs'
@@ -145,6 +147,7 @@ jobs:
       - run: node --check standalone-storage-v1.js
       - run: node --check standalone-inline-actions-v1.js
       - run: node --check standalone-runtime-v34.js
+      - run: node --check standalone-replay-capture-v1.js
       - run: node --check standalone-favorites-repair-v34.js
       - run: node --check standalone-favorite-native-guard-v34.js
       - run: node --check standalone-methodology-v34.js
@@ -218,6 +221,8 @@ jobs:
       - run: SETKA_BROWSER=webkit node tests/standalone-breathing-grid-browser-smoke.mjs
       - run: node tests/standalone-audio-reactive-v1-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/standalone-audio-reactive-v1-browser-smoke.mjs
+      - run: node tests/setka-ios-rapid-gesture-smoke.mjs
+      - run: SETKA_BROWSER=webkit node tests/setka-ios-rapid-gesture-smoke.mjs
       - run: node tests/standalone-v34-browser-smoke.mjs
       - run: node tests/standalone-sheets-v1-browser-smoke.mjs
       - run: node tests/standalone-live-previews-v1-browser-smoke.mjs
