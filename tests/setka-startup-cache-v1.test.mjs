@@ -7,10 +7,10 @@ import {execFileSync} from "node:child_process";
 
 test("SETKA startup caches unchanged frontend assets across unrelated GitHub deployments",()=>{
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),"setka-cache-gate-"));
- const html='<meta name="setka-release-build" content="development" />\\n'+
-  '<script src="app.js?v=old"></script>\\n'+
-  '<script type="module" src="scene.mjs?v=old"></script>\\n'+
-  '<link href="look.css?v=old" rel="stylesheet">\\n';
+ const html='<meta name="setka-release-build" content="development" />\n'+
+  '<script src="app.js?v=old"></script>\n'+
+  '<script type="module" src="scene.mjs?v=old"></script>\n'+
+  '<link href="look.css?v=old" rel="stylesheet">\n';
  try{
   fs.mkdirSync(path.join(dir,"scripts"));
   fs.copyFileSync("scripts/build-standalone-release.mjs",path.join(dir,"scripts/build-standalone-release.mjs"));
@@ -24,7 +24,7 @@ test("SETKA startup caches unchanged frontend assets across unrelated GitHub dep
     cwd:dir,env:{...process.env,GITHUB_SHA:sha},stdio:"pipe"
    });
    const deployed=fs.readFileSync(path.join(dir,"standalone-v34.html"),"utf8");
-   const links=Object.fromEntries([...deployed.matchAll(/(?:src|href)="([^"?]+)\\?content=([a-f0-9]{20})"/g)]
+   const links=Object.fromEntries([...deployed.matchAll(/(?:src|href)="([^"?]+)\?content=([a-f0-9]{20})"/g)]
     .map(([,name,version])=>[name,version]));
    assert.equal(Object.keys(links).length,3,"all three frontend assets have source digests");
    assert.equal(JSON.parse(fs.readFileSync(path.join(dir,"standalone-release.json"),"utf8")).build,sha);
@@ -48,11 +48,11 @@ test("SETKA startup caches unchanged frontend assets across unrelated GitHub dep
 test("incremental renderer hydration preserves previously drawn pattern canvases",()=>{
  const app=fs.readFileSync("app-v7-multipattern.js","utf8");
  assert.match(app,/const pending=allPatternsPanel.querySelectorAll/);
- assert.match(app,/placeholder.replaceWith\\(baseTile\\(p\\)\\)/);
- assert.doesNotMatch(app,/available.map\\(p=>\\[p.id,p.version,registry.defaults\\(p.id\\),registry.ready\\(p.id\\)\\]\\)/);
+ assert.match(app,/placeholder.replaceWith\(baseTile\(p\)\)/);
+ assert.doesNotMatch(app,/available.map\(p=>\[p.id,p.version,registry.defaults\(p.id\),registry.ready\(p.id\)\]\)/);
  const loader=fs.readFileSync("standalone-pattern-plugins-v1.js","utf8");
  assert.match(loader,/SetkaPatternModuleHashesV1/);
- assert.match(loader,/address.searchParams.set\\("content",hash\\)/);
- assert.match(loader,/address.searchParams.set\\("build",build\\)/,
+ assert.match(loader,/address.searchParams.set\("content",hash\)/);
+ assert.match(loader,/address.searchParams.set\("build",build\)/,
   "a stale registry or local shell must still load renderers safely");
 });
