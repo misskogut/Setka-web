@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import vm from "node:vm";
+import {createHash} from "node:crypto";
 
 // A new SETKA pattern is one renderer file with a declarative header:
 // standalone-pattern-<id>.js. No changes to the registry, front or research
@@ -16,6 +17,8 @@ if(start<0||finish<start||source.indexOf(BEGIN,start+1)!==-1||source.indexOf(END
   throw Error("SETKA registry auto-discovery boundary missing or duplicated");
 }
 const discovered=[];
+// Content fingerprints avoid cold-loading unchanged renderers on every commit.
+const moduleHashes=Object.create(null);
 const seen=new Set();
 for(const entry of fs.readdirSync(".",{withFileTypes:true}).sort((a,b)=>a.name.localeCompare(b.name))){
   if(!entry.isFile()||!/^standalone-pattern-[a-z0-9-]+\.js$/.test(entry.name))continue;
@@ -44,13 +47,15 @@ for(const entry of fs.readdirSync(".",{withFileTypes:true}).sort((a,b)=>a.name.l
     throw Error("SETKA black-white initial palette required: "+entry.name);
   }
   seen.add(descriptor.id);
+  moduleHashes[entry.name]=createHash("sha256").update(moduleSource).digest("hex").slice(0,20);
   discovered.push(descriptor);
 }
 // File names are not release chronology. Each one-file package carries its
 // immutable first-publication timestamp. Never hand-maintain a parallel ID
 // ordering in the front, admin, research or SQL.
 discovered.sort((a,b)=>Date.parse(a.introducedAt)-Date.parse(b.introducedAt)||a.id.localeCompare(b.id));
-const generated=source.slice(0,start+BEGIN.length)+"\n  const discovered="+JSON.stringify(discovered,null,2).replace(/\n/g,"\n  ")+";\n  "+source.slice(finish);
+const generated=source.slice(0,start+BEGIN.length)+"\n  const discovered="+JSON.stringify(discovered,null,2).replace(/\n/g,"\n  ")+
+  ";\n  root.SetkaPatternModuleHashesV1=Object.freeze("+JSON.stringify(moduleHashes)+");\n  "+source.slice(finish);
 const context={window:{dispatchEvent(){}},CustomEvent:class{constructor(type,args){this.type=type;this.detail=args?.detail}}};
 vm.runInNewContext(generated,vm.createContext(context),{timeout:1500});
 const registry=context.window.SetkaPatternRegistryV1;
