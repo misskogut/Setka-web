@@ -140,20 +140,42 @@ const streamExternalTrack=async(request,origin,id)=>{
       external_audio_url_expires:new Date(yandexURLExpiry(file)).toISOString()},
       "id=eq."+encodeURIComponent(id));
   }
-  const upstream=await fetch(file,{method:"GET",headers:{"range":"bytes="+start+"-"+end},
-    redirect:"follow",signal:AbortSignal.timeout(140000)});
-  if(upstream.status!==206||!upstream.body){
-    await upstream.body?.cancel().catch(()=>{});
-    return json({error:"audio_origin_unavailable"},502,origin);
-  }
-  const contentRange=upstream.headers.get("content-range");
-  const match=contentRange&&/^bytes (\d+)-(\d+)\/(\d+)$/.exec(contentRange);
-  if(!match||Number(match[1])!==start||Number(match[2])!==end||Number(match[3])!==size){
-    await upstream.body.cancel().catch(()=>{});
-    return json({error:"audio_range_mismatch"},502,origin);
-  }
-  return new Response(upstream.body,{status:range?206:200,headers:{...baseHeaders,
-    ...(range?{"content-range":contentRange}:{}),
+  // The client sees the complete original file range (accurate Safari duration).
+  // Internally fetch only 2 MiB Yandex ranges at a time, avoiding 500 MiB upstream stalls.
+  // Forward byte-for-byte, never buffer the whole file or transcode audio.
+  const segmentSize=2*1024*1024;
+  const source=async(first,last)=>{
+    const res=await fetch(file,{method:"GET",headers:{"range":"bytes="+first+"-"+last},
+      redirect:"follow",signal:AbortSignal.timeout(45000)});
+    if(res.status!==206||!res.body)throw Error("audio_origin_unavailable");
+    const header=res.headers.get("content-range");
+    const m=header&&/^bytes (\d+)-(\d+)\/(\d+)$/.exec(header);
+    if(!m||Number(m[1])!==first||Number(m[2])!==last||Number(m[3])!==size){
+      await res.body.cancel().catch(()=>{});
+      throw Error("audio_range_mismatch");
+    }
+    return res.body.getReader();
+  };
+  let cursor=start,sectionEnd=Math.min(end,start+segmentSize-1),reader;
+  try{reader=await source(cursor,sectionEnd)}
+  catch(_){return json({error:"audio_origin_unavailable"},502,origin)}
+  const audio=new ReadableStream({
+    async pull(controller){
+      try{
+        while(true){
+          const next=await reader.read();
+          if(!next.done){controller.enqueue(next.value);return}
+          reader.releaseLock();cursor=sectionEnd+1;
+          if(cursor>end){controller.close();return}
+          sectionEnd=Math.min(end,cursor+segmentSize-1);
+          reader=await source(cursor,sectionEnd);
+        }
+      }catch(error){controller.error(error)}
+    },
+    cancel(){reader?.cancel().catch(()=>{})}
+  });
+  return new Response(audio,{status:range?206:200,headers:{...baseHeaders,
+    ...(range?{"content-range":"bytes "+start+"-"+end+"/"+size}:{}),
     "content-length":String(end-start+1)}});
 };
 const catalogue=async manage=>{
