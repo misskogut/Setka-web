@@ -30,67 +30,44 @@ const authorized=async key=>{
 const UI_SLOTS = new Set(["nav-note","orbit-tab","listener","motion-static","motion-cw","motion-ccw","motion-counter","motion-eight","motion-chaos","motion-spiral","motion-breath","speed-slow","speed-fast","power"]);
 const iconFile = path => typeof path==="string" && /^icons\/[a-f0-9-]{36}\.(png|webp)$/.test(path);
 
-const YANDEX_SOURCE="https://disk.yandex.ru/d/gmjwIQoHo6VxtQ";
-const YANDEX_FOLDERS=["8D","актив","пассив","звуки природы"];
-const validYandexAudioURL=value=>{
- try{const url=new URL(value);return url.protocol==="https:"&&url.hostname==="downloader.disk.yandex.ru"&&url.pathname.startsWith("/disk/")}
- catch(_){return false}
+// Immutable audio attached to this SETKA repository's GitHub release.
+const GITHUB_AUDIO_RELEASE="https://github.com/misskogut/Setka-web/releases/download/setka-original-music-20261107/";
+const githubOriginalAsset=track=>{
+ const hash=String(track?.external_source_hash||"").toLowerCase();
+ const name=String(track?.external_source_path||"");
+ if(!/^[a-f0-9]{64}$/.test(hash)||!/\.(?:wav|mp3)$/i.test(name))return null;
+ return GITHUB_AUDIO_RELEASE+"setka-original-"+hash.slice(0,24)+(name.toLowerCase().endsWith(".mp3")?".mp3":".wav");
 };
-const yandexURLExpiry=value=>{
+// Release assets are verified by immutable sha256 and byte size, not just presence.
+// An absent/corrupt source must not leave a clickable silent icon in the public catalog.
+let musicReleaseAssetCache=null,musicReleaseAssetCacheAt=0;
+const musicReleaseAssets=async()=>{
+ const now=Date.now();
+ if(musicReleaseAssetCache&&now-musicReleaseAssetCacheAt<120000)return musicReleaseAssetCache;
  try{
-  const token=new URL(value).pathname.split("/")[3];
-  if(!/^[0-9a-f]{8}$/i.test(token))return 0;
-  return parseInt(token,16)*1000;
- }catch(_){return 0}
-};
-// Cache temporary signed Yandex CDN links in a protected database row. Never
-// transcode, buffer or downsample audio; native WAV/MP3 remains on its source.
-// A short DB-wide lease prevents the app's readers from stampeding Yandex API.
-const refreshExternalAudio=async tracks=>{
- const time=Date.now();
- const linked=tracks.filter(t=>t.external_source_path);
- if(!linked.length||linked.every(t=>validYandexAudioURL(t.external_audio_url)&&new Date(t.external_audio_url_expires).getTime()>time+25*60000))return tracks;
- try{
-  const cutoff=new Date(time-8*60000).toISOString();
-  const leased=await mutate("setka_music_external_refresh_v1","PATCH",{attempted_at:new Date(time).toISOString()},"id=eq.1&attempted_at=lt."+encodeURIComponent(cutoff));
-  if(!leased.length)return tracks;
-  const known=new Set(linked.map(t=>t.external_source_path));
-  const pages=await Promise.allSettled(YANDEX_FOLDERS.map(async folder=>{
-   const url="https://cloud-api.yandex.net/v1/disk/public/resources?public_key="+encodeURIComponent(YANDEX_SOURCE)+"&path="+encodeURIComponent("/"+folder)+"&limit=150";
-   const response=await fetch(url,{cache:"no-store",signal:AbortSignal.timeout(16000)});
-   if(!response.ok)throw Error("yandex_listing_"+response.status);
-   const data=await response.json();
-   return Array.isArray(data?._embedded?.items)?data._embedded.items:[];
-  }));
-  const updates=[];
-  for(const page of pages){
-   if(page.status!=="fulfilled"){console.warn("setka-yandex-refresh",String(page.reason?.message||"unavailable"));continue}
-   for(const file of page.value){
-    if(file?.type!=="file"||file.media_type!=="audio"||!known.has(file.path)||!validYandexAudioURL(file.file))continue;
-    const expiry=yandexURLExpiry(file.file);
-    if(expiry<time+30*60000)continue;
-    updates.push({path:file.path,url:file.file,expiry:new Date(expiry).toISOString()});
-   }
+  const response=await fetch("https://api.github.com/repos/misskogut/Setka-web/releases/tags/setka-original-music-20261107",{
+   headers:{accept:"application/vnd.github+json"},signal:AbortSignal.timeout(12000),cache:"no-store"});
+  if(!response.ok)throw Error("github_release_metadata_unavailable");
+  const data=await response.json(),assets=new Map();
+  for(const item of Array.isArray(data?.assets)?data.assets:[]){
+   if(typeof item.name==="string"&&Number.isSafeInteger(item.size)&&item.size>0)
+    assets.set(item.name,{size:item.size,digest:item.digest||null});
   }
-  for(let i=0;i<updates.length;i+=5){
-   const results=await Promise.allSettled(updates.slice(i,i+5).map(x=>
-    mutate("setka_music_tracks_v1","PATCH",{external_audio_url:x.url,external_audio_url_expires:x.expiry},"external_source_path=eq."+encodeURIComponent(x.path))
-   ));
-   if(results.some(x=>x.status==="rejected"))console.warn("setka-yandex-cache-partial-failure");
-  }
-  if(updates.length)return await rowQuery("setka_music_tracks_v1","select=id,title,audio_path,icon_key,icon_path,category_ids,sort_order,published,loop,duration_seconds,revision,updated_at,external_source_path,external_source_bytes,external_audio_url,external_audio_url_expires&order=sort_order.asc,created_at.asc");
- }catch(error){console.warn("setka-yandex-refresh-error",String(error?.message||"unavailable"))}
- return tracks;
+  musicReleaseAssetCache=assets;musicReleaseAssetCacheAt=now;return assets;
+ }catch(_){return musicReleaseAssetCache}
 };
-// Browser-playable inline WAV/MP3 proxy. Yandex downloader redirects are not
-// CORS-playable. IMPORTANT: honor the COMPLETE range, including "bytes=0-":
-// WebKit uses the returned Content-Length to infer media duration. Truncating
-// the open-ended range to 2 MiB falsely makes 10-500 MB tracks end early.
-// Stream the upstream response body without buffering or transcoding it.
+const isOnGitHub=(t,assets)=>{
+ if(!t.external_source_path)return true;
+ if(!assets)return true; // A temporary GitHub API failure must not erase existing music.
+ const assetURL=githubOriginalAsset(t),name=assetURL?.split("/").pop();
+ const a=name&&assets.get(name);
+ const sha="sha256:"+String(t.external_source_hash||"").toLowerCase();
+ return !!a&&a.size===Number(t.external_source_bytes)&&(!a.digest||a.digest.toLowerCase()===sha);
+};
 const streamExternalTrack=async(request,origin,id)=>{
   if(!/^[a-f0-9-]{36}$/i.test(id||""))return json({error:"bad_track"},400,origin);
   const rows=await rowQuery("setka_music_tracks_v1",
-    "select=id,published,external_source_path,external_source_bytes,external_audio_url,external_audio_url_expires&id=eq."+
+    "select=id,published,external_source_path,external_source_hash,external_source_bytes&id=eq."+
     encodeURIComponent(id)+"&published=eq.true&limit=1");
   const t=rows[0],size=Number(t?.external_source_bytes);
   if(!t?.external_source_path||!Number.isSafeInteger(size)||size<=0||
@@ -103,7 +80,7 @@ const streamExternalTrack=async(request,origin,id)=>{
     "accept-ranges":"bytes",
     "cache-control":"private, no-store",
     "cross-origin-resource-policy":"cross-origin",
-    "content-disposition":"inline"};
+    "content-disposition":"inline","x-setka-audio-origin":"github-release"};
   if(request.method==="HEAD")return new Response(null,{status:200,headers:{...baseHeaders,"content-length":String(size)}});
   // Preserve HTTP range semantics exactly. A 206 for a shorter-than-requested
   // interval misreports duration to Safari (and can truncate the soundtrack).
@@ -126,28 +103,18 @@ const streamExternalTrack=async(request,origin,id)=>{
       start=size-suffix;end=size-1;
     }
   }
-  let file=t.external_audio_url;
-  if(!validYandexAudioURL(file)||new Date(t.external_audio_url_expires).getTime()<Date.now()+30000){
-    // A fresh metadata lookup is sufficient; never download or decode audio here.
-    const api="https://cloud-api.yandex.net/v1/disk/public/resources?public_key="+
-      encodeURIComponent(YANDEX_SOURCE)+"&path="+encodeURIComponent(t.external_source_path);
-    const response=await fetch(api,{cache:"no-store",signal:AbortSignal.timeout(18000)});
-    if(!response.ok)return json({error:"audio_source_unavailable"},502,origin);
-    const data=await response.json();
-    file=data.file;
-    if(!validYandexAudioURL(file))return json({error:"audio_source_unavailable"},502,origin);
-    await mutate("setka_music_tracks_v1","PATCH",{external_audio_url:file,
-      external_audio_url_expires:new Date(yandexURLExpiry(file)).toISOString()},
-      "id=eq."+encodeURIComponent(id));
-  }
+  const file=githubOriginalAsset(t);
+  if(!file)return json({error:"audio_release_missing"},503,origin);
   // The client sees the complete original file range (accurate Safari duration).
   // Internally fetch only 2 MiB Yandex ranges at a time, avoiding 500 MiB upstream stalls.
   // Forward byte-for-byte, never buffer the whole file or transcode audio.
   const segmentSize=2*1024*1024;
+  // Fetch only the exact original byte ranges from SETKA's verified GitHub
+  // release asset. Never fallback to Yandex, transcode, or alter samples.
   const source=async(first,last)=>{
     const res=await fetch(file,{method:"GET",headers:{"range":"bytes="+first+"-"+last},
       redirect:"follow",signal:AbortSignal.timeout(45000)});
-    if(res.status!==206||!res.body)throw Error("audio_origin_unavailable");
+    if(res.status!==206||!res.body)throw Error("audio_github_release_unavailable");
     const header=res.headers.get("content-range");
     const m=header&&/^bytes (\d+)-(\d+)\/(\d+)$/.exec(header);
     if(!m||Number(m[1])!==first||Number(m[2])!==last||Number(m[3])!==size){
@@ -181,15 +148,16 @@ const streamExternalTrack=async(request,origin,id)=>{
 const catalogue=async manage=>{
   const cats=await rowQuery("setka_music_categories_v1","select=id,title,icon_path,sort_order,visible,is_system,updated_at"+(manage?"":"&visible=eq.true")+"&order=sort_order.asc,id.asc");
   const icons=await rowQuery("setka_music_ui_icons_v1","select=slot,icon_path,updated_at&order=slot.asc");
-  let tracks=await rowQuery("setka_music_tracks_v1","select=id,title,audio_path,icon_key,icon_path,category_ids,sort_order,published,loop,duration_seconds,revision,updated_at,external_source_path,external_source_bytes,external_audio_url,external_audio_url_expires"+(manage?"":"&published=eq.true")+"&order=sort_order.asc,created_at.asc");
-  tracks=await refreshExternalAudio(tracks);
+  let tracks=await rowQuery("setka_music_tracks_v1","select=id,title,audio_path,icon_key,icon_path,category_ids,sort_order,published,loop,duration_seconds,revision,updated_at,external_source_path,external_source_hash,external_source_bytes"+(manage?"":"&published=eq.true")+"&order=sort_order.asc,created_at.asc");
+  const availableAssets=await musicReleaseAssets();
+  if(!manage&&availableAssets)tracks=tracks.filter(t=>isOnGitHub(t,availableAssets));
   const hiddenIcons=manage?await rowQuery("setka_music_hidden_icons_v1","select=icon_key&order=icon_key.asc"):[];
   const globalRows=await rowQuery("setka_music_global_order_v1","select=id,track_ids,revision,updated_at&id=eq.1");
   const visible=new Set(tracks.map(t=>t.id));
   const record=globalRows[0]||{id:1,track_ids:[],revision:1};
   const global_order={...record,track_ids:(record.track_ids||[]).filter(id=>visible.has(id))};
   const stats=manage?await rowQuery("setka_music_track_stats_v1","select=track_id,plays,completions,plays_7d,last_activity_at"):[];
-  return {ok:true,categories:cats,ui_icons:icons.map(i=>({...i,icon_url:PROJECT+"/storage/v1/object/public/"+BUCKET+"/"+i.icon_path})),tracks:tracks.map(t=>({...t,audio_url:t.external_source_path?PROJECT+"/functions/v1/setka-music-v1?stream="+encodeURIComponent(t.id):PROJECT+"/storage/v1/object/public/"+BUCKET+"/"+t.audio_path,icon_url:t.icon_path?PROJECT+"/storage/v1/object/public/"+BUCKET+"/"+t.icon_path:null})),global_order,stats,hidden_icon_keys:hiddenIcons.map(x=>x.icon_key)};
+  return {ok:true,categories:cats,ui_icons:icons.map(i=>({...i,icon_url:PROJECT+"/storage/v1/object/public/"+BUCKET+"/"+i.icon_path})),tracks:tracks.map(t=>({...t,release_uploaded:isOnGitHub(t,availableAssets),audio_url:t.external_source_path?PROJECT+"/functions/v1/setka-music-v1?stream="+encodeURIComponent(t.id):PROJECT+"/storage/v1/object/public/"+BUCKET+"/"+t.audio_path,icon_url:t.icon_path?PROJECT+"/storage/v1/object/public/"+BUCKET+"/"+t.icon_path:null})),global_order,stats,hidden_icon_keys:hiddenIcons.map(x=>x.icon_key)};
 };
 const ensureObject=async path=>{
   const response=await fetch(PROJECT+"/storage/v1/object/info/"+BUCKET+"/"+path,{headers:adminHeaders});

@@ -36,15 +36,21 @@ try{
   {executablePath:process.env.SETKA_CHROMIUM_EXECUTABLE}:{} )});
  const page=await browser.newPage({viewport:{width:390,height:844},hasTouch:true,isMobile:true});
  const errors=[];page.on("pageerror",e=>errors.push(e.message));
- await page.route("**/functions/v1/**",route=>route.fulfill({json:{ok:true,items:[],notes:[],sessions:[],metrics:{}}}));
- await page.route("**/functions/v1/setka-music-v1",route=>route.fulfill({json:{
+ await page.route("**/functions/v1/**",route=>route.fulfill({headers:{"access-control-allow-origin":"*"},json:{ok:true,items:[],notes:[],sessions:[],metrics:{}}}));
+ await page.route("**/functions/v1/setka-music-v1",route=>route.fulfill({headers:{"access-control-allow-origin":"*"},json:{
   ok:true,categories:[{id:"hand",title:"Природные",visible:true}],tracks:catalog
  }}));
  const sample=wav();
- await page.route("**/spatial-fixture.wav",route=>route.fulfill({contentType:"audio/wav",body:sample}));
+ await page.route("**/spatial-fixture.wav",route=>{
+  const range=/^bytes=(\d+)-(\d*)$/.exec(route.request().headers().range||"");
+  if(!range)return route.fulfill({contentType:"audio/wav",body:sample});
+  const start=Number(range[1]),end=range[2]?Math.min(sample.length-1,Number(range[2])):sample.length-1;
+  return route.fulfill({status:206,contentType:"audio/wav",body:sample.subarray(start,end+1),
+   headers:{"accept-ranges":"bytes","content-range":`bytes ${start}-${end}/${sample.length}`,"content-length":String(end-start+1)}});
+ });
  await installPublicationCatalog(page);
  await page.addInitScript(()=>{
-  const direct=[],media=[],nodes=new WeakMap(),writes=[];
+  const direct=[],media=[],nodes=new Map(),writes=[];
   const NativeAudio=window.Audio;
   window.Audio=function(...args){const el=new NativeAudio(...args);media.push(el);return el};
   window.Audio.prototype=NativeAudio.prototype;
@@ -94,12 +100,13 @@ try{
    const {orbitDepthProfile}=await import("/standalone-music-audio-v1.mjs");
    const {angle,radius}=SetkaMusicV1.state().active[0];
    const writes=window.spatialProbe.writes.filter(w=>w.pointerAt!==null);
-   const last=writes.at(-1),same=writes.filter(w=>w.time===last.time).slice(-6);
-   return {same,distance:orbitDepthProfile(radius).distance,angle,
-    lag:same.find(w=>w.index===0).at-last.pointerAt,
+   const last=writes.filter(w=>w.index===0&&w.axis==="x").at(-1);
+   const same=writes.filter(w=>w.time===last?.time&&w.pointerAt===last?.pointerAt).slice(-6);
+   return {same,writes,distance:orbitDepthProfile(radius).distance,angle,
+    lag:last?last.at-last.pointerAt:null,
     skew:Math.max(...same.map(w=>w.at))-Math.min(...same.map(w=>w.at))};
   });
-  assert.equal(p.same.length,6);
+  assert.equal(p.same.length,6,JSON.stringify({angle,radius,writes:p.writes}));
   assert.ok(p.same.every(w=>w.constant===.008));
   const target=axis=>p.same.find(w=>w.index===0&&w.axis===axis).value;
   assert.ok(Math.abs(target("x")-p.distance*Math.sin(p.angle))<1e-6);

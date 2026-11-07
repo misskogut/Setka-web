@@ -21,15 +21,13 @@ test("SETKA Yandex import contains every unique original audio track in four req
  assert.equal(manifest.tracks.some(t=>/мурр\(уже есть\)/i.test(t.path)),false,"do not duplicate already uploaded Mur");
  assert.doesNotMatch(JSON.stringify(manifest),/downloader\.disk\.yandex\.ru|service_role|adminKey/,"do not commit ephemeral signed links or secrets");
 });
-test("music edge returns original range-capable CDN URLs with durable refresh and no transcoding",()=>{
+test("music edge serves verified GitHub Release audio with complete original byte ranges",()=>{
  const edge=read("supabase/functions/setka-music-v1/index.ts");
- assert.match(edge,/const YANDEX_SOURCE="https:\/\/disk\.yandex\.ru\/d\/gmjwIQoHo6VxtQ"/);
- assert.match(edge,/const YANDEX_FOLDERS=\["8D","актив","пассив","звуки природы"\]/);
- assert.match(edge,/const refreshExternalAudio=async tracks=>/);
- assert.match(edge,/setka_music_external_refresh_v1/,"shared server-side refresh lease");
- assert.match(edge,/yandexURLExpiry\(file\.file\)/);
- assert.match(edge,/new Date\(t\.external_audio_url_expires\)/);
- assert.match(edge,/validYandexAudioURL\(t\.external_audio_url\)/);
+ assert.match(edge,/const GITHUB_AUDIO_RELEASE="https:\/\/github\.com\/misskogut\/Setka-web\/releases\/download\//);
+ assert.match(edge,/a\.size===Number\(t\.external_source_bytes\)/);
+ assert.match(edge,/a\.digest\.toLowerCase\(\)===sha/);
+ assert.match(edge,/res\.status!==206/);
+ assert.match(edge,/Number\(m\[3\]\)!==size/);
  assert.match(edge,/audio_url:t\.external_source_path\?/);
  assert.match(edge,/setka-music-v1\?stream=/,"browser gets stable playable same-origin audio endpoint");
  assert.match(edge,/external_source_bytes/,"remote WAV sizes are returned to WebAudio mixer");
@@ -45,7 +43,8 @@ test("music edge returns original range-capable CDN URLs with durable refresh an
  assert.match(mixer,/Number\(track\.external_source_bytes\)>=24\*1024\*1024/);
  assert.match(mixer,/el\.loop=singleDeck&&track\.loop!==false/);
  assert.match(mixer,/if\(track\.loop!==false&&!singleDeck\)decks\.push\(makeDeck\(0\)\)/,"avoid double 500 MB WAV decoding on iOS");
- assert.match(mixer,/const nativeOnly=singleDeck&&webkit/,"Safari large-WAV fallback uses native media");
+ assert.match(mixer,/const nativeOnly=singleDeck&&webkit&&!streamWav/,"native is an explicit fallback");
+ assert.match(mixer,/const decks=streamWav\?\[\]:\[makeDeck\(1\)\]/,"bounded WAV transport never creates a media decoder");
  assert.match(mixer,/if\(nativeOnly\)return \{el,src:null,fade:null\}/,"WebKit never routes >24 MiB WAV via MediaElementSource");
  assert.match(mixer,/if\(state\.nativeOnly\)/,"native media volume follows the user-selected dots");
  assert.match(mixer,/d\.src\?\.disconnect\(\);d\.fade\?\.disconnect\(\)/,"native-only media cleans up safely");

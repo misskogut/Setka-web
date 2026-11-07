@@ -67,11 +67,73 @@ def trusted_metadata(entry):
         raise ValueError("unexpected media host for " + entry["path"])
     return url
 
+# A source CDN can intermittently return 500 from a GitHub runner's region.
+# SETKA's existing CORS-enabled audio endpoint exposes verified byte ranges of
+# the same original media, so it is a safe alternate path to copy source bytes.
+EDGE_CATALOG="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-music-v1"
+_EDGE_AUDIO=None
+
+def edge_audio_url(path):
+    global _EDGE_AUDIO
+    if _EDGE_AUDIO is None:
+        req=urllib.request.Request(EDGE_CATALOG, headers={"User-Agent":"SETKA-GitHub-Import/1.0"})
+        with urllib.request.urlopen(req,timeout=45) as resp:
+            obj=json.load(resp)
+        if not obj.get("ok") or not isinstance(obj.get("tracks"),list):
+            raise RuntimeError("SETKA catalog is unavailable")
+        _EDGE_AUDIO={t["external_source_path"]:t["audio_url"] for t in obj["tracks"]
+                     if t.get("external_source_path") and t.get("audio_url")}
+    target=_EDGE_AUDIO.get(path)
+    if not target or not target.startswith(EDGE_CATALOG+"?stream="):
+        raise RuntimeError("no verified range source for "+path)
+    return target
+
+def download_via_verified_ranges(entry,dest):
+    uri=edge_audio_url(entry["path"])
+    checksum=hashlib.sha256()
+    size=entry["bytes"]
+    span=2*1024*1024
+    total=0
+    with dest.open("wb") as output:
+        for start in range(0,size,span):
+            end=min(size-1,start+span-1)
+            for attempt in range(1,5):
+                try:
+                    req=urllib.request.Request(uri,headers={
+                       "Range":f"bytes={start}-{end}",
+                       "User-Agent":"SETKA-GitHub-Original-Audio-Import/1.0"})
+                    with urllib.request.urlopen(req,timeout=90) as response:
+                        if response.status!=206:
+                            raise RuntimeError("missing range response")
+                        if response.headers.get("Content-Range","")!=f"bytes {start}-{end}/{size}":
+                            raise RuntimeError("range mismatch")
+                        body=response.read(end-start+2)
+                    if len(body)!=end-start+1:
+                        raise RuntimeError("truncated media range")
+                    output.write(body)
+                    checksum.update(body)
+                    total+=len(body)
+                    break
+                except Exception as error:
+                    if attempt==4:
+                        raise
+                    print(f"Retry verified range {start}-{end}, attempt {attempt}: "
+                          f"{type(error).__name__}",flush=True)
+                    time.sleep(attempt*3)
+            if total//(64*1024*1024)!=(total-(end-start+1))//(64*1024*1024):
+                print(f"Verified range transfer progress: {total:,}/{size:,} bytes",flush=True)
+    if total!=size or checksum.hexdigest().lower()!=entry["sha256"].lower():
+        raise ValueError("verified range source SHA-256 mismatch")
+    print(f"Copied original soundtrack through verified SETKA ranges: {total:,} bytes",flush=True)
+    return dest
+
 def download(entry):
     dest = OUT / entry["asset_name"]
-    for attempt in range(1, 5):
+    for attempt in range(1, 6):
+        stage = "metadata"
         try:
             link = trusted_metadata(entry)
+            stage = "download"
             request = urllib.request.Request(link, headers={"User-Agent": "SETKA-GitHub-Original-Audio-Import/1.0"})
             sha = hashlib.sha256()
             seen = 0
@@ -96,17 +158,26 @@ def download(entry):
         except Exception as error:
             dest.unlink(missing_ok=True)
             # Do not log signed Yandex URLs or credentials.
-            print(f"Download attempt {attempt}/4 failed for {entry['asset_name']}: "
-                  f"{type(error).__name__}", flush=True)
-            if attempt == 4:
+            http_code = getattr(error, "code", None)
+            print(f"Download attempt {attempt}/5 failed at {stage} for {entry['asset_name']}: "
+                  f"{type(error).__name__}, HTTP={http_code}", flush=True)
+            if attempt>=2 and not entry.get("existing_local"):
+                try:
+                    print("Switching this original audio to verified byte-range transfer",flush=True)
+                    return download_via_verified_ranges(entry,dest)
+                except Exception as alt:
+                    dest.unlink(missing_ok=True)
+                    print(f"Alternate source attempt failed: {type(alt).__name__}",flush=True)
+            if attempt == 5:
                 raise
-            time.sleep(4 * attempt)
+            time.sleep(5 * attempt)
     raise RuntimeError("unreachable")
 
 def main():
     if not os.environ.get("GH_TOKEN"):
         raise RuntimeError("GH_TOKEN is needed from GitHub Actions permission contents:write")
     existing = ensure_release()
+    failures=[]
     for index, entry in enumerate(FILES, 1):
         name = entry["asset_name"]
         previous = existing.get(name)
@@ -119,22 +190,28 @@ def main():
             gh("api", "-X", "DELETE", f"repos/{REPO}/releases/assets/{previous['id']}")
         print(f"[{index}/{len(FILES)}] Importing {entry['path']} "
               f"({entry['bytes']:,} bytes)", flush=True)
-        dest = download(entry)
         try:
-            subprocess.run(["gh", "release", "upload", TAG, f"{dest}#{name}",
-                            "--repo", REPO], check=True, timeout=1800)
-        finally:
-            dest.unlink(missing_ok=True)
-        uploaded = release_assets() or {}
-        final = uploaded.get(name)
-        if not final or final.get("size") != entry["bytes"]:
-            raise RuntimeError("GitHub asset missing or wrong byte count after upload: "+name)
-        if final.get("digest") and final["digest"].lower() != "sha256:"+entry["sha256"].lower():
-            raise RuntimeError("GitHub asset sha256 mismatch: "+name)
-        existing = uploaded
-        print(f"Verified on GitHub: {name}, {entry['bytes']:,} bytes", flush=True)
+            dest = download(entry)
+            try:
+                subprocess.run(["gh", "release", "upload", TAG, f"{dest}#{name}",
+                                "--repo", REPO], check=True, timeout=1800)
+            finally:
+                dest.unlink(missing_ok=True)
+            uploaded = release_assets() or {}
+            final = uploaded.get(name)
+            if not final or final.get("size") != entry["bytes"]:
+                raise RuntimeError("GitHub asset missing or wrong byte count after upload: "+name)
+            if final.get("digest") and final["digest"].lower() != "sha256:"+entry["sha256"].lower():
+                raise RuntimeError("GitHub asset sha256 mismatch: "+name)
+            existing = uploaded
+            print(f"Verified on GitHub: {name}, {entry['bytes']:,} bytes", flush=True)
+        except Exception as error:
+            failures.append(name)
+            print(f"Deferring {name} to next retry pass: {type(error).__name__}", flush=True)
     final = release_assets() or {}
-    assert all(x["asset_name"] in final and final[x["asset_name"]]["size"] == x["bytes"] for x in FILES)
+    missing=[x["asset_name"] for x in FILES if x["asset_name"] not in final or final[x["asset_name"]]["size"] != x["bytes"]]
+    if failures or missing:
+        raise RuntimeError(f"Partial transfer: {len(final)}/28 assets, {len(missing)} missing; run again to resume")
     print("IMPORT COMPLETE: all 28 unchanged original audio assets verified on GitHub release.", flush=True)
 
 if __name__ == "__main__":
