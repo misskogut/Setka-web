@@ -1,5 +1,5 @@
-import {LEGACY_MUSIC_ICON_NAMES,legacyMusicSVG} from "./standalone-music-legacy-icons-v1.mjs?v=2-anti-staircase-20261107";
-import {VINTAGE_SOUND_ICON_KEYS,vintageSoundSVG} from "./standalone-music-vintage-icons-v2.mjs?v=3-anti-staircase-20261107";
+import {LEGACY_MUSIC_ICON_NAMES,legacyMusicSVG} from "./standalone-music-legacy-icons-v1.mjs?v=3-clean-master-20261107";
+import {VINTAGE_SOUND_ICON_KEYS,vintageSoundSVG} from "./standalone-music-vintage-icons-v2.mjs?v=4-clean-master-20261107";
 // Shared, immutable SETKA Music vector symbol dictionary.
 // Vector data is local code, not user-supplied SVG markup.
 export const ICONS=Object.freeze({
