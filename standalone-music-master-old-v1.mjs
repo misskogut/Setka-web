@@ -11,7 +11,6 @@ O["old-cat"]=P("M26 78C16 73 13 61 18 52C20 46 25 43 29 42C34 35 43 33 52 34L60 
  +P("M70 77L80 79L76 71M67 32L69 32M77 33L84 31");
 
 // Eight-sided mandala and precise radial petals.
-O["old-mandala"]=polygon(N(16,i=>{const a=(i*22.5-90)*Math.PI/180,r=i%2?35:43;return [+(50+Math.cos(a)*r).toFixed(3),+(50+Math.sin(a)*r).toFixed(3)]}).match(/M([\s\S]+)Z/) ? [] : []); // reassigned below with actual geometric polygon
 O["old-mandala"]=polygon(Array.from({length:16},(_,i)=>{const a=(i*22.5-90)*Math.PI/180,r=i%2?35:43;return [+(50+Math.cos(a)*r).toFixed(2),+(50+Math.sin(a)*r).toFixed(2)]}))
  +polygon(Array.from({length:16},(_,i)=>{const a=(i*22.5-90)*Math.PI/180,r=i%2?22:28;return [+(50+Math.cos(a)*r).toFixed(2),+(50+Math.sin(a)*r).toFixed(2)]}))
  +N(8,i=>ROT(i*45,P("M50 24C57 29 58 36 50 42C42 36 43 29 50 24Z")))
