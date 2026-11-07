@@ -40,8 +40,9 @@ try{
   // entire personal research archive on every touch.
   C.getData().settings.replayDetailsEnabled=true;
   let writes=0;
+  const dataKey=window.SetkaDataScopeV1?.key?.("setka-standalone:v34")||"setka-standalone:v34";
   const proto=Storage.prototype,original=proto.setItem;
-  proto.setItem=function(k,v){if(k==="setka-standalone:v34")writes++;return original.call(this,k,v)};
+  proto.setItem=function(k,v){if(k===dataKey)writes++;return original.call(this,k,v)};
   const before=C.getData().events.length;
   const canvas=document.getElementById("patternCanvas");
   const mk=(x,y,id)=>new Touch({identifier:id,target:canvas,clientX:x,clientY:y,pageX:x,pageY:y,screenX:x,screenY:y});
@@ -81,7 +82,10 @@ try{
   assert.ok(stats.writes<Math.ceil(count/5)+5,
    "rapid interactions must coalesce full archive writes: "+JSON.stringify(stats));
   await page.waitForTimeout(550);
-  const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem("setka-standalone:v34")||"null"));
+  const saved=await page.evaluate(()=>{
+   const key=window.SetkaDataScopeV1?.key?.("setka-standalone:v34")||"setka-standalone:v34";
+   return JSON.parse(localStorage.getItem(key)||"null");
+  });
   assert.ok(saved?.events?.some(e=>e.type==="gesture_end"),
    "batched touch events become durable without a manual action");
   assert.deepEqual(crashes,[],"Safari WebContent process stays alive");
