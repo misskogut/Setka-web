@@ -180,6 +180,7 @@ export function mountMusicAdmin(container,getAdminKey){
   const title=field(form,"Название",input("text",t.title||""));title.required=true;title.maxLength=120;
   const file=field(form,"Оригинальный аудиофайл (до 20 МБ, MP3/M4A/WAV/OGG)",input("file"));file.accept=".mp3,.m4a,.wav,.ogg,audio/*";if(!t.audio_path)file.required=true;
   form.append(el("p","sm-admin-lossless-note muted","Загружаем исходный файл без перекодирования, сжатия и изменения битрейта. Для максимального качества можно использовать WAV. MP3/M4A сохраняются в исходном виде."));
+  if(t.external_source_path)form.append(el("p","sm-admin-lossless-note muted","Источник: Яндекс Диск · "+t.external_source_path+". Оригинал воспроизводится напрямую без сжатия; временная ссылка обновляется автоматически. Новый загруженный аудиофайл заменит этот источник."));
   // One protected server-managed picker: hiding a glyph removes it from choices,
   // not from existing tracks or from the immutable renderer dictionary.
   let selectedIconKey=ICON_NAMES.includes(t.icon_key)?t.icon_key:"music";
