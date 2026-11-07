@@ -78,7 +78,7 @@ const refreshExternalAudio=async tracks=>{
    ));
    if(results.some(x=>x.status==="rejected"))console.warn("setka-yandex-cache-partial-failure");
   }
-  if(updates.length)return await rowQuery("setka_music_tracks_v1","select=id,title,audio_path,icon_key,icon_path,category_ids,sort_order,published,loop,duration_seconds,revision,updated_at,external_source_path,external_audio_url,external_audio_url_expires&order=sort_order.asc,created_at.asc");
+  if(updates.length)return await rowQuery("setka_music_tracks_v1","select=id,title,audio_path,icon_key,icon_path,category_ids,sort_order,published,loop,duration_seconds,revision,updated_at,external_source_path,external_source_bytes,external_audio_url,external_audio_url_expires&order=sort_order.asc,created_at.asc");
  }catch(error){console.warn("setka-yandex-refresh-error",String(error?.message||"unavailable"))}
  return tracks;
 };
@@ -181,7 +181,7 @@ const streamExternalTrack=async(request,origin,id)=>{
 const catalogue=async manage=>{
   const cats=await rowQuery("setka_music_categories_v1","select=id,title,icon_path,sort_order,visible,is_system,updated_at"+(manage?"":"&visible=eq.true")+"&order=sort_order.asc,id.asc");
   const icons=await rowQuery("setka_music_ui_icons_v1","select=slot,icon_path,updated_at&order=slot.asc");
-  let tracks=await rowQuery("setka_music_tracks_v1","select=id,title,audio_path,icon_key,icon_path,category_ids,sort_order,published,loop,duration_seconds,revision,updated_at,external_source_path,external_audio_url,external_audio_url_expires"+(manage?"":"&published=eq.true")+"&order=sort_order.asc,created_at.asc");
+  let tracks=await rowQuery("setka_music_tracks_v1","select=id,title,audio_path,icon_key,icon_path,category_ids,sort_order,published,loop,duration_seconds,revision,updated_at,external_source_path,external_source_bytes,external_audio_url,external_audio_url_expires"+(manage?"":"&published=eq.true")+"&order=sort_order.asc,created_at.asc");
   tracks=await refreshExternalAudio(tracks);
   const hiddenIcons=manage?await rowQuery("setka_music_hidden_icons_v1","select=icon_key&order=icon_key.asc"):[];
   const globalRows=await rowQuery("setka_music_global_order_v1","select=id,track_ids,revision,updated_at&id=eq.1");
