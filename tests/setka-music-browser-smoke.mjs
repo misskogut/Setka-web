@@ -212,17 +212,20 @@ try{
  await mkdir("tests/visual-smoke",{recursive:true});
  await page.screenshot({path:"tests/visual-smoke/music-"+(process.env.SETKA_BROWSER||"chromium")+".png"});
  let savedTrackPayload=null;
+ let hiddenKeys=[];
  const admin=await browser.newPage({viewport:{width:980,height:900}});
  await admin.route("**/storage/v1/object/upload/sign/**",async route=>route.fulfill({status:200,headers:{"access-control-allow-origin":"*","access-control-allow-methods":"PUT,OPTIONS","access-control-allow-headers":"x-upsert,content-type"},body:JSON.stringify({ok:true})}));
  await admin.route("**/functions/v1/**",async route=>{
   if(route.request().method()==="OPTIONS")return route.fulfill({status:204,headers:{"access-control-allow-origin":"*","access-control-allow-headers":"content-type,apikey,authorization","access-control-allow-methods":"POST,OPTIONS"}});
   let body={};try{body=route.request().postDataJSON()}catch(_){}
   let out={ok:true};
-  if(body.action==="manage")out={ok:true,categories:cats,tracks:[],ui_icons:uiStub};
+  if(body.action==="manage")out={ok:true,categories:cats,tracks:[],ui_icons:uiStub,hidden_icon_keys:hiddenKeys};
   else if(body.action==="reset-ui-icon"){uiStub=uiStub.filter(x=>x.slot!==body.slot);out={ok:true}}
   else if(body.action==="upload-intent")out={ok:true,path:"icons/00000000-0000-4000-8000-000000000123.png",upload_url:"https://gfchgaphzhxufwdhrcis.supabase.co/storage/v1/object/upload/sign/setka-music/icons/00000000-0000-4000-8000-000000000123.png?token=fixture"};
   else if(body.action==="save-ui-icon"){uiStub=[...uiStub.filter(x=>x.slot!==body.slot),{slot:body.slot,icon_path:body.icon_path}];out={ok:true}}
   else if(body.action==="save-track"){savedTrackPayload=body;out={ok:true,id:"00000000-0000-4000-8000-000000000777"}}
+  else if(body.action==="hide-icon"){hiddenKeys=[...new Set([...hiddenKeys,body.icon_key])];out={ok:true}}
+  else if(body.action==="restore-icon"){hiddenKeys=hiddenKeys.filter(k=>k!==body.icon_key);out={ok:true}}
   else if(body.action==="manage-catalog")out={ok:true,items:[],defaults:[],publication:[]};
   else if(body.action==="overview")out={ok:true,data:buildData({},[])};
   return route.fulfill({status:200,contentType:"application/json",headers:{"access-control-allow-origin":"*"},body:JSON.stringify(out)});
@@ -242,7 +245,18 @@ try{
  await selectedIcon.click();
  assert.equal(await admin.locator(".sm-admin-icon-option").count(),ICON_NAMES.length,"all registered SETKA glyphs are offered visually");
  assert.equal(await admin.locator(".sm-admin-icon-option svg").count(),ICON_NAMES.length,"every option includes its actual SVG");
- assert.ok(ICON_NAMES.length>=50,"twenty old-app sound icons extend the original thirty");
+ assert.equal(ICON_NAMES.length,76,"30 stock, 20 previous traces, 26 new unique screenshots");
+ const removed=admin.getByRole("button",{name:"Удалить значок из библиотеки: vintage-crescent"});
+ admin.once("dialog",dialog=>dialog.accept());
+ await removed.click();
+ const restore=admin.getByRole("button",{name:"Восстановить значок vintage-crescent"});
+ await restore.waitFor();
+ assert.ok(hiddenKeys.includes("vintage-crescent"),"icon removal persists through API");
+ assert.equal(await admin.locator('.sm-admin-icon-option[data-icon-key="vintage-crescent"]').count(),0,"deleted icon disappears from picker");
+ await restore.click();
+ await admin.locator('.sm-admin-icon-option[data-icon-key="vintage-crescent"]').waitFor();
+ assert.ok(!hiddenKeys.includes("vintage-crescent"),"restoration persists through API");
+ assert.equal(await admin.locator(".sm-admin-icon-option").count(),ICON_NAMES.length,"restored gallery is complete");
  await admin.locator('.sm-admin-icon-option[data-icon-key="old-cat"]').click();
  assert.match(await selectedIcon.innerText(),/old-cat/,"screenshot-traced selection is reflected in the preview");
  assert.equal(await selectedIcon.locator("svg").count(),1);
