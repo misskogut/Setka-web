@@ -45,4 +45,9 @@ test("music edge returns original range-capable CDN URLs with durable refresh an
  assert.match(mixer,/Number\(track\.external_source_bytes\)>=24\*1024\*1024/);
  assert.match(mixer,/el\.loop=singleDeck&&track\.loop!==false/);
  assert.match(mixer,/if\(track\.loop!==false&&!singleDeck\)decks\.push\(makeDeck\(0\)\)/,"avoid double 500 MB WAV decoding on iOS");
+ assert.match(mixer,/const nativeOnly=singleDeck&&webkit/,"Safari large-WAV fallback uses native media");
+ assert.match(mixer,/if\(nativeOnly\)return \{el,src:null,fade:null\}/,"WebKit never routes >24 MiB WAV via MediaElementSource");
+ assert.match(mixer,/if\(state\.nativeOnly\)/,"native media volume follows the user-selected dots");
+ assert.match(mixer,/d\.src\?\.disconnect\(\);d\.fade\?\.disconnect\(\)/,"native-only media cleans up safely");
+
 });
