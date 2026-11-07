@@ -1,5 +1,8 @@
 # SETKA / VERSTAK · WORK BOOTSTRAP OVERRIDE
 
+## SETKA OWNER EXECUTION RULE · ALWAYS ON
+The SETKA owner gives a task; the assistant executes all feasible investigation, file edits, migrations, deployments, tests, verification, and rollback-aware follow-up autonomously using connected tools. **Never hand the owner code, commands, implementation checklists, or instructions to do work the assistant can perform.** Do not ask for another confirmation when the request itself already authorizes the change. Where access, safety, essential missing inputs, or external approval genuinely block execution, state that exact blocker and complete everything else. Distinguish implemented/committed, deployed and independently verified; do not claim work happened without evidence. This standing rule is not limited to icon tasks.
+
 ## SETKA APP — MANDATORY AUTONOMOUS PLATFORM RULES
 
 **Scope:** mobile/web SETKA App, `standalone-v34.html`, live pattern modules, user archive, community and **`standalone-research-admin-v1.html`**. Do not apply these app rules to unrelated VERSTAK/CANON/Foundation/Diamond runtime missions.
