@@ -11,7 +11,9 @@ const type=process.env.SETKA_BROWSER==="webkit"?"webkit":"chromium";
 const browser=await (type==="webkit"?webkit:chromium).launch({headless:true});
 try{
  const page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
- const statuses=[];page.on("response",response=>{
+ const statuses=[];page.on("pageerror",error=>console.log("SETKA_PAGE_ERROR",error.message.slice(0,150)));
+ page.on("console",message=>{if(message.type()==="error")console.log("SETKA_CONSOLE",message.text().slice(0,180))});
+ page.on("response",response=>{
   if(response.url().includes("?stream="+track.id))statuses.push(response.status());
  });
  await page.addInitScript(()=>{
@@ -22,7 +24,17 @@ try{
  });
  await page.goto(FRONT,{waitUntil:"domcontentloaded",timeout:60000});
  await page.locator("#setkaMusicPagerButton").click();
- await page.locator(".sm-track").first().waitFor({timeout:20000});
+ await page.locator(".sm-track").first().waitFor({timeout:35000}).catch(async error=>{
+  const diag=await page.evaluate(()=>({
+    musicOpen:!document.querySelector("#setkaMusicPage")?.hidden,
+    status:document.querySelector(".sm-status")?.textContent,
+    trackCount:document.querySelectorAll(".sm-track").length,
+    pagerActive:document.querySelector("#setkaMusicPagerButton")?.className,
+    state:window.SetkaMusicV1?.state?.()
+  }));
+  console.error("SETKA_8D_MUSIC_DIAGNOSTIC",JSON.stringify(diag));
+  throw error;
+ });
  await page.locator('.sm-track[aria-label^="8D пассив Shavasana"]').click();
  await page.waitForFunction(id=>window.__captures.some(e=>e.src.includes(id)&&(e.currentTime>0.8||e.error)),track.id,{timeout:45000}).catch(()=>{});
  const result=await page.evaluate(id=>({
