@@ -163,19 +163,24 @@ export class SetkaMusicMixer {
    const reflections=createOrbitEarlyReflections(this.ctx,rearFilter,this.master,
     this.items.size<MAX_EARLY_HRTF_SOURCES?"HRTF":"equalpower");
    if(this.roomOutput)this.roomOutput.gain.setTargetAtTime(.86,this.ctx.currentTime,.04);
+   // iOS/WebKit can exhaust decoder memory if a 50-500 MB original WAV is
+   // opened TWICE for loop crossfade. Keep the full-quality single media stream
+   // and native looping for large external WAVs; the same HRTF/room path remains.
+   const singleDeck=!!track.external_source_path&&/\.wav$/i.test(track.external_source_path)&&
+     Number(track.external_source_bytes)>=24*1024*1024;
    const makeDeck=(volume)=>{
     const el=new Audio();
-    el.loop=false;el.crossOrigin="anonymous";el.preload="auto";el.src=track.audio_url;
+    el.loop=singleDeck&&track.loop!==false;el.crossOrigin="anonymous";el.preload="auto";el.src=track.audio_url;
     const src=this.ctx.createMediaElementSource(el);
     const fade=this.ctx.createGain();fade.gain.value=volume;
     src.connect(fade);fade.connect(gain);
     return {el,src,fade};
    };
    const decks=[makeDeck(1)];
-   if(track.loop!==false)decks.push(makeDeck(0));
+   if(track.loop!==false&&!singleDeck)decks.push(makeDeck(0));
    state={id,track,level:0,playTracked:false,completed:false,angle,radius:.62+(index%3)*.08,
     anchorAngle:angle,anchorRadius:.62+(index%3)*.08,manual:false,
-    el:decks[0].el,src:decks[0].src,gain,rearFilter,panner,roomSend,reflections,decks,activeDeck:0,transition:null,pendingLoop:false};
+    el:decks[0].el,src:decks[0].src,gain,rearFilter,panner,roomSend,reflections,decks,singleDeck,activeDeck:0,transition:null,pendingLoop:false};
    this.items.set(id,state);this.position(state,angle,state.radius);
    for(let deckIndex=0;deckIndex<decks.length;deckIndex++){
     const {el}=decks[deckIndex];
