@@ -818,7 +818,7 @@ test("plugin source hashes remain stable across deployments and change only with
   for(const key of keys)assert.match(a[key],/^[a-f0-9]{20}$/,"every renderer has a source digest");
   assert.deepEqual(extract(build(dir).source),a,"rebuild with identical bytes leaves cache URLs unchanged");
   const target=keys[0],other=keys[1];
-  fs.appendFileSync(path.join(dir,target),"\\n// cache-only test: renderer changed\\n");
+  fs.appendFileSync(path.join(dir,target),"\n// cache-only test: renderer changed\n");
   const changed=build(dir),b=extract(changed.source);
   assert.notEqual(b[target],a[target],"edited renderer invalidates only its own cached source");
   if(other)assert.equal(b[other],a[other],"unrelated renderer retains its browser cache");
