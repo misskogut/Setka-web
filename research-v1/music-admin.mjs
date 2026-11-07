@@ -208,7 +208,7 @@ export function mountMusicAdmin(container,getAdminKey){
   };
   const changeVisibility=async(name,hide,trigger)=>{
    const usage=usedCount(name);
-   if(hide&&!confirm("Удалить значок «"+name+"» из библиотеки?"+(usage?"\\nОн используется в "+usage+" трек(ах). Эти треки продолжат показывать исходный значок.":"")+"\\nЗначок можно будет восстановить."))return;
+   if(hide&&!confirm("Удалить значок «"+name+"» из библиотеки?"+(usage?"\nОн используется в "+usage+" трек(ах). Эти треки продолжат показывать исходный значок.":"")+"\nЗначок можно будет восстановить."))return;
    trigger.disabled=true;
    iconNotice.textContent=hide?"Убираем из коллекции…":"Восстанавливаем…";
    try{
