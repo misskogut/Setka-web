@@ -80,7 +80,10 @@
     if(!p)return;
     const config=registry.persistentConfig(runtimeConfig,id),previous=lastConfigs[id];
     // Finger release without a durable config change never rewrites storage.
-    if(previous?.version===p.version&&configKey(previous.config,id)===configKey(config,id))return;
+    // A malformed historical setting must never interrupt live gestures.
+    let unchanged=false;
+    try{unchanged=previous?.version===p.version&&configKey(previous.config,id)===configKey(config,id)}catch(_){}
+    if(unchanged)return;
     lastConfigs[id]={version:p.version,config,updatedAt:new Date().toISOString()};
     rememberDirty=true;
     if(event?.type==="setka:pattern-open"||event?.type==="setka:color")flushRemember();
