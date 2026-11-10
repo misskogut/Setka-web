@@ -30,6 +30,15 @@ jobs:
       # generated registry, not its unbuilt source.
       - name: Generate canonical SETKA pattern catalog
         run: node scripts/build-pattern-manifest.mjs
+      - name: Audit pattern integration and explain missing requirements
+        run: node scripts/audit-pattern-integration.mjs
+      - name: Upload pattern integration diagnostic report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: setka-pattern-integration-report
+          path: artifacts/pattern-integration-report.*
+          if-no-files-found: ignore
       - name: Stamp one stable SETKA URL with deployment revision
         run: node scripts/build-standalone-release.mjs
       - name: Reject manual SETKA App pattern wiring before publishing
