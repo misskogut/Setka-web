@@ -7,6 +7,12 @@
  const SESSION_KEY="setka-v40:cabinet-session";
  let secret=null,revision=0,hydrated=false,loading=null,busy=false,timer=0,lastSignature="",lastError=null,lastSavedAt=null;
  const uuid=()=>crypto.randomUUID();
+ function stripHeavy(v){
+   if(v==null||typeof v!=="object")return v;
+   if(Array.isArray(v))return v.map(stripHeavy);
+   const o={};for(const [k,x] of Object.entries(v)){if(["dataUrl","imageDataUrl","blob","imageBlob"].includes(k))continue;o[k]=stripHeavy(x)}return o;
+ }
+
  function loggedIn(){try{return !!JSON.parse(localStorage.getItem(SESSION_KEY)||sessionStorage.getItem(SESSION_KEY)||"null")?.token}catch(_){return false}}
  function credentials(){
    if(!C.sandbox?.deviceId)return null;
@@ -44,7 +50,7 @@
    if(loggedIn()||busy)return false;
    if(!await restore()||loggedIn())return false;
    const corpus=privateCorpus();if(!corpus?.guestArchive)return false;
-   const data=corpus.guestArchive(),favorites=corpus.guestFavorites();
+   const data=stripHeavy(corpus.guestArchive()),favorites=stripHeavy(corpus.guestFavorites());
    const body={...credentials(),action:"sync",revision,archive:data,favorites};
    const signature=JSON.stringify([data.notes,data.sessions,data.symptoms,data.checkins,data.settings,data.patternExposures,data.openedPatterns,favorites]);
    if(signature===lastSignature)return true;
