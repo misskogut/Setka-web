@@ -15,3 +15,16 @@ test('private account archive preserves unpublished notes without publication fi
  assert.match(corpus,/d\.notes=mergeRecords\(d\.notes,payload\.notes,"notes",10000\)/);
  assert.match(corpus,/notesDigest=digest\(n\.map\(v=>\[v\.id,v\.text/);
 });
+
+test('guest backup restores before writing and uses a separate browser secret',()=>{
+ const guest=fs.readFileSync('standalone-guest-archive-v1.js','utf8');
+ const html=fs.readFileSync('standalone-v34.html','utf8');
+ assert.match(guest,/setka-guest:v1-secret/);
+ assert.match(guest,/action:"pull"/);
+ assert.match(guest,/if\(!await restore\(\)\|\|loggedIn\(\)\)return false/);
+ assert.match(guest,/revision_conflict/);
+ assert.match(guest,/attachGuestToAccount/);
+ assert.match(html,/standalone-guest-archive-v1\.js/);
+ const admin=fs.readFileSync('research-v1/app.mjs','utf8');
+ assert.match(admin,/guestBackup/);
+});
