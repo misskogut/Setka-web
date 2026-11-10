@@ -37,3 +37,33 @@ test('generated server manifest and frontend registry contain identical pattern 
   assert.deepEqual(JSON.parse(JSON.stringify(front.defaults)),p.defaults,'defaults mismatch '+p.id);
  }
 });
+
+test('admin catalog updates are versioned and reject stale defaults/order/publication',()=>{
+ const ctx={window:{dispatchEvent(){}},CustomEvent:class{}};
+ vm.runInNewContext(read('standalone-pattern-registry-v1.js'),ctx);
+ const registry=ctx.window.SetkaPatternRegistryV1;
+ const p=registry.list().find(x=>x.module&&x.controls?.some(c=>typeof x.defaults[c[1]]==='number'));
+ assert.ok(p,'No descriptor with an editable numeric control');
+ const control=p.controls.find(c=>typeof p.defaults[c[1]]==='number');
+ const key=control[1];
+ const old=registry.defaults(p.id);
+ const nextValue=old[key]===control[2]?control[3]:control[2];
+ const updated={...old,[key]:nextValue};
+ const row={pattern_id:p.id,pattern_version:p.version,schema_version:p.schemaVersion,revision:10,config:updated};
+ assert.equal(registry.applyDefaults([row]),true,'new admin defaults not accepted');
+ assert.equal(registry.defaults(p.id)[key],nextValue,'front did not receive updated default');
+ assert.equal(registry.applyDefaults([{...row,revision:9,config:old}]),false,'stale admin default accepted');
+ assert.equal(registry.defaults(p.id)[key],nextValue,'stale default overwrote current value');
+ assert.equal(registry.applyDefaults([{...row,revision:11,pattern_version:p.version+1,config:old}]),false,'incompatible pattern version accepted');
+ const first=registry.orderedIds().slice(0,2);
+ assert.equal(first.length,2);
+ assert.equal(registry.applyOrder({patternIds:first.slice().reverse(),revision:10}),true);
+ assert.deepEqual(Array.from(registry.orderedIds().slice(0,2)),first.slice().reverse());
+ assert.equal(registry.applyOrder({patternIds:first,revision:9}),false,'stale order accepted');
+ assert.deepEqual(Array.from(registry.orderedIds().slice(0,2)),first.slice().reverse());
+ registry.usePublicCatalog(true);
+ assert.equal(registry.applyPublication([p.id],10),true);
+ assert.equal(registry.isActive(p.id),true);
+ assert.equal(registry.applyPublication([],9),false,'stale publication accepted');
+ assert.equal(registry.isActive(p.id),true);
+});
