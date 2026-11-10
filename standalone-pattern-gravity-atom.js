@@ -301,9 +301,9 @@ function render(ctx,width,height,c,frame,preview){
  ctx.globalCompositeOperation="source-over";
  const core=typeof ctx.createRadialGradient==="function"?ctx.createRadialGradient(cx,cy,0,cx,cy,27):{addColorStop(){}};
  core.addColorStop(0,"rgba(255,255,255,.97)");
- core.addColorStop(.13,"rgba(225,235,255,.83)");
- core.addColorStop(.38,"rgba(139,175,245,.18)");
- core.addColorStop(1,"rgba(139,175,245,0)");
+ core.addColorStop(.13,"rgba(255,255,255,.83)");
+ core.addColorStop(.38,"rgba(255,255,255,.18)");
+ core.addColorStop(1,"rgba(255,255,255,0)");
  ctx.fillStyle=core;ctx.beginPath();ctx.arc(cx,cy,27,0,TAU);ctx.fill();
  if(held&&fingerGM>0&&!preview){
   const haloR=20+c.radius*.38;
