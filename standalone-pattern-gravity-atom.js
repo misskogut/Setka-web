@@ -244,7 +244,7 @@ function render(ctx,width,height,c,frame,preview){
  const rgb=red+","+green+","+blue;
  const angle=time*.23,ca=Math.cos(angle),sa=Math.sin(angle);
  const reach=45+c.radius*3.7,eps=7+c.softening*.38;
- const fingerGM=c.gravity===0?0:1600*Math.pow(1+c.gravity/13,3);
+ const fingerGM=19000*Math.pow(1+c.gravity/13,3);
  const atomSpring=.6+c.atomForce*.115,drag=.16+c.damping*.035;
  const held=c.fingerActive===1,fx=c.fingerX,fy=c.fingerY;
  if(dt>0){
@@ -264,7 +264,7 @@ function render(ctx,width,height,c,frame,preview){
    p.vx=(p.vx+ax*step)*Math.exp(-drag*step);
    p.vy=(p.vy+ay*step)*Math.exp(-drag*step);
    const v=Math.hypot(p.vx,p.vy);
-   if(v>850){p.vx*=850/v;p.vy*=850/v}
+   if(v>1800){p.vx*=1800/v;p.vy*=1800/v}
    p.x+=p.vx*step;p.y+=p.vy*step;
   }
  }
