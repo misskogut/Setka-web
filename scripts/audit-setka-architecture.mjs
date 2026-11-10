@@ -1,10 +1,13 @@
 import fs from 'node:fs';
-import path from 'node:path';
 
 const roots=['standalone-v34.html','standalone-research-admin-v1.html','research-v1/app.mjs','research-v1/renderer.mjs','research-v1/pattern-editor.mjs','standalone-pattern-registry-v1.js'];
+// Audit actual application modules, not only six entrypoint files.
+for(const file of fs.readdirSync('.').filter(x=>/^standalone-(?:pattern-|music-|.*v34|.*v40).*\\.(?:js|mjs)$/.test(x)))roots.push(file);
+for(const file of fs.readdirSync('research-v1').filter(x=>/\\.mjs$/.test(x)))roots.push('research-v1/'+file);
+const scanned=[...new Set(roots)];
 const findings=[];
 const add=(level,file,line,code,detail,action)=>findings.push({level,file,line,code,detail,action});
-for(const file of roots){
+for(const file of scanned){
  const lines=fs.readFileSync(file,'utf8').split(/\r?\n/);
  lines.forEach((line,index)=>{
   if(/\b(?:TODO|FIXME|HACK|XXX)\b/i.test(line)&&!/(?:test|fixture)/i.test(line))add('review',file,index+1,'TECH_DEBT',line.trim().slice(0,180),'Уточнить назначение и устранить или документировать');
@@ -26,7 +29,7 @@ const required=[
  [editor.includes('registry.normalize({...config,...changes},id)'),'ADMIN_SLIDERS','Стартовые ползунки не обновляют config напрямую','research-v1/pattern-editor.mjs']
 ];
 for(const [ok,code,detail,file] of required)if(!ok)add('block',file,0,code,detail,'Восстановить общий механизм фронта и админки');
-const report={schema:1,checked:roots,blocks:findings.filter(x=>x.level==='block').length,reviews:findings.filter(x=>x.level==='review').length,findings};
+const report={schema:1,checked:scanned,blocks:findings.filter(x=>x.level==='block').length,reviews:findings.filter(x=>x.level==='review').length,findings};
 fs.mkdirSync('artifacts',{recursive:true});
 fs.writeFileSync('artifacts/setka-architecture-audit.json',JSON.stringify(report,null,2)+'\n');
 const md=['# SETKA · Согласованность архитектуры и технический долг','',`Блокирующих: ${report.blocks}; требуют ручного анализа: ${report.reviews}.`,'',...findings.map(f=>`- **${f.level}** ${f.file}:${f.line} [${f.code}] ${f.detail}. Действие: ${f.action}.`)];
