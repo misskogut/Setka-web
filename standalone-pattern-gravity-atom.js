@@ -315,8 +315,8 @@ function render(ctx,width,height,c,frame,preview){
 }
 function interact(c,e){
  if(e.type!=="gesture")return c;
- if(e.fingers!==1){if(e.phase==="end"||e.phase==="start")return {...c,fingerActive:0};return c}
- if(e.phase==="end")return {...c,fingerActive:0};
+ if(e.phase==="end"||e.phase==="cancel"||e.cancelled===true)return {...c,fingerActive:0};
+ if(e.fingers!==1){if(e.phase==="start"||e.phase==="move")return {...c,fingerActive:0};return c}
  if(e.phase==="start"||e.phase==="move"){
   return {...c,fingerX:clamp(e.x,0,10000),fingerY:clamp(e.y,0,10000),fingerActive:1};
  }
