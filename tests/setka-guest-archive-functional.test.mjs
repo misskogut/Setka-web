@@ -38,7 +38,7 @@ function harness({shared=new Map(),remote=new Map(),device='device-11111111-1111
  const context={window,localStorage,sessionStorage,fetch,crypto:{randomUUID},setTimeout,clearTimeout,setInterval:()=>0,document:{addEventListener:()=>{},hidden:false},CustomEvent:class{constructor(type,opts){this.type=type;this.detail=opts.detail}},BroadcastChannel:class{postMessage(){}close(){}},console};
  vm.runInNewContext(source,context);
  const api=window.__SETKA_GUEST_ARCHIVE_V1__;
- return {api,data,favorites,remote,shared,calls,events,listeners,corpus,flush:async()=>{const pending=[...timers.values()];timers.clear();for(const fn of pending)await fn();await new Promise(resolve=>setImmediate(resolve))},setAccount:(id='T-01')=>localStorage.setItem(SESSION,JSON.stringify({token:'token',testerId:id})),unsetAccount:()=>localStorage.removeItem(SESSION),fail:()=>{failNext=true},merges:()=>mergeCount,accountSyncs:()=>accountSyncCount};
+ return {api,data,favorites,remote,shared,calls,events,listeners,corpus,flush:async()=>{const pending=[...timers.values()];timers.clear();for(const fn of pending)await fn();await new Promise(resolve=>setImmediate(resolve))},setAccount:(id='T-01')=>localStorage.setItem(SESSION,JSON.stringify({token:'token',testerId:id})),unsetAccount:()=>localStorage.removeItem(SESSION),fail:()=>{failNext=true},setAccountSyncOk:v=>{accountSyncOk=v},merges:()=>mergeCount,accountSyncs:()=>accountSyncCount};
 }
 test('guest saves unpublished notes and restores on same browser after restart',async()=>{
  const shared=new Map(),remote=new Map();
@@ -89,4 +89,24 @@ test('guest archive attaches to ID only after account cloud sync confirms',async
  assert.equal(h.accountSyncs(),1);
  assert.equal(h.shared.get('setka-guest:v1-migrated:T-55'),'1');
  assert.equal(h.data.notes[0].text,'valuable');
+});
+
+test('failed account cloud receipt never marks guest archive migrated',async()=>{
+ const h=harness({initialNotes:[{id:'n2',text:'do not lose'}]});
+ assert.equal(await h.api.sync(),true);
+ h.setAccountSyncOk(false);h.setAccount('T-77');
+ h.listeners.get('setka:v40-private-corpus-restored')();
+ await h.flush();
+ assert.equal(h.shared.get('setka-guest:v1-migrated:T-77'),undefined);
+ assert.equal(h.accountSyncs(),1);
+});
+test('simultaneous account restore notifications migrate guest only once',async()=>{
+ const h=harness({initialNotes:[{id:'n3',text:'single migration'}]});
+ assert.equal(await h.api.sync(),true);
+ h.setAccount('T-88');
+ const cb=h.listeners.get('setka:v40-private-corpus-restored');
+ cb();cb();cb();
+ await h.flush();
+ assert.equal(h.accountSyncs(),1);
+ assert.equal(h.shared.get('setka-guest:v1-migrated:T-88'),'1');
 });
