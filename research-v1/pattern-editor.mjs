@@ -18,7 +18,7 @@ export async function mountPatternEditor(root,{id,api,onChange=()=>{},draftOnly=
  const frame=()=>Math.max(0,(performance.now()-Number(canvas.dataset.editorClock))/16.6667);
  const paint=()=>{canvas.dataset.config=JSON.stringify(config);for(const sync of controls)sync();go.disabled=false;onChange()};
  const apply=event=>{if(saving)return;const next=registry.interact(id,config,{...event,frame:frame()});if(next)config=next;paint()};
- const patch=changes=>{if(saving)return;config=registry.interact(id,config,{type:'patch',patch:changes,frame:frame()})||registry.normalize({...config,...changes},id);paint()};
+ const patch=changes=>{if(saving)return;config=registry.normalize({...config,...changes},id);paint()};
  bindEditorGestures(canvas,{id,apply,patch,getConfig:()=>config});
  for(const [label,key,min,max,step] of p.controls){
   const row=document.createElement('label');row.style.marginTop='14px';row.textContent=label+' ';
