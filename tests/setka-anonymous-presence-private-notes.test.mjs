@@ -46,3 +46,9 @@ test('admin guest backup displays receipt only and never embeds archive text',()
  assert.match(guest,/account-metrics-committed/);
  assert.match(guest,/attachPromise/);
 });
+
+test('private corpus guest merge is asynchronous and awaited for complete recovery',()=>{
+ assert.match(corpus,/async function mergeCloud\(payload=\{\},remoteFavorites=\[\]\)/);
+ assert.match(corpus,/const favoriteCount=await mergeFavorites\(remoteFavorites\)/);
+ assert.match(corpus,/const counts=await mergeCloud\(/);
+});
