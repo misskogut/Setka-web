@@ -33,9 +33,9 @@ test('gravity atom follows exact pointer coordinates and clears them on release'
  assert.ok(descriptor,'gravity atom descriptor missing');
  const p=JSON.parse(descriptor[1]);
  const source=fs.readFileSync('standalone-pattern-registry-v1.js','utf8');
- const injected=source.replace('const discovered=[]; // generated at build time from standalone-pattern-*.js descriptors',`const discovered=${JSON.stringify([p])};`);
+
  const ctx={window:{dispatchEvent(){}},document:{currentScript:{dataset:{patternId:p.id}}},CustomEvent:class{}};
- vm.runInNewContext(injected,ctx);
+ vm.runInNewContext(source,ctx);
  vm.runInNewContext(fs.readFileSync('standalone-pattern-gravity-atom.js','utf8'),ctx);
  const R=ctx.window.SetkaPatternRegistryV1;
  assert.equal(R.hasInteraction(p.id),true);
