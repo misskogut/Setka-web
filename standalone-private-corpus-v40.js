@@ -77,7 +77,7 @@
     }
     return merged.length;
   }
-  async async function mergeCloud(payload={},remoteFavorites=[]){
+  async function mergeCloud(payload={},remoteFavorites=[]){
     const d=C.getData?.();if(!d)return null;
     d.version=Math.max(Number(d.version)||0,Number(payload.version)||0,41);
     if(payload.createdAt&&(!d.createdAt||Date.parse(payload.createdAt)<Date.parse(d.createdAt)))d.createdAt=payload.createdAt;
