@@ -70,6 +70,8 @@ test('revision conflict merges another tab before retry, without deleting notes'
  const shared=new Map(),remote=new Map();
  const a=harness({shared,remote,initialNotes:[{id:'a',text:'first'}]});
  const b=harness({shared,remote,initialNotes:[{id:'b',text:'second'}]});
+ assert.equal(await a.api.restore(),true);
+ assert.equal(await b.api.restore(),true);
  assert.equal(await a.api.sync(),true);
  assert.equal(await b.api.sync(),false);
  assert.equal(b.data.notes.length,2);
