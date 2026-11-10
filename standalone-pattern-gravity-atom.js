@@ -237,7 +237,7 @@ function render(ctx,width,height,c,frame,preview){
  const delta=previous===null?1:clamp(frame-previous,0,3);
  st.lastFrame=frame;
  const dt=delta/60;
- st.time+=dt*(.12+c.rotation*.016);
+ st.time=Math.max(0,Number(frame)||0)/60*(.12+c.rotation*.016);
  const time=st.time,cx=w*.5,cy=h*.49,R=Math.min(w,h)*.31;
  const n=preview?Math.min(480,Math.round(130+c.density*3)):Math.min(MAX,Math.round(450+c.density*16));
  const [red,green,blue]=registry.get(id).palettes[c.colorModeIndex]||[255,255,255];
