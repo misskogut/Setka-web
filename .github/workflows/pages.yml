@@ -39,6 +39,15 @@ jobs:
           name: setka-pattern-integration-report
           path: artifacts/pattern-integration-report.*
           if-no-files-found: ignore
+      - name: Audit front-admin architecture and suspicious placeholders
+        run: node scripts/audit-setka-architecture.mjs
+      - name: Upload architecture audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: setka-architecture-audit
+          path: artifacts/setka-architecture-audit.*
+          if-no-files-found: ignore
       - name: Stamp one stable SETKA URL with deployment revision
         run: node scripts/build-standalone-release.mjs
       - name: Reject manual SETKA App pattern wiring before publishing
