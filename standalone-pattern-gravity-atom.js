@@ -299,7 +299,7 @@ function render(ctx,width,height,c,frame,preview){
   }
  }
  ctx.globalCompositeOperation="source-over";
- const core=ctx.createRadialGradient(cx,cy,0,cx,cy,27);
+ const core=typeof ctx.createRadialGradient==="function"?ctx.createRadialGradient(cx,cy,0,cx,cy,27):{addColorStop(){}};
  core.addColorStop(0,"rgba(255,255,255,.97)");
  core.addColorStop(.13,"rgba(225,235,255,.83)");
  core.addColorStop(.38,"rgba(139,175,245,.18)");
@@ -307,7 +307,7 @@ function render(ctx,width,height,c,frame,preview){
  ctx.fillStyle=core;ctx.beginPath();ctx.arc(cx,cy,27,0,TAU);ctx.fill();
  if(held&&fingerGM>0&&!preview){
   const haloR=20+c.radius*.38;
-  const halo=ctx.createRadialGradient(fx,fy,0,fx,fy,haloR);
+  const halo=typeof ctx.createRadialGradient==="function"?ctx.createRadialGradient(fx,fy,0,fx,fy,haloR):{addColorStop(){}};
   halo.addColorStop(0,"rgba("+rgb+",.34)");halo.addColorStop(1,"rgba("+rgb+",0)");
   ctx.fillStyle=halo;ctx.beginPath();ctx.arc(fx,fy,haloR,0,TAU);ctx.fill();
  }
