@@ -4,6 +4,20 @@
 
 Read with [SETKA_APP_CANONICAL_CONTRACT.md](../SETKA_APP_CANONICAL_CONTRACT.md), [PATTERN_PLATFORM_V2.md](PATTERN_PLATFORM_V2.md), [SETKA_DATA_MODEL_V1.md](../SETKA_DATA_MODEL_V1.md) and root [AGENTS.md](../AGENTS.md). If implementation conflicts with a rule, fix the implementation *and* add executable proof — don't change the rule to disguise the regression.
 
+## Обязательный автоматический аудит интеграции нового паттерна (2026-11-11)
+
+**Никакого ручного добавления ID в отдельные списки.** Новый паттерн определяется по `standalone-pattern-<id>.js`, дескриптору и общей генерации каталога.
+
+**Порядок автоматического допуска:**
+1. Сборщик генерирует единый реестр и манифест и проверяет схему/defaults.
+2. `node scripts/audit-pattern-integration.mjs` проверяет соответствие файла и дескриптора, все диапазоны и стартовые значения ползунков, регистрацию рендера, наличие обработчика жестов для transient-полей, белую палитру, применение настроек в админке и наличие сборки каталога в CI.
+3. Аудит пишет `artifacts/pattern-integration-report.json` (машинный отчёт) и `.md` (человеческий отчёт). Ошибки блокируют GitHub Pages; предупреждения требуют отдельной проверки. В GitHub Actions отчёт виден в Summary и как artifact `setka-pattern-integration-report`: каждая проблема содержит ID, код и конкретное действие.
+4. Затем должны пройти существующие тесты автоподключения, детерминизма кадров, платформы, публикации, настроек, безопасности жестов и регрессий.
+5. После успешной сборки проверяется фактический опубликованный фронт и админка. Только успешный CI **не доказывает** визуальное совпадение или точность координат на реальном устройстве.
+6. Перед публичной активацией обязательна приёмка утверждённого интерактивного превью: физика, касания (start/move/end/cancel), масштабирование CSS/canvas, все ползунки, сохранение/повторное открытие стартового вида, мобильный и десктопный экраны. Не пройдено — оставить в тестовом статусе.
+
+**Не считать покрытым автоматически:** визуальную точность каждого эффекта, физическую корректность гравитации, реальные жесты на iOS/Android, подтверждение серверного сохранения и живой деплой. Для этого нужны отдельные браузерные end-to-end проверки с доступом к тестовому окружению; до их внедрения приёмка остаётся обязательной. Никогда не заявлять «полностью проверено», если проведён только статический аудит.
+
 ## No more one-off pattern wiring
 
 **Allowed action when introducing another pattern:** author **one** `standalone-pattern-<id>.js` file with a declarative `SETKA_PATTERN_DESCRIPTOR` and its own renderer (the source p5/other algorithm is adapted to the platform once). The descriptor carries stable `id`, `version`, `schemaVersion`, `introducedAt` (actual immutable first release time), complete `defaults`, 1–9 palettes, `colorModes`, controls/gestures, schema and render entry point.
