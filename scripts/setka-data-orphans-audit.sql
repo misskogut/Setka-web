@@ -22,5 +22,8 @@ union all
 select 'music_listen_missing_track',count(*) from public.setka_music_listen_events_v1 e
 where e.track_id is not null and not exists(select 1 from public.setka_music_tracks_v1 t where t.id=e.track_id)
 union all
+select 'legacy_favorite_missing_device',count(*) from public.prototype_v35_favorites f
+where not exists(select 1 from public.prototype_v34_devices d where d.device_id=f.device_id)
+union all
 select 'raw_event_missing_session',count(*) from public.prototype_v34_raw_events e
 where e.session_id is not null and not exists(select 1 from public.prototype_v34_sessions s where s.session_id=e.session_id);
