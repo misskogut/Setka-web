@@ -5,6 +5,7 @@
  const API="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-guest-archive-v1";
  const SECRET_KEY="setka-guest:v1-secret";
  const SESSION_KEY="setka-v40:cabinet-session";
+ const DEVICE_KEY="setka-standalone:v34-yulia-device";
  let secret=null,revision=0,hydrated=false,loading=null,busy=false,timer=0,lastSignature="",lastError=null,lastSavedAt=null;
  const uuid=()=>crypto.randomUUID();
  function stripHeavy(v){
@@ -15,11 +16,11 @@
 
  function loggedIn(){try{return !!JSON.parse(localStorage.getItem(SESSION_KEY)||sessionStorage.getItem(SESSION_KEY)||"null")?.token}catch(_){return false}}
  function credentials(){
-   if(!C.sandbox?.deviceId)return null;
+   const deviceId=localStorage.getItem(DEVICE_KEY);if(!deviceId)return null;
    if(!secret){
      try{secret=localStorage.getItem(SECRET_KEY);if(!secret){secret=uuid();localStorage.setItem(SECRET_KEY,secret)}}catch(_){return null}
    }
-   return {deviceId:C.sandbox.deviceId,secret};
+   return {deviceId,secret};
  }
  async function request(body){
    const r=await fetch(API,{method:"POST",headers:{"Content-Type":"text/plain;charset=UTF-8"},body:JSON.stringify(body)});
@@ -52,7 +53,7 @@
    const corpus=privateCorpus();if(!corpus?.guestArchive)return false;
    const data=stripHeavy(corpus.guestArchive()),favorites=stripHeavy(corpus.guestFavorites());
    const body={...credentials(),action:"sync",revision,archive:data,favorites};
-   const signature=JSON.stringify([data.notes,data.sessions,data.symptoms,data.checkins,data.settings,data.patternExposures,data.openedPatterns,favorites]);
+   const signature=JSON.stringify([data,favorites]);
    if(signature===lastSignature)return true;
    busy=true;
    try{
@@ -62,11 +63,13 @@
        if(String(e).includes("revision_conflict")){
          hydrated=false;
          if(!await restore())throw e;
+         schedule(150);
          return false;
        }
        throw e;
      }
      revision=out.revision;lastSignature=signature;lastSavedAt=out.updatedAt;lastError=null;
+     if(JSON.stringify([stripHeavy(corpus.guestArchive()),stripHeavy(corpus.guestFavorites())])!==signature)schedule(150);
      window.dispatchEvent(new CustomEvent("setka:guest-archive-saved",{detail:{revision,updatedAt:lastSavedAt,counts:out.counts}}));
      try{const ch=new BroadcastChannel("setka:research-sync-v1");ch.postMessage({type:"account-metrics-committed",at:Date.now()});ch.close()}catch(_){}
      return true;
