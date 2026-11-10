@@ -197,7 +197,7 @@ test('release chronology, not alphabetical filenames, drives front and research 
    'front/research manifest agrees on newest active pattern');
   // A future ID sorts by introducedAt even when its filename comes first.
   fs.writeFileSync(path.join(dir,'standalone-pattern-aaa-future.js'),
-    packageContent(mini('aaa-future',{introducedAt:'2026-11-05T12:00:00.000Z'})));
+    packageContent(mini('aaa-future',{introducedAt:'2099-11-05T12:00:00.000Z'})));
   const next=build(dir),after=loadRegistry(next.source).list().map(p=>p.id);
   assert.equal(after.at(-1),'aaa-future','newly released algorithm follows Rain by date');
   assert.equal(next.manifest.patterns.at(-1).id,'aaa-future');
