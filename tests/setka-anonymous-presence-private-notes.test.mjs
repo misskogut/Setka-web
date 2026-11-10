@@ -28,3 +28,12 @@ test('guest backup restores before writing and uses a separate browser secret',(
  const admin=fs.readFileSync('research-v1/app.mjs','utf8');
  assert.match(admin,/guestBackup/);
 });
+
+test('guest archive uses exact device identity of heartbeat and includes full progress',()=>{
+ const guest=fs.readFileSync('standalone-guest-archive-v1.js','utf8');
+ assert.match(guest,/setka-standalone:v34-yulia-device/);
+ assert.doesNotMatch(guest,/C\.sandbox\?\.deviceId/);
+ assert.match(guest,/JSON\.stringify\(\[data,favorites\]\)/);
+ assert.match(guest,/schedule\(150\)/);
+ assert.match(guest,/stripHeavy\(corpus\.guestArchive\(\)\)/);
+});
