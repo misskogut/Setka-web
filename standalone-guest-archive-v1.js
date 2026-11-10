@@ -16,7 +16,7 @@
 
  function loggedIn(){try{return !!JSON.parse(localStorage.getItem(SESSION_KEY)||sessionStorage.getItem(SESSION_KEY)||"null")?.token}catch(_){return false}}
  function credentials(){
-   const deviceId=localStorage.getItem(DEVICE_KEY);if(!deviceId)return null;
+   let deviceId;try{deviceId=localStorage.getItem(DEVICE_KEY)}catch(_){return null}if(!deviceId)return null;
    if(!secret){
      try{secret=localStorage.getItem(SECRET_KEY);if(!secret){secret=uuid();localStorage.setItem(SECRET_KEY,secret)}}catch(_){return null}
    }
@@ -38,7 +38,8 @@
      const out=await request({...auth,action:"pull"});
      if(loggedIn())return false;
      if(out.archive){
-       await privateCorpus()?.mergeGuest?.(out.archive.payload||{},out.archive.favorites||[]);
+       if(!privateCorpus()?.mergeGuest)throw Error("guest_merge_unavailable");
+       await privateCorpus().mergeGuest(out.archive.payload||{},out.archive.favorites||[]);
        revision=Number(out.archive.revision)||0;
      }
      hydrated=true;lastError=null;
@@ -50,9 +51,11 @@
  async function sync(){
    if(loggedIn()||busy)return false;
    if(!await restore()||loggedIn())return false;
+   if(busy)return false;
    const corpus=privateCorpus();if(!corpus?.guestArchive)return false;
    const data=stripHeavy(corpus.guestArchive()),favorites=stripHeavy(corpus.guestFavorites());
-   const body={...credentials(),action:"sync",revision,archive:data,favorites};
+   const auth=credentials();if(!auth)return false;
+   const body={...auth,action:"sync",revision,archive:data,favorites};
    const signature=JSON.stringify([data,favorites]);
    if(signature===lastSignature)return true;
    busy=true;
@@ -68,6 +71,7 @@
        }
        throw e;
      }
+     if(loggedIn())return false;
      revision=out.revision;lastSignature=signature;lastSavedAt=out.updatedAt;lastError=null;
      if(JSON.stringify([stripHeavy(corpus.guestArchive()),stripHeavy(corpus.guestFavorites())])!==signature)schedule(150);
      window.dispatchEvent(new CustomEvent("setka:guest-archive-saved",{detail:{revision,updatedAt:lastSavedAt,counts:out.counts}}));
@@ -93,6 +97,7 @@
      if(!loggedIn())return false;
      await corpus.mergeGuest(out.archive.payload||{},out.archive.favorites||[]);
      if(!await corpus.sync())return false;
+     if(corpus.status?.()?.ok!==true)return false;
      localStorage.setItem(marker,String(out.archive.revision));
      return true;
    }catch(e){lastError=String(e);return false}
