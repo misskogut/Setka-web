@@ -16,7 +16,7 @@ if(!/^[a-f0-9]{40}$/.test(build)){
 // by their actual content (including local module imports) instead.
 function contentVersion(asset,visited=new Set()){
  const path=normalize(asset.split("?")[0]);
- if(!existsSync(path))return build.slice(0,20);
+ if(!existsSync(path))throw new Error(`Missing release asset: ${asset}`);
  if(visited.has(path))return "";
  visited.add(path);
  const source=readFileSync(path);
