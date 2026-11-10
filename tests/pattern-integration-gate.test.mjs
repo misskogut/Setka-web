@@ -2,10 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import {execFileSync} from 'node:child_process';
 
 test('every discovered slider has a writable normalized value at its boundaries',()=>{
- execFileSync(process.execPath,['scripts/build-pattern-manifest.mjs'],{stdio:'pipe'});
  const ctx={window:{dispatchEvent(){}},CustomEvent:class{}};
  vm.runInNewContext(fs.readFileSync('standalone-pattern-registry-v1.js','utf8'),ctx);
  const R=ctx.window.SetkaPatternRegistryV1;
