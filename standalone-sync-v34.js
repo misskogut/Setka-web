@@ -103,9 +103,22 @@
     if(!force&&sig===lastSignature&&lastOkAt&&Date.now()-Date.parse(lastOkAt)<60000)return true;
     const account=accountSession();
     if(!account?.token){
-      lastSignature=sig;lastOkAt=new Date().toISOString();lastSubjectKey=null;lastFavoriteStats={...lastFavoriteStats,cloud:0};lastUsageStats={sessions:0,exposures:0};
-      window.dispatchEvent(new CustomEvent("setka:v34-sync",{detail:{ok:true,label:"Гость",subjectKey:null,deviceId:null,updatedAt:lastOkAt,acceptedEvents:0,acceptedSessions:0,acceptedExposures:0,favoritesLocal:lastFavoriteStats.local,favoritesUnique:lastFavoriteStats.unique,favoritesCloud:0,privacyMode:"local-only-guest"}}));
-      return true;
+      // Anonymous presence only: no notes, favorites, configs, replay or personal
+      // progress leaves the browser. A stable local ID identifies this installation.
+      busy=true;
+      try{
+        const heartbeat=await post(API,{action:"sync",channel:CHANNEL,deviceId,firstSeenAt:firstSeen,build:"v41-anonymous-presence"},keepalive);
+        if(!heartbeat?.ok)throw Error("anonymous_presence_not_confirmed");
+        lastSignature=sig;lastOkAt=heartbeat.updatedAt||new Date().toISOString();lastError=null;
+        lastSubjectKey=null;lastFavoriteStats={...lastFavoriteStats,cloud:0};lastUsageStats={sessions:0,exposures:0};
+        try{localStorage.setItem(STATUS_KEY,lastOkAt)}catch(_){}
+        window.dispatchEvent(new CustomEvent("setka:v34-sync",{detail:{ok:true,label:"Гость",subjectKey:null,deviceId,updatedAt:lastOkAt,acceptedEvents:0,acceptedSessions:0,acceptedExposures:0,favoritesLocal:lastFavoriteStats.local,favoritesUnique:lastFavoriteStats.unique,favoritesCloud:0,privacyMode:"anonymous-presence-only"}}));
+        return true;
+      }catch(e){
+        lastError=String(e?.message||e);
+        window.dispatchEvent(new CustomEvent("setka:v34-sync",{detail:{ok:false,label:"Гость",deviceId,error:lastError,privacyMode:"anonymous-presence-only"}}));
+        return false;
+      }finally{busy=false;if(rerunRequested){rerunRequested=false;schedule(150)}}
     }
     // Wait for private corpus hydration before publishing aggregated service
     // facts. An old local cache must not be attributed to a newly logged-in ID.
