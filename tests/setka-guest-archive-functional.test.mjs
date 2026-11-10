@@ -14,7 +14,7 @@ function harness({shared=new Map(),remote=new Map(),device='device-11111111-1111
  const window={SetkaStandaloneV34:{ready:Promise.resolve()},addEventListener:(n,cb)=>listeners.set(n,cb),dispatchEvent:e=>events.push(e.type),SetkaApp:{}};
  const corpus={
   guestArchive:()=>structuredClone(data),guestFavorites:()=>structuredClone(favorites),
-  mergeGuest:async(p,f)=>{mergeCount++;const map=new Map([...p.notes||[],...data.notes||[]].map(x=>[x.id,x]));data.notes=[...map.values()];Object.assign(data.settings,p.settings||{});for(const x of f||[])if(!favorites.some(y=>y.id===x.id))favorites.push(x);return {notes:data.notes.length}},
+  mergeGuest:async(p,f)=>{mergeCount++;const map=new Map([...(p.notes||[]),...(data.notes||[])].map(x=>[x.id,x]));data.notes=[...map.values()];Object.assign(data.settings,p.settings||{});for(const x of f||[])if(!favorites.some(y=>y.id===x.id))favorites.push(x);return {notes:data.notes.length}},
   ensureHydrated:async()=>true,sync:async()=>{accountSyncCount++;return accountSyncOk},status:()=>({ok:accountSyncOk})
  };
  window.__SETKA_PRIVATE_CORPUS_V40__=corpus;
@@ -38,7 +38,7 @@ function harness({shared=new Map(),remote=new Map(),device='device-11111111-1111
  const context={window,localStorage,sessionStorage,fetch,crypto:{randomUUID},setTimeout,clearTimeout,setInterval:()=>0,document:{addEventListener:()=>{},hidden:false},CustomEvent:class{constructor(type,opts){this.type=type;this.detail=opts.detail}},BroadcastChannel:class{postMessage(){}close(){}},console};
  vm.runInNewContext(source,context);
  const api=window.__SETKA_GUEST_ARCHIVE_V1__;
- return {api,data,favorites,remote,shared,calls,events,listeners,corpus,flush:async()=>{const pending=[...timers.values()];timers.clear();for(const fn of pending)await fn();await Promise.resolve()},setAccount:(id='T-01')=>localStorage.setItem(SESSION,JSON.stringify({token:'token',testerId:id})),unsetAccount:()=>localStorage.removeItem(SESSION),fail:()=>{failNext=true},merges:()=>mergeCount,accountSyncs:()=>accountSyncCount};
+ return {api,data,favorites,remote,shared,calls,events,listeners,corpus,flush:async()=>{const pending=[...timers.values()];timers.clear();for(const fn of pending)await fn();await new Promise(resolve=>setImmediate(resolve))},setAccount:(id='T-01')=>localStorage.setItem(SESSION,JSON.stringify({token:'token',testerId:id})),unsetAccount:()=>localStorage.removeItem(SESSION),fail:()=>{failNext=true},merges:()=>mergeCount,accountSyncs:()=>accountSyncCount};
 }
 test('guest saves unpublished notes and restores on same browser after restart',async()=>{
  const shared=new Map(),remote=new Map();
