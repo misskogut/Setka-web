@@ -68,6 +68,7 @@
      }
      revision=out.revision;lastSignature=signature;lastSavedAt=out.updatedAt;lastError=null;
      window.dispatchEvent(new CustomEvent("setka:guest-archive-saved",{detail:{revision,updatedAt:lastSavedAt,counts:out.counts}}));
+     try{const ch=new BroadcastChannel("setka:research-sync-v1");ch.postMessage({type:"account-metrics-committed",at:Date.now()});ch.close()}catch(_){}
      return true;
    }catch(e){lastError=String(e);return false}finally{busy=false}
  }
