@@ -2,8 +2,8 @@ import fs from 'node:fs';
 
 const roots=['standalone-v34.html','standalone-research-admin-v1.html','research-v1/app.mjs','research-v1/renderer.mjs','research-v1/pattern-editor.mjs','standalone-pattern-registry-v1.js'];
 // Audit actual application modules, not only six entrypoint files.
-for(const file of fs.readdirSync('.').filter(x=>/^standalone-(?:pattern-|music-|.*v34|.*v40).*\\.(?:js|mjs)$/.test(x)))roots.push(file);
-for(const file of fs.readdirSync('research-v1').filter(x=>/\\.mjs$/.test(x)))roots.push('research-v1/'+file);
+for(const file of fs.readdirSync('.').filter(x=>/^standalone-(?:pattern-|music-|.*v34|.*v40).*\.(?:js|mjs)$/.test(x)))roots.push(file);
+for(const file of fs.readdirSync('research-v1').filter(x=>/\.mjs$/.test(x)))roots.push('research-v1/'+file);
 const scanned=[...new Set(roots)];
 const findings=[];
 const add=(level,file,line,code,detail,action)=>findings.push({level,file,line,code,detail,action});
