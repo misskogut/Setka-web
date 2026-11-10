@@ -44,6 +44,8 @@ test('gravity atom follows exact pointer coordinates and clears them on release'
  assert.equal(move.fingerX,219);assert.equal(move.fingerY,67);
  const end=R.interact(p.id,move,{type:'gesture',phase:'end',fingers:1,x:219,y:67});
  assert.equal(end.fingerActive,0);
- const cancelled=R.interact(p.id,start,{type:'gesture',phase:'end',fingers:1,cancelled:true});
+ const cancelled=R.interact(p.id,start,{type:'gesture',phase:'cancel',fingers:1,cancelled:true});
  assert.equal(cancelled.fingerActive,0);
+ const multitouch=R.interact(p.id,start,{type:'gesture',phase:'move',fingers:2,x:50,y:80});
+ assert.equal(multitouch.fingerActive,0);
 });
