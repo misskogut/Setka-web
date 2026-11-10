@@ -37,3 +37,12 @@ test('guest archive uses exact device identity of heartbeat and includes full pr
  assert.match(guest,/schedule\(150\)/);
  assert.match(guest,/stripHeavy\(corpus\.guestArchive\(\)\)/);
 });
+
+test('admin guest backup displays receipt only and never embeds archive text',()=>{
+ const admin=fs.readFileSync('research-v1/app.mjs','utf8');
+ assert.match(admin,/guestBackup\.updatedAt/);
+ assert.match(admin,/личное содержимое скрыто/);
+ const guest=fs.readFileSync('standalone-guest-archive-v1.js','utf8');
+ assert.match(guest,/account-metrics-committed/);
+ assert.match(guest,/attachPromise/);
+});
