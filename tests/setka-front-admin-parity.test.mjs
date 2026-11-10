@@ -27,7 +27,7 @@ test('generated server manifest and frontend registry contain identical pattern 
  vm.runInNewContext(read('standalone-pattern-registry-v1.js'),ctx);
  const registry=ctx.window.SetkaPatternRegistryV1;
  const local=registry.list();
- const ids=rows=>rows.map(x=>x.id).sort();
+ const ids=rows=>Array.from(rows,x=>String(x.id)).sort();
  assert.deepEqual(ids(local),ids(manifest.patterns),'server and client pattern IDs differ');
  for(const p of manifest.patterns){
   const front=registry.get(p.id);
