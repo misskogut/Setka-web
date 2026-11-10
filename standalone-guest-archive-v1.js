@@ -6,7 +6,7 @@
  const SECRET_KEY="setka-guest:v1-secret";
  const SESSION_KEY="setka-v40:cabinet-session";
  const DEVICE_KEY="setka-standalone:v34-yulia-device";
- let secret=null,revision=0,hydrated=false,loading=null,busy=false,timer=0,lastSignature="",lastError=null,lastSavedAt=null;
+ let secret=null,revision=0,hydrated=false,loading=null,busy=false,timer=0,lastSignature="",lastError=null,lastSavedAt=null,attachPromise=null;
  const uuid=()=>crypto.randomUUID();
  function stripHeavy(v){
    if(v==null||typeof v!=="object")return v;
@@ -84,6 +84,11 @@
  window.addEventListener("online",()=>schedule(200));
  document.addEventListener("visibilitychange",()=>{if(!document.hidden)schedule(100)});
  async function attachGuestToAccount(){
+   if(attachPromise)return attachPromise;
+   attachPromise=attachGuestOnce().finally(()=>{attachPromise=null});
+   return attachPromise;
+ }
+ async function attachGuestOnce(){
    if(!loggedIn()||!credentials())return false;
    try{
      const account=JSON.parse(localStorage.getItem(SESSION_KEY)||sessionStorage.getItem(SESSION_KEY)||"null");
