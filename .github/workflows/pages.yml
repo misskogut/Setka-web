@@ -62,3 +62,12 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+      - name: Confirm deployed frontend, admin and pattern manifest
+        run: node scripts/verify-live-release.mjs
+      - name: Upload live-release verification report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: setka-live-release-report
+          path: artifacts/setka-live-smoke.*
+          if-no-files-found: ignore
