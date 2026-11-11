@@ -1,0 +1,21 @@
+// SETKA copy-only research analytics. Never mounts in stable admin mode.
+if(new URLSearchParams(location.search).get('workspace')==='copy'){
+ const API='https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-admin-v6-metrics';
+ const escape=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const box=document.createElement('section');
+ box.id='setka-copy-v6-analytics';
+ box.style.cssText='position:fixed;z-index:9998;left:8px;right:8px;bottom:8px;max-height:52vh;overflow:auto;background:#161616;color:#fff;border:1px solid #777;border-radius:14px;padding:12px;box-shadow:0 8px 32px #0009;font:13px/1.5 system-ui';
+ box.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><strong><span style="background:#fff;color:#111;padding:2px 5px;border-radius:5px">NEW</span> Аналитика V6</strong><button id="setka-copy-toggle" type="button" style="color:#fff;background:#333;border:1px solid #777;border-radius:8px;padding:5px 10px">Развернуть</button></div><div id="setka-copy-content" hidden><p>Новые источники: исторические гости V40, аккаунты V41, единые события V2. Участники разных источников не суммируются.</p><label>Источник <select id="setka-copy-source" style="color:#fff;background:#333;padding:6px"><option value="guest_v40">Гости V40</option><option value="account_v41">Аккаунты V41</option><option value="unified_v2">Единый реестр V2</option></select></label> <button id="setka-copy-refresh" type="button" style="padding:6px;background:#333;color:#fff;border:1px solid #777">Обновить</button><div id="setka-copy-output" role="status"></div><div id="setka-copy-quality"></div></div>';
+ document.body.appendChild(box);
+ const content=box.querySelector('#setka-copy-content'),output=box.querySelector('#setka-copy-output'),quality=box.querySelector('#setka-copy-quality');
+ const key=()=>{try{return sessionStorage.getItem('setka-research:admin-key:v1')||localStorage.getItem('setka-research:admin-key:v1')||''}catch(_){return ''}};
+ const call=async action=>{const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),12000);try{const response=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,source:box.querySelector('#setka-copy-source').value,adminKey:key()}),signal:controller.signal});const data=await response.json();if(!response.ok||data.ok!==true)throw Error(data.error||'server_error');return data}finally{clearTimeout(timer)}};
+ let seq=0;
+ async function load(){const n=++seq;output.textContent='Загружаем статистику…';quality.textContent='';if(!key()){output.textContent='Для статистики необходимо войти в админку.';return}
+ try{const d=await call('pattern-summary');if(n!==seq)return;const items=Array.isArray(d.items)?d.items:[];output.innerHTML='<p>Источник: '+escape(d.source)+' · Паттернов: '+items.length+(d.truncated?' · Выборка неполная':'')+'</p><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th>Паттерн</th><th>Экспозиции</th><th>Участники*</th><th>Минуты</th></tr></thead><tbody>'+items.map(x=>'<tr><td>'+escape(x.pattern_id)+'</td><td>'+escape(x.exposures)+'</td><td>'+escape(x.unique_participants)+'</td><td>'+escape((Number(x.active_ms||0)/60000).toFixed(1))+'</td></tr>').join('')+'</tbody></table></div><small>* В пределах выбранного источника, без межисточниковой дедупликации.</small>';}
+ catch(e){if(n===seq)output.textContent='Статистика недоступна: '+String(e.message||e)}
+ try{const d=await call('quality');if(n!==seq)return;const sources=Array.isArray(d.sources)?d.sources:[];quality.innerHTML='<p><strong>NEW · Проверка источников</strong></p><ul>'+sources.map(x=>'<li>'+escape(x.table)+': '+escape(x.error?'недоступен':x.count)+'</li>').join('')+'</ul><small>Сквозная доставка V2 не подтверждена.</small>'}catch(e){if(n===seq)quality.textContent='Проверка источников недоступна: '+String(e.message||e)}}
+ box.querySelector('#setka-copy-toggle').onclick=()=>{content.hidden=!content.hidden;box.querySelector('#setka-copy-toggle').textContent=content.hidden?'Развернуть':'Свернуть';if(!content.hidden)load()};
+ box.querySelector('#setka-copy-refresh').onclick=load;
+ box.querySelector('#setka-copy-source').onchange=load;
+}
