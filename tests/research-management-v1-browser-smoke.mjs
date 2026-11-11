@@ -47,16 +47,20 @@ const server=createServer(async(req,res)=>{
  }catch(error){res.writeHead(error.code==='ENOENT'?404:500).end('Isolated fixture request failed')}
 });
 let browser;
-const localApiTransport=()=>{const nativeFetch=window.fetch.bind(window);window.fetch=(input,init)=>{
- const prefix='https://gfchgaphzhxufwdhrcis.supabase.co';
- return nativeFetch(typeof input==='string'&&input.startsWith(prefix)?location.origin+input.slice(prefix.length):input,init);
-};};
+// Keep the browser's original HTTPS URL and CSP intact: native WebKit can
+// reject a pagehide/keepalive fetch whose URL is rewritten to localhost.
+ // Playwright reroutes only network transport to this isolated fixture server.
+const routeIsolatedApi=async context=>context.route('https://gfchgaphzhxufwdhrcis.supabase.co/**',async route=>{
+ const requested=new URL(route.request().url());
+ const response=await route.fetch({url:base+requested.pathname+requested.search});
+ await route.fulfill({response});
+});
 try{
  await new Promise((ok,fail)=>{server.once('error',fail);server.listen(port,'127.0.0.1',ok)});
  browser=await (process.env.SETKA_BROWSER==='webkit'?webkit:chromium).launch({headless:true,args:process.env.SETKA_BROWSER==='webkit'?[]:['--no-sandbox']});
  const frontContext=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true}),front=await frontContext.newPage(),errors=[];
  front.on('pageerror',e=>errors.push({page:'front',message:e.message,stack:e.stack}));front.on('dialog',async d=>{errors.push({page:'front',nativeDialog:d.message()});await d.dismiss()});
- await front.addInitScript(localApiTransport);
+ await routeIsolatedApi(frontContext);
  await front.addInitScript(()=>localStorage.setItem('setka-v40:cabinet-session',JSON.stringify({token:'isolated-fixture-only',testerId:'T-OWNERAAA'})));
  await front.goto(base+'/standalone-v34.html',{waitUntil:'domcontentloaded'});await front.waitForFunction(()=>!!window.__SETKA_PATTERN_CATALOG_V1__&&!!window.SetkaStandaloneV34.activity);
  assert.equal(await front.locator('.base-tile .setka-new-pattern').count(),await front.evaluate(()=>window.SetkaPatternRegistryV1.ids().length));
@@ -82,7 +86,7 @@ try{
  await front.getByLabel('Название или назначение приглашений').fill('Изолированные приглашения');await front.getByLabel('Сколько новых ID').fill('2');await front.getByRole('button',{name:'Создать пригласительные ID',exact:true}).click();
  await front.getByText('Мои приглашения · 2',{exact:true}).waitFor();assert.equal(ownIssued.length,2);assert.equal(await front.locator('#st40InvitePanel').count(),1);
 
- const stale=await front.context().newPage();stale.on('pageerror',e=>errors.push({page:'older-tab',message:e.message}));await stale.addInitScript(localApiTransport);await stale.goto(base+'/standalone-v34.html');await stale.waitForFunction(()=>!!window.SetkaStandaloneV34);
+ const stale=await front.context().newPage();stale.on('pageerror',e=>errors.push({page:'older-tab',message:e.message}));await stale.goto(base+'/standalone-v34.html');await stale.waitForFunction(()=>!!window.SetkaStandaloneV34);
  await front.locator('#st34Nav [data-p="symptoms"]').click();await front.locator('.st34-add-state').click();await front.getByRole('button',{name:'Усталость',exact:true}).tap();await front.locator('.st34-state-card').waitFor();
  await front.locator('.st34-mark-btn').click();await front.locator('.st34-mark-editor.open input').fill('6');await front.getByRole('button',{name:'Сохранить отметку',exact:true}).tap();
  await front.getByRole('button',{name:'Проверить сохранение',exact:true}).click();await front.getByText(/Состояния и отметки сохранены в аккаунте/).waitFor();
@@ -96,7 +100,7 @@ try{
    'a partially open bottom sheet keeps the library visible');
  await stale.locator('#st34Nav [data-p="today"]').click();assert.ok(await stale.evaluate(()=>JSON.parse((window.SetkaDataScopeV1?.storage||localStorage).getItem('setka-standalone:v34')).symptoms.some(x=>x.name==='Усталость')));
  await front.reload();await front.locator('#st34Nav [data-p="symptoms"]').click();await front.getByText('Усталость',{exact:true}).waitFor();assert.match(await front.locator('.st34-state-now').innerText(),/6\/10/);
- const other=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});other.on('pageerror',e=>errors.push({page:'other-device',message:e.message}));await other.addInitScript(localApiTransport);await other.addInitScript(()=>localStorage.setItem('setka-v40:cabinet-session',JSON.stringify({token:'isolated-fixture-only',testerId:'T-OWNERAAA'})));await other.goto(base+'/standalone-v34.html');await other.waitForFunction(()=>!!window.__SETKA_PRIVATE_CORPUS_V40__);await other.evaluate(()=>window.__SETKA_PRIVATE_CORPUS_V40__.sync());await other.locator('#st34Nav [data-p="symptoms"]').click();await other.getByText('Усталость',{exact:true}).waitFor();assert.match(await other.locator('.st34-state-now').innerText(),/6\/10/);
+ const other=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});other.on('pageerror',e=>errors.push({page:'other-device',message:e.message}));await routeIsolatedApi(other.context());await other.addInitScript(()=>localStorage.setItem('setka-v40:cabinet-session',JSON.stringify({token:'isolated-fixture-only',testerId:'T-OWNERAAA'})));await other.goto(base+'/standalone-v34.html');await other.waitForFunction(()=>!!window.__SETKA_PRIVATE_CORPUS_V40__);await other.evaluate(()=>window.__SETKA_PRIVATE_CORPUS_V40__.sync());await other.locator('#st34Nav [data-p="symptoms"]').click();await other.getByText('Усталость',{exact:true}).waitFor();assert.match(await other.locator('.st34-state-now').innerText(),/6\/10/);
  console.log('NEW BADGE, LIVE PREVIEWS WITHOUT USAGE, MULTITAB STATE/CHECKIN RETENTION AND CLOUD RESTORE ON ANOTHER DEVICE PASS');
  // Fill actual Web Storage in this isolated origin; do not mock QuotaExceededError.
  const fill=await front.evaluate(()=>{let size=0,step=1024*1024,refused=false;while(step>=1){try{localStorage.setItem('isolated-quota-filler','x'.repeat(size+step));size+=step}catch(e){refused=refused||e.name==='QuotaExceededError';step=Math.floor(step/2)}}return{size,refused}});
