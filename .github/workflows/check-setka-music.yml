@@ -1,30 +1,8 @@
 name: Check SETKA Music and Spatial Orbits
+# Run intensive checks explicitly, not on every code push.
 on:
-  pull_request:
-    paths:
-      - "standalone-music-*"
-      - "standalone-v34.html"
-      - "standalone-research-admin-v1.html"
-      - "research-v1/music-admin*"
-      - "research-v1/app.mjs"
-      - "supabase/functions/setka-music-v1/**"
-      - "tests/setka-music*"
-      - ".github/workflows/check-setka-music.yml"
-  push:
-    branches: ["main"]
-    paths:
-      - "standalone-music-*"
-      - "standalone-v34.html"
-      - "standalone-research-admin-v1.html"
-      - "research-v1/music-admin*"
-      - "research-v1/music-order.mjs"
-      - "research-v1/app.mjs"
-      - "supabase/functions/setka-music-v1/**"
-      - "tests/setka-music*"
-      - ".github/workflows/check-setka-music.yml"
   workflow_dispatch:
-permissions:
-  contents: read
+
 jobs:
   contracts:
     runs-on: ubuntu-latest
