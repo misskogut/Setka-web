@@ -6,7 +6,7 @@
  const SECRET_KEY="setka-guest:v1-secret";
  const SESSION_KEY="setka-v40:cabinet-session";
  const DEVICE_KEY="setka-standalone:v34-yulia-device";
- let secret=null,revision=0,hydrated=false,loading=null,busy=false,timer=0,lastSignature="",lastError=null,lastSavedAt=null,attachPromise=null;
+ let secret=null,revision=0,hydrated=false,loading=null,busy=false,timer=0,lastSignature="",lastError=null,lastSavedAt=null,attachPromise=null,retryFailures=0;
  const uuid=()=>crypto.randomUUID();
  function stripHeavy(v){
    if(v==null||typeof v!=="object")return v;
@@ -23,8 +23,13 @@
    return {deviceId,secret};
  }
  async function request(body){
-   const r=await fetch(API,{method:"POST",headers:{"Content-Type":"text/plain;charset=UTF-8"},body:JSON.stringify(body)});
-   const d=await r.json().catch(()=>({}));
+   const controller=typeof AbortController==="function"?new AbortController():null;
+   const timeout=controller?setTimeout(()=>controller.abort(),12000):null;
+   let r,d;
+   try{
+     r=await fetch(API,{method:"POST",headers:{"Content-Type":"text/plain;charset=UTF-8"},body:JSON.stringify(body),...(controller?{signal:controller.signal}:{})});
+     d=await r.json().catch(()=>({}));
+   }finally{if(timeout!==null)clearTimeout(timeout)}
    if(!r.ok||!d.ok)throw Error(d.error||"guest_archive_unavailable");
    return d;
  }
@@ -72,12 +77,12 @@
        throw e;
      }
      if(loggedIn())return false;
-     revision=out.revision;lastSignature=signature;lastSavedAt=out.updatedAt;lastError=null;
+     revision=out.revision;lastSignature=signature;lastSavedAt=out.updatedAt;lastError=null;retryFailures=0;
      if(JSON.stringify([stripHeavy(corpus.guestArchive()),stripHeavy(corpus.guestFavorites())])!==signature)schedule(150);
      window.dispatchEvent(new CustomEvent("setka:guest-archive-saved",{detail:{revision,updatedAt:lastSavedAt,counts:out.counts}}));
      try{const ch=new BroadcastChannel("setka:research-sync-v1");ch.postMessage({type:"account-metrics-committed",at:Date.now()});ch.close()}catch(_){}
      return true;
-   }catch(e){lastError=String(e);return false}finally{busy=false}
+   }catch(e){lastError=String(e);retryFailures=Math.min(8,retryFailures+1);if(!loggedIn())schedule(Math.min(60000,1500*2**(retryFailures-1)));return false}finally{busy=false}
  }
  const schedule=(ms=1200)=>{clearTimeout(timer);timer=setTimeout(()=>{sync()},ms)};
  for(const event of ["setka:standalone-event","setka:favorite-saved","setka:favorite-removed","setka:pattern-exposure","setka:activity-interval","setka:v34-sync-request"])window.addEventListener(event,()=>schedule());
