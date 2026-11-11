@@ -371,4 +371,20 @@ if(new URLSearchParams(location.search).get('workspace')==='copy'){
  banner.style.cssText='position:fixed;z-index:10000;top:env(safe-area-inset-top,0px);right:8px;padding:7px 11px;background:#202020;color:white;border:1px solid #888;border-radius:10px;font:12px system-ui';
  banner.textContent='КОПИЯ АДМИНКИ · V6';
  document.body.appendChild(banner);
+ const toggle=document.createElement('button');
+ toggle.type='button';toggle.setAttribute('aria-expanded','false');toggle.setAttribute('aria-controls','setka-copy-changes');
+ toggle.style.cssText='position:fixed;z-index:10001;right:8px;top:calc(env(safe-area-inset-top,0px) + 39px);padding:8px 12px;border:1px solid #888;border-radius:10px;background:#202020;color:#fff;font:12px system-ui;cursor:pointer';
+ toggle.textContent='NEW · Что изменилось';
+ const panel=document.createElement('section');
+ panel.id='setka-copy-changes';panel.hidden=true;
+ panel.style.cssText='position:fixed;z-index:10000;right:8px;top:calc(env(safe-area-inset-top,0px) + 80px);width:min(330px,calc(100vw - 16px));max-height:55vh;overflow:auto;padding:16px;background:#151515;color:#fff;border:1px solid #777;border-radius:14px;box-shadow:0 10px 30px #0008;font:13px/1.5 system-ui';
+ const heading=document.createElement('strong');heading.textContent='Новое в копии админки';panel.appendChild(heading);
+ const note=document.createElement('p');note.textContent='Метка NEW обозначает только функции, добавленные в копию. Основная админка остаётся без изменений.';panel.appendChild(note);
+ const list=document.createElement('ul');
+ for(const item of ['NEW · Режим копии V6 и визуальное отличие от основной админки','NEW · Журнал изменений копии','В разработке · Единая аналитика V2: сквозная доставка событий ещё не подтверждена']){
+  const li=document.createElement('li');li.textContent=item;list.appendChild(li);
+ }
+ panel.appendChild(list);
+ toggle.addEventListener('click',()=>{panel.hidden=!panel.hidden;toggle.setAttribute('aria-expanded',String(!panel.hidden));});
+ document.body.append(toggle,panel);
 }
