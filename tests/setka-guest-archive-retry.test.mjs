@@ -1,0 +1,21 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+import {randomUUID} from 'node:crypto';
+const src=fs.readFileSync('standalone-guest-archive-v1.js','utf8');
+test('failed guest sync retries with exponential backoff and resets after success',async()=>{
+ const data=new Map([['setka-standalone:v34-yulia-device','dev']]);
+ const localStorage={getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,String(v))};
+ let fail=true,requests=0;const timers=[];const listeners=new Map();
+ const window={SetkaStandaloneV34:{ready:Promise.resolve()},addEventListener:(n,f)=>listeners.set(n,f),dispatchEvent:()=>{},__SETKA_PRIVATE_CORPUS_V40__:{guestArchive:()=>({notes:[{id:'1'}]}),guestFavorites:()=>[],mergeGuest:async()=>{}}};
+ const fetch=async(_,opts)=>{const body=JSON.parse(opts.body);if(body.action==='pull')return {ok:true,json:async()=>({ok:true,archive:null})};requests++;if(fail)throw Error('offline');return {ok:true,json:async()=>({ok:true,revision:1})}};
+ const ctx={window,fetch,localStorage,sessionStorage:{getItem:()=>null},crypto:{randomUUID},setTimeout:(f,ms)=>{timers.push({f,ms});return timers.length},clearTimeout:()=>{},setInterval:()=>{},document:{addEventListener:()=>{},hidden:false},CustomEvent:class{},BroadcastChannel:class{postMessage(){}close(){}}};
+ vm.runInNewContext(src,ctx);
+ const drain=async()=>{for(let i=0;i<12;i++)await new Promise(r=>setImmediate(r))};
+ listeners.get('setka:v34-sync-request')();timers.pop().f();await drain();
+ assert.equal(requests,1);assert.ok(timers.some(t=>t.ms===1500));
+ timers.pop().f();await drain();assert.equal(requests,2);assert.ok(timers.some(t=>t.ms===3000));
+ fail=false;timers.pop().f();await drain();assert.equal(requests,3);
+ assert.ok(!timers.some(t=>t.ms===6000));
+});
