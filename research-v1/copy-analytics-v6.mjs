@@ -1,5 +1,5 @@
 // SETKA copy-only research analytics. Never mounts in stable admin mode.
-if(new URLSearchParams(location.search).get('workspace')==='copy'){
+if(location.pathname.endsWith('/standalone-research-admin-copy-v6.html') || new URLSearchParams(location.search).get('workspace')==='copy'){
  const API='https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-admin-v6-metrics';
  // Versioned per-feature read receipts: a new release turns its NEW marker green again.
  const newItems=[
