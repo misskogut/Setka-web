@@ -1,8 +1,8 @@
 name: Foundation 0.1.7 Enhanced Smoke
+# Run intensive checks explicitly, not on every code push.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
+
 jobs:
   smoke:
     runs-on: ubuntu-latest
