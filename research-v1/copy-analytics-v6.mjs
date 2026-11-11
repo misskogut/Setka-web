@@ -4,7 +4,10 @@ if(new URLSearchParams(location.search).get('workspace')==='copy'){
  // Versioned per-feature read receipts: a new release turns its NEW marker green again.
  const newItems=[
   {id:'v6-pattern-analytics',version:'1',section:'patterns',label:'Аналитика V6'},
-  {id:'v6-source-quality',version:'1',section:'patterns',label:'Проверка источников'}
+  {id:'v6-source-quality',version:'1',section:'patterns',label:'Проверка источников'},
+  {id:'v6-guest-path',version:'1',section:'participants',label:'Гостевая телеметрия V2'},
+  {id:'v6-historical-sync',version:'1',section:'home',label:'Контроль синхронизации V34'},
+  {id:'v6-research-lab',version:'1',section:'research',label:'Лаборатория V6'}
  ];
  const readKey=item=>'setka-copy-seen:'+item.id+':'+item.version;
  const isSeen=item=>{try{return localStorage.getItem(readKey(item))==='1'}catch(_){return false}};
@@ -43,4 +46,37 @@ if(new URLSearchParams(location.search).get('workspace')==='copy'){
  quality.addEventListener('click',()=>markSeen(newItems[1]));
  box.querySelector('#setka-copy-refresh').onclick=()=>{markSeen(newItems[1]);load()};
  box.querySelector('#setka-copy-source').onchange=load;
+ // New research sections use the same server-validated credential as the original admin.
+ const extra=document.createElement('section');
+ extra.id='setka-copy-more';
+ extra.style.cssText='position:fixed;z-index:9997;left:8px;right:8px;bottom:70px;max-height:58vh;overflow:auto;background:#171717;color:#fff;border:1px solid #777;border-radius:14px;padding:12px;font:13px/1.5 system-ui;box-shadow:0 8px 30px #0009';
+ extra.innerHTML='<div style="display:flex;justify-content:space-between"><strong>NEW · Исследования и аудитория V6</strong><button type="button" id="setka-copy-more-toggle" style="background:#333;color:#fff;border:1px solid #777;border-radius:8px;padding:5px">Развернуть</button></div><div id="setka-copy-more-body" hidden><p>Лаборатория, гостевые события и историческая синхронизация. Данные разных источников не складываются.</p><div style="display:flex;gap:6px;flex-wrap:wrap"><button type="button" data-v6-view="lab">Лаборатория</button><button type="button" data-v6-view="guests">Гости V2</button><button type="button" data-v6-view="sync">Синхронизация V34</button></div><div id="setka-copy-more-results" role="status"></div></div>';
+ document.body.appendChild(extra);
+ for(const btn of extra.querySelectorAll('[data-v6-view]'))btn.style.cssText='padding:7px;background:#333;color:#fff;border:1px solid #777;border-radius:7px';
+ const moreBody=extra.querySelector('#setka-copy-more-body'),moreResults=extra.querySelector('#setka-copy-more-results');
+ extra.querySelector('#setka-copy-more-toggle').onclick=()=>{moreBody.hidden=!moreBody.hidden;extra.querySelector('#setka-copy-more-toggle').textContent=moreBody.hidden?'Развернуть':'Свернуть'};
+ const historicalApi='https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-standalone-v34';
+ async function loadMore(view){
+  const item=newItems.find(x=>x.id===(view==='lab'?'v6-research-lab':view==='guests'?'v6-guest-path':'v6-historical-sync'));
+  if(item)markSeen(item);
+  moreResults.textContent='Загрузка…';
+  if(view==='lab'){moreResults.innerHTML='<p><strong>Лаборатория V6</strong></p><p>Раздельные направления: паттерны, путь пользователя, таймер и удержание, симптомы, заметки, запросы и эффект, физиология. Исторические инструменты уже есть в исследовательской админке; здесь отображается структура V6, а не выдуманные результаты.</p><p>Статистика паттернов доступна в панели «Аналитика V6».</p>';return}
+  if(!key()){moreResults.textContent='Сначала войдите в админку.';return}
+  try{
+   if(view==='sync'){
+    const response=await fetch(historicalApi,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'admin-overview',adminKey:key(),channel:'yulia_lab_v34'})});
+    const d=await response.json();if(!response.ok||d.ok!==true)throw Error(d.error||'server_error');
+    const devices=Array.isArray(d.devices)?d.devices:[],sessions=Array.isArray(d.sessions)?d.sessions:[];
+    moreResults.innerHTML='<p>Устройства V34: <strong>'+devices.length+'</strong> · Исторические сессии V34: <strong>'+sessions.length+'</strong></p><small>Исторические данные не подтверждают доставку в V2.</small>';
+   }else{
+    const d=await call('quality'),sources=Array.isArray(d.sources)?d.sources:[];
+    const selected=sources.filter(x=>/events_v2|identity_links/i.test(x.table));
+    moreResults.innerHTML='<p><strong>Гостевая телеметрия V2</strong></p><ul>'+selected.map(x=>'<li>'+escape(x.table)+': '+escape(x.error?'недоступно':x.count)+'</li>').join('')+'</ul><small>Количество событий не равно количеству уникальных гостей. Сквозная доставка ещё не подтверждена.</small>';
+   }
+  }catch(e){moreResults.textContent='Источник недоступен: '+String(e.message||e)}
+ }
+ for(const btn of extra.querySelectorAll('[data-v6-view]'))btn.onclick=()=>loadMore(btn.dataset.v6View);
+ // Keep both V6 panels accessible without obscuring each other.
+ box.style.bottom='8px';extra.style.bottom='70px';
+
 }
