@@ -18,7 +18,8 @@ async function sync(){
  const data=window.SetkaStandaloneV34?.getData?.();
  const exposures=Array.isArray(data?.patternExposures)?data.patternExposures:[];
  if(!exposures.length)return;
- const already=new Set(done()),valid=x=>x?.exposureId&&x?.sessionId&&x?.patternId&&Number.isInteger(Math.floor(Number(x.durationMs)))&&Number(x.durationMs)>=1&&Number(x.durationMs)<=86400000&&/^[a-zA-Z0-9_:.\\-]+$/.test(String(x.patternId))&&String(x.patternId).length<=120&&/^[a-zA-Z0-9_:.\\-]+$/.test(String(x.sessionId))&&String(x.sessionId).length<=180&&Number.isFinite(Date.parse(x.endedAt||x.startedAt))&&Date.parse(x.endedAt||x.startedAt)>=Date.now()-89*86400000;\n const pending=exposures.filter(x=>valid(x)&&!already.has(String(x.exposureId))).slice(0,25);
+ const already=new Set(done()),valid=x=>x?.exposureId&&x?.sessionId&&x?.patternId&&Number.isInteger(Math.floor(Number(x.durationMs)))&&Number(x.durationMs)>=1&&Number(x.durationMs)<=86400000&&/^[a-zA-Z0-9_:.-]+$/.test(String(x.patternId))&&String(x.patternId).length<=120&&/^[a-zA-Z0-9_:.-]+$/.test(String(x.sessionId))&&String(x.sessionId).length<=180&&Number.isFinite(Date.parse(x.endedAt||x.startedAt))&&Date.parse(x.endedAt||x.startedAt)>=Date.now()-89*86400000;
+ const pending=exposures.filter(x=>valid(x)&&!already.has(String(x.exposureId))).slice(0,25);
  if(!pending.length)return;
  busy=true;
  try{
