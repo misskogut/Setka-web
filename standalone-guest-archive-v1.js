@@ -92,17 +92,18 @@
    if(!loggedIn()||!credentials())return false;
    try{
      const account=JSON.parse(localStorage.getItem(SESSION_KEY)||sessionStorage.getItem(SESSION_KEY)||"null");
-     if(!account?.testerId)return false;
+     if(!account?.testerId||!account?.token)return false;
+     const sameAccount=()=>{try{const current=JSON.parse(localStorage.getItem(SESSION_KEY)||sessionStorage.getItem(SESSION_KEY)||"null");return current?.testerId===account.testerId&&current?.token===account.token}catch(_){return false}};
      const out=await request({...credentials(),action:"pull"});
+     if(!sameAccount())return false;
      if(!out.archive)return true;
      const marker="setka-guest:v1-migrated:"+account.testerId;
      if(localStorage.getItem(marker)===String(out.archive.revision))return true;
      const corpus=privateCorpus();
-     if(!await corpus?.ensureHydrated?.())return false;
-     if(!loggedIn())return false;
+     if(!await corpus?.ensureHydrated?.()||!sameAccount())return false;
      await corpus.mergeGuest(out.archive.payload||{},out.archive.favorites||[]);
-     if(!await corpus.sync())return false;
-     if(corpus.status?.()?.ok!==true)return false;
+     if(!sameAccount()||!await corpus.sync())return false;
+     if(!sameAccount()||corpus.status?.()?.ok!==true)return false;
      localStorage.setItem(marker,String(out.archive.revision));
      return true;
    }catch(e){lastError=String(e);return false}
