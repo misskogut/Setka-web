@@ -2,11 +2,11 @@
 "use strict";
 const groups=[
  {id:"overview",label:"Главная",tabs:["overview"],description:"Сводные показатели. Не смешивать гостей, ID и исторические данные без общей методики."},
- {id:"lab",label:"Лаборатория",tabs:["journey","timing","symptoms","notes","insights","sensors"],description:"Протоколы, динамика состояния, экспозиции паттернов, физиология и воспроизводимость."},
+ {id:"lab",label:"Лаборатория",tabs:["journey","timing","symptoms","notes","insights","pattern-metrics","sensors"],description:"Протоколы, динамика состояния, экспозиции паттернов, физиология и воспроизводимость."},
  {id:"audience",label:"Аудитория",tabs:["participants","guests","invites"],description:"Гости и ID — состояния одной идентичности. Связь только после подтверждённой регистрации."},
  {id:"growth",label:"Рост и бизнес",tabs:["community"],description:"Кампании, ссылки, подписки и партнёрские кабинеты будут подключены после проверки единой телеметрии."}
 ];
-const names={overview:"Обзор",journey:"Путь",participants:"Участники",timing:"Таймер и удержание",symptoms:"Симптомы",notes:"Заметки",invites:"Инвайты",insights:"Запросы и эффект",community:"Сообщество",guests:"Гостевой путь",sensors:"Физиология"};
+const names={overview:"Обзор",journey:"Путь",participants:"Участники",timing:"Таймер и удержание",symptoms:"Симптомы",notes:"Заметки",invites:"Инвайты",insights:"Запросы и эффект","pattern-metrics":"Паттерны · статистика",community:"Сообщество",guests:"Гостевой путь",sensors:"Физиология"};
 function start(){
  const dashboard=document.getElementById("dashboard"),oldTabs=dashboard?.querySelector(".tabs");if(!oldTabs)return;
  const header=document.createElement("div");header.className="v6-head";header.innerHTML='<div><h2>SETKA · Research & Business <small>V6 PREVIEW</small></h2><p>Исследования, аудитория, рост и управление — единая навигация без изменения старых исследовательских экранов.</p></div><div class="v6-status">Текущая версия: экспериментальная · <a class="v6-compare" href="admin-v4.html">Открыть прежнюю V4</a></div>';
