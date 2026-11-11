@@ -66,6 +66,8 @@ jobs:
         run: node --test tests/setka-startup-cache-v1.test.mjs
       - name: Reject Safari gesture crashes and synchronous archive rewrite storms
         run: node --test tests/setka-gameplay-touch-write-gate.test.mjs
+      - name: Verify 3D/8D orbit acoustics and reflection geometry before publishing
+        run: node --test tests/setka-orbit-acoustics-gate.test.mjs
       - name: Verify music icon vector geometry before publishing
         run: node --test tests/setka-music-icons-v2.test.mjs tests/setka-music-trace-smoothing-v1.test.mjs
       - name: Setup Pages
