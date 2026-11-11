@@ -40,12 +40,14 @@
 #communityPanel .empty-favorites .big-heart{font-size:32px}
 @media(max-width:360px){.library-pager{gap:10px!important}.community-count{font-size:8px}}
 
-/* Shared vertical baseline for Patterns and Saved: preserve the original
-   thumbnail dimensions and 28px gap while lifting both grids together. */
+/* Keep all library thumbnails on one vertical baseline. The community
+   mode bar is absolutely positioned above row 1, so reserve 16px more air
+   without moving its controls or changing tile shapes / row spacing. */
 @media (max-width:767px) {
   #libraryScreen #allPatternsPanel,
-  #libraryScreen #favoritesPanel {
-    padding-top:24px;
+  #libraryScreen #favoritesPanel,
+  #libraryScreen #communityPanel {
+    padding-top:40px;
     row-gap:28px;
   }
 }
