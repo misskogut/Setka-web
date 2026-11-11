@@ -51,7 +51,7 @@ jobs:
       - name: Stamp one stable SETKA URL with deployment revision
         run: node scripts/build-standalone-release.mjs
       - name: Verify anonymous device presence and private unpublished note backups
-        run: node --test tests/setka-anonymous-presence-private-notes.test.mjs tests/setka-guest-archive-functional.test.mjs
+        run: node --test tests/setka-anonymous-presence-private-notes.test.mjs tests/setka-guest-archive-functional.test.mjs tests/setka-guest-account-switch.test.mjs
       - name: Verify stamped frontend and admin release assets
         run: node --test tests/setka-release-assets.test.mjs
       - name: Reject manual SETKA App pattern wiring before publishing
