@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const read=p=>fs.readFileSync(p,'utf8');
-const pages=['standalone-v34.html','standalone-research-admin-v1.html'];
+const pages=['standalone-v34.html','standalone-research-admin-v1.html','standalone-research-admin-copy-v6.html'];
 const root=process.cwd();
 const safePath=(from,ref)=>{
  const clean=ref.split(/[?#]/)[0];

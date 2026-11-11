@@ -46,7 +46,7 @@ const patched=html.replace(marker,`<meta name="setka-release-build" content="${b
 writeFileSync(documentPath,patched);
 // Every current surface loads the same immutable deployment revision. Historical
 // checkpoint pages keep their pinned sources and are deliberately excluded.
-for(const path of [documentPath,"standalone-admin-v34.html","standalone-renderer-v40.html","standalone-research-admin-v1.html"]){
+for(const path of [documentPath,"standalone-admin-v34.html","standalone-renderer-v40.html","standalone-research-admin-v1.html","standalone-research-admin-copy-v6.html"]){
   if(!existsSync(path))continue;
   let source=readFileSync(path,"utf8");
   if(marker.test(source))source=source.replace(marker,`<meta name="setka-release-build" content="${build}" />`);

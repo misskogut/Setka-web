@@ -7,6 +7,9 @@ const sha=(process.env.GITHUB_SHA||'').toLowerCase();
 const checks=[
  {path:'standalone-v34.html',label:'Фронт'},
  {path:'standalone-research-admin-v1.html',label:'Исследовательская админка'},
+ {path:'standalone-research-admin-copy-v6.html',label:'Копия админки V6'},
+ {path:'research-v1/copy-app-v6.mjs',label:'Код копии админки V6'},
+ {path:'research-v1/copy-analytics-v6.mjs',label:'Аналитика копии админки V6'},
  {path:'standalone-pattern-registry-v1.js',label:'Реестр паттернов'},
  {path:'setka-pattern-manifest-v1.json',label:'Манифест паттернов'},
  {path:'research-v1/app.mjs',label:'Код админки'},
