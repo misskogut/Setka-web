@@ -258,6 +258,8 @@ async function go(){
   });
   assert.equal(parity.length,windowExpectedMothers,"all mother patterns verified against their canonical previews");
   assert.ok(parity.every(p=>p.expected===p.actual&&p.modified!==p.actual));
+  const atom=parity.find(p=>p.id==="gravity-atom");
+  assert.ok(atom&&atom.modified!==atom.expected,"gravity-atom sliders must alter its recipe, not just pointer gravity");
   // Exercise the actual card pointer handler, not only the public openConfig API.
   await page.evaluate(()=>{
     const S=window.SetkaApp,R=window.SetkaPatternRegistryV1,id="tentacle-orbit";
