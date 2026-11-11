@@ -58,9 +58,9 @@ test('admin catalog updates are versioned and reject stale defaults/order/public
  const first=registry.orderedIds().slice(0,2);
  assert.equal(first.length,2);
  assert.equal(registry.applyOrder({patternIds:first.slice().reverse(),revision:10}),true);
- assert.deepEqual(Array.from(registry.orderedIds().slice(0,2)),first.slice().reverse());
+ assert.deepEqual(Array.from(registry.orderedIds().slice(0,2)),Array.from(first.slice().reverse()));
  assert.equal(registry.applyOrder({patternIds:first,revision:9}),false,'stale order accepted');
- assert.deepEqual(Array.from(registry.orderedIds().slice(0,2)),first.slice().reverse());
+ assert.deepEqual(Array.from(registry.orderedIds().slice(0,2)),Array.from(first.slice().reverse()));
  registry.usePublicCatalog(true);
  assert.equal(registry.applyPublication([p.id],10),true);
  assert.equal(registry.isActive(p.id),true);
