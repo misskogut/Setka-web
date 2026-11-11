@@ -422,9 +422,14 @@
     let count=0;
     for(const row of pattern.controls){
       const [,key,min,max,step]=row;
+      // Most new SETKA patterns deliberately expose integer-step sliders.
+      // Step size describes the saved UI, not whether a value controls
+      // continuous geometry. A temporary audio render may use a fraction.
+      // Never automate enumerated switches or topology/point counts.
       if(typeof key!=="string"||!Number.isFinite(min)||!Number.isFinite(max)||
-        !Number.isFinite(step)||step>=1||staticTopology.has(key)||key==="zoom"||
-        /(?:count|number|depth|layers|branches|num|points|rings|cols|rows)/i.test(key))continue;
+        !Number.isFinite(step)||min>=max||staticTopology.has(key)||key==="zoom"||
+        /(?:count|number|depth|layers|branches|num|points|rings|cols|rows|density|seed|palette|colorMode|modeIndex|^shape$|^type$|^variant$|^style$|^enabled$|^mirrorMode$)/i.test(key)||
+        (step>=1&&max-min<=12))continue;
       const channel=mix[(count+modeNumber-1)%3];
       // Multiplicative responses cannot animate a control whose neutral
       // default is zero (e.g. 3D roll, blur or camera pitch). Use a bounded
