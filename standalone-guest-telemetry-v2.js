@@ -35,7 +35,7 @@ async function sync(){
   try{response=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({deviceId:id(),events}),signal:controller.signal})}finally{clearTimeout(timeout)}
   const result=await response.json();
   if(!response.ok||result.ok!==true||result.accepted!==events.length)throw Error("unconfirmed_delivery");
-  const next=[...already,...pending.slice(0,events.length).map(x=>String(x.exposureId))].slice(-MAX_DONE);
+  const next=[...already,...events.map(x=>pending.find(p=>p.sessionId===x.sessionId&&p.patternId===x.patternId&&String(p.endedAt||p.startedAt)===String(x.occurredAt))?.exposureId).filter(Boolean).map(String)].slice(-MAX_DONE);
   try{localStorage.setItem(DONE,JSON.stringify(next))}catch(_){}
   window.dispatchEvent(new CustomEvent("setka:v2-guest-sync",{detail:{ok:true,accepted:events.length}}));
  }catch(_){window.dispatchEvent(new CustomEvent("setka:v2-guest-sync",{detail:{ok:false}}))}
