@@ -27,7 +27,8 @@ async function sync(){
   for(const x of pending){
    const occurredAt=x.endedAt||x.startedAt;
    if(!occurredAt||!Number.isFinite(Date.parse(occurredAt)))continue;
-   submitted.push(String(x.exposureId));\n   events.push({eventId:await eventId(id()+":"+x.exposureId),eventType:"pattern_exposure",patternId:String(x.patternId),sessionId:String(x.sessionId),durationMs:Math.min(86400000,Math.floor(Number(x.durationMs))),occurredAt});
+   submitted.push(String(x.exposureId)); 
+   events.push({eventId:await eventId(id()+":"+x.exposureId),eventType:"pattern_exposure",patternId:String(x.patternId),sessionId:String(x.sessionId),durationMs:Math.min(86400000,Math.floor(Number(x.durationMs))),occurredAt});
   }
   if(!events.length)return;
   if(isAccount())return;
