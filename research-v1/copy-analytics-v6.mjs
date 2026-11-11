@@ -18,8 +18,8 @@ if(new URLSearchParams(location.search).get('workspace')==='copy'){
    const relevant=newItems.filter(item=>item.section===nav.dataset.page);
    let badge=nav.querySelector('.setka-copy-new-badge');
    if(!relevant.length){badge?.remove();continue}
-   if(!badge){badge=document.createElement('span');badge.className='setka-copy-new-badge';badge.textContent='NEW';nav.appendChild(badge)}
-   badge.style.cssText=badgeStyle(relevant.every(isSeen));
+   if(!badge){badge=document.createElement('span');badge.className='setka-copy-new-badge';badge.textContent='NEW';nav.insertBefore(badge,nav.children[1]||null)}
+   badge.style.cssText=badgeStyle(relevant.every(isSeen))+';flex:none!important;color:#fff!important;font-size:10px!important;padding:2px 5px!important;';
    badge.title=relevant.every(isSeen)?'Новые функции просмотрены':'Есть непросмотренные функции';
   }
   for(const el of document.querySelectorAll('[data-setka-new-id]')){
@@ -78,5 +78,10 @@ if(new URLSearchParams(location.search).get('workspace')==='copy'){
  for(const btn of extra.querySelectorAll('[data-v6-view]'))btn.onclick=()=>loadMore(btn.dataset.v6View);
  // Keep both V6 panels accessible without obscuring each other.
  box.style.bottom='8px';extra.style.bottom='70px';
+ // Make the badges on mobile navigation visible even with legacy .nav span rules.
+ const style=document.createElement('style');style.textContent='.nav .setka-copy-new-badge{color:#fff!important;font-size:10px!important;line-height:1.5!important;flex-shrink:0!important}.nav[data-page]{gap:6px!important}';document.head.appendChild(style);
+ const showByPage=()=>{const active=document.querySelector('.nav.selected')?.dataset.page;box.style.display=active==='patterns'?'block':'none';extra.style.display=['home','participants','research'].includes(active)?'block':'none';};
+ document.querySelectorAll('.nav[data-page]').forEach(nav=>nav.addEventListener('click',()=>queueMicrotask(showByPage)));
+ showByPage();
 
 }
