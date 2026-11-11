@@ -33,7 +33,7 @@ async function check(){
   const latest=devices.reduce((v,x)=>Math.max(v,Date.parse(x.last_seen_at)||0),0);
   p.innerHTML='<strong>Зарегистрировано устройств:</strong> '+escapeHTML(devices.length)+' · <strong>Активны за 24 часа:</strong> '+escapeHTML(recent)+' · <strong>Исторических сессий в этом источнике:</strong> '+escapeHTML(sessions.length)+' · <strong>Последний heartbeat:</strong> '+escapeHTML(latest?new Date(latest).toLocaleString("ru-RU"):"нет данных")+'<br><small>Источник: setka-standalone-v34 / admin-overview. Это не доказательство доставки событий в единый реестр V2. Счётчики из разных API не складываются.</small>';
 
- const quality=document.createElement("div");quality.id="v6-quality";quality.style.marginTop="10px";panel.appendChild(quality);
+ const quality=panel.querySelector("#v6-quality")||document.createElement("div");quality.id="v6-quality";quality.style.marginTop="10px";if(!quality.isConnected)panel.appendChild(quality);
  const qcontroller=new AbortController(),qtimer=setTimeout(()=>qcontroller.abort(),12000);
  try{
   const qr=await fetch("https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-admin-v6-metrics",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"quality",adminKey:key}),signal:qcontroller.signal});
