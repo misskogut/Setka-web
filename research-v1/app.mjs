@@ -362,3 +362,13 @@ $('remember').checked=entryAccess.consumed?true:savedAccess.remember;
 if(ownerTicket){$('key').hidden=true;$('key').required=false;$('key-label').hidden=true;$('login-error').textContent='Доступ владельца подготовлен. Нажмите «Открыть исследования».';}
 else if(adminKey)login();
 navigate(page);
+
+// Copy workspace: keep the original research admin unchanged unless explicitly opened in copy mode.
+if(new URLSearchParams(location.search).get('workspace')==='copy'){
+ document.title='SETKA · Копия админки';
+ const banner=document.createElement('div');
+ banner.setAttribute('role','status');
+ banner.style.cssText='position:fixed;z-index:10000;top:env(safe-area-inset-top,0px);right:8px;padding:7px 11px;background:#202020;color:white;border:1px solid #888;border-radius:10px;font:12px system-ui';
+ banner.textContent='КОПИЯ АДМИНКИ · V6';
+ document.body.appendChild(banner);
+}
