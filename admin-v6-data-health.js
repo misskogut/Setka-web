@@ -33,16 +33,17 @@ async function check(){
   const latest=devices.reduce((v,x)=>Math.max(v,Date.parse(x.last_seen_at)||0),0);
   p.innerHTML='<strong>Зарегистрировано устройств:</strong> '+escapeHTML(devices.length)+' · <strong>Активны за 24 часа:</strong> '+escapeHTML(recent)+' · <strong>Исторических сессий в этом источнике:</strong> '+escapeHTML(sessions.length)+' · <strong>Последний heartbeat:</strong> '+escapeHTML(latest?new Date(latest).toLocaleString("ru-RU"):"нет данных")+'<br><small>Источник: setka-standalone-v34 / admin-overview. Это не доказательство доставки событий в единый реестр V2. Счётчики из разных API не складываются.</small>';
 
+ }catch(e){p.textContent="Исторический источник V34 недоступен: "+String(e.message||e)+". Проверка V2 продолжается отдельно."}
+
  const quality=panel.querySelector("#v6-quality")||document.createElement("div");quality.id="v6-quality";quality.style.marginTop="10px";if(!quality.isConnected)panel.appendChild(quality);
  const qcontroller=new AbortController(),qtimer=setTimeout(()=>qcontroller.abort(),12000);
  try{
   const qr=await fetch("https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-admin-v6-metrics",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"quality",adminKey:key}),signal:qcontroller.signal});
   const qd=await qr.json();if(!qr.ok||!qd.ok)throw Error(qd.error||"quality_unavailable");
-  const labels={setka_research_events_v2:"Единые события V2",setka_research_identity_links_v1:"Подтверждённые связи гость → ID",prototype_v40_service_exposures:"Экспозиции V40",prototype_v34_devices:"Устройства V34",prototype_v34_sessions:"Сессии V34"};
+  const labels={setka_research_events_v2:"Единые события V2",setka_research_identity_links_v1:"Подтверждённые связи гость → ID",prototype_v40_service_exposures:"Экспозиции V40",prototype_v41_account_exposures:"Экспозиции V41",prototype_v34_devices:"Устройства V34",prototype_v34_sessions:"Сессии V34"};
   quality.innerHTML='<strong>Источники данных · '+escapeHTML(new Date(qd.checkedAt).toLocaleString("ru-RU"))+'</strong><ul>'+qd.sources.map(x=>'<li>'+escapeHTML(labels[x.table]||x.table)+': '+escapeHTML(x.error?"недоступен":x.count)+'</li>').join("")+'</ul><p>Сквозная доставка событий V2: <strong>не подтверждена</strong>. Значения из разных таблиц не суммируются.</p>';
  }catch(e){quality.textContent="Проверка источников недоступна: "+String(e.message||e)}
  finally{clearTimeout(qtimer)}
- }catch(e){p.textContent="Проверка не удалась: "+String(e.message||e)+". Статистика не подтверждена."}
  finally{button.disabled=false}
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",setup);else setup();
