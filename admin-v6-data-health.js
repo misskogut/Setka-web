@@ -43,8 +43,7 @@ async function check(){
   const labels={setka_research_events_v2:"Единые события V2",setka_research_identity_links_v1:"Подтверждённые связи гость → ID",prototype_v40_service_exposures:"Экспозиции V40",prototype_v41_account_exposures:"Экспозиции V41",prototype_v34_devices:"Устройства V34",prototype_v34_sessions:"Сессии V34"};
   quality.innerHTML='<strong>Источники данных · '+escapeHTML(new Date(qd.checkedAt).toLocaleString("ru-RU"))+'</strong><ul>'+qd.sources.map(x=>'<li>'+escapeHTML(labels[x.table]||x.table)+': '+escapeHTML(x.error?"недоступен":x.count)+'</li>').join("")+'</ul><p>Сквозная доставка событий V2: <strong>не подтверждена</strong>. Значения из разных таблиц не суммируются.</p>';
  }catch(e){quality.textContent="Проверка источников недоступна: "+String(e.message||e)}
- finally{clearTimeout(qtimer)}
- finally{button.disabled=false}
+ finally{clearTimeout(qtimer);button.disabled=false}
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",setup);else setup();
 })();
