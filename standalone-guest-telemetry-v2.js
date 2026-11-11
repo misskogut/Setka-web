@@ -5,7 +5,7 @@ const API="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-guest-eve
 const DEVICE="setka-standalone:v34-yulia-device",ACCOUNT="setka-v40:cabinet-session";
 const DONE="setka:v2-guest-sent",MAX_DONE=3000;
 let busy=false,timer=0;
-function isAccount(){try{for(const store of [localStorage,sessionStorage]){const s=JSON.parse(store.getItem(ACCOUNT)||"null");if(s?.token)return true}}catch(_){}return false}
+function isAccount(){for(const store of [localStorage,sessionStorage]){try{const s=JSON.parse(store.getItem(ACCOUNT)||"null");if(s?.token)return true}catch(_){}}return false}
 function id(){try{return localStorage.getItem(DEVICE)||""}catch(_){return ""}}
 function done(){try{return JSON.parse(localStorage.getItem(DONE)||"[]")}catch(_){return []}}
 async function eventId(value){
@@ -18,15 +18,15 @@ async function sync(){
  const data=window.SetkaStandaloneV34?.getData?.();
  const exposures=Array.isArray(data?.patternExposures)?data.patternExposures:[];
  if(!exposures.length)return;
- const already=new Set(done()),pending=exposures.filter(x=>x?.exposureId&&!already.has(String(x.exposureId))&&x?.sessionId&&x?.patternId&&Number(x.durationMs)>0).slice(0,25);
+ const already=new Set(done()),valid=x=>x?.exposureId&&x?.sessionId&&x?.patternId&&Number.isInteger(Math.floor(Number(x.durationMs)))&&Number(x.durationMs)>=1&&Number(x.durationMs)<=86400000&&/^[a-zA-Z0-9_:.\\-]+$/.test(String(x.patternId))&&String(x.patternId).length<=120&&/^[a-zA-Z0-9_:.\\-]+$/.test(String(x.sessionId))&&String(x.sessionId).length<=180&&Number.isFinite(Date.parse(x.endedAt||x.startedAt))&&Date.parse(x.endedAt||x.startedAt)>=Date.now()-89*86400000;\n const pending=exposures.filter(x=>valid(x)&&!already.has(String(x.exposureId))).slice(0,25);
  if(!pending.length)return;
  busy=true;
  try{
-  const events=[];
+  const events=[],submitted=[];
   for(const x of pending){
    const occurredAt=x.endedAt||x.startedAt;
    if(!occurredAt||!Number.isFinite(Date.parse(occurredAt)))continue;
-   events.push({eventId:await eventId(id()+":"+x.exposureId),eventType:"pattern_exposure",patternId:String(x.patternId),sessionId:String(x.sessionId),durationMs:Math.min(86400000,Math.floor(Number(x.durationMs))),occurredAt});
+   submitted.push(String(x.exposureId));\n   events.push({eventId:await eventId(id()+":"+x.exposureId),eventType:"pattern_exposure",patternId:String(x.patternId),sessionId:String(x.sessionId),durationMs:Math.min(86400000,Math.floor(Number(x.durationMs))),occurredAt});
   }
   if(!events.length)return;
   if(isAccount())return;
@@ -35,7 +35,7 @@ async function sync(){
   try{response=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({deviceId:id(),events}),signal:controller.signal})}finally{clearTimeout(timeout)}
   const result=await response.json();
   if(!response.ok||result.ok!==true||result.accepted!==events.length)throw Error("unconfirmed_delivery");
-  const next=[...already,...events.map(x=>pending.find(p=>p.sessionId===x.sessionId&&p.patternId===x.patternId&&String(p.endedAt||p.startedAt)===String(x.occurredAt))?.exposureId).filter(Boolean).map(String)].slice(-MAX_DONE);
+  const next=[...already,...submitted].slice(-MAX_DONE);
   try{localStorage.setItem(DONE,JSON.stringify(next))}catch(_){}
   window.dispatchEvent(new CustomEvent("setka:v2-guest-sync",{detail:{ok:true,accepted:events.length}}));
  }catch(_){window.dispatchEvent(new CustomEvent("setka:v2-guest-sync",{detail:{ok:false}}))}
