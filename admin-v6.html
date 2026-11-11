@@ -1,46 +1,44 @@
 <!doctype html>
 <html lang="ru">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<meta name="theme-color" content="#000" />
-<title>SETKA Admin V6 · Research & Business</title>
-<link rel="stylesheet" href="admin-v3.css?v=2" /><link rel="stylesheet" href="admin-v6-shell.css?v=1" />
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="setka-release-build" content="development" />
+  <meta name="theme-color" content="#101010"><meta name="referrer" content="no-referrer">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src https://gfchgaphzhxufwdhrcis.supabase.co; img-src 'self' https://gfchgaphzhxufwdhrcis.supabase.co data: blob:; media-src 'self' https://gfchgaphzhxufwdhrcis.supabase.co; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'none'">
+  <title>SETKA · Единая админка V6</title>
+  <link rel="stylesheet" href="research-v1/style.css?v=1.1.2">
+<link rel="stylesheet" href="research-v1/music-admin.css?v=9-geometry-antialias-20261107">
 </head>
 <body>
-<div id="login" class="login"><h2>SETKA · защищённый вход</h2><p>Введите действующий ключ администратора или используйте персональную ссылку.</p><input id="keyInput" type="password" placeholder="Ключ администратора" autocomplete="off"><button id="loginBtn" type="button" class="btn primary">Открыть админку</button><div id="loginError" role="alert"></div></div>
-<div id="dashboard" class="shell hidden">
-  <div class="top"><div><div class="brand">SETKA RESEARCH</div><div class="sub">ПОЛНЫЙ ПУТЬ · ДО ID · СЕССИИ · ПУЛЬС · ТАЙМЕР · REPLAY · СИМПТОМЫ · ЗАМЕТКИ · ИНВАЙТЫ · СООБЩЕСТВО</div></div><div class="spacer"></div><button id="createCodeBtn" class="btn primary">+ ID</button><button id="refreshBtn" class="btn">Обновить</button><button id="logoutBtn" class="btn">Выйти</button></div>
-  <div class="tabs">
-    <button class="tab active" data-tab="overview">Обзор</button>
-    <button class="tab" data-tab="journey">Путь по приложению</button>
-    <button class="tab" data-tab="participants">Участники</button>
-    <button class="tab" data-tab="timing">Таймер / удержание</button>
-    <button class="tab" data-tab="symptoms">Симптомы</button>
-    <button class="tab" data-tab="notes">Заметки</button>
-    <button class="tab" data-tab="invites">Инвайты</button>
-    <button class="tab" data-tab="insights">Запросы / эффект</button>
-    <button class="tab" data-tab="community">Сообщество</button>
+  <a class="skip" href="#content">Перейти к содержимому</a>
+  <section id="login" class="login-screen">
+    <div class="login-brand"><span class="wordmark">SETKA</span><span class="eyebrow">ИССЛЕДОВАНИЯ</span></div>
+    <div class="login-card"><div class="eyebrow">ЗАКРЫТЫЙ ДОСТУП</div><h1>Понимать, что<br>происходит в SETKA.</h1><p class="muted">Участники, паттерны и точные состояния.<br>Только зарегистрированные данные.</p>
+      <form id="login-form"><label id="key-label" for="key">Действующий ключ администратора SETKA</label><input id="key" name="key" type="password" autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false" required placeholder="Ключ администратора"><label class="checkbox"><input id="remember" type="checkbox">Запомнить на этом устройстве</label><button class="primary" id="login-button" type="submit">Открыть исследования <span>↗</span></button><p id="login-error" class="error" role="alert"></p></form>
+      <p class="small muted">Используется существующий вход SETKA. Личные сведения доступны только после проверки доступа сервером.</p>
+      <a class="quiet-link" href="standalone-admin-v34.html">Открыть прежнюю полную админку ↗</a>
+    </div><div class="login-footer">Исследовательская админка · Версия 1.4</div>
+  </section>
+  <div id="workspace" class="workspace" hidden>
+    <aside class="sidebar"><a class="wordmark" href="standalone-research-admin-v1.html">SETKA</a><div class="eyebrow">ИССЛЕДОВАНИЯ</div><nav aria-label="Основные разделы">
+      <button class="nav selected" data-page="home"><span>01</span>Главная</button>
+      <button class="nav" data-page="sessions"><span>02</span>Сессии и Replay</button>
+      <button class="nav" data-page="participants"><span>03</span>Участники</button>
+      <button class="nav" data-page="patterns"><span>04</span>Паттерны</button>
+      <button class="nav" data-page="community"><span>05</span>Сообщество</button>
+      <button class="nav" data-page="research"><span>06</span>Исследования</button>
+      <button class="nav" data-page="music"><span>07</span>Музыка</button>
+    </nav><div class="sidebar-bottom"><span class="status-dot"></span><span>Настоящие данные</span><button id="diagnostics-button" class="text-button">Доступ и диагностика</button><a href="standalone-v34.html" target="_blank" rel="noopener">Открыть приложение ↗</a><a href="standalone-admin-v34.html" target="_blank" rel="noopener">Прежняя админка ↗</a><button id="logout" class="text-button">Выйти</button><small>Версия 1.4 · Только SETKA</small></div></aside>
+    <main class="main"><header class="topbar"><span class="eyebrow">ИССЛЕДОВАТЕЛЬСКАЯ СИСТЕМА</span><div class="top-actions"><span id="updated" class="muted small"></span><button id="refresh">↻ Обновить</button></div></header>
+      <div class="page-heading"><div><div id="page-number" class="eyebrow">01 / ОБЗОР</div><h1 id="page-title">Главная</h1><p id="page-description" class="muted">Общая картина использования приложения.</p></div><span id="live-status" class="badge">Проверка данных</span></div>
+      <div class="filters"><label>Период<select id="period"><option value="today">Сегодня</option><option value="7">7 дней</option><option value="30">30 дней</option><option value="all" selected>Всё время</option><option value="custom">Произвольные даты</option></select></label><div id="custom-dates" class="row" hidden><label>С<input id="from-date" type="date"></label><label>По<input id="to-date" type="date"></label></div><label>Источники<select id="scope"><option value="current">Текущие аккаунты</option><option value="history">Исторические записи</option><option value="all">Все доступные записи</option></select></label><span class="muted small">Время: Саратов (UTC+4)</span></div>
+      <div id="notice" role="status"></div><section id="content" tabindex="-1" aria-live="polite"></section>
+      <footer class="main-footer">Данные о поведении и самооценках помогают исследовать продукт. Они не доказывают медицинскую эффективность.</footer>
+    </main>
   </div>
-  <section id="tab-overview" class="tab-page"></section>
-  <section id="tab-journey" class="tab-page hidden"></section>
-  <section id="tab-participants" class="tab-page hidden"></section>
-  <section id="tab-timing" class="tab-page hidden"></section>
-  <section id="tab-symptoms" class="tab-page hidden"></section>
-  <section id="tab-notes" class="tab-page hidden"></section>
-  <section id="tab-invites" class="tab-page hidden"></section>
-  <section id="tab-insights" class="tab-page hidden"></section>
-  <section id="tab-community" class="tab-page hidden"></section>
-  <section id="detail" class="hidden" style="margin-top:16px"></section>
-</div>
-<script src="admin-v3.js?v=2"></script>
-<script src="admin-v4-extra.js?v=2"></script>
-<script src="admin-v5-extra.js?v=1"></script>
-<script src="admin-guest-v12.js?v=1"></script>
-<script src="admin-sensors-v13.js?v=2"></script>
-
-<script src="admin-v6-shell.js?v=1"></script>
-<script src="admin-v6-data-health.js?v=3"></script>
-<script src="admin-v6-pattern-metrics.js?v=5"></script>
+  <dialog id="detail-dialog"><div class="dialog-top"><span id="dialog-label" class="eyebrow">ПОДРОБНОСТИ</span><button id="close-dialog" class="icon-button" aria-label="Закрыть подробности">×</button></div><div id="detail-content"></div></dialog>
+  <script type="module" src="research-v1/app.mjs?v=1.4.31-github-original-audio-20261107"></script>
+<a href="admin-v6-analytics.html" style="position:fixed;right:14px;bottom:16px;z-index:9999;padding:10px 14px;border-radius:12px;background:#1b1b1b;color:#fff;border:1px solid #666;text-decoration:none;font:13px system-ui">Дополнительная аналитика V6 ↗</a>
 </body>
 </html>
