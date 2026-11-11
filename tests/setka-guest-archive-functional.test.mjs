@@ -117,8 +117,12 @@ test('account switching while guest migration is awaiting cloud confirmation nev
  let release;const gate=new Promise(resolve=>{release=resolve});
  h.setAccountSyncGate(gate);h.setAccount('A');
  h.listeners.get('setka:v40-private-corpus-restored')();
- await h.flush();assert.equal(h.accountSyncs(),1);
+ // Start the pending migration without awaiting the intentionally blocked cloud sync.
+ const pendingFlush=h.flush();
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(h.accountSyncs(),1);
  h.setAccount('B');release();
+ await pendingFlush;
  await new Promise(resolve=>setImmediate(resolve));
  assert.equal(h.shared.has('setka-guest:v1-migrated:A'),false);
  assert.equal(h.shared.has('setka-guest:v1-migrated:B'),false);
