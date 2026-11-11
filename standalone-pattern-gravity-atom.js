@@ -314,6 +314,10 @@ function render(ctx,width,height,c,frame,preview){
  ctx.restore();
 }
 function interact(c,e){
+ // A module-owned gesture handler must not swallow the generic slider
+ // patch sent by the shared settings UI. Keep durable configuration separate
+ // from transient one-finger gravity coordinates.
+ if(e.type==="patch")return {...c,...(e.patch||{})};
  if(e.type!=="gesture")return c;
  if(e.phase==="end"||e.phase==="cancel"||e.cancelled===true)return {...c,fingerActive:0};
  if(e.fingers!==1){if(e.phase==="start"||e.phase==="move")return {...c,fingerActive:0};return c}
