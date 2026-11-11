@@ -18,11 +18,11 @@ test("one permanent public SETKA URL gets atomic HTML and manifest revisions",()
     // Exercise the real HTML in an isolated release fixture. All referenced
     // local assets must exist because the release builder now fingerprints
     // their content (rather than stamping only HTML). No full repo copy needed.
-    for(const match of source.matchAll(/\\b(?:src|href)="((?!https?:|\\/\\/)[^"?]+\\.(?:js|mjs|css))(?:\\?[^"]*)?"/g)){
+    for(const match of source.matchAll(/\b(?:src|href)="((?!https?:|\/\/)[^"?]+\.(?:js|mjs|css))(?:\?[^"]*)?"/g)){
       const asset=resolve(temp,match[1]);
       assert.ok(asset.startsWith(temp+sep),"fixture asset stays inside test dir");
       mkdirSync(dirname(asset),{recursive:true});
-      writeFileSync(asset,"// Isolated release test asset: "+match[1]+"\\n");
+      writeFileSync(asset,"// Isolated release test asset: "+match[1]+"\n");
     }
     const sha="abcdef0123456789abcdef0123456789abcdef01";
     const result=spawnSync(process.execPath,[resolve("scripts/build-standalone-release.mjs")],{
