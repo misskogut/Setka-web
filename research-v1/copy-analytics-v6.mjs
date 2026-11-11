@@ -29,11 +29,15 @@ if(location.pathname.endsWith('/standalone-research-admin-copy-v6.html') || new 
  refreshBadges();
 
  const escape=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const host=document.createElement('section');
+ host.id='setka-copy-inline-v6';
+ host.style.cssText='display:grid;gap:16px;margin:0 0 24px;';
+ document.getElementById('content')?.before(host);
  const box=document.createElement('section');
  box.id='setka-copy-v6-analytics';
- box.style.cssText='position:fixed;z-index:9998;left:8px;right:8px;bottom:8px;max-height:52vh;overflow:auto;background:#161616;color:#fff;border:1px solid #777;border-radius:14px;padding:12px;box-shadow:0 8px 32px #0009;font:13px/1.5 system-ui';
+ box.style.cssText='position:relative;width:100%;overflow:auto;background:#161616;color:#fff;border:1px solid #777;border-radius:14px;padding:18px;box-shadow:none;font:13px/1.5 system-ui';
  box.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><strong><span data-setka-new-id="v6-pattern-analytics">NEW</span> Аналитика V6</strong><button id="setka-copy-toggle" type="button" style="color:#fff;background:#333;border:1px solid #777;border-radius:8px;padding:5px 10px">Развернуть</button></div><div id="setka-copy-content" hidden><p>Новые источники: исторические гости V40, аккаунты V41, единые события V2. Участники разных источников не суммируются.</p><label>Источник <select id="setka-copy-source" style="color:#fff;background:#333;padding:6px"><option value="guest_v40">Гости V40</option><option value="account_v41">Аккаунты V41</option><option value="unified_v2">Единый реестр V2</option></select></label> <button id="setka-copy-refresh" type="button" style="padding:6px;background:#333;color:#fff;border:1px solid #777">Обновить</button><div id="setka-copy-output" role="status"></div><div id="setka-copy-quality"></div></div>';
- document.body.appendChild(box);
+ host.appendChild(box);
  const content=box.querySelector('#setka-copy-content'),output=box.querySelector('#setka-copy-output'),quality=box.querySelector('#setka-copy-quality');
  const key=()=>{try{return sessionStorage.getItem('setka-research:admin-key:v1')||localStorage.getItem('setka-research:admin-key:v1')||''}catch(_){return ''}};
  const call=async action=>{const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),12000);try{const response=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,source:box.querySelector('#setka-copy-source').value,adminKey:key()}),signal:controller.signal});const data=await response.json();if(!response.ok||data.ok!==true)throw Error(data.error||'server_error');return data}finally{clearTimeout(timer)}};
@@ -49,9 +53,9 @@ if(location.pathname.endsWith('/standalone-research-admin-copy-v6.html') || new 
  // New research sections use the same server-validated credential as the original admin.
  const extra=document.createElement('section');
  extra.id='setka-copy-more';
- extra.style.cssText='position:fixed;z-index:9997;left:8px;right:8px;bottom:70px;max-height:58vh;overflow:auto;background:#171717;color:#fff;border:1px solid #777;border-radius:14px;padding:12px;font:13px/1.5 system-ui;box-shadow:0 8px 30px #0009';
+ extra.style.cssText='position:relative;width:100%;overflow:auto;background:#171717;color:#fff;border:1px solid #777;border-radius:14px;padding:18px;font:13px/1.5 system-ui;box-shadow:none';
  extra.innerHTML='<div style="display:flex;justify-content:space-between"><strong>NEW · Исследования и аудитория V6</strong><button type="button" id="setka-copy-more-toggle" style="background:#333;color:#fff;border:1px solid #777;border-radius:8px;padding:5px">Развернуть</button></div><div id="setka-copy-more-body" hidden><p>Лаборатория, гостевые события и историческая синхронизация. Данные разных источников не складываются.</p><div style="display:flex;gap:6px;flex-wrap:wrap"><button type="button" data-v6-view="lab">Лаборатория</button><button type="button" data-v6-view="guests">Гости V2</button><button type="button" data-v6-view="sync">Синхронизация V34</button></div><div id="setka-copy-more-results" role="status"></div></div>';
- document.body.appendChild(extra);
+ host.appendChild(extra);
  for(const btn of extra.querySelectorAll('[data-v6-view]'))btn.style.cssText='padding:7px;background:#333;color:#fff;border:1px solid #777;border-radius:7px';
  const moreBody=extra.querySelector('#setka-copy-more-body'),moreResults=extra.querySelector('#setka-copy-more-results');
  extra.querySelector('#setka-copy-more-toggle').onclick=()=>{moreBody.hidden=!moreBody.hidden;extra.querySelector('#setka-copy-more-toggle').textContent=moreBody.hidden?'Развернуть':'Свернуть'};
@@ -76,11 +80,10 @@ if(location.pathname.endsWith('/standalone-research-admin-copy-v6.html') || new 
   }catch(e){moreResults.textContent='Источник недоступен: '+String(e.message||e)}
  }
  for(const btn of extra.querySelectorAll('[data-v6-view]'))btn.onclick=()=>loadMore(btn.dataset.v6View);
- // Keep both V6 panels accessible without obscuring each other.
- box.style.bottom='8px';extra.style.bottom='70px';
+ // Both V6 sections now participate in normal page flow on mobile and desktop.
  // Make the badges on mobile navigation visible even with legacy .nav span rules.
  const style=document.createElement('style');style.textContent='.nav .setka-copy-new-badge{color:#fff!important;font-size:10px!important;line-height:1.5!important;flex-shrink:0!important}.nav[data-page]{gap:6px!important}';document.head.appendChild(style);
- const showByPage=()=>{const active=document.querySelector('.nav.selected')?.dataset.page;box.style.display=active==='patterns'?'block':'none';extra.style.display=['home','participants','research'].includes(active)?'block':'none';};
+ const showByPage=()=>{const active=document.querySelector('.nav.selected')?.dataset.page;host.hidden=!['home','participants','patterns','research'].includes(active);box.style.display=active==='patterns'?'block':'none';extra.style.display=['home','participants','research'].includes(active)?'block':'none';};
  document.querySelectorAll('.nav[data-page]').forEach(nav=>nav.addEventListener('click',()=>queueMicrotask(showByPage)));
  showByPage();
 
