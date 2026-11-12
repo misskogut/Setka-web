@@ -11,9 +11,9 @@ const bounded=v=>Number.isFinite(Number(v))?Math.max(0,Math.min(DAY,Number(v))):
 
 export function summarizeV6(rows,source,{days=30,now=Date.now()}={}){
  if(!Object.hasOwn(V6_SOURCES,source))throw Error("unknown_source");
- if(![0,7,30,90].includes(days)||!Number.isFinite(now))throw Error("invalid_period");
+ if(![0,1,7,30,90].includes(days)||!Number.isFinite(now))throw Error("invalid_period");
  const today=Math.floor((now+SARATOV)/DAY),first=days?today-days+1:-Infinity;
- const daily=new Map(),patterns=new Map(),actors=new Set(),seen=new Set();
+ const daily=new Map(),patterns=new Map(),actors=new Set(),seen=new Set(),guestDevices=new Set(),accountActors=new Set();
  let duplicates=0,excluded=0,exposures=0,recordedMs=0,lastIngestAt=null;
  for(const x of Array.isArray(rows)?rows:[]){
   const id=String(x?.pattern_id||"").trim(),actor=source==="unified_v2"?
@@ -29,6 +29,7 @@ export function summarizeV6(rows,source,{days=30,now=Date.now()}={}){
   seen.add(eventKey);
   const ms=bounded(x?.duration_ms),receipt=validTime(x?.[V6_SOURCES[source].time]);
   exposures++;recordedMs+=ms;actors.add(actor);
+  if(source==="unified_v2"){if(x.account_id)accountActors.add(String(x.account_id));else if(x.device_id)guestDevices.add(String(x.device_id));}
   if(receipt!==null&&(lastIngestAt===null||receipt>lastIngestAt))lastIngestAt=receipt;
   if(!daily.has(day))daily.set(day,{day,exposures:0,recorded_ms:0,actors:new Set()});
   const d=daily.get(day);d.exposures++;d.recorded_ms+=ms;d.actors.add(actor);
@@ -40,7 +41,7 @@ export function summarizeV6(rows,source,{days=30,now=Date.now()}={}){
   [...daily.values()].sort((a,b)=>a.day-b.day).map(entry);
  return {
   source,periodDays:days,timeZone:"UTC+04:00",exposures,distinctIdentities:actors.size,
-  recordedMs,patternCount:patterns.size,rowsConsidered:Array.isArray(rows)?rows.length:0,
+  recordedMs,patternCount:patterns.size,guestDevices:guestDevices.size,accountActors:accountActors.size,rowsConsidered:Array.isArray(rows)?rows.length:0,
   duplicateRows:duplicates,excludedRows:excluded,lastIngestAt:lastIngestAt===null?null:new Date(lastIngestAt).toISOString(),
   timeline,patterns:[...patterns.values()].map(p=>({pattern_id:p.pattern_id,exposures:p.exposures,
    recorded_ms:p.recorded_ms,distinct_identities:p.actors.size}))
