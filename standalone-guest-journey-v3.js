@@ -60,6 +60,9 @@ async function flush(){
   write(read().filter(e=>!done.has(e.eventId)));
   retry=0;
   if(read().length)schedule(1000);
+  // When all pre-login guest events have actually been acknowledged, ask the
+  // already-existing authenticated sync to retry the verified identity link.
+  else if(signedIn())window.dispatchEvent(new CustomEvent("setka:v34-sync-request",{detail:{reason:"guest-journey-acknowledged"}}));
  }catch(_){retry=Math.min(6,retry+1);schedule(Math.min(60000,1500*2**retry))}
  finally{busy=false}
 }
