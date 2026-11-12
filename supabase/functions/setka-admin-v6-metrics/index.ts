@@ -54,17 +54,18 @@ Deno.serve(async req=>{
    }
    const report=summarizeV6(rows,source,{days,from,to});
    const journey=source==="unified_v2"?summarizeJourneyV3(rows,{days,from,to}):null;
-   let accountInventory:null|{registeredAccounts:number,existingFavorites:number,recordedSessions:number}=null;
+   let accountInventory:null|{registeredAccounts:number,existingFavorites:number,recordedSessions:number,verifiedDeviceLinks:number}=null;
    if(source==="account_v41"){
     // These are lifetime inventory counters, never period visits or unique users.
     // Only aggregate counts cross this protected admin endpoint.
-    const [registered,favorites,sessions]=await Promise.all([
+    const [registered,favorites,sessions,links]=await Promise.all([
      db.from("prototype_v40_tester_accounts").select("tester_id",{count:"exact",head:true}).eq("active",true).not("password_set_at","is",null),
      db.from("prototype_v41_account_favorites").select("config_key",{count:"exact",head:true}),
-     db.from("prototype_v41_account_sessions").select("session_id",{count:"exact",head:true})
+     db.from("prototype_v41_account_sessions").select("session_id",{count:"exact",head:true}),
+     db.from("setka_research_identity_links_v1").select("device_id",{count:"exact",head:true})
     ]);
-    if(!registered.error&&!favorites.error&&!sessions.error){
-     accountInventory={registeredAccounts:registered.count??0,existingFavorites:favorites.count??0,recordedSessions:sessions.count??0};
+    if(!registered.error&&!favorites.error&&!sessions.error&&!links.error){
+     accountInventory={registeredAccounts:registered.count??0,existingFavorites:favorites.count??0,recordedSessions:sessions.count??0,verifiedDeviceLinks:links.count??0};
     }
    }
    return response({ok:true,...report,...(journey?{journey}:{}),...(accountInventory?{accountInventory}:{}),truncated,checkedAt:new Date().toISOString(),
