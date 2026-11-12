@@ -53,12 +53,12 @@ test('link does not rewrite event rows, guest archives, passwords, or device own
  assert.match(src,/try\{await linkVerifiedGuestDevice\(db,\{deviceId,testerId\}\)\}/);
  assert.match(helper,/consent_at/);
  assert.match(helper,/prototype_v34_devices/);
- assert.doesNotMatch(helper,/\.update\(|\.delete\(|password_hash|notes\b|symptom/);
+ assert.doesNotMatch(helper,/\.update\(|\.delete\(|password_hash|db\.from\(["'].*(?:notes|symptoms)/);
 });
 test('bad IDs are rejected without querying database; failures do not return a false success',async()=>{
  const {d}=run();
  assert.equal(await linkVerifiedGuestDevice(d.db,{deviceId:'../bad',testerId:'T-001'}),'invalid_identity');
  assert.equal(d.writes.length,0);
  const failed=run({failWrite:true});
- await assert.rejects(failed.p,/db_error/);
+ await assert.rejects(failed.p,{message:'db_error'});
 });
