@@ -89,6 +89,11 @@ jobs:
         uses: actions/upload-pages-artifact@v4
         with:
           path: "."
+      # The Pages deployment API can lag behind a successful artifact upload:
+      # the new artifact exists but deploy-pages sees only earlier reports.
+      # Allow a short one-time indexing window in this release job.
+      - name: Allow GitHub Pages artifact indexing
+        run: sleep 20
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
