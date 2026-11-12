@@ -6,7 +6,7 @@ const API="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-semantic-
 const DEVICE_KEY="setka-standalone:v34-yulia-device",SESSION_KEY="setka-v40:cabinet-session";
 const QUEUE="setka:v2-account-exposure-pending",CHANNEL="yulia_lab_v34",MAX_QUEUE=250,MAX_DONE=4000;
 let collecting=false,flushing=false,scanTimer=0,sendTimer=0,retries=0;
-const valid=x=>typeof x==="string"&&x.length>0&&x.length<=180&&/^[a-zA-Z0-9_:.\\-]+$/.test(x);
+const valid=x=>typeof x==="string"&&x.length>0&&x.length<=180&&/^[a-zA-Z0-9_:.-]+$/.test(x);
 function account(){
  for(const store of [localStorage,sessionStorage]){
   try{const x=JSON.parse(store.getItem(SESSION_KEY)||"null");if(x?.token&&valid(x.testerId))return x}catch(_){}
