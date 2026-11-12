@@ -115,3 +115,17 @@ test('account-cohort retention uses account IDs even when multiple accounts shar
  assert.equal(summary.retentionD1.ratePct,66.7);
  assert.equal(summary.identityScope,'verified_account_ids');
 });
+
+test('D1 and D7 never count a cohort before its return day has fully ended',()=>{
+ const cohort=Array.from({length:6},(_,i)=>row('recent-'+i,'partial-'+i,'visit_start','2026-11-11T12:00:00Z'));
+ const partial=[...cohort,...Array.from({length:3},(_,i)=>row('return-today-'+i,'partial-'+i,'visit_start','2026-11-12T07:00:00Z'))];
+ const r=summarizeJourneyV3(partial,{days:30,now});
+ assert.equal(r.retentionD1.eligible,0,'today is an unfinished D1 observation day');
+ assert.equal(r.retentionD1.ratePct,null);
+ const custom=[
+  ...Array.from({length:6},(_,i)=>row('custom-first-'+i,'c-'+i,'visit_start','2026-11-01T12:00:00Z')),
+  ...Array.from({length:3},(_,i)=>row('custom-return-'+i,'c-'+i,'visit_start','2026-11-02T01:00:00Z'))
+ ];
+ const c=summarizeJourneyV3(custom,{days:0,now,from:'2026-11-01T00:00:00Z',to:'2026-11-02T02:00:00Z'});
+ assert.equal(c.retentionD1.eligible,0,'custom range with partial final day cannot establish D1');
+});
