@@ -90,3 +90,11 @@ test("server whitelist only accepts bounded metadata; existing exposure and rate
  assert.match(music,/setka:music-play/);
  assert.match(frontend,/standalone-guest-journey-v3\.js/);
 });
+
+
+test('pagehide preserves last visit duration with keepalive and no cross-origin JSON preflight',()=>{
+ assert.match(script,/window\.addEventListener\("pagehide",\(\)=>\{endVisit\(\);void flush\(\)\}\)/);
+ assert.match(script,/keepalive:true/);
+ assert.match(script,/Content-Type":"text\/plain;charset=UTF-8"/);
+ assert.match(server,/await req\.json\(\)/);
+});
