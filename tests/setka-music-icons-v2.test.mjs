@@ -134,7 +134,8 @@ test("music admin supports persistent soft delete and restore without rewriting 
  assert.match(editor,/model\.hidden_icon_keys/);
  assert.match(editor,/if\(hiddenSet\.has\(name\)\)continue/);
  assert.match(editor,/Восстановить значок/);
- assert.match(edge,/hiddenIcons=manage\?await rowQuery/);
+ assert.match(edge,/manage\?rowQuery\("setka_music_hidden_icons_v1"/,"hidden-icon inventory remains admin-only in parallel catalog reads");
+ assert.match(edge,/hiddenIcons,globalRows,stats\]=await Promise\.all/);
  assert.match(edge,/b\.action==="hide-icon"\|\|b\.action==="restore-icon"/);
  assert.match(sql,/enable row level security/);
  assert.match(sql,/revoke all.*anon, authenticated/);
