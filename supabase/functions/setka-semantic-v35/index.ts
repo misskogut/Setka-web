@@ -92,6 +92,10 @@ Deno.serve(async req=>{
     }
     if(action==="journey-v1"){
       const result=await persistAccountJourney(db,{deviceId,testerId,events:b.events});
+      if(result.ok){
+        try{await linkVerifiedGuestDevice(db,{deviceId,testerId})}
+        catch(error){console.warn("identity_link_deferred_after_journey",String((error as Error)?.message||error))}
+      }
       return J(result,result.ok?200:result.status||400);
     }
 
