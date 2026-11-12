@@ -184,18 +184,18 @@ export class SetkaMusicMixer {
    const reflections=createOrbitEarlyReflections(this.ctx,rearFilter,this.master,
     this.items.size<MAX_EARLY_HRTF_SOURCES?"HRTF":"equalpower");
    if(this.roomOutput)this.roomOutput.gain.setTargetAtTime(.86,this.ctx.currentTime,.04);
-   // Never allocate two decoders for the original 25–500 MB WAV recordings.
-   // Safari/WebKit additionally crashes when a huge WAV enters its WebAudio
-   // MediaElementSource; its native HTMLAudioElement plays the SAME lossless bytes
-   // reliably. Use native output only for this large-file WebKit safety fallback.
-   // Small sources and Chromium retain the full HRTF/reflective audio graph.
-   const singleDeck=!!track.external_source_path&&/\.wav$/i.test(track.external_source_path)&&
-     Number(track.external_source_bytes)>=24*1024*1024;
+   // WebKit MediaElementSource can intermittently stall even on small remote WAVs.
+   // Keep original PCM bytes for ALL eligible WAVs via bounded, lossless HRTF
+   // streaming; fall back to one native deck when byte ranges are unsupported.
+   // Chromium keeps its existing full-length WebAudio playback graph.
+   const externalWav=!!track.external_source_path&&/\.wav$/i.test(track.external_source_path)&&
+     Number(track.external_source_bytes)>0;
+   const singleDeck=externalWav&&Number(track.external_source_bytes)>=24*1024*1024;
    const webkit=/AppleWebKit/i.test(navigator.userAgent)&&!/Chrom(?:e|ium)\//i.test(navigator.userAgent);
-   const streamInfo=singleDeck&&webkit&&!this.unstreamable.has(id)?
+   const streamInfo=externalWav&&webkit&&!this.unstreamable.has(id)?
      await inspectWavSource(track.audio_url,Number(track.external_source_bytes)):null;
    if(this.changeSeq.get(id)!==sequence)return;
-   const streamOnly=!!streamInfo,nativeOnly=singleDeck&&webkit&&!streamOnly;
+   const streamOnly=!!streamInfo,nativeOnly=externalWav&&webkit&&!streamOnly;
    const makeDeck=(volume)=>{
     if(streamOnly){
      const el=new SetkaChunkedWavDeck({url:track.audio_url,total:Number(track.external_source_bytes),
@@ -203,7 +203,7 @@ export class SetkaMusicMixer {
      return {el,src:null,fade:null};
     }
     const el=new Audio();
-    el.loop=singleDeck&&track.loop!==false;
+    el.loop=(singleDeck||nativeOnly)&&track.loop!==false;
     el.crossOrigin="anonymous";el.preload=nativeOnly?"metadata":"auto";el.src=track.audio_url;
     if(nativeOnly)return {el,src:null,fade:null};
     const src=this.ctx.createMediaElementSource(el);
@@ -212,7 +212,7 @@ export class SetkaMusicMixer {
     return {el,src,fade};
    };
    const decks=[makeDeck(1)];
-   if(track.loop!==false&&!singleDeck)decks.push(makeDeck(0));
+   if(track.loop!==false&&!singleDeck&&!streamOnly&&!nativeOnly)decks.push(makeDeck(0));
    state={id,track,level:0,playTracked:false,completed:false,angle,radius:.62+(index%3)*.08,
     anchorAngle:angle,anchorRadius:.62+(index%3)*.08,manual:false,
     el:decks[0].el,src:decks[0].src,gain,rearFilter,panner,roomSend,reflections,decks,singleDeck,nativeOnly,streamOnly,activeDeck:0,transition:null,pendingLoop:false};
