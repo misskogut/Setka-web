@@ -30,6 +30,8 @@ test('one-day V3 dashboard reports factual guest visits, returns, active devices
  assert.equal(r.visitEnds,1);
  assert.equal(r.patternOpens,1);
  assert.equal(r.favoriteSaves,1);
+ assert.equal(r.favoritesByPattern[0].pattern_id,'gravity-atom');
+ assert.equal(r.favoritesByPattern[0].saves,1);
  assert.equal(r.favoriteRemoves,0);
  assert.equal(r.musicStarts,1);
  assert.equal(r.duplicateRows,1);
