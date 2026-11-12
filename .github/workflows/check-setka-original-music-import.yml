@@ -1,0 +1,26 @@
+name: Check SETKA original music import routes
+on:
+  pull_request:
+    paths:
+      - 'scripts/import-setka-original-audio.py'
+      - 'tests/test_setka_original_import.py'
+      - '.github/workflows/check-setka-original-music-import.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/import-setka-original-audio.py'
+      - 'tests/test_setka_original_import.py'
+      - '.github/workflows/check-setka-original-music-import.yml'
+jobs:
+  verify-original-bytes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m py_compile scripts/import-setka-original-audio.py
+      - run: python -m unittest discover -s tests -p 'test_setka_original_import.py' -v
+      # No live download or publication during PR checks; the existing
+      # six-hour original-audio import workflow owns actual transfers.
