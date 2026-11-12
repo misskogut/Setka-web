@@ -29,7 +29,8 @@ test('stable admin is isolated and source picker is hidden only in V6 copy',()=>
  assert.match(copyHtml,/research-v1\/copy-v6\.css/);
  assert.match(copyHtml,/research-v1\/copy-app-v6\.mjs/);
  assert.match(stableHtml,/research-v1\/app\.mjs/);
- assert.doesNotMatch(stableHtml,/<script[^>]+src=["'][^"']*(?:copy-app-v6|copy-analytics-v6)\.mjs/);
+ assert.doesNotMatch(stableHtml,/<script[^>]+src=["'][^"']*copy-app-v6\.mjs/);
+ // Stable may load the shared export-only helper; it never mounts a V6 dashboard.
  assert.doesNotMatch(stableHtml,/<link[^>]+href=["'][^"']*copy-v6\.css/);
 });
 test('source-level counts are never summed into a synthetic unique user total',()=>{
