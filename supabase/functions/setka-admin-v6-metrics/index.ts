@@ -1,5 +1,6 @@
 import {createClient} from "https://esm.sh/@supabase/supabase-js@2.49.8";
 import {summarizeV6,V6_SOURCES} from "./analytics-v6.mjs";
+import {summarizeJourneyV3} from "./journey-v3-analytics.mjs";
 const db=createClient(Deno.env.get("SUPABASE_URL")!,Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,{auth:{persistSession:false,autoRefreshToken:false}});
 const H={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"apikey,authorization,content-type","Access-Control-Allow-Methods":"POST,OPTIONS","Content-Type":"application/json"};
 const response=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status,headers:H});
@@ -37,7 +38,7 @@ Deno.serve(async req=>{
     return response({error:"invalid_date_range"},400);
    const cfg=V6_SOURCES[source],isV2=source==="unified_v2";
    const columns=isV2?
-    "event_id,device_id,account_id,pattern_id,event_type,duration_ms,occurred_at,received_at":
+    "event_id,device_id,actor_type,account_id,pattern_id,event_type,session_id,duration_ms,occurred_at,received_at,properties":
     "exposure_id,"+cfg.actor+",pattern_id,duration_ms,started_at,ended_at,updated_at";
    const rows:any[]=[],size=500,limit=12000;
    let truncated=false;
@@ -52,7 +53,8 @@ Deno.serve(async req=>{
     if(rows.length>=limit)truncated=true;
    }
    const report=summarizeV6(rows,source,{days,from,to});
-   return response({ok:true,...report,truncated,checkedAt:new Date().toISOString(),
+   const journey=source==="unified_v2"?summarizeJourneyV3(rows,{days,from,to}):null;
+   return response({ok:true,...report,...(journey?{journey}:{}),truncated,checkedAt:new Date().toISOString(),
      identityScope:source==="account_v41"?"account_ids":source==="unified_v2"?"unlinked_device_or_account_ids":"legacy_guest_keys",
      caveat:"Counts are within this source only. Cross-source unique-user counts and clinical efficacy cannot be inferred."});
   }
