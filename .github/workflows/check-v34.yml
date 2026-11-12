@@ -13,6 +13,7 @@ on:
       - 'standalone-music-audio-v1.mjs'
       - 'standalone-music-wav-stream-v1.mjs'
       - 'tests/setka-wav-stream-v1.test.mjs'
+      - 'tests/setka-safari-lossless-wav-browser.mjs'
       - 'standalone-pattern-key-v1.js'
       - 'standalone-pattern-registry-v1.js'
       - 'standalone-pattern-plugins-v1.js'
@@ -231,6 +232,7 @@ jobs:
       - run: node scripts/build-pattern-manifest.mjs
       # A gameplay WebContent crash must fail fast before expensive analytics/UI suites.
       - run: node tests/setka-ios-rapid-gesture-smoke.mjs
+      - run: node tests/setka-safari-lossless-wav-browser.mjs
       - run: SETKA_BROWSER=webkit node tests/setka-ios-rapid-gesture-smoke.mjs
       - run: node tests/setka-v6-lab-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/setka-v6-lab-browser-smoke.mjs
