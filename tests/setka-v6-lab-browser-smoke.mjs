@@ -47,7 +47,7 @@ try{
     ...(guest?{usageMode:{duringSession:3,justWatch:5}}:account?{usageMode:{duringSession:1,justWatch:3},
      accountInventory:{registeredAccounts:11,existingFavorites:17,recordedSessions:4,verifiedDeviceLinks:0}}:{}),
     rowsConsidered:8,duplicateRows:0,excludedRows:0,
-    ...(guest?{journey:{visits:3,activeGuestDevices:2,firstSeenGuestDevices:1,returningGuestDevices:1,patternOpens:5,favoriteSaves:2,musicStarts:1,foregroundMs:90000,timeline:[{date:"2026-11-12",visits:3}],patternOpensById:[{pattern_id:"gravity-atom",opens:5}]}}:{})};
+    ...(guest?{journey:{visits:3,activeGuestDevices:2,firstSeenGuestDevices:1,returningGuestDevices:1,patternOpens:5,favoriteSaves:2,musicStarts:1,foregroundMs:90000,timeline:[{date:"2026-11-12",visits:3}],patternOpensById:[{pattern_id:"gravity-atom",opens:5}]},accountJourney:{visits:4,activeAccounts:2,firstSeenAccounts:1,returningAccounts:1,musicStarts:3,foregroundMs:40000,timeline:[{date:"2026-11-12",visits:4}]}}:{})};
   await route.fulfill({status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*','access-control-allow-headers':'content-type'},body:JSON.stringify(result)});
  });
  await page.goto(base+'/standalone-research-admin-copy-v6.html');
@@ -57,7 +57,11 @@ try{
  assert.match(dashboard,/Просмотры/);
  assert.match(dashboard,/Гостевые устройства/);
  assert.match(dashboard,/Визиты/);
- assert.match(dashboard,/Возвращались/);
+ assert.match(dashboard,/Вернувшиеся гости/);
+ assert.match(dashboard,/Вернувшиеся аккаунты/);
+ assert.match(dashboard,/Визиты аккаунтов/);
+ assert.match(dashboard,/Аккаунты в приложении/);
+ assert.match(dashboard,/Музыка · аккаунты/);
  assert.match(dashboard,/Музыка/);
  assert.match(dashboard,/Аккаунты с просмотрами/);
  assert.match(dashboard,/Зарегистрированы/);
