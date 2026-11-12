@@ -1,5 +1,5 @@
 import {mountMusicAdmin} from './music-admin.mjs?v=21-github-original-audio-20261107';
-import {createV6Analytics} from './copy-analytics-v6.mjs?v=10-receipt-check-20261112';
+import {createV6Analytics} from './copy-analytics-v6.mjs?v=11-account-login-context-20261112';
 import {mountPatternOrder} from './pattern-order.mjs';
 import {mountPublication,publicationLabel} from './publication.mjs';
 import {mountPatternEditor} from './pattern-editor.mjs';
