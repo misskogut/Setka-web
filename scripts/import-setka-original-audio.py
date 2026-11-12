@@ -51,17 +51,29 @@ def ensure_release():
        "--title", "SETKA — Original Music Collection", "--notes", note)
     return release_assets() or {}
 
-def trusted_metadata(entry):
+def trusted_metadata(entry, alternate_download=False):
     qs = urllib.parse.urlencode({"public_key": SOURCE, "path": entry["path"]})
-    endpoint = "https://cloud-api.yandex.net/v1/disk/public/resources?" + qs
-    request = urllib.request.Request(endpoint, headers={"User-Agent": "SETKA-GitHub-Original-Audio-Import/1.0"})
+    base = "https://cloud-api.yandex.net/v1/disk/public/resources"
+    request = urllib.request.Request(base + "?" + qs, headers={
+        "User-Agent": "SETKA-GitHub-Original-Audio-Import/1.0"})
     with urllib.request.urlopen(request, timeout=60) as response:
         obj = json.load(response)
+    # The public shared directory identifies files by original SHA-256 and
+    # byte length. Never accept a different file from either download route.
     if obj.get("sha256", "").lower() != entry["sha256"].lower():
         raise ValueError("Yandex sha256 mismatch for " + entry["path"])
     if int(obj.get("size", -1)) != entry["bytes"]:
         raise ValueError("Yandex source size changed for " + entry["path"])
-    url = obj.get("file", "")
+    if alternate_download:
+        # The dedicated public download API can supply a fresh signed link when
+        # the metadata 'file' route points at an unavailable Yandex CDN shard.
+        # Use only as an alternative original-byte source; never transcode.
+        req = urllib.request.Request(base + "/download?" + qs, headers={
+            "User-Agent": "SETKA-GitHub-Original-Audio-Import/1.0"})
+        with urllib.request.urlopen(req, timeout=60) as response:
+            url = json.load(response).get("href", "")
+    else:
+        url = obj.get("file", "")
     parsed = urllib.parse.urlparse(url)
     if parsed.scheme != "https" or parsed.netloc != "downloader.disk.yandex.ru":
         raise ValueError("unexpected media host for " + entry["path"])
@@ -132,7 +144,7 @@ def download(entry):
     for attempt in range(1, 6):
         stage = "metadata"
         try:
-            link = trusted_metadata(entry)
+            link = trusted_metadata(entry, alternate_download=(attempt % 2 == 0))
             stage = "download"
             request = urllib.request.Request(link, headers={"User-Agent": "SETKA-GitHub-Original-Audio-Import/1.0"})
             sha = hashlib.sha256()
