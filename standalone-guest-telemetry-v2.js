@@ -28,7 +28,7 @@ async function sync(){
    const occurredAt=x.endedAt||x.startedAt;
    if(!occurredAt||!Number.isFinite(Date.parse(occurredAt)))continue;
    submitted.push(String(x.exposureId)); 
-   events.push({eventId:await eventId(id()+":"+x.exposureId),eventType:"pattern_exposure",patternId:String(x.patternId),sessionId:x.sessionId==null?null:String(x.sessionId),durationMs:Math.min(86400000,Math.floor(Number(x.durationMs))),occurredAt});
+   events.push({eventId:await eventId(id()+":"+x.exposureId),eventType:"pattern_exposure",patternId:String(x.patternId),sessionId:x.sessionId==null?null:String(x.sessionId),sessionType:x.sessionType==="outcome"?"outcome":x.sessionType==="exploration"||x.context==="free"||x.context==="exploration"||x.sessionId==null?"exploration":null,durationMs:Math.min(86400000,Math.floor(Number(x.durationMs))),occurredAt});
   }
   if(!events.length)return;
   if(isAccount())return;
