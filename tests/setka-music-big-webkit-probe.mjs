@@ -1,5 +1,5 @@
-// Independent Safari/WebKit acceptance: one fresh AudioContext, one 496 MB
-// original 8D WAV, real SETKA UI button, no fake HTMLMediaElement.play.
+// Independent Safari/WebKit acceptance: original 496MB 8D WAV on real SETKA UI.
+// Prefer verified lossless WebAudio/HRTF packets; native fallback is truthful when unsupported.
 import assert from "node:assert/strict";
 import {chromium,webkit} from "playwright";
 const API="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-music-v1";
@@ -21,6 +21,11 @@ try{
   window.__captures=[];
   function Capture(...args){const a=new Native(...args);window.__captures.push(a);return a}
   Capture.prototype=Native.prototype;window.Audio=Capture;
+  window.__bufferSourceStarts=0;
+  const proto=window.AudioBufferSourceNode?.prototype;
+  if(proto?.start){const orig=proto.start;proto.start=function(...args){
+   window.__bufferSourceStarts++;return orig.apply(this,args)
+  }};
  });
  await page.goto(FRONT,{waitUntil:"domcontentloaded",timeout:60000});
  await page.locator("#setkaMusicPagerButton").click();
@@ -36,17 +41,33 @@ try{
   throw error;
  });
  await page.locator('.sm-track[aria-label^="8D пассив Shavasana"]').click();
- await page.waitForFunction(id=>window.__captures.some(e=>e.src.includes(id)&&(e.currentTime>0.8||e.error)),track.id,{timeout:45000}).catch(()=>{});
+ await page.waitForFunction(id=>{
+  const spatial=window.SetkaMusicV1?.diagnostics()?.sources?.find(s=>s.trackId===id);
+  return (spatial?.losslessWavStreaming&&window.__bufferSourceStarts>=2)||
+   window.__captures.some(e=>e.src.includes(id)&&(e.currentTime>0.8||e.error));
+ },track.id,{timeout:55000});
  const result=await page.evaluate(id=>({
   active:window.SetkaMusicV1?.state()?.active?.find(s=>s.id===id),
-  captured:window.__captures.filter(e=>e.src.includes(id)).map(e=>({seconds:e.currentTime,paused:e.paused,ready:e.readyState,network:e.networkState,duration:e.duration,error:e.error?.code||null,loop:e.loop,volume:e.volume}))
+  spatial:window.SetkaMusicV1?.diagnostics()?.sources?.find(s=>s.trackId===id),
+  bufferSourceStarts:window.__bufferSourceStarts,
+  captured:window.__captures.filter(e=>e.src.includes(id)).map(e=>({
+   seconds:e.currentTime,paused:e.paused,ready:e.readyState,network:e.networkState,
+   duration:e.duration,error:e.error?.code||null,loop:e.loop,volume:e.volume}))
  }),track.id);
- console.log("FRESH_8D_WEBKIT_REAL_UI",JSON.stringify({type,...result,statuses:statuses.slice(0,8)}));
- assert.ok(result.active?.level===1,"8D button becomes active");
- assert.equal(result.captured.length,1,"large original WAV must only allocate ONE decoder on iOS");
- assert.equal(result.captured[0].loop,true,"native looping preserves the soundtrack without a second 500 MB file");
- if(type==="webkit")assert.ok(result.captured[0].volume>0&&result.captured[0].volume<0.8,
-  "Safari large-WAV native fallback must remain audible at the selected volume without WebAudio crashing");
- assert.ok(result.captured.some(e=>e.seconds>0.8&&!e.error&&e.duration>1000),
-  "8D full WAV must actually advance in Safari WebAudio without stalling");
+ console.log("FRESH_8D_WEBKIT_REAL_UI",JSON.stringify({type,...result,statuses:statuses.slice(0,10)}));
+ assert.equal(result.active?.level,1,"8D track becomes active");
+ if(type==="webkit"&&result.spatial?.losslessWavStreaming){
+  assert.equal(result.spatial.hrtfSpatialized,true,"large original WAV drives real HRTF");
+  assert.equal(result.spatial.nativeStereoFallback,false);
+  assert.equal(result.captured.length,0,"chunked PCM avoids enormous HTMLAudioElement");
+  assert.ok(result.bufferSourceStarts>=2,"real AudioBufferSource playback was scheduled");
+  assert.ok(statuses.includes(206),"actual SETKA WAV bytes arrived over HTTP ranges");
+ }else{
+  assert.equal(result.captured.length,1,"safe fallback keeps only one original decoder");
+  assert.equal(result.captured[0].loop,true);
+  if(type==="webkit")assert.equal(result.spatial?.nativeStereoFallback,true,
+   "unsupported Safari WAV is explicitly marked as non-spatial");
+  assert.ok(result.captured.some(e=>e.seconds>0.8&&!e.error&&e.duration>1000),
+   "original WAV must actually advance without stalling");
+ }
 }finally{await browser.close()}
