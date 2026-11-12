@@ -71,6 +71,25 @@ export function createV6Analytics({getAdminKey,openPattern,getPatternName}){
   const rows=(Array.isArray(v?.patterns)?v.patterns:[]).slice(0,6).map(p=>
    '<button type="button" class="v6-pattern-row" data-v6-pattern="'+esc(p.pattern_id)+'"><span>'+esc(getPatternName(p.pattern_id)||p.pattern_id)+'</span><span>'+format(p.exposures)+' просмотров · '+minutes(p.recorded_ms)+' мин</span></button>'
   ).join('');
+  const o=v?.outcomes||null,t=a?.transitions||null;
+  const requestLabels={sleep:'Сон',tension:'Напряжение',relax:'Расслабление',focus:'Фокус',energy:'Энергия',switch:'Переключение'};
+  const signed=n=>n==null?'—':(n>0?'+':'')+String(n);
+  const outcomeGroups=Array.isArray(o?.groups)?o.groups:[];
+  const outcomesHTML=o?'<div class="v6-research-item"><h3>Изменение состояния · наблюдения</h3>'+
+   '<div class="v6-secondary small muted">Завершённые исследовательские сессии: '+format(o.completedSessions)+
+   ' · парные оценки: '+format(o.pairedSessions)+'.</div>'+
+   (o.overall?'<p class="v6-research-score">Средняя оценка: '+format(o.overall.meanPre)+' → '+format(o.overall.meanPost)+
+    ' из 5 · изменение '+signed(o.overall.meanChange)+'</p>':
+    '<p class="muted small">Для общей оценки недостаточно завершённых парных наблюдений.</p>')+
+   (outcomeGroups.length?'<div class="table-wrap v6-deep-table"><table><thead><tr><th>Запрос</th><th>Сессий</th><th>До → после</th></tr></thead><tbody>'+
+    outcomeGroups.map(g=>'<tr><td>'+esc(requestLabels[g.requestKey]||g.requestKey)+'</td><td>'+format(g.pairedSessions)+'</td><td>'+format(g.meanPre)+' → '+format(g.meanPost)+'</td></tr>').join('')+
+    '</tbody></table></div>':'')+
+   '<p class="v6-source-note">Субъективные оценки без контрольной группы. Не доказательство эффекта паттерна. Группы меньше 3 скрыты; «Просто исследую» исключено из сравнения.</p></div>':'';
+  const transitionRows=Array.isArray(t?.transitions)?t.transitions:[];
+  const transitionsHTML=t?'<div class="v6-research-item"><h3>Последовательности паттернов</h3>'+
+   (transitionRows.length?transitionRows.map(g=>'<div class="v6-pattern-row"><span>'+esc(getPatternName(g.fromPattern)||g.fromPattern)+' → '+esc(getPatternName(g.toPattern)||g.toPattern)+'</span><span>'+format(g.sessionCount)+' сессий</span></div>').join(''):
+    '<p class="muted small">Пока нет последовательностей, повторившихся минимум в 3 сессиях.</p>')+
+   '<p class="v6-source-note">Только исторические сессии аккаунтов V41. Последовательность не доказывает причинный эффект.</p></div>':'';
   const errors=SOURCES.filter(source=>result[source]?.error).map(source=>titles[source]).join(', ');
   return '<div class="v6-stats">'+items.join('')+'</div>'+
    '<div class="v6-secondary small muted">Исторические записи: V40 — '+(h?format(h.exposures):'—')+
@@ -86,6 +105,7 @@ export function createV6Analytics({getAdminKey,openPattern,getPatternName}){
    '<p class="muted small">За период событий для графика нет.</p>')+
    '</div><div><h3>Популярные паттерны</h3>'+
    (rows||'<p class="muted small">Пока нет зарегистрированных просмотров.</p>')+'</div></div>'+
+   ((outcomesHTML||transitionsHTML)?'<div class="v6-research">'+outcomesHTML+transitionsHTML+'</div>':'')+
    (errors?'<p class="v6-warning">Не удалось загрузить: '+esc(errors)+'. Остальные показатели доступны.</p>':'')+
    '<p class="v6-source-note">'+esc(sourceCaption)+'</p>';
  }
