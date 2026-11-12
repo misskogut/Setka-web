@@ -94,10 +94,46 @@ export class SetkaChunkedWavDeck {
   this.busy=true;
   try{
    const ctx=this.ctx,info=this.info;
-   // Start only after the initial packet is fully decoded, not before network fetch.
-   for(let tries=0;tries<(initial?3:3);tries++){
-    if(this.closed||this.paused)break;
-    if(this.playing&&this.at-ctx.currentTime>5.0)break;
+   const schedule=(decoded,first,final)=>{
+    const source=ctx.createBufferSource();
+    source.buffer=decoded;source.connect(this.output);
+    const when=this.playing?Math.max(this.at,ctx.currentTime+.04):ctx.currentTime+.14;
+    if(!this.playing)this.startedAt=when-first/info.sampleRate;
+    source.start(when);this.buffers.add(source);
+    source.onended=()=>{this.buffers.delete(source);try{source.disconnect()}catch(_){}};
+    this.at=when+decoded.duration;
+    if(!this.playing){this.playing=true;this.emit("playing")}
+    this.emit("timeupdate");
+    if(final){
+     const old=source.onended;
+     source.onended=()=>{old?.();if(!this.closed)this.emit("ended")};
+    }
+   };
+   if(initial){
+    // Prebuffer three independent two-second packets in parallel. They are
+    // scheduled only after all three decodes complete: no startup gap when
+    // the origin takes longer than one audio packet to respond.
+    let cursor=this.cursor;
+    const wanted=[];
+    for(let i=0;i<3;i++){
+     if(cursor>=info.totalFrames){if(!this.loop)break;cursor=0}
+     const first=cursor,frames=Math.min(this.framesPerChunk,info.totalFrames-first);
+     if(frames<=0)break;
+     const start=info.offset+first*info.blockAlign,end=start+frames*info.blockAlign-1;
+     wanted.push({first,frames,start,end,final:!this.loop&&first+frames>=info.totalFrames});
+     cursor+=frames;
+    }
+    const packets=await Promise.all(wanted.map(async q=>({
+     ...q,decoded:await ctx.decodeAudioData(wavChunk(info,
+      await range(this.url,q.start,q.end,this.total,this.abort.signal)))
+    })));
+    if(this.closed||this.paused)return;
+    this.cursor=cursor;
+    for(const packet of packets)schedule(packet.decoded,packet.first,packet.final);
+    return;
+   }
+   for(let tries=0;tries<3;tries++){
+    if(this.closed||this.paused||this.at-ctx.currentTime>5.0)break;
     if(this.cursor>=info.totalFrames){
      if(!this.loop)break;
      this.cursor=0;
@@ -109,21 +145,9 @@ export class SetkaChunkedWavDeck {
     if(this.closed||this.paused)break;
     const decoded=await ctx.decodeAudioData(wavChunk(info,pcm));
     if(this.closed||this.paused)break;
-    const source=ctx.createBufferSource();
-    source.buffer=decoded;source.connect(this.output);
-    // Allocate a fresh playback window after startup or network starvation.
-    const when=this.playing?Math.max(this.at,ctx.currentTime+.015):ctx.currentTime+.09;
-    if(!this.playing)this.startedAt=when-first/info.sampleRate;
-    source.start(when);this.buffers.add(source);
-    source.onended=()=>{this.buffers.delete(source);try{source.disconnect()}catch(_){}};
-    this.at=when+decoded.duration;this.cursor+=frames;
-    if(!this.playing){this.playing=true;this.emit("playing")}
-    this.emit("timeupdate");
-    if(!this.loop&&this.cursor>=info.totalFrames){
-     const last=source,old=last.onended;
-     last.onended=()=>{old?.();if(!this.closed)this.emit("ended")};
-     break;
-    }
+    this.cursor+=frames;
+    schedule(decoded,first,!this.loop&&this.cursor>=info.totalFrames);
+    if(!this.loop&&this.cursor>=info.totalFrames)break;
    }
   }finally{this.busy=false}
  }
