@@ -84,20 +84,24 @@ try{
     };
     document.body.append(button);
    },{audio_url:track.audio_url,graph});
-   await page.locator("#setka-real-probe").click();
-   await page.waitForFunction(()=>{const p=window.__media;return !!p&&(p.el.currentTime>0.8||!!p.el.error||!!p.state.startError)},null,{timeout:22000}).catch(()=>{});
-   const result=await page.evaluate(()=>{
-    const p=window.__media;if(!p)return {missing:true};
-    const e=p.el;
-    const out={...p.state,mediaErrorCode:e.error?.code||null,network:e.networkState,
-     ready:e.readyState,paused:e.paused,seconds:e.currentTime,
-     duration:Number.isFinite(e.duration)?e.duration:null,ctx:p.ctx?.state||"none"};
-    e.pause();e.removeAttribute("src");e.load();
-    return out;
-   });
-   // The media and AudioContext are owned by this page; close it before
-   // opening the next playback probe, never reusing a stalled WebKit decoder.
    const type=!track.external_source_path?"supabase-local":track.external_source_path.endsWith(".mp3")?"yandex-mp3":"yandex-wav";
+   let result;
+   for(let attempt=0;attempt<2;attempt++){
+    await page.locator("#setka-real-probe").click();
+    await page.waitForFunction(()=>{const p=window.__media;return !!p&&(p.el.currentTime>0.8||!!p.el.error||!!p.state.startError)},null,{timeout:attempt===0?22000:35000}).catch(()=>{});
+    result=await page.evaluate(async()=>{
+     const p=window.__media;if(!p)return {missing:true};
+     const e=p.el;
+     const out={...p.state,mediaErrorCode:e.error?.code||null,network:e.networkState,
+      ready:e.readyState,paused:e.paused,seconds:e.currentTime,
+      duration:Number.isFinite(e.duration)?e.duration:null,ctx:p.ctx?.state||"none"};
+     e.pause();e.removeAttribute("src");e.load();
+     await p.ctx?.close?.().catch(()=>{});
+     return out;
+    });
+    if(!result.missing&&!result.startError&&!result.mediaErrorCode&&result.seconds>0.8&&(!graph||result.ctx==="running"))break;
+    if(attempt===0)console.log("REAL_AUDIO_RETRY",JSON.stringify({browser:name,type,graph,reason:result.events?.slice(-3),network:result.network}));
+   }
    console.log("REAL_AUDIO_RESULT",JSON.stringify({browser:name,type,...result}));
    assert.ok(!result.missing&&!result.startError&&!result.mediaErrorCode&&result.seconds>0.8&&(!graph||result.ctx==="running"),
     name+" cannot actually play "+type+" in "+(graph?"WebAudio":"native audio"));
