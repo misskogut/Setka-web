@@ -39,8 +39,8 @@ export function summarizeV6(rows,source,{days=30,now=Date.now(),from=null,to=nul
   if(receipt!==null&&(lastIngestAt===null||receipt>lastIngestAt))lastIngestAt=receipt;
   if(!daily.has(day))daily.set(day,{day,exposures:0,recorded_ms:0,actors:new Set()});
   const d=daily.get(day);d.exposures++;d.recorded_ms+=ms;d.actors.add(actor);
-  if(!patterns.has(id))patterns.set(id,{pattern_id:id,exposures:0,recorded_ms:0,actors:new Set()});
-  const p=patterns.get(id);p.exposures++;p.recorded_ms+=ms;p.actors.add(actor);
+  if(!patterns.has(id))patterns.set(id,{pattern_id:id,exposures:0,recorded_ms:0,actors:new Set(),durations:[],viewsByActor:new Map()});
+  const p=patterns.get(id);p.exposures++;p.recorded_ms+=ms;p.actors.add(actor);p.durations.push(ms);p.viewsByActor.set(actor,(p.viewsByActor.get(actor)||0)+1);
  }
  const entry=(d)=>({date:dateKey(d.day),exposures:d.exposures,recorded_ms:d.recorded_ms,distinct_identities:d.actors.size});
  const timeline=(custom||days)?Array.from({length:custom?last-first+1:days},(_,i)=>entry(daily.get(first+i)||{day:first+i,exposures:0,recorded_ms:0,actors:new Set()})):
@@ -49,8 +49,14 @@ export function summarizeV6(rows,source,{days=30,now=Date.now(),from=null,to=nul
   source,periodDays:custom?0:days,periodFrom:custom?new Date(fromMs).toISOString():null,periodTo:custom?new Date(toMs).toISOString():null,timeZone:"UTC+04:00",exposures,distinctIdentities:actors.size,
   recordedMs,patternCount:patterns.size,guestDevices:guestDevices.size,accountActors:accountActors.size,rowsConsidered:Array.isArray(rows)?rows.length:0,
   duplicateRows:duplicates,excludedRows:excluded,lastIngestAt:lastIngestAt===null?null:new Date(lastIngestAt).toISOString(),
-  timeline,patterns:[...patterns.values()].map(p=>({pattern_id:p.pattern_id,exposures:p.exposures,
-   recorded_ms:p.recorded_ms,distinct_identities:p.actors.size}))
+  timeline,patterns:[...patterns.values()].map(p=>{
+   const ordered=p.durations.slice().sort((a,b)=>a-b),middle=Math.floor(ordered.length/2);
+   const median=ordered.length?(ordered.length%2?ordered[middle]:(ordered[middle-1]+ordered[middle])/2):0;
+   return {pattern_id:p.pattern_id,exposures:p.exposures,
+    recorded_ms:p.recorded_ms,distinct_identities:p.actors.size,
+    average_ms:p.exposures?Math.round(p.recorded_ms/p.exposures):0,
+    median_ms:Math.round(median),repeat_identities:[...p.viewsByActor.values()].filter(n=>n>=2).length};
+  })
    .sort((a,b)=>b.recorded_ms-a.recorded_ms||b.exposures-a.exposures||a.pattern_id.localeCompare(b.pattern_id)).slice(0,12)
  };
 }
