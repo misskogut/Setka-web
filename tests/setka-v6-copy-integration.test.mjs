@@ -39,5 +39,8 @@ test('source-level counts are never summed into a synthetic unique user total',(
  assert.match(copy,/Повторы между V2, V40 и V41 пока не объединяются/);
  assert.match(copy,/V40 —/);
  assert.match(copy,/V41 —/);
+ assert.match(copy,/Последний вход в аккаунт/,'copy separates account login freshness from V2 delivery');
+ assert.ok(copy.includes('Europe/Saratov'),'research timestamps are presented in Saratov time');
+ assert.match(readFileSync('supabase/functions/setka-admin-v6-metrics/index.ts','utf8'),/lastAccountLoginAt/);
  assert.doesNotMatch(copy,/getRecord\(result,'guest_v40'\)\.distinctIdentities\s*\+/);
 });
