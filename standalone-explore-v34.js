@@ -80,6 +80,22 @@
     if(pendingConfig)Setka.openConfig?.(clone(pendingConfig.config),pendingConfig.source||{});
   }
 
+  // Free browsing is a real, non-outcome session. One record can contain
+  // several patterns and notes, with no pre/post questionnaire.
+  C.startFreeSession=function(pendingConfig=null){
+    const active=C.getActiveSession();
+    if(active){
+      if(active.phase==="feedback"||active.phase==="done_feedback"){
+        if(active.phase==="done_feedback")C.showFeedbackResult?.();
+        return null;
+      }
+      if(pendingConfig)Setka.openConfig?.(clone(pendingConfig.config),pendingConfig.source||{});
+      return active;
+    }
+    markExplorationSession(pendingConfig);
+    return C.getActiveSession();
+  };
+
   function finishExploration(origin="manual"){
     const s=C.getActiveSession();if(!s?.isExploration)return originalFinish();
     s.completed=true;s.explorationActiveMs=Number(s.afterFeedbackActiveMs)||0;s.completionReason=origin;s.continuationEndedAt=new Date().toISOString();
