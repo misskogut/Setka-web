@@ -26,6 +26,16 @@ test('local CI fixtures and ordinary visitors are not blocked',()=>{
   assert.throws(execute(file,'misskogut.github.io',false),/collector_initialized/,file+' real human path');
  }
 });
+test('published-page automated browser cannot register a V34 anonymous device or cloud sync',()=>{
+ const src=readFileSync('standalone-sync-v34.js','utf8');
+ assert.match(src,/const automatedProduction=typeof navigator/);
+ assert.match(src,/navigator\.webdriver===true/);
+ assert.match(src,/async function sync\(force=false,keepalive=false\)\{\s*if\(automatedProduction\)return false;/);
+ assert.match(src,/async function syncAccount\(\)\{\s*if\(automatedProduction\)return false;/);
+ const html=readFileSync('standalone-v34.html','utf8');
+ assert.match(html,/standalone-sync-v34\.js\?v=56-bot-data-isolation-20261112/);
+});
+
 test('music plays normally in CI but automated published-page listens are not counted',()=>{
  const src=readFileSync('standalone-music-v1.mjs','utf8');
  assert.match(src,/mixer\.onTrackEvent=event=>\{\s*if\(typeof navigator!==/);
