@@ -46,3 +46,9 @@
  .v6-pattern-inline{display:grid;grid-template-columns:1fr 1fr}
  .v6-pattern-row span:last-child{white-space:normal;text-align:right}
 }
+
+.v6-research{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px;margin-top:23px}
+.v6-research-item{min-width:0;padding-top:15px;border-top:1px solid var(--line)}
+.v6-research-item h3{font-size:15px;margin:0 0 12px;font-weight:600}
+.v6-research-score{font-size:15px;font-weight:550;margin:14px 0;color:var(--ink)}
+@media(max-width:700px){.v6-research{grid-template-columns:1fr;gap:18px}}
