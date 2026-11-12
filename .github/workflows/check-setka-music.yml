@@ -9,6 +9,7 @@ on:
       - 'standalone-music-v1.mjs'
       - 'tests/setka-music-v1.test.mjs'
       - 'tests/setka-music-big-webkit-probe.mjs'
+      - 'tests/setka-music-live-playback-probe.mjs'
       - '.github/workflows/check-setka-music.yml'
   push:
     branches: [main]
@@ -17,6 +18,7 @@ on:
       - 'standalone-music-wav-stream-v1.mjs'
       - 'standalone-music-v1.mjs'
       - 'tests/setka-music-big-webkit-probe.mjs'
+      - 'tests/setka-music-live-playback-probe.mjs'
       - '.github/workflows/check-setka-music.yml'
 
 jobs:
