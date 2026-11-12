@@ -52,7 +52,7 @@ async function flush(){
  try{
   const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),10000);
   let response;
-  try{response=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({deviceId:device(),events:batch}),signal:controller.signal})}
+  try{response=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({deviceId:device(),events:batch}),keepalive:true,signal:controller.signal})}
   finally{clearTimeout(timeout)}
   const result=await response.json();
   if(!response.ok||result.ok!==true||result.accepted!==batch.length)throw Error("not_acknowledged");
@@ -101,7 +101,7 @@ document.addEventListener("visibilitychange",()=>{
   hiddenSince=0;startVisit();schedule(300);
  }
 });
-window.addEventListener("pagehide",()=>{endVisit()});
+window.addEventListener("pagehide",()=>{endVisit();void flush()});
 window.addEventListener("storage",e=>{if(e.key===QUEUE)schedule(1200)});
 setInterval(()=>{if(!document.hidden&&!signedIn())startVisit();schedule()},45000);
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",initialize,{once:true});
