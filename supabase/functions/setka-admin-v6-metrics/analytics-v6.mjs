@@ -9,10 +9,15 @@ const dateKey=i=>new Date(i*DAY).toISOString().slice(0,10);
 const validTime=v=>{const t=Date.parse(String(v||""));return Number.isFinite(t)?t:null};
 const bounded=v=>Number.isFinite(Number(v))?Math.max(0,Math.min(DAY,Number(v))):0;
 
-export function summarizeV6(rows,source,{days=30,now=Date.now()}={}){
+export function summarizeV6(rows,source,{days=30,now=Date.now(),from=null,to=null}={}){
  if(!Object.hasOwn(V6_SOURCES,source))throw Error("unknown_source");
  if(![0,1,7,30,90].includes(days)||!Number.isFinite(now))throw Error("invalid_period");
- const today=Math.floor((now+SARATOV)/DAY),first=days?today-days+1:-Infinity;
+ const custom=from!==null||to!==null;
+ const fromMs=custom?Date.parse(from):null,toMs=custom?Date.parse(to):null;
+ if(custom&&(!Number.isFinite(fromMs)||!Number.isFinite(toMs)||fromMs>=toMs||toMs-fromMs>370*DAY))throw Error("invalid_period");
+ const today=Math.floor((now+SARATOV)/DAY);
+ const first=custom?Math.floor((fromMs+SARATOV)/DAY):days?today-days+1:-Infinity;
+ const last=custom?Math.floor((toMs-1+SARATOV)/DAY):today;
  const daily=new Map(),patterns=new Map(),actors=new Set(),seen=new Set(),guestDevices=new Set(),accountActors=new Set();
  let duplicates=0,excluded=0,exposures=0,recordedMs=0,lastIngestAt=null;
  for(const x of Array.isArray(rows)?rows:[]){
@@ -22,7 +27,8 @@ export function summarizeV6(rows,source,{days=30,now=Date.now()}={}){
   const exposureId=String(source==="unified_v2"?x?.event_id:x?.exposure_id||"");
   const occurrence=validTime(source==="unified_v2"?x?.occurred_at:(x?.ended_at||x?.started_at||x?.updated_at));
   const day=occurrence===null?null:Math.floor((occurrence+SARATOV)/DAY);
-  if(!id||!actor||!exposureId||day===null||day>today||day<first||
+  if(!id||!actor||!exposureId||day===null||day>today||day>last||day<first||
+     (custom&&(occurrence<fromMs||occurrence>=toMs))||
      (source==="unified_v2"&&x?.event_type!=="pattern_exposure")){excluded++;continue}
   const eventKey=actor+"|"+exposureId;
   if(seen.has(eventKey)){duplicates++;continue}
@@ -37,10 +43,10 @@ export function summarizeV6(rows,source,{days=30,now=Date.now()}={}){
   const p=patterns.get(id);p.exposures++;p.recorded_ms+=ms;p.actors.add(actor);
  }
  const entry=(d)=>({date:dateKey(d.day),exposures:d.exposures,recorded_ms:d.recorded_ms,distinct_identities:d.actors.size});
- const timeline=days?Array.from({length:days},(_,i)=>entry(daily.get(first+i)||{day:first+i,exposures:0,recorded_ms:0,actors:new Set()})):
+ const timeline=(custom||days)?Array.from({length:custom?last-first+1:days},(_,i)=>entry(daily.get(first+i)||{day:first+i,exposures:0,recorded_ms:0,actors:new Set()})):
   [...daily.values()].sort((a,b)=>a.day-b.day).map(entry);
  return {
-  source,periodDays:days,timeZone:"UTC+04:00",exposures,distinctIdentities:actors.size,
+  source,periodDays:custom?0:days,periodFrom:custom?new Date(fromMs).toISOString():null,periodTo:custom?new Date(toMs).toISOString():null,timeZone:"UTC+04:00",exposures,distinctIdentities:actors.size,
   recordedMs,patternCount:patterns.size,guestDevices:guestDevices.size,accountActors:accountActors.size,rowsConsidered:Array.isArray(rows)?rows.length:0,
   duplicateRows:duplicates,excludedRows:excluded,lastIngestAt:lastIngestAt===null?null:new Date(lastIngestAt).toISOString(),
   timeline,patterns:[...patterns.values()].map(p=>({pattern_id:p.pattern_id,exposures:p.exposures,
