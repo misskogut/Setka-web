@@ -40,6 +40,8 @@ export function createV6Analytics({getAdminKey,openPattern,getPatternName}){
  function overviewHTML(result,period){
   const v=getRecord(result,'unified_v2'),a=getRecord(result,'account_v41'),h=getRecord(result,'guest_v40');
   const j=v?.journey||null,aj=v?.accountJourney||null;
+  const retentionLabel=r=>r&&typeof r.ratePct==="number"?r.ratePct+'% · '+format(r.returned)+'/'+format(r.eligible):'—';
+  const activeLabel=r=>r?format(r.activeToday)+' / '+format(r.activeLast7Days):'—';
   const items=[
    metric('Визиты гостей',j?format(j.visits):'—','Открытия приложения · V3'),
    metric('Визиты аккаунтов',aj?format(aj.visits):'—','Вход подтверждён · V4'),
@@ -49,6 +51,10 @@ export function createV6Analytics({getAdminKey,openPattern,getPatternName}){
    metric('Зарегистрированы',a?.accountInventory?format(a.accountInventory.registeredAccounts):'—','Аккаунты с доступом · за всё время'),
    metric('Вернувшиеся гости',j?format(j.returningGuestDevices):'—','Гостевые устройства · разные дни'),
    metric('Вернувшиеся аккаунты',aj?format(aj.returningAccounts):'—','Аккаунты · разные дни'),
+   metric('Активные гости',activeLabel(j),'Сегодня / за 7 дней · устройства'),
+   metric('Активные аккаунты',activeLabel(aj),'Сегодня / за 7 дней · ID'),
+   metric('Возвраты гостей D1 / D7',retentionLabel(j?.retentionD1)+' / '+retentionLabel(j?.retentionD7),'Только посещения; ≥5 наблюдений для каждого %'),
+   metric('Возвраты аккаунтов D1 / D7',retentionLabel(aj?.retentionD1)+' / '+retentionLabel(aj?.retentionD7),'Только посещения; ≥5 наблюдений для каждого %'),
    metric('Новые устройства',j?format(j.firstSeenGuestDevices):'—','Первое событие в доступной истории'),
    metric('Просмотры паттернов',v?format(v.exposures):'—','Завершённые просмотры · V2'),
    metric('Во время сессий',v?.usageMode?format(v.usageMode.duringSession):'—','Гостевой поток V2'),
