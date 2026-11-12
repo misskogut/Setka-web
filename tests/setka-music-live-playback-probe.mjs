@@ -2,6 +2,7 @@
 // Exercises the deployed catalog, actual click activation, native media, Web Audio,
 // and the in-app track button on Chromium and WebKit (iPhone-like touch viewport).
 import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
 import {chromium,webkit} from "playwright";
 const API="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-music-v1";
 const FRONT="https://misskogut.github.io/Setka-web/standalone-v34.html";
@@ -27,6 +28,12 @@ try{
   p.on("console",m=>{
    if(m.type()==="error")console.log("BROWSER_ERROR",m.text().replace(/https:\/\/\S+/g,"<media URL>").slice(0,170));
   });
+  // Serve candidate PR audio modules at the actual Pages origin; other assets
+  // and the catalog still come from live SETKA, and no media is mocked.
+  await p.route(/^https:\/\/misskogut\.github\.io\/Setka-web\/(?:standalone-v34\.html|standalone-music-v1\.mjs|standalone-music-audio-v1\.mjs|standalone-music-wav-stream-v1\.mjs)(?:\?.*)?$/,route=>{
+   const file=new URL(route.request().url()).pathname.split("/").at(-1);
+   return route.fulfill({status:200,contentType:file.endsWith(".html")?"text/html":"text/javascript",body:readFileSync(file)});
+  });
   await p.addInitScript(()=>{
   const OriginalAudio=window.Audio;
   window.__setkaCapturedAudio=[];
@@ -37,13 +44,20 @@ try{
   }
   InstrumentedAudio.prototype=OriginalAudio.prototype;
   window.Audio=InstrumentedAudio;
+  window.__setkaBufferSourceStarts=0;
+  const proto=window.AudioBufferSourceNode?.prototype;
+  if(proto?.start){const previous=proto.start;proto.start=function(...args){
+   window.__setkaBufferSourceStarts++;return previous.apply(this,args)
+  }}
   });
   await p.goto(FRONT,{waitUntil:"domcontentloaded",timeout:90000});
   return p;
  };
  let page=await newPage();
  for(const track of samples){
-  for(const graph of [false,true]){
+  // WebKit PCM WAV uses the real app's AudioBufferSource pipeline, not the
+  // intermittently stalled raw MediaElementSource path.
+  for(const graph of (name==="webkit"&&track.external_source_path?.toLowerCase().endsWith(".wav")?[false]:[false,true])){
    await page.close();
    page=await newPage();
    await page.evaluate(({audio_url,graph})=>{
@@ -102,19 +116,31 @@ try{
  const actual=page.locator(".sm-track").filter({hasText:remote.title});
  const trackButton=await actual.count()===1?actual:page.locator('.sm-track[aria-label^="Утренний лес"]');
  await trackButton.first().click();
- await page.waitForFunction(id=>{
+ await page.waitForFunction(({id,webkit})=>{
    const active=window.SetkaMusicV1?.state()?.active?.some(x=>x.id===id&&x.level>=1);
-   const playable=window.__setkaCapturedAudio?.some(e=>e.src.includes(id)&&e.currentTime>0.8);
+   const spatial=window.SetkaMusicV1?.diagnostics?.()?.sources?.find(s=>s.trackId===id);
+   const playable=webkit?
+    (spatial?.losslessWavStreaming===true&&spatial?.hrtfSpatialized===true&&window.__setkaBufferSourceStarts>=2):
+    window.__setkaCapturedAudio?.some(e=>e.src.includes(id)&&e.currentTime>0.8);
    return active&&playable;
- },remote.id,{timeout:24000}).catch(()=>{});
+ },{id:remote.id,webkit:name==="webkit"},{timeout:35000});
  const app=await page.evaluate(id=>{
   const active=window.SetkaMusicV1?.state()?.active?.find(x=>x.id===id);
   const playing=window.__setkaCapturedAudio.filter(e=>e.src.includes(id)).map(e=>({
    seconds:e.currentTime,ready:e.readyState,error:e.error?.code||null,paused:e.paused
   }));
-  return {active,playing,buttonDots:document.querySelectorAll(".sm-track.active .sm-dots i").length};
+  return {active,playing,spatial:window.SetkaMusicV1?.diagnostics?.()?.sources?.find(s=>s.trackId===id),
+   starts:window.__setkaBufferSourceStarts,buttonDots:document.querySelectorAll(".sm-track.active .sm-dots i").length};
  },remote.id);
  console.log("SETKA_REAL_UI_AUDIO",JSON.stringify({browser:name,...app}));
- assert.ok(app.active?.level>=1&&app.playing.some(e=>e.seconds>0.8&&e.ready>=2&&!e.error),
+ if(name==="webkit"){
+  assert.equal(app.active?.level,1);
+  assert.equal(app.spatial?.losslessWavStreaming,true,"small original WAV must stream as PCM through Safari HRTF");
+  assert.equal(app.spatial?.hrtfSpatialized,true);
+  assert.equal(app.spatial?.nativeStereoFallback,false);
+  assert.ok(app.starts>=2,"actual WebAudio buffers from original audio must play");
+ }else{
+  assert.ok(app.active?.level>=1&&app.playing.some(e=>e.seconds>0.8&&e.ready>=2&&!e.error),
    name+" actual SETKA track click must produce decoded progressing sound");
+ }
 }finally{await browser.close()}
