@@ -66,7 +66,7 @@ jobs:
         run: |
           node --check research-v1/copy-app-v6.mjs
           node --check research-v1/copy-analytics-v6.mjs
-          node --test tests/setka-release-assets.test.mjs tests/setka-v6-copy-integration.test.mjs tests/setka-v6-lab-summary.test.mjs tests/setka-v6-journey-summary.test.mjs
+          node --test tests/setka-release-assets.test.mjs tests/setka-v6-copy-integration.test.mjs tests/setka-v6-lab-summary.test.mjs tests/setka-v6-journey-summary.test.mjs tests/setka-exploration-vs-measured.test.mjs
       - name: Reject manual SETKA App pattern wiring before publishing
         run: node --test tests/setka-app-platform-guard.test.mjs tests/account-cohorts.test.mjs tests/setka-tester-account-ownership.test.mjs
       - name: Verify automatic SETKA pattern registration before publishing
