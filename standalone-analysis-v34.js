@@ -38,6 +38,36 @@
     return{score,evidence};
   }
 
+  // Base-pattern suggestions use the mother pattern across the user's
+  // customized configurations. Exact config hashes are too restrictive:
+  // a tiny slider change otherwise erased all personal evidence. Outcomes
+  // only influence scores when that mother was the sole measured pattern.
+  function scorePatternForGoal(patternId,goal){
+    const d=C.getData();let score=0,evidence=0;
+    for(const session of d.sessions||[]){
+      if(!session?.completed||session.requestKey!==goal||session.sessionType==="exploration")continue;
+      const measured=(session.usage||[]).filter(u=>u.phase==="measured"&&Number(u.durationMs)>0);
+      const identify=u=>u.patternId||u.config?.patternId||null;
+      const uses=measured.filter(u=>identify(u)===patternId);
+      if(!uses.length)continue;
+      evidence++;
+      const usedMs=uses.reduce((a,u)=>a+Math.max(0,Number(u.durationMs)||0),0);
+      score+=Math.min(1,usedMs/180000)*.45;
+      const isolated=new Set(measured.map(identify).filter(Boolean)).size===1;
+      if(isolated){
+        const pre=session.preState,post=session.postState;
+        if(pre!=null&&post!=null&&Number.isFinite(Number(pre))&&Number.isFinite(Number(post))){
+          score+=Math.max(-2,Math.min(2,Number(post)-Number(pre)))*1.5;
+        }
+        if(session.helped===2)score+=1.7;
+        else if(session.helped===1)score+=.7;
+        else if(session.helped===0)score-=.6;
+      }
+      if(uses.some(u=>u.saved===true))score+=1;
+    }
+    return {score,evidence};
+  }
+
   function recalcRecommendations(){
     const active=C.getActiveSession();
     const goal=active?.requestKey||null;
@@ -50,7 +80,7 @@
     for(const pattern of Setka.getPatterns?.()||[]){
       const key=Setka.configKey?.(pattern.defaults,pattern.id);
       if(!key)continue;
-      const r=scoreConfigForGoal(key,goal);
+      const r=scorePatternForGoal(pattern.id,goal);
       if(r.evidence>0)candidates.push({kind:"base",id:pattern.id,...r});
     }
     for(const item of C.publicCommunity||[]){
