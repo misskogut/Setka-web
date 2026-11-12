@@ -1,4 +1,9 @@
 (()=>{"use strict";
+// Automated production-page browser checks are not research participants.
+// Preserve local fixture coverage; exclude real HTTPS/public production hosts only.
+if(typeof navigator!=="undefined"&&navigator.webdriver===true&&
+ typeof location!=="undefined"&&/^(?:misskogut\.github\.io|(?:www\.)?setka-app\.com)$/.test(location.hostname))return;
+
 // Minimal guest research telemetry: pattern ID and measured duration only.
 // No notes, pulse, symptoms, audio, raw gestures or private corpus.
 const API="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-guest-events-v2";

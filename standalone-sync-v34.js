@@ -2,6 +2,9 @@
   "use strict";
   const C=window.SetkaStandaloneV34;
   if(!C)return;
+  // A headless check of the public site must not register a new research device.
+  const automatedProduction=typeof navigator!=="undefined"&&navigator.webdriver===true&&
+    typeof location!=="undefined"&&/^(?:misskogut\.github\.io|(?:www\.)?setka-app\.com)$/.test(location.hostname);
 
   const API="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-standalone-v34";
   const SEMANTIC_API="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-semantic-v35";
@@ -96,6 +99,7 @@
     return post(SEMANTIC_API,{action:"sync",channel:CHANNEL,deviceId,sessionToken:session?.token||null,favoritesAuthoritative,favorites:fav,sessions:u.sessions,exposures:u.exposures},keepalive);
   }
   async function sync(force=false,keepalive=false){
+    if(automatedProduction)return false; // no synthetic guest presence or account usage writes
     if(busy){rerunRequested=true;return false}
     const sig=signature();
     const currentToken=accountSession()?.token||null;
@@ -159,6 +163,7 @@
     window.dispatchEvent(new CustomEvent("setka:account-sync-status",{detail:{stage,ok,error,lastFullReceipt}}));
   }
   async function syncAccount(){
+    if(automatedProduction)return false;
     if(priorityBusy){priorityAgain=true;return false}
     const s=accountSession();
     if(!s?.token)return false;

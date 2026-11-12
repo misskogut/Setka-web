@@ -10,6 +10,8 @@ const BASE_CATEGORIES=[{id:"hand",title:"Рука"},{id:"eye",title:"Откры�
 const mixer=new SetkaMusicMixer();
 // Only real audio playback events are counted; no identifying listener data.
 mixer.onTrackEvent=event=>{
+ if(typeof navigator!=="undefined"&&navigator.webdriver===true&&
+  typeof location!=="undefined"&&/^(?:misskogut\.github\.io|(?:www\.)?setka-app\.com)$/.test(location.hostname))return;
  // Only the audio element's real "playing" callback can emit a guest
  // playback-start count; never record selected icons as audio playback.
  if(event?.event_type==="play"&&typeof event.track_id==="string")

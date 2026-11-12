@@ -118,8 +118,10 @@ export function createV6Analytics({getAdminKey,openPattern,getPatternName}){
    '. Отсутствие новых входов и отсутствие доставки событий — разные показатели.':'';
   const deliveryHTML='<div class="v6-secondary small muted">Поступление событий на сервер: гости — '+esc(receipt(j))+
    ' · аккаунты — '+esc(receipt(aj))+'.'+loginContext+' Это факт приёма событий, а не проверка активности каждого пользователя.</div>';
+  // Earlier test-runner visits cannot be safely removed without provenance.
+  const provenanceHTML='<div class="v6-secondary small muted">Исторические данные: до фильтра автоматизированных браузеров 12.11.2026 гостевые посещения могли включать технические проверки. Старые записи сохранены без неподтверждённого удаления.</div>';
   const errors=SOURCES.filter(source=>result[source]?.error).map(source=>titles[source]).join(', ');
-  return '<div class="v6-stats">'+items.join('')+'</div>'+deliveryHTML+
+  return '<div class="v6-stats">'+items.join('')+'</div>'+deliveryHTML+provenanceHTML+
    '<div class="v6-secondary small muted">Исторические записи: V40 — '+(h?format(h.exposures):'—')+
    ' просмотров · аккаунты V41 — '+(a?format(a.exposures):'—')+' просмотров. С ними V2 не складываем. Паттернов с просмотром: '+(v?format(v.patternCount):'—')+'.'+
    (a?.usageMode?' В аккаунтах V41: '+format(a.usageMode.duringSession)+' во время сессий, '+format(a.usageMode.justWatch)+' просто посмотреть.':'')+

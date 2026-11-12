@@ -1,5 +1,10 @@
 (()=>{
 "use strict";
+// Automated production-page browser checks are not research participants.
+// Preserve local fixture coverage; exclude real HTTPS/public production hosts only.
+if(typeof navigator!=="undefined"&&navigator.webdriver===true&&
+ typeof location!=="undefined"&&/^(?:misskogut\.github\.io|(?:www\.)?setka-app\.com)$/.test(location.hostname))return;
+
 // Account-only high-level journey events. Uses existing device-bound account
 // session; server validates the token. Never sends private notes, health data,
 // raw gestures, audio, favorites' full configurations or account credentials.

@@ -10,6 +10,7 @@ const css=readFileSync('research-v1/copy-v6.css','utf8');
 
 test('V6 extends the original white home dashboard without floating panels or extra source tabs',()=>{
  assert.match(copy,/export function createV6Analytics/);
+ assert.match(copy,/гостевые посещения могли включать технические проверки/,'dashboard discloses possible historic bot traffic');
  assert.match(copy,/const SOURCES=\['unified_v2','guest_v40','account_v41'\]/);
  assert.match(copy,/className='card v6-overview'/);
  assert.match(copy,/content\.prepend\(wrapper\)/);
