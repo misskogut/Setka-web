@@ -43,12 +43,13 @@ export function createV6Analytics({getAdminKey,openPattern,getPatternName}){
   const items=[
    metric('Визиты',j?format(j.visits):'—','Открытия приложения · V3'),
    metric('Гостевые устройства',j?format(j.activeGuestDevices):v?format(v.guestDevices):'—','Активность V2 · не люди'),
-   metric('Аккаунты',a?format(a.distinctIdentities):'—','Активные внутри V41'),
+   metric('Аккаунты с просмотрами',a?format(a.distinctIdentities):'—','Активность в истории V41'),
+   metric('Зарегистрированы',a?.accountInventory?format(a.accountInventory.registeredAccounts):'—','Аккаунты с доступом · за всё время'),
    metric('Возвращались',j?format(j.returningGuestDevices):'—','Гостевые устройства · разные дни'),
    metric('Новые устройства',j?format(j.firstSeenGuestDevices):'—','Первое событие в доступной истории'),
    metric('Просмотры паттернов',v?format(v.exposures):'—','Завершённые просмотры · V2'),
-   metric('Во время сессий',v?.sessionBreakdown?format((v.sessionBreakdown.outcome||0)+(v.sessionBreakdown.exploration||0)):'—','Включая запрос «Просто исследую»'),
-   metric('Просто посмотреть',v?.sessionBreakdown?format(v.sessionBreakdown.unbound):'—','Просмотры без запуска сессии'),
+   metric('Во время сессий',v?.usageMode?format(v.usageMode.duringSession):'—','Гостевой поток V2'),
+   metric('Просто посмотреть',v?.usageMode?format(v.usageMode.justWatch):'—','Гостевой поток V2'),
    metric('Открытия паттернов',j?format(j.patternOpens):'—','Запуски просмотра · V3'),
    metric('Избранное',j?format(j.favoriteSaves):'—','Сохранения · V3'),
    metric('Музыка',j?format(j.musicStarts):'—','Фактические запуски · V3'),
@@ -68,7 +69,11 @@ export function createV6Analytics({getAdminKey,openPattern,getPatternName}){
   const errors=SOURCES.filter(source=>result[source]?.error).map(source=>titles[source]).join(', ');
   return '<div class="v6-stats">'+items.join('')+'</div>'+
    '<div class="v6-secondary small muted">Исторические записи: V40 — '+(h?format(h.exposures):'—')+
-   ' просмотров · аккаунты V41 — '+(a?format(a.exposures):'—')+' просмотров. С ними V2 не складываем. Паттернов с просмотром: '+(v?format(v.patternCount):'—')+'.'+(v?.sessionBreakdown?' Без сессии: '+format(v.sessionBreakdown.unbound)+' · старые записи без указания режима: '+format(v.sessionBreakdown.legacy_unknown)+'.':'')+'</div>'+
+   ' просмотров · аккаунты V41 — '+(a?format(a.exposures):'—')+' просмотров. С ними V2 не складываем. Паттернов с просмотром: '+(v?format(v.patternCount):'—')+'.'+
+   (a?.usageMode?' В аккаунтах V41: '+format(a.usageMode.duringSession)+' во время сессий, '+format(a.usageMode.justWatch)+' просто посмотреть.':'')+
+   (a?.accountInventory?' Сессий аккаунтов (всё время): '+format(a.accountInventory.recordedSessions)+
+    ' · сохранений в избранном сейчас: '+format(a.accountInventory.existingFavorites)+'.':'')+
+   (v?.sessionBreakdown?.legacy_unknown?' Старых V2 с неизвестным режимом: '+format(v.sessionBreakdown.legacy_unknown)+'.':'')+'</div>'+
    '<div class="v6-charts"><div><h3>'+esc(chartTitle)+'</h3>'+
    (days.length?'<div class="v6-chart-bars" role="img" aria-label="'+esc(chartTitle)+'">'+bars+'</div>'+
    '<div class="v6-chart-axis"><span>'+esc(days[0].date)+'</span><span>'+esc(days.at(-1).date)+'</span></div>':
@@ -148,8 +153,8 @@ export function createV6Analytics({getAdminKey,openPattern,getPatternName}){
      details('Средняя длительность', 'average_ms',true)+
      details('Медианная длительность','median_ms',true)+
      details('Повторно просматривали · ID','repeat_identities')+
-     '<tr><th>Во время сессий</th><td>'+(v?format((byId(v,id).mode_breakdown?.outcome||0)+(byId(v,id).mode_breakdown?.exploration||0)):'—')+'</td><td colspan="2">—</td></tr>'+
-     '<tr><th>Просто посмотреть</th><td>'+(v?format(byId(v,id).mode_breakdown?.unbound||0):'—')+'</td><td colspan="2">—</td></tr>'+
+     '<tr><th>Во время сессий</th><td>'+(v?.usageMode?format(byId(v,id).usage_mode?.duringSession||0):'—')+'</td><td>—</td><td>'+(a?.usageMode?format(byId(a,id).usage_mode?.duringSession||0):'—')+'</td></tr>'+
+     '<tr><th>Просто посмотреть</th><td>'+(v?.usageMode?format(byId(v,id).usage_mode?.justWatch||0):'—')+'</td><td>—</td><td>'+(a?.usageMode?format(byId(a,id).usage_mode?.justWatch||0):'—')+'</td></tr>'+
      details('Разных идентификаторов','distinct_identities')+
     '</tbody></table></div>'+
     '<p class="v6-source-note">'+esc(sourceCaption)+'</p>';
