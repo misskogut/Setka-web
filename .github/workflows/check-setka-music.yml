@@ -2,6 +2,14 @@ name: Check SETKA Music and Spatial Orbits
 # Run on music-engine releases only, not on a timer or a background computer.
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - 'standalone-music-audio-v1.mjs'
+      - 'standalone-music-wav-stream-v1.mjs'
+      - 'standalone-music-v1.mjs'
+      - 'tests/setka-music-v1.test.mjs'
+      - 'tests/setka-music-big-webkit-probe.mjs'
+      - '.github/workflows/check-setka-music.yml'
   push:
     branches: [main]
     paths:
