@@ -52,7 +52,7 @@
     if(!sessionId)return;
     const d=C.getData(),session=d.sessions?.find(x=>x.id===sessionId);if(!session)return;
     const all=ensureExposures().filter(x=>x.sessionId===sessionId);
-    session.usage=all.map(x=>({patternId:x.patternId,patternVersion:x.patternVersion,configSchemaVersion:x.configSchemaVersion,communityConfigId:x.communityId||null,configKey:x.configKey,config:clone(x.config),startedMs:Math.max(0,Date.parse(x.startedAt)-Date.parse(session.startedAt)),endedMs:Math.max(0,Date.parse(x.endedAt)-Date.parse(session.startedAt)),durationMs:x.durationMs,saved:!!x.saved,phase:x.context==="after_feedback"?"after_feedback":"measured",previewFrame:x.previewFrame}));
+    session.usage=all.map(x=>({patternId:x.patternId,patternVersion:x.patternVersion,configSchemaVersion:x.configSchemaVersion,communityConfigId:x.communityId||null,configKey:x.configKey,config:clone(x.config),startedMs:Math.max(0,Date.parse(x.startedAt)-Date.parse(session.startedAt)),endedMs:Math.max(0,Date.parse(x.endedAt)-Date.parse(session.startedAt)),durationMs:x.durationMs,saved:!!x.saved,phase:x.context==="exploration"?"exploration":x.context==="after_feedback"?"after_feedback":"measured",previewFrame:x.previewFrame}));
     const s=activeSession();if(s?.id===sessionId)s.usage=clone(session.usage);
   }
   function closeExposure(reason="close"){
