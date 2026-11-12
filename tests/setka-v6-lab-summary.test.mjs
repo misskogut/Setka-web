@@ -55,3 +55,22 @@ test('custom interval uses occurred-at, not ingestion-time, and local Saratov da
  assert.equal(r.periodTo,to.replace('Z','.000Z'));
  assert.throws(()=>summarizeV6(rows,'unified_v2',{days:0,from:to,to:from,now:NOW}),/invalid_period/);
 });
+
+test('deep pattern metrics use source-scoped median and repeat IDs without cropping the catalog',()=>{
+ const rows=[
+  a('ex1','device-A','2026-11-11T22:00:00Z',10000),
+  a('ex2','device-A','2026-11-11T22:02:00Z',30000),
+  a('ex3','device-B','2026-11-11T22:03:00Z',60000)
+ ];
+ const report=summarizeV6(rows,'unified_v2',{days:1,now:NOW});
+ const p=report.patterns[0];
+ assert.equal(p.exposures,3);
+ assert.equal(p.recorded_ms,100000);
+ assert.equal(p.average_ms,33333);
+ assert.equal(p.median_ms,30000);
+ assert.equal(p.repeat_identities,1);
+ assert.equal(p.distinct_identities,2);
+ const catalog=Array.from({length:27},(_,i)=>({...rows[0],event_id:'pattern-'+i,pattern_id:'setka-pattern-'+i}));
+ const r=summarizeV6(catalog,'unified_v2',{days:1,now:NOW});
+ assert.equal(r.patterns.length,27,'details must not silently report zero for less popular patterns');
+});
