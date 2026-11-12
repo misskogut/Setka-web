@@ -39,17 +39,25 @@ export function createV6Analytics({getAdminKey,openPattern,getPatternName}){
  const metric=(name,value,definition)=>'<div class="v6-stat"><span class="v6-stat-label">'+esc(name)+'</span><strong class="v6-stat-value">'+esc(value)+'</strong><small>'+esc(definition)+'</small></div>';
  function overviewHTML(result,period){
   const v=getRecord(result,'unified_v2'),a=getRecord(result,'account_v41'),h=getRecord(result,'guest_v40');
+  const j=v?.journey||null;
   const items=[
-   metric('Просмотры',v?format(v.exposures):'—','Новый поток V2'),
-   metric('Гости',v?format(v.guestDevices):'—','Гостевые устройства V2'),
-   metric('Аккаунты',a?format(a.distinctIdentities):'—','Активные в V41'),
-   metric('Время просмотра',v?minutes(v.recordedMs)+' мин':'—','Новый поток V2'),
-   metric('Паттерны',v?format(v.patternCount):'—','Просмотрены в V2')
+   metric('Визиты',j?format(j.visits):'—','Открытия приложения · V3'),
+   metric('Гостевые устройства',j?format(j.activeGuestDevices):v?format(v.guestDevices):'—','Активность V2 · не люди'),
+   metric('Аккаунты',a?format(a.distinctIdentities):'—','Активные внутри V41'),
+   metric('Возвращались',j?format(j.returningGuestDevices):'—','Гостевые устройства · разные дни'),
+   metric('Новые устройства',j?format(j.firstSeenGuestDevices):'—','Первое событие в доступной истории'),
+   metric('Просмотры паттернов',v?format(v.exposures):'—','Завершённые просмотры · V2'),
+   metric('Открытия паттернов',j?format(j.patternOpens):'—','Запуски просмотра · V3'),
+   metric('Избранное',j?format(j.favoriteSaves):'—','Сохранения · V3'),
+   metric('Музыка',j?format(j.musicStarts):'—','Фактические запуски · V3'),
+   metric('Время в приложении',j?minutes(j.foregroundMs)+' мин':'—','Завершённые активные периоды')
   ];
-  const days=Array.isArray(v?.timeline)?v.timeline:[];
-  const maximum=Math.max(1,...days.map(d=>Number(d.exposures)||0));
+  const days=Array.isArray(j?.timeline)?j.timeline:Array.isArray(v?.timeline)?v.timeline:[];
+  const chartKey=j?'visits':'exposures';
+  const chartTitle=j?'Визиты по дням':'Просмотры паттернов по дням';
+  const maximum=Math.max(1,...days.map(d=>Number(d[chartKey])||0));
   const bars=days.map(d=>{
-   const value=Math.max(0,Number(d.exposures)||0),height=value?Math.max(3,Math.round(value/maximum*100)):1;
+   const value=Math.max(0,Number(d[chartKey])||0),height=value?Math.max(3,Math.round(value/maximum*100)):1;
    return '<div class="v6-bar-col" title="'+esc(d.date+': '+value)+'"><i style="height:'+height+'%"></i></div>';
   }).join('');
   const rows=(Array.isArray(v?.patterns)?v.patterns:[]).slice(0,6).map(p=>
@@ -58,11 +66,11 @@ export function createV6Analytics({getAdminKey,openPattern,getPatternName}){
   const errors=SOURCES.filter(source=>result[source]?.error).map(source=>titles[source]).join(', ');
   return '<div class="v6-stats">'+items.join('')+'</div>'+
    '<div class="v6-secondary small muted">Исторические записи: V40 — '+(h?format(h.exposures):'—')+
-   ' просмотров · аккаунты V41 — '+(a?format(a.exposures):'—')+' просмотров. С ними V2 не складываем.</div>'+
-   '<div class="v6-charts"><div><h3>Посещения по дням</h3>'+
-   (days.length?'<div class="v6-chart-bars" role="img" aria-label="Просмотры V2 по дням">'+bars+'</div>'+
+   ' просмотров · аккаунты V41 — '+(a?format(a.exposures):'—')+' просмотров. С ними V2 не складываем. Паттернов с просмотром: '+(v?format(v.patternCount):'—')+'.</div>'+
+   '<div class="v6-charts"><div><h3>'+esc(chartTitle)+'</h3>'+
+   (days.length?'<div class="v6-chart-bars" role="img" aria-label="'+esc(chartTitle)+'">'+bars+'</div>'+
    '<div class="v6-chart-axis"><span>'+esc(days[0].date)+'</span><span>'+esc(days.at(-1).date)+'</span></div>':
-   '<p class="muted small">За период нет зарегистрированных просмотров V2.</p>')+
+   '<p class="muted small">За период событий для графика нет.</p>')+
    '</div><div><h3>Популярные паттерны</h3>'+
    (rows||'<p class="muted small">Пока нет зарегистрированных просмотров.</p>')+'</div></div>'+
    (errors?'<p class="v6-warning">Не удалось загрузить: '+esc(errors)+'. Остальные показатели доступны.</p>':'')+
@@ -122,8 +130,10 @@ export function createV6Analytics({getAdminKey,openPattern,getPatternName}){
     const p=data?byId(data,id):null;
     return metric(title,p?format(p.exposures):'—',p?minutes(p.recorded_ms)+' мин просмотра':'Нет связи с источником');
    };
+   const recordedOpens=v?.journey?.patternOpensById?.find(p=>p.pattern_id===id)?.opens||0;
    node.innerHTML='<h3>Использование паттерна · '+esc(getPatternName(id)||id)+'</h3>'+
     '<div class="v6-stats v6-detail-stats">'+line('Новый поток V2',v)+line('Исторические гости V40',h)+line('Аккаунты V41',a)+'</div>'+
+    '<p class="v6-secondary small muted">Открытий паттерна в новом потоке: '+(v?.journey?format(recordedOpens):'—')+'.</p>'+
     '<p class="v6-source-note">'+esc(sourceCaption)+'</p>';
   });
  }
