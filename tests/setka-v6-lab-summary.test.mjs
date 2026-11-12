@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync as readFileSyncImport} from 'node:fs';
 import {summarizeV6} from '../supabase/functions/setka-admin-v6-metrics/analytics-v6.mjs';
 const NOW=Date.parse('2026-11-12T01:00:00Z');
 const a=(event_id,device_id,occurred_at,duration_ms=30000)=>({event_id,device_id,account_id:null,pattern_id:'gravity-atom',event_type:'pattern_exposure',duration_ms,occurred_at,received_at:'2026-11-12T01:00:00Z'});
@@ -74,3 +75,40 @@ test('deep pattern metrics use source-scoped median and repeat IDs without cropp
  const r=summarizeV6(catalog,'unified_v2',{days:1,now:NOW});
  assert.equal(r.patterns.length,27,'details must not silently report zero for less popular patterns');
 });
+
+test('V41 account usage counts in-session and just-watch separately without inferring intent',()=>{
+ const x={tester_id:'ACCOUNT-A',exposure_id:'a-1',session_id:null,pattern_id:'medusa',duration_ms:15000,
+   started_at:'2026-11-11T21:00:00Z',ended_at:'2026-11-11T21:01:00Z',updated_at:'2026-11-11T21:01:00Z'};
+ const rows=[x,{...x,exposure_id:'a-2',session_id:'s-1'},{...x,exposure_id:'a-3',session_id:'s-1'},x];
+ const r=summarizeV6(rows,'account_v41',{days:1,now:NOW});
+ assert.equal(r.exposures,3,'two session views and one just-watch view');
+ assert.deepEqual(r.usageMode,{duringSession:2,justWatch:1});
+ assert.equal(r.patterns[0].usage_mode.duringSession,2);
+ assert.equal(r.patterns[0].usage_mode.justWatch,1);
+ assert.equal(r.duplicateRows,1);
+ assert.equal(r.distinctIdentities,1);
+ const guest={...rows[0],exposure_id:'guest',participant_key:'x'};
+ const other=summarizeV6([guest],'guest_v40',{days:1,now:NOW});
+ assert.equal(other.usageMode,null,'legacy guests have no supported session discriminator');
+});
+test('V2 explicit exploration intent stays in a session; nullable session is just-watch',()=>{
+ const x=a('x-1','guest-A','2026-11-11T22:00:00Z');
+ const report=summarizeV6([
+  {...x,session_id:'s-exploration',properties:{session_type:'exploration'}},
+  {...x,event_id:'x-2',session_id:null,properties:{}}
+ ],'unified_v2',{days:1,now:NOW});
+ assert.deepEqual(report.usageMode,{duringSession:1,justWatch:1});
+ assert.equal(report.sessionBreakdown.exploration,1);
+ assert.equal(report.sessionBreakdown.unbound,1);
+});
+test('only authenticated admin summary reads account inventory and session IDs from V41',()=>{
+ const {readFileSync}=awaitImportGuard();
+ const source=readFileSync('supabase/functions/setka-admin-v6-metrics/index.ts','utf8');
+ assert.match(source,/if\(!\(await authorized\(body\.adminKey\)\)\)return response\(\{error:"forbidden"\},403\)/);
+ assert.match(source,/source==="account_v41"\?"session_id,"/);
+ assert.match(source,/prototype_v40_tester_accounts/);
+ assert.match(source,/prototype_v41_account_favorites/);
+ assert.match(source,/prototype_v41_account_sessions/);
+ assert.match(source,/accountInventory/);
+});
+function awaitImportGuard(){return {readFileSync:readFileSyncImport}}
