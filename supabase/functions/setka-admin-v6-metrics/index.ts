@@ -29,6 +29,12 @@ Deno.serve(async req=>{
    const source=typeof body.source==="string"&&Object.hasOwn(V6_SOURCES,body.source)?body.source:null;
    const days=Number(body.days);
    if(!source||![0,1,7,30,90].includes(days))return response({error:"invalid_lab_query"},400);
+   const from=body.from==null?null:body.from,to=body.to==null?null:body.to;
+   const custom=from!==null||to!==null;
+   if(custom&&(typeof from!=="string"||typeof to!=="string"||
+      !Number.isFinite(Date.parse(from))||!Number.isFinite(Date.parse(to))||
+      Date.parse(from)>=Date.parse(to)||Date.parse(to)-Date.parse(from)>370*86400000))
+    return response({error:"invalid_date_range"},400);
    const cfg=V6_SOURCES[source],isV2=source==="unified_v2";
    const columns=isV2?
     "event_id,device_id,account_id,pattern_id,event_type,duration_ms,occurred_at,received_at":
@@ -45,7 +51,7 @@ Deno.serve(async req=>{
     if(batch.length<size)break;
     if(rows.length>=limit)truncated=true;
    }
-   const report=summarizeV6(rows,source,{days});
+   const report=summarizeV6(rows,source,{days,from,to});
    return response({ok:true,...report,truncated,checkedAt:new Date().toISOString(),
      identityScope:source==="account_v41"?"account_ids":source==="unified_v2"?"unlinked_device_or_account_ids":"legacy_guest_keys",
      caveat:"Counts are within this source only. Cross-source unique-user counts and clinical efficacy cannot be inferred."});
