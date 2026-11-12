@@ -175,6 +175,12 @@ try{
  const orbitAudio=await page.evaluate(()=>window.SetkaMusicV1.state().active);
  assert.ok(orbitAudio.length===2&&orbitAudio.every(item=>item.earlyReflections===2),
   "both live WebAudio sources have two independent directional early reflections");
+ const spatialDiagnostics=await page.evaluate(()=>window.SetkaMusicV1.diagnostics());
+ assert.equal(spatialDiagnostics.sources.length,2,"the visible pair and the active acoustic pair match");
+ assert.ok(spatialDiagnostics.sources.every(x=>x.hrtfSpatialized&&!x.nativeStereoFallback),
+  "ordinary small fixtures must actually use HRTF and not silently fall back to stereo");
+ assert.ok(spatialDiagnostics.sources.every(x=>Number.isFinite(x.x)&&Number.isFinite(x.z)));
+ assert.equal(spatialDiagnostics.warning,null);
  const sourceSkin=await page.locator(".sm-source").first().evaluate(el=>{
   const c=getComputedStyle(el),size=el.getBoundingClientRect();
   return {background:c.backgroundColor,border:c.borderTopWidth,shadow:c.boxShadow,
@@ -226,6 +232,16 @@ try{
  assert.ok(Math.abs(middle.radius-.68)<.01,"middle distance remains freely available");
  assert.ok(Math.abs(Math.hypot(middle.source.x-middle.center.x,middle.source.y-middle.center.y)-middle.rings[1]/2)<1.1,
   "middle ring passes through icon center without snapping");
+ const acousticMatch=await page.evaluate(()=>{
+  const s=window.SetkaMusicV1.state().active[0],diag=window.SetkaMusicV1.diagnostics().sources[0];
+  const d=Math.hypot(diag.x,diag.z),front=Math.atan2(diag.x,-diag.z);
+  const delta=Math.atan2(Math.sin(front-s.angle),Math.cos(front-s.angle));
+  return {radiusDiff:Math.abs(s.radius-diag.radius),angleDiff:Math.abs(delta),distance:d};
+ });
+ assert.ok(acousticMatch.radiusDiff<1e-8&&acousticMatch.angleDiff<1e-8,
+  "screen drag and HRTF source must agree on radial location and azimuth");
+ assert.ok(acousticMatch.distance>2&&acousticMatch.distance<20,
+  "acoustic distance remains inside physical orbit bounds");
 
 
  assert.equal(await page.locator(".sm-motion").nth(2).locator(".sm-asset-icon").count(),1,"server-supplied counter-motion icon skin displayed as mask (static has no button)");
