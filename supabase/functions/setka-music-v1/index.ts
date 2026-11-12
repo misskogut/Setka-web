@@ -106,22 +106,36 @@ const streamExternalTrack=async(request,origin,id)=>{
   const file=githubOriginalAsset(t);
   if(!file)return json({error:"audio_release_missing"},503,origin);
   // The client sees the complete original file range (accurate Safari duration).
-  // Internally fetch only 2 MiB Yandex ranges at a time, avoiding 500 MiB upstream stalls.
+  // Internally fetch only 2 MiB original GitHub ranges at a time.
   // Forward byte-for-byte, never buffer the whole file or transcode audio.
   const segmentSize=2*1024*1024;
-  // Fetch only the exact original byte ranges from SETKA's verified GitHub
-  // release asset. Never fallback to Yandex, transcode, or alter samples.
+  // Retry only transient upstream failures; never accept a mismatched byte range.
   const source=async(first,last)=>{
-    const res=await fetch(file,{method:"GET",headers:{"range":"bytes="+first+"-"+last},
-      redirect:"follow",signal:AbortSignal.timeout(45000)});
-    if(res.status!==206||!res.body)throw Error("audio_github_release_unavailable");
-    const header=res.headers.get("content-range");
-    const m=header&&/^bytes (\d+)-(\d+)\/(\d+)$/.exec(header);
-    if(!m||Number(m[1])!==first||Number(m[2])!==last||Number(m[3])!==size){
-      await res.body.cancel().catch(()=>{});
-      throw Error("audio_range_mismatch");
+    let lastError;
+    for(let attempt=0;attempt<3;attempt++){
+      if(attempt)await new Promise(done=>setTimeout(done,250*attempt*attempt));
+      try{
+        const res=await fetch(file,{method:"GET",headers:{"range":"bytes="+first+"-"+last},
+          redirect:"follow",signal:AbortSignal.timeout(16000)});
+        if(res.status===206&&res.body){
+          const header=res.headers.get("content-range");
+          const m=header&&/^bytes (\d+)-(\d+)\/(\d+)$/.exec(header);
+          if(!m||Number(m[1])!==first||Number(m[2])!==last||Number(m[3])!==size){
+            await res.body.cancel().catch(()=>{});
+            throw Error("audio_range_mismatch");
+          }
+          return res.body.getReader();
+        }
+        await res.body?.cancel().catch(()=>{});
+        if(![429,500,502,503,504].includes(res.status))
+          throw Error("audio_github_release_unavailable");
+        lastError=Error("audio_github_release_unavailable");
+      }catch(error){
+        if(String(error?.message||error)==="audio_range_mismatch")throw error;
+        lastError=error;
+      }
     }
-    return res.body.getReader();
+    throw lastError||Error("audio_github_release_unavailable");
   };
   let cursor=start,sectionEnd=Math.min(end,start+segmentSize-1),reader;
   try{reader=await source(cursor,sectionEnd)}
