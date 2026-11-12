@@ -6,7 +6,20 @@ import {readFileSync} from "node:fs";
 import {chromium,webkit} from "playwright";
 const API="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-music-v1";
 const FRONT="https://misskogut.github.io/Setka-web/standalone-v34.html";
-const catalog=await fetch(API,{signal:AbortSignal.timeout(18000)}).then(r=>r.json());
+let catalog=null;
+for(let attempt=0;attempt<3;attempt++){
+ try{
+  const response=await fetch(API,{signal:AbortSignal.timeout(30000),cache:"no-store"});
+  if(!response.ok)throw Error("catalog_http_"+response.status);
+  const item=await response.json();
+  if(!item?.ok||!Array.isArray(item.tracks))throw Error("invalid_catalog");
+  catalog=item;break;
+ }catch(error){
+  console.log("LIVE_CATALOG_RETRY",attempt+1,String(error?.message||error).slice(0,110));
+  if(attempt<2)await new Promise(done=>setTimeout(done,500*(attempt+1)));
+ }
+}
+assert.ok(catalog,"production catalog must actually respond with valid original tracks");
 assert.ok(catalog.ok&&Array.isArray(catalog.tracks),"live music catalog");
 assert.ok(catalog.tracks.length>=27&&catalog.tracks.length<=28,"published only verified GitHub audio assets");
 const local=catalog.tracks.find(t=>!t.external_source_path);
