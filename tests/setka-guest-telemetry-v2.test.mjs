@@ -34,9 +34,14 @@ function harness(){
  };
  vm.runInNewContext(source,ctx);
  const flush=async()=>{
+  const before=events.length;
   listeners.get("online")();
   scheduled.pop()();
-  for(let i=0;i<50;i++)await new Promise(resolve=>setImmediate(resolve));
+  // The real WebCrypto SHA-256 call resolves asynchronously. Await the
+  // collector's completion event, not a fixed count of event-loop ticks.
+  for(let i=0;i<120&&events.length===before;i++)
+   await new Promise(resolve=>setTimeout(resolve,10));
+  await new Promise(resolve=>setImmediate(resolve));
  };
  return {flush,requests,events,current,exposures,account:()=>{hasAccount=true},online:()=>{fail=false}};
 }
