@@ -1,4 +1,4 @@
-import {MOTION,MOTION_LABELS,orbitUnit,clampOrbitRadius} from "./standalone-music-audio-v1.mjs?v=14-orbit-centerline-bounds-20261107";
+import {MOTION,MOTION_LABELS,orbitUnit,clampOrbitRadius} from "./standalone-music-audio-v1.mjs?v=15-hrtf-automation-20261112";
 import {uiIconHTML} from "./standalone-music-ui-icons-v2.mjs?v=4-exact-approved-vector-20261106";
 export function createOrbitUI(mixer,trackHTML,uiIcons={}){
  const root=document.createElement("section");root.className="sm-orbits";root.hidden=true;
