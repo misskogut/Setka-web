@@ -136,7 +136,8 @@ function install(){
  power.onclick=()=>{mixer.stopAll();redraw()};root.append(power);library.append(root);
  mixer.changed=message=>{if(message)status=message;if(visible)redraw()};
  mixer.moved=()=>{if(visible&&selected==="orbits")orbit.updatePositions()};
- window.SetkaMusicV1={state:()=>({visible,filter:selected,mode:mixer.mode,speed:mixer.speed,tracks:tracks.length,active:[...mixer.items.values()].map(s=>({id:s.id,level:s.level,angle:s.angle,radius:s.radius,earlyReflections:s.reflections?.length||0}))}),reload,stopAll:()=>mixer.stopAll()};
+ window.SetkaMusicV1={state:()=>({visible,filter:selected,mode:mixer.mode,speed:mixer.speed,tracks:tracks.length,active:[...mixer.items.values()].map(s=>({id:s.id,level:s.level,angle:s.angle,radius:s.radius,earlyReflections:s.nativeOnly?0:s.reflections?.length||0,spatialized:!s.nativeOnly}))}),
+  diagnostics:()=>mixer.diagnostics(),reload,stopAll:()=>mixer.stopAll()};
  window.addEventListener("pageshow",()=>{if(visible)reload()});
  redraw();
 }
