@@ -19,8 +19,8 @@ function randomId(){
  const s=Array.from(b,x=>x.toString(16).padStart(2,"0")).join("");
  return s.slice(0,8)+"-"+s.slice(8,12)+"-"+s.slice(12,16)+"-"+s.slice(16,20)+"-"+s.slice(20);
 }
-function append(type,{patternId=null,trackId=null,durationMs=null,sessionId=activeVisit}={}){
- if(!SUPPORTED.has(type)||signedIn()||!validId(device()))return false;
+function append(type,{patternId=null,trackId=null,durationMs=null,sessionId=activeVisit,allowGuestClose=false}={}){
+ if(!SUPPORTED.has(type)||(signedIn()&&!allowGuestClose)||!validId(device()))return false;
  if(patternId!==null&&!validId(patternId))return false;
  if(type==="pattern_open"&&!patternId)return false;
  if(type==="music_play"&&!validId(trackId))return false;
@@ -39,10 +39,10 @@ function startVisit(){
 function endVisit(){
  if(!activeVisit)return;
  const value=activeVisit;activeVisit=null;
- append("visit_end",{sessionId:value,durationMs:Date.now()-visitStartedAt});
+ append("visit_end",{sessionId:value,durationMs:Date.now()-visitStartedAt,allowGuestClose:true});
 }
 async function flush(){
- if(busy||signedIn()||!validId(device()))return;
+ if(busy||!validId(device()))return;
  const now=Date.now();
  const rows=read().filter(e=>e&&SUPPORTED.has(e.eventType)&&Number.isFinite(Date.parse(e.occurredAt))&&now-Date.parse(e.occurredAt)<=MAX_AGE);
  if(rows.length!==read().length)write(rows);
@@ -85,7 +85,7 @@ window.addEventListener("setka:music-play",e=>{
  if(validId(trackId))append("music_play",{trackId});
 });
 window.addEventListener("setka:v40-account",()=>{
- if(signedIn()){endVisit();return}
+ if(signedIn()){endVisit();schedule(150);return}
  if(!document.hidden)startVisit();
  schedule(150);
 });
@@ -99,7 +99,7 @@ document.addEventListener("visibilitychange",()=>{
  }
 });
 window.addEventListener("pagehide",()=>{endVisit()});
-window.addEventListener("storage",e=>{if(e.key===QUEUE&&!signedIn())schedule(1200)});
+window.addEventListener("storage",e=>{if(e.key===QUEUE)schedule(1200)});
 setInterval(()=>{if(!document.hidden&&!signedIn())startVisit();schedule()},45000);
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",initialize,{once:true});
 else initialize();
