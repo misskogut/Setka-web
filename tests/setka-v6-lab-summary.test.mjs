@@ -38,3 +38,20 @@ test('legacy source kept separate and time never exceeds one day per exposure',(
  assert.throws(()=>summarizeV6([], 'other'),/unknown_source/);
  assert.throws(()=>summarizeV6([],'guest_v40',{days:100}),/invalid_period/);
 });
+
+test('custom interval uses occurred-at, not ingestion-time, and local Saratov days',()=>{
+ const rows=[
+  a('inside','guest-one','2026-11-11T22:30:00Z'),
+  a('before','guest-two','2026-11-11T19:55:00Z'),
+  a('after','guest-three','2026-11-12T00:00:00Z')
+ ];
+ const from='2026-11-11T20:00:00Z',to='2026-11-12T00:00:00Z';
+ const r=summarizeV6(rows,'unified_v2',{days:0,from,to,now:NOW});
+ assert.equal(r.exposures,1);
+ assert.equal(r.guestDevices,1);
+ assert.equal(r.timeline.length,1);
+ assert.equal(r.timeline[0].date,'2026-11-12');
+ assert.equal(r.periodFrom,from.replace('Z','.000Z'));
+ assert.equal(r.periodTo,to.replace('Z','.000Z'));
+ assert.throws(()=>summarizeV6(rows,'unified_v2',{days:0,from:to,to:from,now:NOW}),/invalid_period/);
+});
