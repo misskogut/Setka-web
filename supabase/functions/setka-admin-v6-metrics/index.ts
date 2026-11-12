@@ -1,6 +1,7 @@
 import {createClient} from "https://esm.sh/@supabase/supabase-js@2.49.8";
 import {summarizeV6,V6_SOURCES} from "./analytics-v6.mjs";
 import {summarizeJourneyV3} from "./journey-v3-analytics.mjs";
+import {summarizeOutcomeSessions,summarizePatternTransitions} from "./outcomes-v1.mjs";
 const db=createClient(Deno.env.get("SUPABASE_URL")!,Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,{auth:{persistSession:false,autoRefreshToken:false}});
 const H={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"apikey,authorization,content-type","Access-Control-Allow-Methods":"POST,OPTIONS","Content-Type":"application/json"};
 const response=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status,headers:H});
@@ -55,6 +56,18 @@ Deno.serve(async req=>{
    const report=summarizeV6(rows,source,{days,from,to});
    const journey=source==="unified_v2"?summarizeJourneyV3(rows,{days,from,to,scope:"guest"}):null;
    const accountJourney=source==="unified_v2"?summarizeJourneyV3(rows,{days,from,to,scope:"account"}):null;
+   let outcomes=null,outcomesTruncated=false;
+   if(source==="unified_v2"){
+    // No individual note, symptom text, device or account IDs are read or
+    // returned. Only thresholded subjective before/after aggregates leave.
+    const rq=await db.from("prototype_v34_sessions")
+     .select("started_at,request_key,session_type,completed,pre_state,post_state")
+     .order("started_at",{ascending:false}).limit(5000);
+    if(rq.error)throw rq.error;
+    outcomes=summarizeOutcomeSessions(rq.data||[],{days,from,to});
+    outcomesTruncated=(rq.data||[]).length>=5000;
+   }
+   const transitions=source==="account_v41"?summarizePatternTransitions(rows):null;
    let accountInventory:null|{registeredAccounts:number,existingFavorites:number,recordedSessions:number,verifiedDeviceLinks:number}=null;
    if(source==="account_v41"){
     // These are lifetime inventory counters, never period visits or unique users.
@@ -69,7 +82,7 @@ Deno.serve(async req=>{
      accountInventory={registeredAccounts:registered.count??0,existingFavorites:favorites.count??0,recordedSessions:sessions.count??0,verifiedDeviceLinks:links.count??0};
     }
    }
-   return response({ok:true,...report,...(journey?{journey}:{}),...(accountJourney?{accountJourney}:{}),...(accountInventory?{accountInventory}:{}),truncated,checkedAt:new Date().toISOString(),
+   return response({ok:true,...report,...(journey?{journey}:{}),...(accountJourney?{accountJourney}:{}),...(outcomes?{outcomes,outcomesTruncated}:{}),...(transitions?{transitions}:{}),...(accountInventory?{accountInventory}:{}),truncated,checkedAt:new Date().toISOString(),
      identityScope:source==="account_v41"?"account_ids":source==="unified_v2"?"unlinked_device_or_account_ids":"legacy_guest_keys",
      caveat:"Counts are within this source only. Cross-source unique-user counts and clinical efficacy cannot be inferred."});
   }
