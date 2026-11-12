@@ -78,8 +78,23 @@ async function reload(){
  if(loading)return;
  loading=true;status="";redraw();
  try{
-  const r=await fetch(API,{cache:"no-store"});if(!r.ok)throw Error("unavailable");
-  const d=await r.json();if(!d.ok||!Array.isArray(d.categories)||!Array.isArray(d.tracks))throw Error("invalid_catalog");
+  // A transient Supabase or GitHub Release metadata timeout must not leave
+  // the music panel permanently empty. Always require a valid real catalog.
+  let d=null,lastError=null;
+  for(let attempt=0;attempt<2;attempt++){
+   const controller=new AbortController(),clock=setTimeout(()=>controller.abort(),18000);
+   try{
+    const r=await fetch(API,{cache:"no-store",signal:controller.signal});
+    if(!r.ok)throw Error("unavailable");
+    const response=await r.json();
+    if(!response.ok||!Array.isArray(response.categories)||!Array.isArray(response.tracks))
+     throw Error("invalid_catalog");
+    d=response;break;
+   }catch(error){lastError=error}
+   finally{clearTimeout(clock)}
+   if(attempt===0)await new Promise(done=>setTimeout(done,600));
+  }
+  if(!d)throw lastError||Error("unavailable");
   categories=d.categories;tracks=d.tracks.filter(t=>t.id&&t.audio_url);globalOrder=d.global_order||{track_ids:[]};
   catalogRetryCount=0;clearTimeout(catalogRetryTimer);catalogRetryTimer=null;
   for(const key of UI_ICON_IDS)delete uiIcons[key];
