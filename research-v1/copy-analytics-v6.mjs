@@ -12,13 +12,13 @@ const byId=(data,id)=>(Array.isArray(data?.patterns)?data.patterns:[]).find(p=>p
 export function createV6Analytics({getAdminKey,openPattern,getPatternName}){
  let memory=new Map(),sequence=0;
  const periodDays=period=>period==='today'?1:period==='7'?7:period==='30'?30:period==='90'?90:0;
- const periodText=period=>period==='today'?'Сегодня':period==='7'?'7 дней':period==='30'?'30 дней':period==='90'?'90 дней':'Всё время';
+ const periodText=period=>period==='today'?'Сегодня':period==='7'?'7 дней':period==='30'?'30 дней':period==='90'?'90 дней':period==='custom'?'Выбранные даты':'Всё время';
  const sourceCaption='Источники учитываются автоматически. Повторы между V2, V40 и V41 пока не объединяются.';
  const titles={unified_v2:'V2 · новый поток',guest_v40:'V40 · исторические гости',account_v41:'V41 · аккаунты'};
  const getRecord=(result,source)=>result[source]?.data||null;
  function invalidate(){memory.clear()}
- async function read(period){
-  const days=periodDays(period),key=String(days);
+ async function read(period,from=null,to=null){
+  const days=periodDays(period),key=String(days)+'|'+(period==='custom'?String(from)+'|'+String(to):'');
   const previous=memory.get(key);
   if(previous&&Date.now()-previous.at<50000)return previous.promise;
   const promise=Promise.all(SOURCES.map(async source=>{
@@ -26,7 +26,7 @@ export function createV6Analytics({getAdminKey,openPattern,getPatternName}){
     const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),15000);
     try{
      const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({action:'lab-summary',source,days,adminKey:getAdminKey()}),signal:ctl.signal});
+      body:JSON.stringify({action:'lab-summary',source,days,from:period==='custom'?from:null,to:period==='custom'?to:null,adminKey:getAdminKey()}),signal:ctl.signal});
      const d=await r.json();
      if(!r.ok||d.ok!==true)throw Error('источник временно недоступен');
      return [source,{data:d}];
@@ -73,7 +73,7 @@ export function createV6Analytics({getAdminKey,openPattern,getPatternName}){
    button.addEventListener('click',()=>openPattern(button.dataset.v6Pattern));
   });
  }
- function showHome(period){
+ function showHome(period,from=null,to=null){
   const content=document.getElementById('content');
   if(!content)return;
   const current=++sequence;
@@ -82,7 +82,8 @@ export function createV6Analytics({getAdminKey,openPattern,getPatternName}){
   wrapper.id='setka-v6-overview';
   wrapper.innerHTML='<div class="v6-heading"><div><h2>Использование SETKA</h2><p class="muted small">Общая картина · '+esc(periodText(period))+'</p></div><span class="v6-updated">Обновляем…</span></div><div class="v6-overview-body"><p class="muted">Получаем статистику…</p></div>';
   content.prepend(wrapper);
-  read(period).then(result=>{
+  if(period==='custom'&&(!from||!to)){wrapper.querySelector('.v6-overview-body').textContent='Выберите начало и конец периода.';return}
+  read(period,from,to).then(result=>{
    if(current!==sequence||!wrapper.isConnected)return;
    wrapper.querySelector('.v6-overview-body').innerHTML=overviewHTML(result,period);
    wrapper.querySelector('.v6-updated').textContent='Обновлено';
@@ -91,13 +92,14 @@ export function createV6Analytics({getAdminKey,openPattern,getPatternName}){
    if(wrapper.isConnected)wrapper.querySelector('.v6-overview-body').textContent='Не удалось получить статистику.';
   });
  }
- function showPatternSummary(period){
+ function showPatternSummary(period,from=null,to=null){
   const content=document.getElementById('content');if(!content)return;
   const current=++sequence,wrapper=document.createElement('section');
   wrapper.className='card v6-pattern-overview';wrapper.id='setka-v6-pattern-overview';
   wrapper.innerHTML='<h2>Активность паттернов</h2><p class="muted small">Статистика обновляется автоматически. Откройте любой паттерн ниже для подробностей.</p><div class="v6-pattern-inline muted">Загрузка…</div>';
   content.prepend(wrapper);
-  read(period).then(result=>{
+  if(period==='custom'&&(!from||!to)){wrapper.querySelector('.v6-pattern-inline').textContent='Выберите начало и конец периода.';return}
+  read(period,from,to).then(result=>{
    if(current!==sequence||!wrapper.isConnected)return;
    const v=getRecord(result,'unified_v2'),a=getRecord(result,'account_v41'),h=getRecord(result,'guest_v40');
    wrapper.querySelector('.v6-pattern-inline').innerHTML=
@@ -106,14 +108,14 @@ export function createV6Analytics({getAdminKey,openPattern,getPatternName}){
     '<span><b>'+(a?format(a.exposures):'—')+'</b> аккаунтных V41</span>';
   });
  }
- function showPatternDetail(id,period){
+ function showPatternDetail(id,{period='all',from=null,to=null}={}){
   const target=document.getElementById('detail-content');
   if(!target)return;
   const node=document.createElement('section');
   node.className='card v6-detail';node.id='setka-v6-pattern-detail';
   node.innerHTML='<h3>Использование паттерна</h3><p class="muted small">Обновляем статистику по всем источникам…</p>';
   const header=target.querySelector('.row');if(header)header.after(node);else target.prepend(node);
-  read(period).then(result=>{
+  read(period,from,to).then(result=>{
    if(!node.isConnected)return;
    const v=getRecord(result,'unified_v2'),h=getRecord(result,'guest_v40'),a=getRecord(result,'account_v41');
    const line=(title,data)=>{
@@ -125,10 +127,10 @@ export function createV6Analytics({getAdminKey,openPattern,getPatternName}){
     '<p class="v6-source-note">'+esc(sourceCaption)+'</p>';
   });
  }
- function render(page,{period='all'}={}){
+ function render(page,{period='all',from=null,to=null}={}){
   sequence++;
-  if(page==='home')showHome(period);
-  if(page==='patterns')showPatternSummary(period);
+  if(page==='home')showHome(period,from,to);
+  if(page==='patterns')showPatternSummary(period,from,to);
  }
  return {render,showPatternDetail,invalidate};
 }
