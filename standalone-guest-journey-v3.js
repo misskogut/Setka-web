@@ -1,5 +1,10 @@
 (()=>{
 "use strict";
+// Automated production-page browser checks are not research participants.
+// Preserve local fixture coverage; exclude real HTTPS/public production hosts only.
+if(typeof navigator!=="undefined"&&navigator.webdriver===true&&
+ typeof location!=="undefined"&&/^(?:misskogut\.github\.io|(?:www\.)?setka-app\.com)$/.test(location.hostname))return;
+
 // Privacy-minimal guest journey telemetry for SETKA Web.
 // Existing exposure collector remains independent and unchanged.
 // Never sends notes, symptoms, audio data, gestures, account credentials or raw configs.
