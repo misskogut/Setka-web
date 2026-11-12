@@ -106,6 +106,8 @@ on:
       - 'supabase/functions/setka-standalone-v34/index.ts'
       - 'supabase/functions/setka-tester-archive-v37/index.ts'
       - 'tests/standalone-v34-browser-smoke.mjs'
+      - 'research-v1/copy-analytics-v6.mjs'
+      - 'tests/setka-v6-lab-browser-smoke.mjs'
       - 'tests/setka-ios-rapid-gesture-smoke.mjs'
       - 'tests/setka-gameplay-touch-write-gate.test.mjs'
       - 'standalone-replay-capture-v1.js'
@@ -215,6 +217,8 @@ jobs:
       # A gameplay WebContent crash must fail fast before expensive analytics/UI suites.
       - run: node tests/setka-ios-rapid-gesture-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/setka-ios-rapid-gesture-smoke.mjs
+      - run: node tests/setka-v6-lab-browser-smoke.mjs
+      - run: SETKA_BROWSER=webkit node tests/setka-v6-lab-browser-smoke.mjs
       - run: node tests/research-management-v1-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/research-management-v1-browser-smoke.mjs
       # Fail fast on cross-surface contract issues before slower visual suites.
