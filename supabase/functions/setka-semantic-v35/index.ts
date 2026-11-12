@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {linkVerifiedGuestDevice} from "./identity-link-v1.mjs";
+import {persistAccountJourney} from "./journey-account-v1.mjs";
 const db=createClient(Deno.env.get("SUPABASE_URL")!,Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,{auth:{persistSession:false,autoRefreshToken:false}});
 const CHANNEL="yulia_lab_v34";
 const H={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type","Access-Control-Allow-Methods":"POST, OPTIONS","Content-Type":"application/json; charset=utf-8"};
@@ -80,11 +81,19 @@ Deno.serve(async req=>{
   if(req.method!=="POST")return J({error:"method_not_allowed"},405);
   try{
     const b=await req.json().catch(()=>({}));
-    if(T(b.action,40)!=="sync"||T(b.channel,80)!==CHANNEL)return J({error:"forbidden"},403);
+    const action=T(b.action,40);
+    if(!["sync","journey-v1"].includes(action)||T(b.channel,80)!==CHANNEL)return J({error:"forbidden"},403);
     const deviceId=T(b.deviceId,180),token=T(b.sessionToken,200);
     if(!deviceId)return J({error:"missing_device"},400);
     const testerId=await auth(token,deviceId);
-    if(!testerId)return J({ok:true,ignored:true,reason:"authenticated_tester_required",favorites:0,patternLikes:0,acceptedSessions:0,acceptedExposures:0,privacyMode:"local_guest"});
+    if(!testerId){
+      if(action==="journey-v1")return J({error:"auth_required"},401);
+      return J({ok:true,ignored:true,reason:"authenticated_tester_required",favorites:0,patternLikes:0,acceptedSessions:0,acceptedExposures:0,privacyMode:"local_guest"});
+    }
+    if(action==="journey-v1"){
+      const result=await persistAccountJourney(db,{deviceId,testerId,events:b.events});
+      return J(result,result.ok?200:result.status||400);
+    }
 
     const ids=await patternIds();
     const favorites=[];const seen=new Set<string>();let rejectedFavorites=0,rejectedExposures=0;
