@@ -47,7 +47,7 @@ try{
     ...(guest?{usageMode:{duringSession:3,justWatch:5}}:account?{usageMode:{duringSession:1,justWatch:3},
      accountInventory:{registeredAccounts:11,existingFavorites:17,recordedSessions:4,verifiedDeviceLinks:0}}:{}),
     rowsConsidered:8,duplicateRows:0,excludedRows:0,
-    ...(guest?{journey:{visits:3,activeGuestDevices:2,firstSeenGuestDevices:1,returningGuestDevices:1,patternOpens:5,favoriteSaves:2,musicStarts:1,foregroundMs:90000,timeline:[{date:"2026-11-12",visits:3}],patternOpensById:[{pattern_id:"gravity-atom",opens:5}]},accountJourney:{visits:4,activeAccounts:2,firstSeenAccounts:1,returningAccounts:1,musicStarts:3,foregroundMs:40000,timeline:[{date:"2026-11-12",visits:4}]},
+    ...(guest?{journey:{lastJourneyReceiptAt:'2026-11-12T07:10:00Z',journeyEventsInPeriod:8,visits:3,activeGuestDevices:2,firstSeenGuestDevices:1,returningGuestDevices:1,patternOpens:5,favoriteSaves:2,musicStarts:1,foregroundMs:90000,timeline:[{date:"2026-11-12",visits:3}],patternOpensById:[{pattern_id:"gravity-atom",opens:5}]},accountJourney:{lastJourneyReceiptAt:null,journeyEventsInPeriod:0,visits:4,activeAccounts:2,firstSeenAccounts:1,returningAccounts:1,musicStarts:3,foregroundMs:40000,timeline:[{date:"2026-11-12",visits:4}]},
     outcomes:{trackedSessions:10,completedSessions:8,pairedSessions:7,overall:{meanPre:2,meanPost:3,meanChange:1},groups:[{requestKey:'sleep',pairedSessions:5,meanPre:2,meanPost:3}]}}:
     account?{transitions:{sessionsWithSequence:9,transitions:[{fromPattern:'gravity-atom',toPattern:'medusa',sessionCount:4}]}}:{})};
   await route.fulfill({status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*','access-control-allow-headers':'content-type'},body:JSON.stringify(result)});
@@ -62,6 +62,9 @@ try{
  assert.match(dashboard,/Вернувшиеся гости/);
  assert.match(dashboard,/Вернувшиеся аккаунты/);
  assert.match(dashboard,/Визиты аккаунтов/);
+ assert.match(dashboard,/Поступление событий на сервер/);
+ assert.match(dashboard,/последний приём/);
+ assert.match(dashboard,/новых событий пока нет/);
  assert.equal(await page.locator('#setka-v6-overview .v6-day-pair').count()>0,true);
  assert.match(dashboard,/Посещения по дням/);
  assert.match(dashboard,/Аккаунты в приложении/);
