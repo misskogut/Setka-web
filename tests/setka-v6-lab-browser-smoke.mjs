@@ -43,15 +43,19 @@ try{
     guestDevices:guest?2:0,accountActors:0,recordedMs:guest?155000:250000,patternCount:1,
     timeline:[{date:'2026-11-12',exposures:8,recorded_ms:155000}],
     patterns:[{pattern_id:'gravity-atom',exposures:guest?8:account?4:15,recorded_ms:guest?155000:250000}],
-    rowsConsidered:8,duplicateRows:0,excludedRows:0};
+    rowsConsidered:8,duplicateRows:0,excludedRows:0,
+    ...(guest?{journey:{visits:3,activeGuestDevices:2,firstSeenGuestDevices:1,returningGuestDevices:1,patternOpens:5,favoriteSaves:2,musicStarts:1,foregroundMs:90000,timeline:[{date:"2026-11-12",visits:3}],patternOpensById:[{pattern_id:"gravity-atom",opens:5}]}}:{})};
   await route.fulfill({status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*','access-control-allow-headers':'content-type'},body:JSON.stringify(result)});
  });
  await page.goto(base+'/standalone-research-admin-copy-v6.html');
  await page.getByText('Использование SETKA').waitFor();
- await page.waitForFunction(()=>document.querySelector('.v6-overview-body')?.textContent?.includes('2 гостевых')||document.querySelector('.v6-overview-body')?.textContent?.includes('Гостевые устройства V2'));
+ await page.waitForFunction(()=>document.querySelector('.v6-overview-body')?.textContent?.includes('Гостевые устройства'));
  const dashboard=await page.locator('#setka-v6-overview').innerText();
  assert.match(dashboard,/Просмотры/);
- assert.match(dashboard,/Гости/);
+ assert.match(dashboard,/Гостевые устройства/);
+ assert.match(dashboard,/Визиты/);
+ assert.match(dashboard,/Возвращались/);
+ assert.match(dashboard,/Музыка/);
  assert.match(dashboard,/Аккаунты/);
  assert.match(dashboard,/V40/);
  assert.match(dashboard,/V41/);
@@ -63,10 +67,10 @@ try{
  await page.getByText('Использование паттерна · Атом гравитации').waitFor();
  assert.match(await page.locator('#setka-v6-pattern-detail').innerText(),/Исторические гости V40/);
  await page.evaluate(()=>window.renderV6('home','7'));
- await page.waitForFunction(()=>document.querySelector('.v6-overview-body')?.textContent?.includes('Гостевые устройства V2'));
+ await page.waitForFunction(()=>document.querySelector('.v6-overview-body')?.textContent?.includes('Гостевые устройства'));
  assert.ok(calls.some(c=>c.days===7),'period flows to server without any source picker');
  await page.evaluate(()=>window.renderV6('home','custom','2026-11-11T20:00:00Z','2026-11-12T00:00:00Z'));
- await page.waitForFunction(()=>document.querySelector('.v6-overview-body')?.textContent?.includes('Гостевые устройства V2'));
+ await page.waitForFunction(()=>document.querySelector('.v6-overview-body')?.textContent?.includes('Гостевые устройства'));
  assert.ok(calls.some(c=>c.from==='2026-11-11T20:00:00Z'&&c.to==='2026-11-12T00:00:00Z'),'custom dates forwarded automatically');
  await page.evaluate(()=>window.renderV6('patterns','7'));
  await page.getByText('Активность паттернов').waitFor();
