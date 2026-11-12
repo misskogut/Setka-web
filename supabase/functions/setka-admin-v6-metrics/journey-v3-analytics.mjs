@@ -18,7 +18,7 @@ export function summarizeJourneyV3(rows,{days=30,from=null,to=null,now=Date.now(
  // the selected date range. All identities here are *device IDs*, not people.
  for(const row of Array.isArray(rows)?rows:[]){
   const at=time(row?.occurred_at),device=row?.device_id,type=row?.event_type;
-  if(at===null||at>now+300000||!device||!TYPES.has(type)||!row?.event_id){invalid++;continue}
+  if(at===null||at>now+300000||!device||!TYPES.has(type)||!row?.event_id||row.actor_type==="account"){invalid++;continue}
   const key=String(row.event_id);
   if(seen.has(key)){duplicates++;continue}seen.add(key);
   const d=day(at),id=String(device);
