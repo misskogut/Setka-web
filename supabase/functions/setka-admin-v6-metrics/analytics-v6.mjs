@@ -57,6 +57,6 @@ export function summarizeV6(rows,source,{days=30,now=Date.now(),from=null,to=nul
     average_ms:p.exposures?Math.round(p.recorded_ms/p.exposures):0,
     median_ms:Math.round(median),repeat_identities:[...p.viewsByActor.values()].filter(n=>n>=2).length};
   })
-   .sort((a,b)=>b.recorded_ms-a.recorded_ms||b.exposures-a.exposures||a.pattern_id.localeCompare(b.pattern_id)).slice(0,12)
+   .sort((a,b)=>b.recorded_ms-a.recorded_ms||b.exposures-a.exposures||a.pattern_id.localeCompare(b.pattern_id))
  };
 }
