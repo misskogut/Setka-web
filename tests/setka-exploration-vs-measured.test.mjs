@@ -75,8 +75,9 @@ test('V2 separately counts outcome and exploration exposures, preserving unknown
  const ui=read('research-v1/copy-analytics-v6.mjs');
  assert.match(ui,/Во время сессий/);
  assert.match(ui,/Просто посмотреть/);
- assert.match(ui,/sessionBreakdown\.outcome\|\|0\)\+\(v\.sessionBreakdown\.exploration\|\|0/);
- assert.match(ui,/sessionBreakdown\.unbound/);
+ assert.match(ui,/usageMode\.duringSession/);
+ assert.match(ui,/usageMode\.justWatch/);
+ assert.match(ui,/accountInventory/);
 });
 test('minimal transport sends only session type, never note contents',()=>{
  const api=read('supabase/functions/setka-guest-events-v2/index.ts'),guest=read('standalone-guest-telemetry-v2.js');
