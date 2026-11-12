@@ -111,7 +111,17 @@ try{
  page=await newPage();
  await page.locator("#setka-real-probe").count().then(n=>{if(n!==0)throw Error("probe_button_leaked")});
  await page.locator("#setkaMusicPagerButton").click();
- await page.locator(".sm-track").first().waitFor({timeout:22000});
+ // A transient catalog 5xx must not become a permanent empty music page.
+ // Retry the real production API, and still require the exact full catalog and
+ // decoded advancing audio afterwards; no fake tracks or media callbacks.
+ let hasTracks=false;
+ for(let attempt=0;attempt<3;attempt++){
+  hasTracks=await page.locator(".sm-track").first().waitFor({timeout:7000})
+   .then(()=>true).catch(()=>false);
+  if(hasTracks)break;
+  await page.evaluate(()=>window.SetkaMusicV1?.reload?.());
+ }
+ assert.ok(hasTracks,"actual SETKA catalog unavailable after three real API attempts");
  assert.equal(await page.locator(".sm-track").count(),catalog.tracks.length,"all playable GitHub tracks visible in UI");
  const actual=page.locator(".sm-track").filter({hasText:remote.title});
  const trackButton=await actual.count()===1?actual:page.locator('.sm-track[aria-label^="Утренний лес"]');
