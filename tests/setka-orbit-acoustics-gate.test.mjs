@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {orbitUnit,orbitDepthProfile,orbitEarlyReflectionProfile,clampOrbitRadius,ORBIT_RADIUS_MIN,ORBIT_RADIUS_MAX} from '../standalone-music-audio-v1.mjs';
+import {orbitUnit,orbitDepthProfile,orbitEarlyReflectionProfile,clampOrbitRadius,ORBIT_RADIUS_MIN,ORBIT_RADIUS_MAX,scheduleOrbitParam,SetkaMusicMixer} from '../standalone-music-audio-v1.mjs';
 const EPS=1e-10;
 test('visual orbit cardinal angles match acoustic coordinates',()=>{
  const checks=[[0,0,-1],[Math.PI/2,1,0],[Math.PI,0,1],[3*Math.PI/2,-1,0]];
@@ -34,4 +34,30 @@ test('early reflections remain physical and bounded at 3600 sampled placements',
    assert.ok(q.pathLength>0);
   }
  }
+});
+
+test('rapid HRTF drag positions cancel stale AudioParam automation before new targets',()=>{
+ const calls=[];
+ const modern={cancelAndHoldAtTime:t=>calls.push(['hold',t]),setTargetAtTime:(v,t,s)=>calls.push(['target',v,t,s])};
+ for(let i=0;i<40;i++)assert.equal(scheduleOrbitParam(modern,Math.sin(i),i*.012,.012),true);
+ assert.equal(calls.length,80);
+ assert.equal(calls[0][0],'hold');
+ assert.equal(calls[1][0],'target');
+ const oldCalls=[],legacy={cancelScheduledValues:t=>oldCalls.push(['cancel',t]),setTargetAtTime:(v,t,s)=>oldCalls.push(['target',v,t,s])};
+ scheduleOrbitParam(legacy,1,1.5,.006);
+ assert.deepEqual(oldCalls.map(x=>x[0]),['cancel','target']);
+ assert.equal(scheduleOrbitParam(legacy,Number.NaN,1.5,.01),false);
+});
+test('diagnostic does not falsely report spatial audio when WebKit large WAV uses native element',()=>{
+ const mixer=new SetkaMusicMixer();
+ mixer.items.set('WAV-1',{id:'WAV-1',angle:0,radius:.62,nativeOnly:true,panner:{panningModel:'HRTF'},reflections:[{},{}]});
+ mixer.items.set('small-1',{id:'small-1',angle:Math.PI/2,radius:.82,nativeOnly:false,panner:{panningModel:'HRTF'},reflections:[{},{}]});
+ mixer.ctx={state:'running',baseLatency:.013,outputLatency:.017,createPanner:()=>{}};
+ const d=mixer.diagnostics();
+ assert.equal(d.baseLatencyMs,13);
+ assert.equal(d.outputLatencyMs,17);
+ assert.equal(d.sources.find(x=>x.trackId==='WAV-1').hrtfSpatialized,false);
+ assert.equal(d.sources.find(x=>x.trackId==='small-1').hrtfSpatialized,true);
+ assert.equal(d.sources.find(x=>x.trackId==='WAV-1').earlyReflectionCount,0);
+ assert.match(d.warning,/native stereo/);
 });
