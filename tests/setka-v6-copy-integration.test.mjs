@@ -21,3 +21,14 @@ test('original research admin retains its own entrypoint',()=>{
  assert.match(stableHtml,/research-v1\/app\.mjs/);
  assert.doesNotMatch(stableHtml,/research-v1\/copy-app-v6\.mjs/);
 });
+
+test('real V6 lab has source-scoped API, daily chart, period and source selectors',()=>{
+ assert.match(copy,/call\('lab-summary'/);
+ assert.match(copy,/id='setka-v6-lab-tools'/);
+ assert.match(copy,/id="setka-v6-lab-days"/);
+ assert.match(copy,/id="setka-v6-lab-source"/);
+ assert.match(copy,/function renderLab\(d\)/);
+ assert.match(copy,/Динамика просмотров по дням/);
+ assert.match(copy,/не дедуплицированы между собой/);
+ assert.doesNotMatch(copy,/здесь отображается структура V6/);
+});

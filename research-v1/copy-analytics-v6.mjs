@@ -7,7 +7,7 @@ if(location.pathname.endsWith('/standalone-research-admin-copy-v6.html') || new 
   {id:'v6-source-quality',version:'1',section:'patterns',label:'Проверка источников'},
   {id:'v6-guest-path',version:'1',section:'participants',label:'Гостевая телеметрия V2'},
   {id:'v6-historical-sync',version:'1',section:'home',label:'Контроль синхронизации V34'},
-  {id:'v6-research-lab',version:'1',section:'research',label:'Лаборатория V6'}
+  {id:'v6-research-lab',version:'2',section:'research',label:'Лаборатория · реальные данные'}
  ];
  const readKey=item=>'setka-copy-seen:'+item.id+':'+item.version;
  const isSeen=item=>{try{return localStorage.getItem(readKey(item))==='1'}catch(_){return false}};
@@ -36,16 +36,16 @@ if(location.pathname.endsWith('/standalone-research-admin-copy-v6.html') || new 
  const box=document.createElement('section');
  box.id='setka-copy-v6-analytics';
  box.style.cssText='position:relative;width:100%;overflow:auto;background:#161616;color:#fff;border:1px solid #777;border-radius:14px;padding:18px;box-shadow:none;font:13px/1.5 system-ui';
- box.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><strong><span data-setka-new-id="v6-pattern-analytics">NEW</span> Аналитика V6</strong><button id="setka-copy-toggle" type="button" style="color:#fff;background:#333;border:1px solid #777;border-radius:8px;padding:5px 10px">Развернуть</button></div><div id="setka-copy-content" hidden><p>Новые источники: исторические гости V40, аккаунты V41, единые события V2. Участники разных источников не суммируются.</p><label>Источник <select id="setka-copy-source" style="color:#fff;background:#333;padding:6px"><option value="guest_v40">Гости V40</option><option value="account_v41">Аккаунты V41</option><option value="unified_v2">Единый реестр V2</option></select></label> <button id="setka-copy-refresh" type="button" style="padding:6px;background:#333;color:#fff;border:1px solid #777">Обновить</button><div id="setka-copy-output" role="status"></div><div id="setka-copy-quality"></div></div>';
+ box.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><strong><span data-setka-new-id="v6-pattern-analytics">NEW</span> Аналитика V6</strong><button id="setka-copy-toggle" type="button" style="color:#fff;background:#333;border:1px solid #777;border-radius:8px;padding:5px 10px">Развернуть</button></div><div id="setka-copy-content" hidden><p>Новые источники: исторические гости V40, аккаунты V41, единые события V2. Участники разных источников не суммируются.</p><label>Источник <select id="setka-copy-source" style="color:#fff;background:#333;padding:6px"><option value="guest_v40">Гости V40</option><option value="account_v41">Аккаунты V41</option><option value="unified_v2">События V2 · без связки аккаунтов</option></select></label> <button id="setka-copy-refresh" type="button" style="padding:6px;background:#333;color:#fff;border:1px solid #777">Обновить</button><div id="setka-copy-output" role="status"></div><div id="setka-copy-quality"></div></div>';
  host.appendChild(box);
  const content=box.querySelector('#setka-copy-content'),output=box.querySelector('#setka-copy-output'),quality=box.querySelector('#setka-copy-quality');
  const key=()=>{try{return sessionStorage.getItem('setka-research:admin-key:v1')||localStorage.getItem('setka-research:admin-key:v1')||''}catch(_){return ''}};
- const call=async action=>{const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),12000);try{const response=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,source:box.querySelector('#setka-copy-source').value,adminKey:key()}),signal:controller.signal});const data=await response.json();if(!response.ok||data.ok!==true)throw Error(data.error||'server_error');return data}finally{clearTimeout(timer)}};
+ const call=async(action,opts={})=>{const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),12000);try{const response=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,source:opts.source||box.querySelector('#setka-copy-source').value,days:opts.days??30,adminKey:key()}),signal:controller.signal});const data=await response.json();if(!response.ok||data.ok!==true)throw Error(data.error||'server_error');return data}finally{clearTimeout(timer)}};
  let seq=0;
  async function load(){const n=++seq;output.textContent='Загружаем статистику…';quality.textContent='';if(!key()){output.textContent='Для статистики необходимо войти в админку.';return}
  try{const d=await call('pattern-summary');if(n!==seq)return;const items=Array.isArray(d.items)?d.items:[];output.innerHTML='<p>Источник: '+escape(d.source)+' · Паттернов: '+items.length+(d.truncated?' · Выборка неполная':'')+'</p><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th>Паттерн</th><th>Экспозиции</th><th>Участники*</th><th>Минуты</th></tr></thead><tbody>'+items.map(x=>'<tr><td>'+escape(x.pattern_id)+'</td><td>'+escape(x.exposures)+'</td><td>'+escape(x.unique_participants)+'</td><td>'+escape((Number(x.active_ms||0)/60000).toFixed(1))+'</td></tr>').join('')+'</tbody></table></div><small>* В пределах выбранного источника, без межисточниковой дедупликации.</small>';}
  catch(e){if(n===seq)output.textContent='Статистика недоступна: '+String(e.message||e)}
- try{const d=await call('quality');if(n!==seq)return;const sources=Array.isArray(d.sources)?d.sources:[];quality.innerHTML='<p><strong><span data-setka-new-id="v6-source-quality">NEW</span> Проверка источников</strong></p><ul>'+sources.map(x=>'<li>'+escape(x.table)+': '+escape(x.error?'недоступен':x.count)+'</li>').join('')+'</ul><small>Сквозная доставка V2 не подтверждена.</small>';refreshBadges()}catch(e){if(n===seq)quality.textContent='Проверка источников недоступна: '+String(e.message||e)}}
+ try{const d=await call('quality');if(n!==seq)return;const sources=Array.isArray(d.sources)?d.sources:[];quality.innerHTML='<p><strong><span data-setka-new-id="v6-source-quality">NEW</span> Проверка источников</strong></p><ul>'+sources.map(x=>'<li>'+escape(x.table)+': '+escape(x.error?'недоступен':x.count)+'</li>').join('')+'</ul><small>События гостей V2 поступают; подтверждённое объединение с аккаунтами пока отсутствует.</small>';refreshBadges()}catch(e){if(n===seq)quality.textContent='Проверка источников недоступна: '+String(e.message||e)}}
  box.querySelector('#setka-copy-toggle').onclick=()=>{content.hidden=!content.hidden;box.querySelector('#setka-copy-toggle').textContent=content.hidden?'Развернуть':'Свернуть';if(!content.hidden){markSeen(newItems[0]);load()}};
  quality.addEventListener('click',()=>markSeen(newItems[1]));
  box.querySelector('#setka-copy-refresh').onclick=()=>{markSeen(newItems[1]);load()};
@@ -58,14 +58,52 @@ if(location.pathname.endsWith('/standalone-research-admin-copy-v6.html') || new 
  host.appendChild(extra);
  for(const btn of extra.querySelectorAll('[data-v6-view]'))btn.style.cssText='padding:7px;background:#333;color:#fff;border:1px solid #777;border-radius:7px';
  const moreBody=extra.querySelector('#setka-copy-more-body'),moreResults=extra.querySelector('#setka-copy-more-results');
+ const labTools=document.createElement('div');
+ labTools.id='setka-v6-lab-tools';
+ labTools.hidden=true;
+ labTools.style.cssText='display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:14px 0;';
+ labTools.innerHTML='<label style="color:#ddd;min-width:180px">Источник<select id="setka-v6-lab-source" style="display:block;width:100%;background:#333;color:#fff;padding:7px;margin-top:6px"><option value="unified_v2">V2 · события устройств</option><option value="account_v41">V41 · аккаунты</option><option value="guest_v40">V40 · исторические гости</option></select></label><label style="color:#ddd;min-width:100px">Период<select id="setka-v6-lab-days" style="display:block;width:100%;background:#333;color:#fff;padding:7px;margin-top:6px"><option value="7">7 дней</option><option value="30" selected>30 дней</option><option value="90">90 дней</option><option value="0">Всё время</option></select></label><button type="button" id="setka-v6-lab-refresh" style="background:#333;color:#fff">Обновить</button>';
+ moreResults.before(labTools);
+ const labSource=labTools.querySelector('#setka-v6-lab-source'),labDays=labTools.querySelector('#setka-v6-lab-days');
+ const number=v=>Number(v||0).toLocaleString('ru-RU');
+ const sourceTitles={unified_v2:'События V2',account_v41:'Аккаунты V41',guest_v40:'Гости V40'};
+ function renderLab(d){
+  const events=Number(d.exposures)||0,identities=Number(d.distinctIdentities)||0,ms=Number(d.recordedMs)||0;
+  const daily=Array.isArray(d.timeline)?d.timeline:[];
+  const top=Array.isArray(d.patterns)?d.patterns:[];
+  const max=Math.max(1,...daily.map(x=>Number(x.exposures)||0));
+  const bars=daily.map(x=>{
+   const n=Math.max(0,Number(x.exposures)||0),h=n?Math.max(5,Math.round(n/max*100)):1;
+   return '<div title="'+escape(x.date+': '+n+' просмотров')+'" style="flex:1 0 9px;max-width:26px;height:100%;display:flex;align-items:end"><div style="width:100%;height:'+h+'%;background:'+(n?'#77cfaa':'#444')+';border-radius:2px 2px 0 0"></div></div>';
+  }).join('');
+  const metric=(label,value)=>'<div style="background:#222;border:1px solid #444;border-radius:10px;padding:13px;min-width:120px;flex:1"><div style="font-size:11px;color:#bbb">'+label+'</div><strong style="display:block;font-size:23px;font-weight:500;margin-top:4px">'+escape(value)+'</strong></div>';
+  const latest=d.lastIngestAt?new Date(d.lastIngestAt).toLocaleString('ru-RU',{timeZone:'Europe/Samara'}):'нет';
+  const scope= d.source==='account_v41'?'Аккаунты внутри V41':d.source==='guest_v40'?'Гостевые ключи внутри V40':'Идентификаторы устройств/аккаунтов внутри V2';
+  const warning=d.truncated?'<p style="color:#ffcc88">Выборка ограничена: итоговые значения неполные.</p>':'';
+  const list=top.map(x=>'<tr><td>'+escape(x.pattern_id)+'</td><td>'+number(x.exposures)+'</td><td>'+number(Math.round(Number(x.recorded_ms||0)/60000))+'</td></tr>').join('');
+  moreResults.innerHTML='<div style="margin-top:12px"><strong style="font-size:16px">Лаборатория V6 · '+escape(sourceTitles[d.source]||d.source)+'</strong><p style="color:#aaa;margin-top:6px">Реальные события, период '+escape(d.periodDays?String(d.periodDays)+' дней':'всё время')+' · часовой пояс Саратов (UTC+4)</p></div>'+
+  '<div style="display:flex;flex-wrap:wrap;gap:8px;margin:15px 0">'+metric('Просмотры',number(events))+metric(scope,number(identities))+metric('Минуты просмотра',number(Math.round(ms/60000)))+metric('Паттерны',number(d.patternCount))+'</div>'+
+  '<h4 style="font-size:13px;margin:20px 0 8px">Динамика просмотров по дням</h4>'+
+  (daily.length?'<div role="img" aria-label="Гистограмма просмотров по дням" style="display:flex;align-items:end;gap:3px;height:110px;overflow-x:auto;padding:8px 0;border-bottom:1px solid #555">'+bars+'</div><div style="display:flex;justify-content:space-between;color:#aaa;font-size:10px"><span>'+escape(daily[0].date)+'</span><span>'+escape(daily.at(-1).date)+'</span></div>':'<p style="color:#aaa">Данных за период нет.</p>')+
+  '<h4 style="font-size:13px;margin:20px 0 6px">Паттерны по времени просмотра</h4>'+
+  (list?'<div style="overflow:auto"><table style="width:100%;color:#fff"><thead><tr><th>Паттерн</th><th>Просмотры</th><th>Минуты</th></tr></thead><tbody>'+list+'</tbody></table></div>':'<p style="color:#aaa">Нет зарегистрированных просмотров.</p>')+
+  warning+'<p style="color:#bbb;font-size:11px;margin-top:12px">Строк прочитано: '+number(d.rowsConsidered)+' · повторов исключено: '+number(d.duplicateRows)+' · вне периода/формата: '+number(d.excludedRows)+' · последнее получение/обновление: '+escape(latest)+'.</p>'+
+  '<p style="color:#bbb;font-size:11px">Источники не объединены и не дедуплицированы между собой. Это измерения использования, а не доказательство эффективности или терапевтического эффекта.</p>';
+ }
+
  extra.querySelector('#setka-copy-more-toggle').onclick=()=>{moreBody.hidden=!moreBody.hidden;extra.querySelector('#setka-copy-more-toggle').textContent=moreBody.hidden?'Развернуть':'Свернуть'};
  const historicalApi='https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-standalone-v34';
  async function loadMore(view){
   const item=newItems.find(x=>x.id===(view==='lab'?'v6-research-lab':view==='guests'?'v6-guest-path':'v6-historical-sync'));
   if(item)markSeen(item);
+  labTools.hidden=view!=='lab';
   moreResults.textContent='Загрузка…';
-  if(view==='lab'){moreResults.innerHTML='<p><strong>Лаборатория V6</strong></p><p>Раздельные направления: паттерны, путь пользователя, таймер и удержание, симптомы, заметки, запросы и эффект, физиология. Исторические инструменты уже есть в исследовательской админке; здесь отображается структура V6, а не выдуманные результаты.</p><p>Статистика паттернов доступна в панели «Аналитика V6».</p>';return}
   if(!key()){moreResults.textContent='Сначала войдите в админку.';return}
+  if(view==='lab'){
+   try{const d=await call('lab-summary',{source:labSource.value,days:Number(labDays.value)});renderLab(d)}
+   catch(e){moreResults.textContent='Не удалось загрузить измерения: '+String(e.message||e)}
+   return;
+  }
   try{
    if(view==='sync'){
     const response=await fetch(historicalApi,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'admin-overview',adminKey:key(),channel:'yulia_lab_v34'})});
@@ -80,6 +118,9 @@ if(location.pathname.endsWith('/standalone-research-admin-copy-v6.html') || new 
   }catch(e){moreResults.textContent='Источник недоступен: '+String(e.message||e)}
  }
  for(const btn of extra.querySelectorAll('[data-v6-view]'))btn.onclick=()=>loadMore(btn.dataset.v6View);
+ labSource.onchange=()=>loadMore('lab');
+ labDays.onchange=()=>loadMore('lab');
+ labTools.querySelector('#setka-v6-lab-refresh').onclick=()=>loadMore('lab');
  // Both V6 sections now participate in normal page flow on mobile and desktop.
  // Make the badges on mobile navigation visible even with legacy .nav span rules.
  const style=document.createElement('style');style.textContent='.nav .setka-copy-new-badge{color:#fff!important;font-size:10px!important;line-height:1.5!important;flex-shrink:0!important}.nav[data-page]{gap:6px!important}';document.head.appendChild(style);
