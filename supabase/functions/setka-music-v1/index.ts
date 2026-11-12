@@ -187,17 +187,23 @@ const streamExternalTrack=async(request,origin,id)=>{
     "content-length":String(end-start+1)}});
 };
 const catalogue=async manage=>{
-  const cats=await rowQuery("setka_music_categories_v1","select=id,title,icon_path,sort_order,visible,is_system,updated_at"+(manage?"":"&visible=eq.true")+"&order=sort_order.asc,id.asc");
-  const icons=await rowQuery("setka_music_ui_icons_v1","select=slot,icon_path,updated_at&order=slot.asc");
-  let tracks=await rowQuery("setka_music_tracks_v1","select=id,title,audio_path,icon_key,icon_path,category_ids,sort_order,published,loop,duration_seconds,revision,updated_at,external_source_path,external_source_hash,external_source_bytes"+(manage?"":"&published=eq.true")+"&order=sort_order.asc,created_at.asc");
-  const availableAssets=await musicReleaseAssets();
+  // Independent reads run together; serial REST calls followed by a GitHub
+  // metadata wait could exceed the browser's 15-second catalog deadline.
+  const [cats,icons,sourceTracks,availableAssets,hiddenIcons,globalRows,stats]=await Promise.all([
+    rowQuery("setka_music_categories_v1","select=id,title,icon_path,sort_order,visible,is_system,updated_at"+(manage?"":"&visible=eq.true")+"&order=sort_order.asc,id.asc"),
+    rowQuery("setka_music_ui_icons_v1","select=slot,icon_path,updated_at&order=slot.asc"),
+    rowQuery("setka_music_tracks_v1","select=id,title,audio_path,icon_key,icon_path,category_ids,sort_order,published,loop,duration_seconds,revision,updated_at,external_source_path,external_source_hash,external_source_bytes"+(manage?"":"&published=eq.true")+"&order=sort_order.asc,created_at.asc"),
+    musicReleaseAssets(),
+    manage?rowQuery("setka_music_hidden_icons_v1","select=icon_key&order=icon_key.asc"):Promise.resolve([]),
+    rowQuery("setka_music_global_order_v1","select=id,track_ids,revision,updated_at&id=eq.1"),
+    manage?rowQuery("setka_music_track_stats_v1","select=track_id,plays,completions,plays_7d,last_activity_at"):Promise.resolve([])
+  ]);
+  let tracks=sourceTracks;
   if(!manage&&availableAssets)tracks=tracks.filter(t=>isOnGitHub(t,availableAssets));
-  const hiddenIcons=manage?await rowQuery("setka_music_hidden_icons_v1","select=icon_key&order=icon_key.asc"):[];
-  const globalRows=await rowQuery("setka_music_global_order_v1","select=id,track_ids,revision,updated_at&id=eq.1");
   const visible=new Set(tracks.map(t=>t.id));
   const record=globalRows[0]||{id:1,track_ids:[],revision:1};
   const global_order={...record,track_ids:(record.track_ids||[]).filter(id=>visible.has(id))};
-  const stats=manage?await rowQuery("setka_music_track_stats_v1","select=track_id,plays,completions,plays_7d,last_activity_at"):[];
+
   return {ok:true,categories:cats,ui_icons:icons.map(i=>({...i,icon_url:PROJECT+"/storage/v1/object/public/"+BUCKET+"/"+i.icon_path})),tracks:tracks.map(t=>({...t,release_uploaded:isOnGitHub(t,availableAssets),audio_url:t.external_source_path?PROJECT+"/functions/v1/setka-music-v1?stream="+encodeURIComponent(t.id):PROJECT+"/storage/v1/object/public/"+BUCKET+"/"+t.audio_path,icon_url:t.icon_path?PROJECT+"/storage/v1/object/public/"+BUCKET+"/"+t.icon_path:null})),global_order,stats,hidden_icon_keys:hiddenIcons.map(x=>x.icon_key)};
 };
 const ensureObject=async path=>{
