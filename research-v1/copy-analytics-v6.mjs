@@ -108,8 +108,16 @@ export function createV6Analytics({getAdminKey,openPattern,getPatternName}){
    const local=new Date(timestamp).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
    return format(stream.journeyEventsInPeriod)+' событий за период · последний приём '+local;
   };
+  // The last authenticated login is not a telemetry receipt. Showing both
+  // prevents an empty V2 account stream from being mistaken for zero users.
+  const lastLogin=a?.accountInventory?.lastAccountLoginAt;
+  const lastLoginTime=lastLogin&&Number.isFinite(Date.parse(lastLogin))?
+   new Date(lastLogin).toLocaleString('ru-RU',{timeZone:'Europe/Saratov',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):null;
+  const loginContext=!aj?.lastJourneyReceiptAt?
+   ' Последний вход в аккаунт: '+(lastLoginTime?esc(lastLoginTime)+' (Саратов)':'не подтверждён')+
+   '. Отсутствие новых входов и отсутствие доставки событий — разные показатели.':'';
   const deliveryHTML='<div class="v6-secondary small muted">Поступление событий на сервер: гости — '+esc(receipt(j))+
-   ' · аккаунты — '+esc(receipt(aj))+'. Это факт приёма событий, а не проверка активности каждого пользователя.</div>';
+   ' · аккаунты — '+esc(receipt(aj))+'.'+loginContext+' Это факт приёма событий, а не проверка активности каждого пользователя.</div>';
   const errors=SOURCES.filter(source=>result[source]?.error).map(source=>titles[source]).join(', ');
   return '<div class="v6-stats">'+items.join('')+'</div>'+deliveryHTML+
    '<div class="v6-secondary small muted">Исторические записи: V40 — '+(h?format(h.exposures):'—')+
