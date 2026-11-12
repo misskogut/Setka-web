@@ -21,7 +21,7 @@ test('V6 extends the original white home dashboard without floating panels or ex
  assert.match(css,/grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
 });
 test('stable admin is isolated and source picker is hidden only in V6 copy',()=>{
- assert.match(app,/import \{createV6Analytics\} from '\.\/copy-analytics-v6\.mjs'/);
+ assert.match(app,/import \{createV6Analytics\} from '\.\/copy-analytics-v6\.mjs(?:\?[^']*)?'/);
  assert.match(app,/v6\.render\(page,/);
  assert.match(app,/v6\.showPatternDetail\(id,/);
  assert.match(app,/let filters=\{scope:'all'/);
