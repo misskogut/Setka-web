@@ -202,7 +202,7 @@ test("spatial audio graph remains dry/HRTF plus directional reflections plus dif
  assert.match(js,/rearFilter\.connect\(roomSend\);roomSend\.connect\(this\.room\)/,"late room is not doubly attenuated");
  assert.doesNotMatch(js,/panner\.connect\(roomSend\)/,"old same-direction echoes are forbidden");
  assert.match(js,/const reflections=createOrbitEarlyReflections\(this\.ctx,rearFilter,this\.master,/);
- assert.match(js,/reflection\.delay\.delayTime\.setTargetAtTime\(q\.delay,t,\.12\)/);
- assert.match(js,/reflection\.gain\.gain\.setTargetAtTime\(q\.gain,t,response\)/);
+ assert.match(js,/scheduleOrbitParam\(reflection\.delay\.delayTime,q\.delay,t,\.12\)/, "reflection delay is smoothed and prior drag automation cancelled");
+ assert.match(js,/scheduleOrbitParam\(reflection\.gain\.gain,q\.gain,t,response\)/, "reflection level tracks source smoothly");
  assert.match(js,/for\(const r of s\.reflections\|\|\[\]\)/,"every effect is disconnected on removal");
 });
