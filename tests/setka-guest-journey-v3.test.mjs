@@ -59,7 +59,20 @@ test("foreground session ends on visibilitychange and does not upload account be
  h.dispatch("setka:pattern-open",{patternId:"account-pattern"});
  assert.equal(h.pending().length,2);
  h.online();h.dispatch("online");await h.send();
- assert.equal(h.requests.length,0,"guest transport never uploads while account session exists");
+ assert.equal(h.requests.length,1,"only queued pre-login guest events can be delivered after sign-in");
+ assert.deepEqual(h.requests[0].events.map(e=>e.eventType),["visit_start","visit_end"]);
+ assert.equal(h.pending().length,0);
+});
+test("sign-in closes only the already-open guest visit and replays no account actions as guest",async()=>{
+ const h=harness();
+ h.account();
+ h.dispatch("setka:v40-account",{authenticated:true});
+ assert.deepEqual(h.pending().map(e=>e.eventType),["visit_start","visit_end"]);
+ h.dispatch("setka:music-play",{trackId:"account-only-track"});
+ assert.equal(h.pending().length,2);
+ h.online();h.dispatch("online");await h.send();
+ assert.equal(h.requests.at(-1).events.length,2);
+ assert.equal(h.requests.at(-1).events.some(e=>e.trackId==="account-only-track"),false);
 });
 test("server whitelist only accepts bounded metadata; existing exposure and rate contracts stay intact",()=>{
  assert.match(server,/const JOURNEY_EVENTS=new Set/);
