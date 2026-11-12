@@ -48,7 +48,7 @@ jobs:
         run: node --test tests/setka-music-v1.test.mjs tests/setka-music-icons-v2.test.mjs tests/setka-music-trace-smoothing-v1.test.mjs tests/setka-music-yandex-stream-v1.test.mjs tests/setka-music-origin-retries.test.mjs
       - name: Verify public catalog API without credentials
         run: |
-          curl --fail --silent --show-error --max-time 15 https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-music-v1 -o /tmp/setka-music-catalog.json
+          curl --fail --silent --show-error --max-time 30 --retry 2 --retry-all-errors --retry-delay 2 https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-music-v1 -o /tmp/setka-music-catalog.json
           node -e "const d=require('/tmp/setka-music-catalog.json'); if (!d.ok || !Array.isArray(d.categories) || !Array.isArray(d.tracks)) process.exit(1)"
   browser:
     runs-on: ubuntu-latest
