@@ -53,7 +53,8 @@ Deno.serve(async req=>{
     if(rows.length>=limit)truncated=true;
    }
    const report=summarizeV6(rows,source,{days,from,to});
-   const journey=source==="unified_v2"?summarizeJourneyV3(rows,{days,from,to}):null;
+   const journey=source==="unified_v2"?summarizeJourneyV3(rows,{days,from,to,scope:"guest"}):null;
+   const accountJourney=source==="unified_v2"?summarizeJourneyV3(rows,{days,from,to,scope:"account"}):null;
    let accountInventory:null|{registeredAccounts:number,existingFavorites:number,recordedSessions:number,verifiedDeviceLinks:number}=null;
    if(source==="account_v41"){
     // These are lifetime inventory counters, never period visits or unique users.
@@ -68,7 +69,7 @@ Deno.serve(async req=>{
      accountInventory={registeredAccounts:registered.count??0,existingFavorites:favorites.count??0,recordedSessions:sessions.count??0,verifiedDeviceLinks:links.count??0};
     }
    }
-   return response({ok:true,...report,...(journey?{journey}:{}),...(accountInventory?{accountInventory}:{}),truncated,checkedAt:new Date().toISOString(),
+   return response({ok:true,...report,...(journey?{journey}:{}),...(accountJourney?{accountJourney}:{}),...(accountInventory?{accountInventory}:{}),truncated,checkedAt:new Date().toISOString(),
      identityScope:source==="account_v41"?"account_ids":source==="unified_v2"?"unlinked_device_or_account_ids":"legacy_guest_keys",
      caveat:"Counts are within this source only. Cross-source unique-user counts and clinical efficacy cannot be inferred."});
   }
