@@ -18,7 +18,7 @@ function wav({duration=8,rate=8000,channels=2,depth=16}={}){
 function fakeFetch(bytes,{ranges=true}={}){
  const calls=[];
  const fetch=async(_url,{headers}={})=>{
-  const match=/^bytes=(\\d+)-(\\d+)$/.exec(headers?.Range||'');
+  const match=/^bytes=([0-9]+)-([0-9]+)$/.exec(headers?.Range||'');
   if(!match||!ranges)return {status:200,headers:{get:()=>null},arrayBuffer:async()=>bytes.buffer.slice(0)};
   const first=Number(match[1]),last=Number(match[2]);
   calls.push({first,last});
