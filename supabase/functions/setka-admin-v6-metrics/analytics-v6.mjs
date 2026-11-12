@@ -1,0 +1,49 @@
+// Pure, source-scoped research aggregation; no credentials, user IDs or notes leave this module.
+export const V6_SOURCES = Object.freeze({
+ guest_v40:{actor:"participant_key",time:"updated_at",table:"prototype_v40_service_exposures"},
+ account_v41:{actor:"tester_id",time:"updated_at",table:"prototype_v41_account_exposures"},
+ unified_v2:{actor:"device_id",time:"received_at",table:"setka_research_events_v2"}
+});
+const DAY=86400000, SARATOV=4*3600000;
+const dateKey=i=>new Date(i*DAY).toISOString().slice(0,10);
+const validTime=v=>{const t=Date.parse(String(v||""));return Number.isFinite(t)?t:null};
+const bounded=v=>Number.isFinite(Number(v))?Math.max(0,Math.min(DAY,Number(v))):0;
+
+export function summarizeV6(rows,source,{days=30,now=Date.now()}={}){
+ if(!Object.hasOwn(V6_SOURCES,source))throw Error("unknown_source");
+ if(![0,7,30,90].includes(days)||!Number.isFinite(now))throw Error("invalid_period");
+ const today=Math.floor((now+SARATOV)/DAY),first=days?today-days+1:-Infinity;
+ const daily=new Map(),patterns=new Map(),actors=new Set(),seen=new Set();
+ let duplicates=0,excluded=0,exposures=0,recordedMs=0,lastIngestAt=null;
+ for(const x of Array.isArray(rows)?rows:[]){
+  const id=String(x?.pattern_id||"").trim(),actor=source==="unified_v2"?
+   (x?.account_id?"account:"+x.account_id:x?.device_id?"device:"+x.device_id:""):
+   String(x?.[V6_SOURCES[source].actor]||"");
+  const exposureId=String(source==="unified_v2"?x?.event_id:x?.exposure_id||"");
+  const occurrence=validTime(source==="unified_v2"?x?.occurred_at:(x?.ended_at||x?.started_at||x?.updated_at));
+  const day=occurrence===null?null:Math.floor((occurrence+SARATOV)/DAY);
+  if(!id||!actor||!exposureId||day===null||day>today||day<first||
+     (source==="unified_v2"&&x?.event_type!=="pattern_exposure")){excluded++;continue}
+  const eventKey=actor+"|"+exposureId;
+  if(seen.has(eventKey)){duplicates++;continue}
+  seen.add(eventKey);
+  const ms=bounded(x?.duration_ms),receipt=validTime(x?.[V6_SOURCES[source].time]);
+  exposures++;recordedMs+=ms;actors.add(actor);
+  if(receipt!==null&&(lastIngestAt===null||receipt>lastIngestAt))lastIngestAt=receipt;
+  if(!daily.has(day))daily.set(day,{day,exposures:0,recorded_ms:0,actors:new Set()});
+  const d=daily.get(day);d.exposures++;d.recorded_ms+=ms;d.actors.add(actor);
+  if(!patterns.has(id))patterns.set(id,{pattern_id:id,exposures:0,recorded_ms:0,actors:new Set()});
+  const p=patterns.get(id);p.exposures++;p.recorded_ms+=ms;p.actors.add(actor);
+ }
+ const entry=(d)=>({date:dateKey(d.day),exposures:d.exposures,recorded_ms:d.recorded_ms,distinct_identities:d.actors.size});
+ const timeline=days?Array.from({length:days},(_,i)=>entry(daily.get(first+i)||{day:first+i,exposures:0,recorded_ms:0,actors:new Set()})):
+  [...daily.values()].sort((a,b)=>a.day-b.day).map(entry);
+ return {
+  source,periodDays:days,timeZone:"UTC+04:00",exposures,distinctIdentities:actors.size,
+  recordedMs,patternCount:patterns.size,rowsConsidered:Array.isArray(rows)?rows.length:0,
+  duplicateRows:duplicates,excludedRows:excluded,lastIngestAt:lastIngestAt===null?null:new Date(lastIngestAt).toISOString(),
+  timeline,patterns:[...patterns.values()].map(p=>({pattern_id:p.pattern_id,exposures:p.exposures,
+   recorded_ms:p.recorded_ms,distinct_identities:p.actors.size}))
+   .sort((a,b)=>b.recorded_ms-a.recorded_ms||b.exposures-a.exposures||a.pattern_id.localeCompare(b.pattern_id)).slice(0,12)
+ };
+}
