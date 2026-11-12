@@ -55,6 +55,31 @@ export function summarizeJourneyV3(rows,{days=30,from=null,to=null,now=Date.now(
    const id=e.properties?.track_id;if(typeof id==="string"&&id.length<=120)musicByTrack.set(id,(musicByTrack.get(id)||0)+1);
   }
  }
+ // Strict cohort retention uses actual visit starts, not old exposure events:
+ // existing V2 pre-instrumentation pattern views cannot establish D1/D7 return.
+ // At least 5 eligible IDs are required before any percentage is displayed.
+ const visitDays=new Map();
+ for(const e of events)if(e.event_type==="visit_start"){
+  const id=e.journeyIdentity;
+  if(!visitDays.has(id))visitDays.set(id,new Set());
+  visitDays.get(id).add(e.day);
+ }
+ const retention=(lag)=>{
+  let eligible=0,returned=0;
+  for(const daysSeen of visitDays.values()){
+   const cohort=Math.min(...daysSeen);
+   if(cohort<first||cohort>last||cohort+lag>today||cohort+lag>last)continue;
+   eligible++;
+   if(daysSeen.has(cohort+lag))returned++;
+  }
+  return {eligible,returned,ratePct:eligible>=5?Math.round(returned/eligible*1000)/10:null};
+ };
+ const activeWithin=(windowDays)=>{
+  const ids=new Set();
+  const start=Math.max(first,today-windowDays+1);
+  for(const e of events)if(e.event_type==="visit_start"&&e.day>=start&&e.day<=last&&e.day<=today)ids.add(e.journeyIdentity);
+  return ids.size;
+ };
  const timeline=(custom||days)?
   Array.from({length:custom?last-first+1:days},(_,i)=>({date:label(first+i),visits:visitsByDay.get(first+i)||0})):
   [...visitsByDay].sort((a,b)=>a[0]-b[0]).map(([d,n])=>({date:label(d),visits:n}));
@@ -62,6 +87,8 @@ export function summarizeJourneyV3(rows,{days=30,from=null,to=null,now=Date.now(
   visits,...(scope==="guest"?{activeGuestDevices:active.size,firstSeenGuestDevices:newDevices.size,returningGuestDevices:returning.size}:{activeAccounts:active.size,firstSeenAccounts:newDevices.size,returningAccounts:returning.size}),
   returns,patternOpens,favoriteSaves,favoriteRemoves,
   musicStarts,foregroundMs,visitEnds,dayTimeZone:"UTC+04:00",
+  activeToday:activeWithin(1),activeLast7Days:activeWithin(7),
+  retentionD1:retention(1),retentionD7:retention(7),
   timeline,patternOpensById:[...opensByPattern].map(([pattern_id,opens])=>({pattern_id,opens}))
    .sort((a,b)=>b.opens-a.opens).slice(0,50),
   favoritesByPattern:[...favoritesByPattern].map(([pattern_id,saves])=>({pattern_id,saves}))
@@ -70,6 +97,6 @@ export function summarizeJourneyV3(rows,{days=30,from=null,to=null,now=Date.now(
    .sort((a,b)=>b.starts-a.starts).slice(0,12),
   scannedEvents:events.length,invalidRows:invalid,duplicateRows:duplicates,
   identityScope:scope==="account"?"verified_account_ids":"device_ids",
-  caveat:scope==="account"?"Accounts represent authenticated tester IDs, not people; new means first seen in available V2 events.":"Devices are not unique people; new means first seen in available V2 data. Visits count foreground starts, and duration covers completed foreground segments."
+  caveat:scope==="account"?"Accounts represent authenticated tester IDs, not people; new means first seen in available V2 events.":"Devices are not unique people; new means first seen in available V2 data. Visits count foreground starts, and duration covers completed foreground segments. D1/D7 are visit-start cohorts only, with at least five eligible identities and full day observation."
  };
 }
