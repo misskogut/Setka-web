@@ -140,18 +140,45 @@ const streamExternalTrack=async(request,origin,id)=>{
   let cursor=start,sectionEnd=Math.min(end,start+segmentSize-1),reader;
   try{reader=await source(cursor,sectionEnd)}
   catch(_){return json({error:"audio_origin_unavailable"},502,origin)}
+  let recoveryCount=0;
+  const closeReader=async()=>{
+    try{await reader?.cancel()}catch(_){}
+    try{reader?.releaseLock()}catch(_){}
+  };
+  // The upstream can fail *after* returning 206 and some audio bytes. Resume
+  // from the next un-emitted byte, never repeating or skipping PCM/MP3 samples.
+  const resumeRemainder=async()=>{
+    if(++recoveryCount>3)throw Error("audio_upstream_stream_exhausted");
+    await closeReader();
+    reader=await source(cursor,sectionEnd);
+  };
   const audio=new ReadableStream({
     async pull(controller){
       try{
         while(true){
-          const next=await reader.read();
-          if(!next.done){controller.enqueue(next.value);return}
-          reader.releaseLock();cursor=sectionEnd+1;
+          let next;
+          try{next=await reader.read()}
+          catch(_){await resumeRemainder();continue}
+          if(!next.done){
+            const bytes=next.value?.byteLength||0;
+            if(cursor+bytes>sectionEnd+1)throw Error("audio_range_overrun");
+            if(!bytes)continue;
+            cursor+=bytes;
+            recoveryCount=0;
+            controller.enqueue(next.value);
+            return;
+          }
+          try{reader.releaseLock()}catch(_){}
+          if(cursor<=sectionEnd){await resumeRemainder();continue}
           if(cursor>end){controller.close();return}
           sectionEnd=Math.min(end,cursor+segmentSize-1);
           reader=await source(cursor,sectionEnd);
+          recoveryCount=0;
         }
-      }catch(error){controller.error(error)}
+      }catch(error){
+        console.error("audio_stream_unavailable",String(error?.message||error));
+        controller.error(error);
+      }
     },
     cancel(){reader?.cancel().catch(()=>{})}
   });
