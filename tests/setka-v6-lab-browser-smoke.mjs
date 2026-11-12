@@ -45,7 +45,7 @@ try{
     patterns:[{pattern_id:'gravity-atom',exposures:guest?8:account?4:15,recorded_ms:guest?155000:250000,
       ...(guest?{usage_mode:{duringSession:3,justWatch:5}}:account?{usage_mode:{duringSession:1,justWatch:3}}:{})}],
     ...(guest?{usageMode:{duringSession:3,justWatch:5}}:account?{usageMode:{duringSession:1,justWatch:3},
-     accountInventory:{registeredAccounts:11,existingFavorites:17,recordedSessions:4}}:{}),
+     accountInventory:{registeredAccounts:11,existingFavorites:17,recordedSessions:4,verifiedDeviceLinks:0}}:{}),
     rowsConsidered:8,duplicateRows:0,excludedRows:0,
     ...(guest?{journey:{visits:3,activeGuestDevices:2,firstSeenGuestDevices:1,returningGuestDevices:1,patternOpens:5,favoriteSaves:2,musicStarts:1,foregroundMs:90000,timeline:[{date:"2026-11-12",visits:3}],patternOpensById:[{pattern_id:"gravity-atom",opens:5}]}}:{})};
   await route.fulfill({status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*','access-control-allow-headers':'content-type'},body:JSON.stringify(result)});
@@ -64,6 +64,7 @@ try{
  assert.match(dashboard,/во время сессий/);
  assert.match(dashboard,/просто посмотреть/);
  assert.match(dashboard,/сохранений в избранном сейчас/);
+ assert.match(dashboard,/подтверждённых связей устройств/);
  assert.match(dashboard,/11/);
  assert.match(dashboard,/V40/);
  assert.match(dashboard,/V41/);
