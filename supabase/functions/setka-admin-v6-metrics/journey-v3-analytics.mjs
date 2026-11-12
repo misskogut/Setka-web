@@ -66,9 +66,14 @@ export function summarizeJourneyV3(rows,{days=30,from=null,to=null,now=Date.now(
  }
  const retention=(lag)=>{
   let eligible=0,returned=0;
+  // Only fully observed days enter the denominator: today's partial
+  // activity would otherwise make D1/D7 retention look artificially low.
+  const endOfLastDay=(last+1)*DAY-OFFSET;
+  const lastComplete=Math.min(today-1,custom&&high<endOfLastDay?last-1:last);
+  const firstComplete=custom&&low>first*DAY-OFFSET?first+1:first;
   for(const daysSeen of visitDays.values()){
    const cohort=Math.min(...daysSeen);
-   if(cohort<first||cohort>last||cohort+lag>today||cohort+lag>last)continue;
+   if(cohort<firstComplete||cohort>last||cohort+lag>lastComplete)continue;
    eligible++;
    if(daysSeen.has(cohort+lag))returned++;
   }
