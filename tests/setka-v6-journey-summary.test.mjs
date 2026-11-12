@@ -81,3 +81,37 @@ test('account history is scoped by verified account ID, not by guest device',()=
  assert.equal(guest.musicStarts,0);
  assert.throws(()=>summarizeJourneyV3(rows,{scope:'merged',days:1,now}),/invalid_scope/);
 });
+
+test('cohort D1/D7 retention is separated by identity and never inferred from exposure-only history',()=>{
+ const rows=[];
+ for(let i=0;i<6;i++){
+  const id='device-'+i;
+  rows.push(row('first-'+i,id,'visit_start','2026-11-01T12:00:00Z'));
+  if(i<3)rows.push(row('d1-'+i,id,'visit_start','2026-11-02T12:00:00Z'));
+  if(i<2)rows.push(row('d7-'+i,id,'visit_start','2026-11-08T12:00:00Z'));
+ }
+ const r=summarizeJourneyV3(rows,{days:30,now});
+ assert.deepEqual(r.retentionD1,{eligible:6,returned:3,ratePct:50});
+ assert.deepEqual(r.retentionD7,{eligible:6,returned:2,ratePct:33.3});
+ assert.equal(r.activeLast7Days,2);
+ assert.equal(r.activeToday,0);
+ const few=summarizeJourneyV3(rows.filter(x=>!x.device_id.endsWith('5')&&!x.device_id.endsWith('4')),{days:30,now});
+ assert.equal(few.retentionD1.eligible,4);
+ assert.equal(few.retentionD1.ratePct,null,'small sample never produces a misleading percentage');
+ const noVisits=summarizeJourneyV3([row('only-exposure','legacy','pattern_exposure','2026-11-01T12:00:00Z')],{days:30,now});
+ assert.equal(noVisits.retentionD1.eligible,0);
+ assert.equal(noVisits.activeLast7Days,0);
+});
+test('account-cohort retention uses account IDs even when multiple accounts shared one device',()=>{
+ const rows=[];
+ for(let i=0;i<6;i++){
+  rows.push(row('account-first-'+i,'same-device','visit_start','2026-11-01T12:00:00Z',{actor_type:'account',account_id:'T-'+i}));
+  if(i<4)rows.push(row('account-return-'+i,'same-device','visit_start','2026-11-02T12:00:00Z',{actor_type:'account',account_id:'T-'+i}));
+ }
+ const summary=summarizeJourneyV3(rows,{scope:'account',days:30,now});
+ assert.equal(summary.activeAccounts,6);
+ assert.equal(summary.retentionD1.eligible,6);
+ assert.equal(summary.retentionD1.returned,4);
+ assert.equal(summary.retentionD1.ratePct,66.7);
+ assert.equal(summary.identityScope,'verified_account_ids');
+});
