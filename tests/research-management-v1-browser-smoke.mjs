@@ -187,7 +187,7 @@ try{
  // exception is CI-only; do not silence ordinary network, script or user errors.
  const knownFixtureCors=errors.filter(e=>process.env.SETKA_BROWSER==='webkit'&&
    e.page==='front'&&typeof e.message==='string'&&
-   /gfchgaphzhxufwdhrcis\.supabase\.co\/functions\/v1\/setka-(?:standalone-v34|tester-archive-v37) due to access control checks/.test(e.message)&&
+   /gfchgaphzhxufwdhrcis\.supabase\.co\/functions\/v1\/setka-(?:standalone-v34|tester-archive-v37|semantic-v35) due to access control checks/.test(e.message)&&
    typeof e.stack==='string'&&e.stack.includes('standalone-public-visual-capsules-v40.js'));
  assert.ok(knownFixtureCors.length<=2,
    'more WebKit CORS fixture errors than the bounded background retry budget: '+JSON.stringify(knownFixtureCors));

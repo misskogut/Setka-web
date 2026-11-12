@@ -1,4 +1,5 @@
 // SETKA Music: one persistent WebAudio mixer shared by the catalog and orbit editor.
+import {inspectWavSource,SetkaChunkedWavDeck} from './standalone-music-wav-stream-v1.mjs?v=1-lossless-safari-range-20261112';
 // Diffuse stereo late-room tail. Directional first reflections are separate
 // HRTF wall images (below) and must not also appear in this impulse.
 // Generated once in memory; uploaded audio is never changed or transcoded.
@@ -116,6 +117,7 @@ export class SetkaMusicMixer {
   this.ctx=null; this.master=null; this.room=null; this.roomOutput=null; this.items=new Map();
   this.mode="static"; this.speed=40; this.started=performance.now()/1000;
   this.changed=()=>{}; this.moved=()=>{}; this.onTrackEvent=()=>{}; this.clock=null;
+   this.changeSeq=new Map();this.unstreamable=new Set();
  }
  init() {
   if (!this.ctx) {
@@ -158,6 +160,7 @@ export class SetkaMusicMixer {
  async change(track,level) {
   level=Number(level)||0;
   const id=String(track.id),old=this.items.get(id);
+  const sequence=(this.changeSeq.get(id)||0)+1;this.changeSeq.set(id,sequence);
   if(level<1){this.remove(id);return}
   try{this.init()}catch(e){this.changed(e.message);return}
   let state=old;
@@ -189,8 +192,16 @@ export class SetkaMusicMixer {
    const singleDeck=!!track.external_source_path&&/\.wav$/i.test(track.external_source_path)&&
      Number(track.external_source_bytes)>=24*1024*1024;
    const webkit=/AppleWebKit/i.test(navigator.userAgent)&&!/Chrom(?:e|ium)\//i.test(navigator.userAgent);
-   const nativeOnly=singleDeck&&webkit;
+   const streamInfo=singleDeck&&webkit&&!this.unstreamable.has(id)?
+     await inspectWavSource(track.audio_url,Number(track.external_source_bytes)):null;
+   if(this.changeSeq.get(id)!==sequence)return;
+   const streamOnly=!!streamInfo,nativeOnly=singleDeck&&webkit&&!streamOnly;
    const makeDeck=(volume)=>{
+    if(streamOnly){
+     const el=new SetkaChunkedWavDeck({url:track.audio_url,total:Number(track.external_source_bytes),
+      info:streamInfo,ctx:this.ctx,output:gain,loop:track.loop!==false});
+     return {el,src:null,fade:null};
+    }
     const el=new Audio();
     el.loop=singleDeck&&track.loop!==false;
     el.crossOrigin="anonymous";el.preload=nativeOnly?"metadata":"auto";el.src=track.audio_url;
@@ -204,7 +215,7 @@ export class SetkaMusicMixer {
    if(track.loop!==false&&!singleDeck)decks.push(makeDeck(0));
    state={id,track,level:0,playTracked:false,completed:false,angle,radius:.62+(index%3)*.08,
     anchorAngle:angle,anchorRadius:.62+(index%3)*.08,manual:false,
-    el:decks[0].el,src:decks[0].src,gain,rearFilter,panner,roomSend,reflections,decks,singleDeck,nativeOnly,activeDeck:0,transition:null,pendingLoop:false};
+    el:decks[0].el,src:decks[0].src,gain,rearFilter,panner,roomSend,reflections,decks,singleDeck,nativeOnly,streamOnly,activeDeck:0,transition:null,pendingLoop:false};
    this.items.set(id,state);this.position(state,angle,state.radius);
    for(let deckIndex=0;deckIndex<decks.length;deckIndex++){
     const {el}=decks[deckIndex];
@@ -228,7 +239,14 @@ export class SetkaMusicMixer {
      if(state.track.loop!==false)this.advanceLoop(state,true);
     });
    }
-   decks[0].el.play().catch(()=>{this.remove(id);this.changed("Не удалось воспроизвести аудиофайл")});
+   decks[0].el.play().catch(()=>{
+    if(this.items.get(id)!==state)return;
+    if(state.streamOnly){
+     this.unstreamable.add(id);this.remove(id);
+     void this.change(track,level);return;
+    }
+    this.remove(id);this.changed("Не удалось воспроизвести аудиофайл");
+   });
    // Prime the silent second deck during the same user interaction for iOS Safari.
    // It remains inaudible (fade=0), then waits at the beginning until overlap.
    if(decks.length>1){
@@ -254,7 +272,11 @@ export class SetkaMusicMixer {
  }
  // Advance a deck independently of orbital motion: even a static sound loops.
  advanceLoop(state,force=false){
-  if(this.items.get(state.id)!==state||state.track.loop===false||state.decks.length<2)return;
+  if(this.items.get(state.id)!==state)return;
+  if(state.streamOnly){void state.el.pump().catch(()=>{
+   if(this.items.get(state.id)===state){this.unstreamable.add(state.id);const t=state.track,l=state.level;this.remove(state.id);void this.change(t,l)}
+  });return;}
+  if(state.track.loop===false||state.decks.length<2)return;
   const now=this.ctx.currentTime;
   if(state.transition){
    if(now<state.transition.endAt)return;
@@ -374,7 +396,7 @@ export class SetkaMusicMixer {
    return {trackId:s.id,angle:s.angle,radius:s.radius,
     x:unit.x*profile.distance,z:unit.z*profile.distance,
     hrtfSpatialized:!s.nativeOnly&&s.panner?.panningModel==="HRTF",
-    nativeStereoFallback:!!s.nativeOnly,earlyReflectionCount:s.nativeOnly?0:s.reflections?.length||0};
+    nativeStereoFallback:!!s.nativeOnly,losslessWavStreaming:!!s.streamOnly,earlyReflectionCount:s.nativeOnly?0:s.reflections?.length||0};
   });
   const base=Number(ctx?.baseLatency),output=Number(ctx?.outputLatency);
   return {audioContextActive:!!ctx,audioContextState:ctx?.state||"uninitialized",

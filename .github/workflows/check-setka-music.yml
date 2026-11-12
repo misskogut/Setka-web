@@ -1,7 +1,15 @@
 name: Check SETKA Music and Spatial Orbits
-# Run intensive checks explicitly, not on every code push.
+# Run on music-engine releases only, not on a timer or a background computer.
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'standalone-music-audio-v1.mjs'
+      - 'standalone-music-wav-stream-v1.mjs'
+      - 'standalone-music-v1.mjs'
+      - 'tests/setka-music-big-webkit-probe.mjs'
+      - '.github/workflows/check-setka-music.yml'
 
 jobs:
   contracts:
@@ -40,7 +48,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - run: npm install --no-save --ignore-scripts playwright@1.62.1
+      - run: npm install --no-save --ignore-scripts playwright@1.64.1
       - run: npx playwright install --with-deps ${{ matrix.browser }}
       - run: node scripts/build-pattern-manifest.mjs
       - run: node scripts/build-pattern-manifest.mjs
@@ -53,7 +61,7 @@ jobs:
       - run: node tests/setka-music-browser-smoke.mjs
         env:
           SETKA_BROWSER: ${{ matrix.browser }}
-      - name: Require original full-length 8D WAV playback in SETKA (native WebKit fallback)
+      - name: Require original full-length 8D WAV playback (lossless Safari HRTF or explicit fallback)
         run: node tests/setka-music-big-webkit-probe.mjs
         env:
           SETKA_BROWSER: ${{ matrix.browser }}
