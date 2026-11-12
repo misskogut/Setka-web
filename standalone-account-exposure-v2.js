@@ -1,5 +1,10 @@
 (()=>{
 "use strict";
+// Automated production-page browser checks are not research participants.
+// Preserve local fixture coverage; exclude real HTTPS/public production hosts only.
+if(typeof navigator!=="undefined"&&navigator.webdriver===true&&
+ typeof location!=="undefined"&&/^(?:misskogut\.github\.io|(?:www\.)?setka-app\.com)$/.test(location.hostname))return;
+
 // Authenticated, metadata-only V2 pattern exposures. Existing V41 archive remains intact.
 // No old guest history is retrospectively attributed to a newly signed-in account.
 const API="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-semantic-v35";
