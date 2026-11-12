@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {linkVerifiedGuestDevice} from "./identity-link-v1.mjs";
 const db=createClient(Deno.env.get("SUPABASE_URL")!,Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,{auth:{persistSession:false,autoRefreshToken:false}});
 const CHANNEL="yulia_lab_v34";
 const H={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type","Access-Control-Allow-Methods":"POST, OPTIONS","Content-Type":"application/json; charset=utf-8"};
@@ -123,6 +124,10 @@ Deno.serve(async req=>{
     if(exposures.length){const q=await db.from("prototype_v41_account_exposures").upsert(exposures,{onConflict:"tester_id,exposure_id"});if(q.error)throw q.error}
 
     const likes=new Set(favorites.map(x=>x.pattern_id)).size;
+    // Best-effort verified identity evidence. Never interrupt a successful
+    // account sync or modify private content if the link is unavailable.
+    try{await linkVerifiedGuestDevice(db,{deviceId,testerId})}
+    catch(error){console.warn("verified_identity_link_deferred",String((error as Error)?.message||error))}
     return J({ok:true,testerId,ignored:false,favorites:favorites.length,patternLikes:likes,acceptedSessions:sessions.length,acceptedExposures:exposures.length,canonicalPatterns:ids.size,rejectedFavorites,rejectedExposures,privacyMode:"authenticated-account-only",storedUsageFields:["session timestamps","patternId","configKey","duration"],excludedUsageFields:["raw deviceId","notes","states","symptoms","pulse","request text"]});
   }catch(e){console.error(e);return J({error:"server_error",detail:String(e?.message||e)},500)}
 });
