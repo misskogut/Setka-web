@@ -14,7 +14,7 @@ export function summarizeJourneyV3(rows,{days=30,from=null,to=null,now=Date.now(
  if(custom&&(low===null||high===null||low>=high||high-low>370*DAY))throw Error("invalid_period");
  const today=day(now),first=custom?day(low):days?today-days+1:-Infinity,last=custom?day(high-1):today;
  const firstSeen=new Map(),allDays=new Map(),events=[],seen=new Set();
- let invalid=0,duplicates=0;
+ let invalid=0,duplicates=0,latestJourneyReceipt=null;
  // First-seen/returning require the whole available source, not just rows in
  // the selected date range. All identities here are *device IDs*, not people.
  for(const row of Array.isArray(rows)?rows:[]){
@@ -23,6 +23,10 @@ export function summarizeJourneyV3(rows,{days=30,from=null,to=null,now=Date.now(
   if(at===null||at>now+300000||!identity||!matching||!TYPES.has(type)||!row?.event_id){invalid++;continue}
   const key=String(row.event_id);
   if(seen.has(key)){duplicates++;continue}seen.add(key);
+  if(type!=="pattern_exposure"){
+   const received=time(row.received_at);
+   if(received!==null&&(latestJourneyReceipt===null||received>latestJourneyReceipt))latestJourneyReceipt=received;
+  }
   const d=day(at),id=String(identity);
   const previous=firstSeen.get(id);
   if(previous===undefined||at<previous)firstSeen.set(id,at);
@@ -32,10 +36,11 @@ export function summarizeJourneyV3(rows,{days=30,from=null,to=null,now=Date.now(
  }
  const active=new Set(),newDevices=new Set(),returning=new Set();
  const visitsByDay=new Map(),opensByPattern=new Map(),favoritesByPattern=new Map(),musicByTrack=new Map();
- let visits=0,returns=0,patternOpens=0,favoriteSaves=0,favoriteRemoves=0,musicStarts=0,foregroundMs=0,visitEnds=0;
+ let visits=0,returns=0,patternOpens=0,favoriteSaves=0,favoriteRemoves=0,musicStarts=0,foregroundMs=0,visitEnds=0,journeyEventsInPeriod=0;
  for(const e of events){
   if(e.day>today||e.day<first||e.day>last||(custom&&(e.at<low||e.at>=high)))continue;
   const id=e.journeyIdentity,kind=e.event_type;
+  if(kind!=="pattern_exposure")journeyEventsInPeriod++;
   active.add(id);
   if(firstSeen.get(id)>= (custom?low:days?(first*DAY-OFFSET):-Infinity))newDevices.add(id);
   if([...allDays.get(id)].some(d=>d<e.day))returning.add(id);
@@ -92,6 +97,7 @@ export function summarizeJourneyV3(rows,{days=30,from=null,to=null,now=Date.now(
   visits,...(scope==="guest"?{activeGuestDevices:active.size,firstSeenGuestDevices:newDevices.size,returningGuestDevices:returning.size}:{activeAccounts:active.size,firstSeenAccounts:newDevices.size,returningAccounts:returning.size}),
   returns,patternOpens,favoriteSaves,favoriteRemoves,
   musicStarts,foregroundMs,visitEnds,dayTimeZone:"UTC+04:00",
+  journeyEventsInPeriod,lastJourneyReceiptAt:latestJourneyReceipt===null?null:new Date(latestJourneyReceipt).toISOString(),
   activeToday:activeWithin(1),activeLast7Days:activeWithin(7),
   retentionD1:retention(1),retentionD7:retention(7),
   timeline,patternOpensById:[...opensByPattern].map(([pattern_id,opens])=>({pattern_id,opens}))
