@@ -4,6 +4,7 @@ const H={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"conte
 const J=(v:unknown,status=200)=>new Response(JSON.stringify(v),{status,headers:H});
 const validId=(s:unknown,max=180)=>typeof s==="string"&&s.length>0&&s.length<=max&&/^[a-zA-Z0-9_:.\-]+$/.test(s);
 const uuid=(s:unknown)=>typeof s==="string"&&/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
+const JOURNEY_EVENTS=new Set(["visit_start","visit_end","app_return","pattern_open","favorite_save","favorite_remove","music_play"]);
 Deno.serve(async req=>{
  if(req.method==="OPTIONS")return J({ok:true});
  if(req.method!=="POST")return J({error:"method_not_allowed"},405);
@@ -14,10 +15,21 @@ Deno.serve(async req=>{
   if(body.events.length===0)return J({ok:true,accepted:0});
   const now=Date.now(),records=[];
   for(const e of body.events){
-   if(!uuid(e.eventId)||e.eventType!=="pattern_exposure"||!validId(e.patternId,120)||!(e.sessionId==null||validId(e.sessionId,180))||!Number.isInteger(e.durationMs)||e.durationMs<1||e.durationMs>86400000)return J({error:"invalid_event"},400);
+   const exposure=e.eventType==="pattern_exposure",journey=JOURNEY_EVENTS.has(e.eventType);
+   if(!uuid(e.eventId)||(!exposure&&!journey)||!(e.sessionId==null||validId(e.sessionId,180)))return J({error:"invalid_event"},400);
+   if(exposure){
+    if(!validId(e.patternId,120)||!Number.isInteger(e.durationMs)||e.durationMs<1||e.durationMs>86400000)return J({error:"invalid_event"},400);
+   }else{
+    if(e.patternId!=null&&!validId(e.patternId,120))return J({error:"invalid_event"},400);
+    if(e.eventType==="pattern_open"&&!validId(e.patternId,120))return J({error:"invalid_event"},400);
+    if(e.eventType==="music_play"&&!validId(e.trackId,120))return J({error:"invalid_event"},400);
+    if(e.eventType==="visit_end"){
+     if(!Number.isInteger(e.durationMs)||e.durationMs<0||e.durationMs>86400000)return J({error:"invalid_event"},400);
+    }else if(e.durationMs!=null)return J({error:"invalid_event"},400);
+   }
    const at=Date.parse(e.occurredAt);
    if(!Number.isFinite(at)||at>now+300000||at<now-90*86400000)return J({error:"invalid_timestamp"},400);
-   records.push({event_id:e.eventId,device_id:body.deviceId,actor_type:"guest",account_id:null,event_type:"pattern_exposure",session_id:e.sessionId??null,pattern_id:e.patternId,occurred_at:new Date(at).toISOString(),duration_ms:e.durationMs,properties:{source:"standalone-v34",schema:2}});
+   records.push({event_id:e.eventId,device_id:body.deviceId,actor_type:"guest",account_id:null,event_type:e.eventType,session_id:e.sessionId??null,pattern_id:e.patternId??null,occurred_at:new Date(at).toISOString(),duration_ms:e.durationMs??null,properties:{source:"standalone-v34",schema:exposure?2:3,...(e.eventType==="music_play"?{track_id:e.trackId}:{})}});
   }
   const {count:hourCount,error:countError}=await db.from("setka_research_events_v2").select("event_id",{count:"exact",head:true}).eq("device_id",body.deviceId).gte("received_at",new Date(now-3600000).toISOString());
   if(countError)throw countError;
