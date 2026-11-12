@@ -131,9 +131,23 @@ export function createV6Analytics({getAdminKey,openPattern,getPatternName}){
     return metric(title,p?format(p.exposures):'—',p?minutes(p.recorded_ms)+' мин просмотра':'Нет связи с источником');
    };
    const recordedOpens=v?.journey?.patternOpensById?.find(p=>p.pattern_id===id)?.opens||0;
+   const recordedSaves=v?.journey?.favoritesByPattern?.find(p=>p.pattern_id===id)?.saves||0;
+   const sources=[v,h,a];
+   const details=(label,prop,asTime=false)=>'<tr><th>'+esc(label)+'</th>'+sources.map(source=>{
+    const p=source?byId(source,id):null;
+    const raw=p&&p.exposures?p[prop]:null;
+    return '<td>'+(raw==null?'—':asTime?minutes(raw)+' мин':format(raw))+'</td>';
+   }).join('')+'</tr>';
    node.innerHTML='<h3>Использование паттерна · '+esc(getPatternName(id)||id)+'</h3>'+
     '<div class="v6-stats v6-detail-stats">'+line('Новый поток V2',v)+line('Исторические гости V40',h)+line('Аккаунты V41',a)+'</div>'+
-    '<p class="v6-secondary small muted">Открытий паттерна в новом потоке: '+(v?.journey?format(recordedOpens):'—')+'.</p>'+
+    '<div class="v6-secondary small muted">Открытий: '+(v?.journey?format(recordedOpens):'—')+
+     ' · Сохранений в избранное: '+(v?.journey?format(recordedSaves):'—')+' (новый гостевой поток).</div>'+
+    '<div class="table-wrap v6-deep-table"><table><thead><tr><th>Показатель</th><th>V2</th><th>Гости V40</th><th>Аккаунты V41</th></tr></thead><tbody>'+
+     details('Средняя длительность', 'average_ms',true)+
+     details('Медианная длительность','median_ms',true)+
+     details('Повторно просматривали · ID','repeat_identities')+
+     details('Разных идентификаторов','distinct_identities')+
+    '</tbody></table></div>'+
     '<p class="v6-source-note">'+esc(sourceCaption)+'</p>';
   });
  }
