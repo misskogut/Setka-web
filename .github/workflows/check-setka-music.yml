@@ -5,6 +5,8 @@ on:
   pull_request:
     paths:
       - 'standalone-music-audio-v1.mjs'
+      - 'supabase/functions/setka-music-v1/index.ts'
+      - 'tests/setka-music-origin-retries.test.mjs'
       - 'standalone-music-wav-stream-v1.mjs'
       - 'standalone-music-v1.mjs'
       - 'tests/setka-music-v1.test.mjs'
@@ -15,6 +17,8 @@ on:
     branches: [main]
     paths:
       - 'standalone-music-audio-v1.mjs'
+      - 'supabase/functions/setka-music-v1/index.ts'
+      - 'tests/setka-music-origin-retries.test.mjs'
       - 'standalone-music-wav-stream-v1.mjs'
       - 'standalone-music-v1.mjs'
       - 'tests/setka-music-big-webkit-probe.mjs'
@@ -41,7 +45,7 @@ jobs:
           node --check research-v1/music-admin.mjs
           node --check research-v1/app.mjs
       - name: Audio and admin contracts
-        run: node --test tests/setka-music-v1.test.mjs tests/setka-music-icons-v2.test.mjs tests/setka-music-trace-smoothing-v1.test.mjs tests/setka-music-yandex-stream-v1.test.mjs
+        run: node --test tests/setka-music-v1.test.mjs tests/setka-music-icons-v2.test.mjs tests/setka-music-trace-smoothing-v1.test.mjs tests/setka-music-yandex-stream-v1.test.mjs tests/setka-music-origin-retries.test.mjs
       - name: Verify public catalog API without credentials
         run: |
           curl --fail --silent --show-error --max-time 15 https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-music-v1 -o /tmp/setka-music-catalog.json
