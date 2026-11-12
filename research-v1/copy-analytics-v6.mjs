@@ -99,8 +99,19 @@ export function createV6Analytics({getAdminKey,openPattern,getPatternName}){
    (transitionRows.length?transitionRows.map(g=>'<div class="v6-pattern-row"><span>'+esc(getPatternName(g.fromPattern)||g.fromPattern)+' → '+esc(getPatternName(g.toPattern)||g.toPattern)+'</span><span>'+format(g.sessionCount)+' сессий</span></div>').join(''):
     '<p class="muted small">Пока нет последовательностей, повторившихся минимум в 3 сессиях.</p>')+
    '<p class="v6-source-note">Только исторические сессии аккаунтов V41. Последовательность не доказывает причинный эффект.</p></div>':'';
+  const receipt=stream=>{
+   if(!stream)return 'источник недоступен';
+   const at=stream.lastJourneyReceiptAt;
+   if(!at)return 'новых событий пока нет';
+   const timestamp=Date.parse(at);
+   if(!Number.isFinite(timestamp))return 'время приёма недоступно';
+   const local=new Date(timestamp).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+   return format(stream.journeyEventsInPeriod)+' событий за период · последний приём '+local;
+  };
+  const deliveryHTML='<div class="v6-secondary small muted">Поступление событий на сервер: гости — '+esc(receipt(j))+
+   ' · аккаунты — '+esc(receipt(aj))+'. Это факт приёма событий, а не проверка активности каждого пользователя.</div>';
   const errors=SOURCES.filter(source=>result[source]?.error).map(source=>titles[source]).join(', ');
-  return '<div class="v6-stats">'+items.join('')+'</div>'+
+  return '<div class="v6-stats">'+items.join('')+'</div>'+deliveryHTML+
    '<div class="v6-secondary small muted">Исторические записи: V40 — '+(h?format(h.exposures):'—')+
    ' просмотров · аккаунты V41 — '+(a?format(a.exposures):'—')+' просмотров. С ними V2 не складываем. Паттернов с просмотром: '+(v?format(v.patternCount):'—')+'.'+
    (a?.usageMode?' В аккаунтах V41: '+format(a.usageMode.duringSession)+' во время сессий, '+format(a.usageMode.justWatch)+' просто посмотреть.':'')+
