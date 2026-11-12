@@ -62,6 +62,8 @@ try{
  assert.match(dashboard,/Вернувшиеся гости/);
  assert.match(dashboard,/Вернувшиеся аккаунты/);
  assert.match(dashboard,/Визиты аккаунтов/);
+ assert.equal(await page.locator('#setka-v6-overview .v6-day-pair').count()>0,true);
+ assert.match(dashboard,/Посещения по дням/);
  assert.match(dashboard,/Аккаунты в приложении/);
  assert.match(dashboard,/Музыка · аккаунты/);
  assert.match(dashboard,/Музыка/);
