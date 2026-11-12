@@ -73,8 +73,10 @@ test('V2 separately counts outcome and exploration exposures, preserving unknown
  assert.equal(r.patterns[0].mode_breakdown.outcome,1);
  assert.equal(r.patterns[0].mode_breakdown.exploration,1);
  const ui=read('research-v1/copy-analytics-v6.mjs');
- assert.match(ui,/Просто исследую/);
- assert.match(ui,/С отслеживанием состояния/);
+ assert.match(ui,/Во время сессий/);
+ assert.match(ui,/Просто посмотреть/);
+ assert.match(ui,/sessionBreakdown\.outcome\|\|0\)\+\(v\.sessionBreakdown\.exploration\|\|0/);
+ assert.match(ui,/sessionBreakdown\.unbound/);
 });
 test('minimal transport sends only session type, never note contents',()=>{
  const api=read('supabase/functions/setka-guest-events-v2/index.ts'),guest=read('standalone-guest-telemetry-v2.js');
@@ -83,4 +85,15 @@ test('minimal transport sends only session type, never note contents',()=>{
  assert.match(api,/ignoreDuplicates:true/);
  assert.match(guest,/sessionType:x\.sessionType==="outcome"/);
  assert.doesNotMatch(guest,/noteText|symptomName|rawGesture/);
+});
+test('free-view notes retain visit context, without relabeling intent as a viewing mode',()=>{
+ const core=read('standalone-core-v34.js');
+ const advanced=read('standalone-advanced-v34.js');
+ const ui=read('research-v1/copy-analytics-v6.mjs');
+ assert.match(advanced,/C\.recordEvent\("session_choice",\{choice:"browse"\},false\);directOpen\(tile\)/);
+ assert.match(core,/visitId:!activeSession&&st\?\.view==="game"/);
+ assert.match(core,/n\.visitId\|\|n\.patternId\?"Просто посмотреть"/);
+ assert.match(ui,/metric\('Просто посмотреть'/);
+ assert.match(ui,/metric\('Во время сессий'/);
+ assert.doesNotMatch(ui,/metric\('Просто исследую'/);
 });
