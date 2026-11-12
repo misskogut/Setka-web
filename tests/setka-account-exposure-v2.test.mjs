@@ -97,8 +97,8 @@ test('owner isolation, hydration barrier and offline retry preserve pending expo
 
 test('front loads account V2 exposure collector independently of original guest and V41 streams',()=>{
  const html=readFileSync('standalone-v34.html','utf8');
- assert.match(html,/standalone-account-exposure-v2\\.js/);
- assert.match(html,/standalone-guest-telemetry-v2\\.js/);
- assert.match(html,/standalone-sync-v34\\.js/);
+ assert.ok(html.includes('standalone-account-exposure-v2.js'));
+ assert.ok(html.includes('standalone-guest-telemetry-v2.js'));
+ assert.ok(html.includes('standalone-sync-v34.js'));
  assert.match(readFileSync('supabase/functions/setka-semantic-v35/index.ts','utf8'),/persistAccountJourney/);
 });
