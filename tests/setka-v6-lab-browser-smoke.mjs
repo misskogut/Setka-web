@@ -12,11 +12,11 @@ const html=[
 '<div id="detail-content"><div class="row">Название паттерна</div></div>',
 '<script type="module">',
 'import {createV6Analytics} from "/research-v1/copy-analytics-v6.mjs";',
-'window.testV6=createV6Analytics({getAdminKey:()=>"isolated-test-only",getPatternName:id=>id==="gravity-atom"?"Атом гравитации":id,openPattern:id=>{window.pickedPattern=id;window.testV6.showPatternDetail(id,window.period||"all")}});',
+'window.testV6=createV6Analytics({getAdminKey:()=>"isolated-test-only",getPatternName:id=>id==="gravity-atom"?"Атом гравитации":id,openPattern:id=>{window.pickedPattern=id;window.testV6.showPatternDetail(id,{period:window.period||"all",from:window.dateFrom||null,to:window.dateTo||null})}});',
 'window.period="all";',
-'window.renderV6=(page="home",period="all")=>{window.period=period;document.querySelectorAll(".nav").forEach(n=>n.classList.toggle("selected",n.dataset.page===page));',
+'window.renderV6=(page="home",period="all",from=null,to=null)=>{window.period=period;window.dateFrom=from;window.dateTo=to;document.querySelectorAll(".nav").forEach(n=>n.classList.toggle("selected",n.dataset.page===page));',
 'document.querySelector("#content").innerHTML=page==="home"?"<div class=kpi-grid>Исходная админка</div>":"<div class=pattern-grid>Карточки паттернов</div>";',
-'window.testV6.render(page,{period})};',
+'window.testV6.render(page,{period,from,to})};',
 'window.renderV6("home","all");',
 '</script></body></html>'
 ].join('\n');
@@ -65,6 +65,9 @@ try{
  await page.evaluate(()=>window.renderV6('home','7'));
  await page.waitForFunction(()=>document.querySelector('.v6-overview-body')?.textContent?.includes('Гостевые устройства V2'));
  assert.ok(calls.some(c=>c.days===7),'period flows to server without any source picker');
+ await page.evaluate(()=>window.renderV6('home','custom','2026-11-11T20:00:00Z','2026-11-12T00:00:00Z'));
+ await page.waitForFunction(()=>document.querySelector('.v6-overview-body')?.textContent?.includes('Гостевые устройства V2'));
+ assert.ok(calls.some(c=>c.from==='2026-11-11T20:00:00Z'&&c.to==='2026-11-12T00:00:00Z'),'custom dates forwarded automatically');
  await page.evaluate(()=>window.renderV6('patterns','7'));
  await page.getByText('Активность паттернов').waitFor();
  await page.waitForFunction(()=>document.querySelector('.v6-pattern-inline')?.textContent?.includes('просмотров V2'));
