@@ -57,3 +57,27 @@ test('production V2 summary reads metadata for guest journey without bypassing e
  assert.match(src,/actor_type,account_id,pattern_id,event_type,session_id/);
  assert.match(src,/\.\.\.\(journey\?\{journey\}:\{\}\)/);
 });
+
+test('account history is scoped by verified account ID, not by guest device',()=>{
+ const rows=[
+  row('guest-same','device-1','visit_start','2026-11-11T22:00:00Z'),
+  row('account-early','device-1','visit_start','2026-11-09T21:00:00Z',{actor_type:'account',account_id:'T-ONE'}),
+  row('account-new','device-1','visit_start','2026-11-11T22:00:00Z',{actor_type:'account',account_id:'T-ONE'}),
+  row('account-second','device-1','visit_start','2026-11-11T22:05:00Z',{actor_type:'account',account_id:'T-TWO'}),
+  row('account-end','device-1','visit_end','2026-11-11T22:07:00Z',{actor_type:'account',account_id:'T-ONE',duration_ms:60000}),
+  row('account-music','device-1','music_play','2026-11-11T22:02:00Z',{actor_type:'account',account_id:'T-ONE',properties:{track_id:'tone-1'}})
+ ];
+ const account=summarizeJourneyV3(rows,{scope:'account',days:1,now});
+ assert.equal(account.visits,2);
+ assert.equal(account.activeAccounts,2);
+ assert.equal(account.firstSeenAccounts,1);
+ assert.equal(account.returningAccounts,1);
+ assert.equal(account.musicStarts,1);
+ assert.equal(account.foregroundMs,60000);
+ assert.equal(account.identityScope,'verified_account_ids');
+ const guest=summarizeJourneyV3(rows,{scope:'guest',days:1,now});
+ assert.equal(guest.visits,1);
+ assert.equal(guest.activeGuestDevices,1);
+ assert.equal(guest.musicStarts,0);
+ assert.throws(()=>summarizeJourneyV3(rows,{scope:'merged',days:1,now}),/invalid_scope/);
+});
