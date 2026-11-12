@@ -39,20 +39,25 @@ export function createV6Analytics({getAdminKey,openPattern,getPatternName}){
  const metric=(name,value,definition)=>'<div class="v6-stat"><span class="v6-stat-label">'+esc(name)+'</span><strong class="v6-stat-value">'+esc(value)+'</strong><small>'+esc(definition)+'</small></div>';
  function overviewHTML(result,period){
   const v=getRecord(result,'unified_v2'),a=getRecord(result,'account_v41'),h=getRecord(result,'guest_v40');
-  const j=v?.journey||null;
+  const j=v?.journey||null,aj=v?.accountJourney||null;
   const items=[
-   metric('Визиты',j?format(j.visits):'—','Открытия приложения · V3'),
+   metric('Визиты гостей',j?format(j.visits):'—','Открытия приложения · V3'),
+   metric('Визиты аккаунтов',aj?format(aj.visits):'—','Вход подтверждён · V4'),
+   metric('Аккаунты в приложении',aj?format(aj.activeAccounts):'—','Активные в новой истории V2'),
    metric('Гостевые устройства',j?format(j.activeGuestDevices):v?format(v.guestDevices):'—','Активность V2 · не люди'),
    metric('Аккаунты с просмотрами',a?format(a.distinctIdentities):'—','Активность в истории V41'),
    metric('Зарегистрированы',a?.accountInventory?format(a.accountInventory.registeredAccounts):'—','Аккаунты с доступом · за всё время'),
-   metric('Возвращались',j?format(j.returningGuestDevices):'—','Гостевые устройства · разные дни'),
+   metric('Вернувшиеся гости',j?format(j.returningGuestDevices):'—','Гостевые устройства · разные дни'),
+   metric('Вернувшиеся аккаунты',aj?format(aj.returningAccounts):'—','Аккаунты · разные дни'),
    metric('Новые устройства',j?format(j.firstSeenGuestDevices):'—','Первое событие в доступной истории'),
    metric('Просмотры паттернов',v?format(v.exposures):'—','Завершённые просмотры · V2'),
    metric('Во время сессий',v?.usageMode?format(v.usageMode.duringSession):'—','Гостевой поток V2'),
    metric('Просто посмотреть',v?.usageMode?format(v.usageMode.justWatch):'—','Гостевой поток V2'),
    metric('Открытия паттернов',j?format(j.patternOpens):'—','Запуски просмотра · V3'),
    metric('Избранное',j?format(j.favoriteSaves):'—','Сохранения · V3'),
-   metric('Музыка',j?format(j.musicStarts):'—','Фактические запуски · V3'),
+   metric('Музыка · гости',j?format(j.musicStarts):'—','Фактические запуски · V3'),
+   metric('Музыка · аккаунты',aj?format(aj.musicStarts):'—','Фактические запуски · V4'),
+   metric('Время аккаунтов',aj?minutes(aj.foregroundMs)+' мин':'—','Завершённые периоды активности'),
    metric('Время в приложении',j?minutes(j.foregroundMs)+' мин':'—','Завершённые активные периоды')
   ];
   const days=Array.isArray(j?.timeline)?j.timeline:Array.isArray(v?.timeline)?v.timeline:[];
