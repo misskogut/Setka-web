@@ -66,6 +66,9 @@ try{
  assert.equal(await page.evaluate(()=>window.pickedPattern),'gravity-atom');
  await page.getByText('Использование паттерна · Атом гравитации').waitFor();
  assert.match(await page.locator('#setka-v6-pattern-detail').innerText(),/Исторические гости V40/);
+ assert.match(await page.locator('#setka-v6-pattern-detail').innerText(),/Медианная длительность/);
+ assert.match(await page.locator('#setka-v6-pattern-detail').innerText(),/Повторно просматривали/);
+ assert.match(await page.locator('#setka-v6-pattern-detail').innerText(),/Сохранений в избранное/);
  await page.evaluate(()=>window.renderV6('home','7'));
  await page.waitForFunction(()=>document.querySelector('.v6-overview-body')?.textContent?.includes('Гостевые устройства'));
  assert.ok(calls.some(c=>c.days===7),'period flows to server without any source picker');
