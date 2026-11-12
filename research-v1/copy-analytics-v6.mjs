@@ -1,131 +1,134 @@
-// SETKA copy-only research analytics. Never mounts in stable admin mode.
-if(location.pathname.endsWith('/standalone-research-admin-copy-v6.html') || new URLSearchParams(location.search).get('workspace')==='copy'){
- const API='https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-admin-v6-metrics';
- // Versioned per-feature read receipts: a new release turns its NEW marker green again.
- const newItems=[
-  {id:'v6-pattern-analytics',version:'1',section:'patterns',label:'Аналитика V6'},
-  {id:'v6-source-quality',version:'1',section:'patterns',label:'Проверка источников'},
-  {id:'v6-guest-path',version:'1',section:'participants',label:'Гостевая телеметрия V2'},
-  {id:'v6-historical-sync',version:'1',section:'home',label:'Контроль синхронизации V34'},
-  {id:'v6-research-lab',version:'2',section:'research',label:'Лаборатория · реальные данные'}
- ];
- const readKey=item=>'setka-copy-seen:'+item.id+':'+item.version;
- const isSeen=item=>{try{return localStorage.getItem(readKey(item))==='1'}catch(_){return false}};
- const markSeen=item=>{try{localStorage.setItem(readKey(item),'1')}catch(_){};refreshBadges()};
- const badgeStyle=seen=>'display:inline-flex;align-items:center;margin-left:6px;padding:1px 6px;border-radius:5px;font:700 10px system-ui;letter-spacing:.04em;background:'+(seen?'#777':'#16834b')+';color:#fff';
- function refreshBadges(){
-  for(const nav of document.querySelectorAll('.nav[data-page]')){
-   const relevant=newItems.filter(item=>item.section===nav.dataset.page);
-   let badge=nav.querySelector('.setka-copy-new-badge');
-   if(!relevant.length){badge?.remove();continue}
-   if(!badge){badge=document.createElement('span');badge.className='setka-copy-new-badge';badge.textContent='NEW';nav.insertBefore(badge,nav.children[1]||null)}
-   badge.style.cssText=badgeStyle(relevant.every(isSeen))+';flex:none!important;color:#fff!important;font-size:10px!important;padding:2px 5px!important;';
-   badge.title=relevant.every(isSeen)?'Новые функции просмотрены':'Есть непросмотренные функции';
-  }
-  for(const el of document.querySelectorAll('[data-setka-new-id]')){
-   const item=newItems.find(x=>x.id===el.dataset.setkaNewId);if(item)el.style.cssText=badgeStyle(isSeen(item));
-  }
- }
- refreshBadges();
+// SETKA V6 copy-only analytics: one overview in the existing light admin layout.
+// Three independent sources are always loaded automatically. Never add actor
+// counts across sources: identity links are not yet verified.
+const API='https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-admin-v6-metrics';
+const SOURCES=['unified_v2','guest_v40','account_v41'];
+const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const format=x=>Number.isFinite(Number(x))?Number(x).toLocaleString('ru-RU'):'—';
+const minutes=ms=>Number.isFinite(Number(ms))?(Number(ms)/60000).toLocaleString('ru-RU',{maximumFractionDigits:1}):'—';
+const empty=()=>({exposures:0,distinctIdentities:0,guestDevices:0,accountActors:0,recordedMs:0,patternCount:0,timeline:[],patterns:[]});
+const byId=(data,id)=>(Array.isArray(data?.patterns)?data.patterns:[]).find(p=>p.pattern_id===id)||{exposures:0,recorded_ms:0,distinct_identities:0};
 
- const escape=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- const host=document.createElement('section');
- host.id='setka-copy-inline-v6';
- host.style.cssText='display:grid;gap:16px;margin:0 0 24px;';
- document.getElementById('content')?.before(host);
- const box=document.createElement('section');
- box.id='setka-copy-v6-analytics';
- box.style.cssText='position:relative;width:100%;overflow:auto;background:#161616;color:#fff;border:1px solid #777;border-radius:14px;padding:18px;box-shadow:none;font:13px/1.5 system-ui';
- box.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><strong><span data-setka-new-id="v6-pattern-analytics">NEW</span> Аналитика V6</strong><button id="setka-copy-toggle" type="button" style="color:#fff;background:#333;border:1px solid #777;border-radius:8px;padding:5px 10px">Развернуть</button></div><div id="setka-copy-content" hidden><p>Новые источники: исторические гости V40, аккаунты V41, единые события V2. Участники разных источников не суммируются.</p><label>Источник <select id="setka-copy-source" style="color:#fff;background:#333;padding:6px"><option value="guest_v40">Гости V40</option><option value="account_v41">Аккаунты V41</option><option value="unified_v2">События V2 · без связки аккаунтов</option></select></label> <button id="setka-copy-refresh" type="button" style="padding:6px;background:#333;color:#fff;border:1px solid #777">Обновить</button><div id="setka-copy-output" role="status"></div><div id="setka-copy-quality"></div></div>';
- host.appendChild(box);
- const content=box.querySelector('#setka-copy-content'),output=box.querySelector('#setka-copy-output'),quality=box.querySelector('#setka-copy-quality');
- const key=()=>{try{return sessionStorage.getItem('setka-research:admin-key:v1')||localStorage.getItem('setka-research:admin-key:v1')||''}catch(_){return ''}};
- const call=async(action,opts={})=>{const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),12000);try{const response=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,source:opts.source||box.querySelector('#setka-copy-source').value,days:opts.days??30,adminKey:key()}),signal:controller.signal});const data=await response.json();if(!response.ok||data.ok!==true)throw Error(data.error||'server_error');return data}finally{clearTimeout(timer)}};
- let seq=0;
- async function load(){const n=++seq;output.textContent='Загружаем статистику…';quality.textContent='';if(!key()){output.textContent='Для статистики необходимо войти в админку.';return}
- try{const d=await call('pattern-summary');if(n!==seq)return;const items=Array.isArray(d.items)?d.items:[];output.innerHTML='<p>Источник: '+escape(d.source)+' · Паттернов: '+items.length+(d.truncated?' · Выборка неполная':'')+'</p><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th>Паттерн</th><th>Экспозиции</th><th>Участники*</th><th>Минуты</th></tr></thead><tbody>'+items.map(x=>'<tr><td>'+escape(x.pattern_id)+'</td><td>'+escape(x.exposures)+'</td><td>'+escape(x.unique_participants)+'</td><td>'+escape((Number(x.active_ms||0)/60000).toFixed(1))+'</td></tr>').join('')+'</tbody></table></div><small>* В пределах выбранного источника, без межисточниковой дедупликации.</small>';}
- catch(e){if(n===seq)output.textContent='Статистика недоступна: '+String(e.message||e)}
- try{const d=await call('quality');if(n!==seq)return;const sources=Array.isArray(d.sources)?d.sources:[];quality.innerHTML='<p><strong><span data-setka-new-id="v6-source-quality">NEW</span> Проверка источников</strong></p><ul>'+sources.map(x=>'<li>'+escape(x.table)+': '+escape(x.error?'недоступен':x.count)+'</li>').join('')+'</ul><small>События гостей V2 поступают; подтверждённое объединение с аккаунтами пока отсутствует.</small>';refreshBadges()}catch(e){if(n===seq)quality.textContent='Проверка источников недоступна: '+String(e.message||e)}}
- box.querySelector('#setka-copy-toggle').onclick=()=>{content.hidden=!content.hidden;box.querySelector('#setka-copy-toggle').textContent=content.hidden?'Развернуть':'Свернуть';if(!content.hidden){markSeen(newItems[0]);load()}};
- quality.addEventListener('click',()=>markSeen(newItems[1]));
- box.querySelector('#setka-copy-refresh').onclick=()=>{markSeen(newItems[1]);load()};
- box.querySelector('#setka-copy-source').onchange=load;
- // New research sections use the same server-validated credential as the original admin.
- const extra=document.createElement('section');
- extra.id='setka-copy-more';
- extra.style.cssText='position:relative;width:100%;overflow:auto;background:#171717;color:#fff;border:1px solid #777;border-radius:14px;padding:18px;font:13px/1.5 system-ui;box-shadow:none';
- extra.innerHTML='<div style="display:flex;justify-content:space-between"><strong>NEW · Исследования и аудитория V6</strong><button type="button" id="setka-copy-more-toggle" style="background:#333;color:#fff;border:1px solid #777;border-radius:8px;padding:5px">Развернуть</button></div><div id="setka-copy-more-body" hidden><p>Лаборатория, гостевые события и историческая синхронизация. Данные разных источников не складываются.</p><div style="display:flex;gap:6px;flex-wrap:wrap"><button type="button" data-v6-view="lab">Лаборатория</button><button type="button" data-v6-view="guests">Гости V2</button><button type="button" data-v6-view="sync">Синхронизация V34</button></div><div id="setka-copy-more-results" role="status"></div></div>';
- host.appendChild(extra);
- for(const btn of extra.querySelectorAll('[data-v6-view]'))btn.style.cssText='padding:7px;background:#333;color:#fff;border:1px solid #777;border-radius:7px';
- const moreBody=extra.querySelector('#setka-copy-more-body'),moreResults=extra.querySelector('#setka-copy-more-results');
- const labTools=document.createElement('div');
- labTools.id='setka-v6-lab-tools';
- labTools.hidden=true;
- labTools.style.cssText='display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:14px 0;';
- labTools.innerHTML='<label style="color:#ddd;min-width:180px">Источник<select id="setka-v6-lab-source" style="display:block;width:100%;background:#333;color:#fff;padding:7px;margin-top:6px"><option value="unified_v2">V2 · события устройств</option><option value="account_v41">V41 · аккаунты</option><option value="guest_v40">V40 · исторические гости</option></select></label><label style="color:#ddd;min-width:100px">Период<select id="setka-v6-lab-days" style="display:block;width:100%;background:#333;color:#fff;padding:7px;margin-top:6px"><option value="7">7 дней</option><option value="30" selected>30 дней</option><option value="90">90 дней</option><option value="0">Всё время</option></select></label><button type="button" id="setka-v6-lab-refresh" style="background:#333;color:#fff">Обновить</button>';
- moreResults.before(labTools);
- const labSource=labTools.querySelector('#setka-v6-lab-source'),labDays=labTools.querySelector('#setka-v6-lab-days');
- const number=v=>Number(v||0).toLocaleString('ru-RU');
- const sourceTitles={unified_v2:'События V2',account_v41:'Аккаунты V41',guest_v40:'Гости V40'};
- function renderLab(d){
-  const events=Number(d.exposures)||0,identities=Number(d.distinctIdentities)||0,ms=Number(d.recordedMs)||0;
-  const daily=Array.isArray(d.timeline)?d.timeline:[];
-  const top=Array.isArray(d.patterns)?d.patterns:[];
-  const max=Math.max(1,...daily.map(x=>Number(x.exposures)||0));
-  const bars=daily.map(x=>{
-   const n=Math.max(0,Number(x.exposures)||0),h=n?Math.max(5,Math.round(n/max*100)):1;
-   return '<div title="'+escape(x.date+': '+n+' просмотров')+'" style="flex:1 0 9px;max-width:26px;height:100%;display:flex;align-items:end"><div style="width:100%;height:'+h+'%;background:'+(n?'#77cfaa':'#444')+';border-radius:2px 2px 0 0"></div></div>';
+export function createV6Analytics({getAdminKey,openPattern,getPatternName}){
+ let memory=new Map(),sequence=0;
+ const periodDays=period=>period==='today'?1:period==='7'?7:period==='30'?30:period==='90'?90:0;
+ const periodText=period=>period==='today'?'Сегодня':period==='7'?'7 дней':period==='30'?'30 дней':period==='90'?'90 дней':'Всё время';
+ const sourceCaption='Источники учитываются автоматически. Повторы между V2, V40 и V41 пока не объединяются.';
+ const titles={unified_v2:'V2 · новый поток',guest_v40:'V40 · исторические гости',account_v41:'V41 · аккаунты'};
+ const getRecord=(result,source)=>result[source]?.data||null;
+ function invalidate(){memory.clear()}
+ async function read(period){
+  const days=periodDays(period),key=String(days);
+  const previous=memory.get(key);
+  if(previous&&Date.now()-previous.at<50000)return previous.promise;
+  const promise=Promise.all(SOURCES.map(async source=>{
+   try{
+    const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),15000);
+    try{
+     const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'lab-summary',source,days,adminKey:getAdminKey()}),signal:ctl.signal});
+     const d=await r.json();
+     if(!r.ok||d.ok!==true)throw Error('источник временно недоступен');
+     return [source,{data:d}];
+    }finally{clearTimeout(timer)}
+   }catch(e){return [source,{error:String(e?.message||e)}]}
+  })).then(items=>Object.fromEntries(items));
+  memory.set(key,{at:Date.now(),promise});
+  return promise;
+ }
+ const metric=(name,value,definition)=>'<div class="v6-stat"><span class="v6-stat-label">'+esc(name)+'</span><strong class="v6-stat-value">'+esc(value)+'</strong><small>'+esc(definition)+'</small></div>';
+ function overviewHTML(result,period){
+  const v=getRecord(result,'unified_v2'),a=getRecord(result,'account_v41'),h=getRecord(result,'guest_v40');
+  const items=[
+   metric('Просмотры',v?format(v.exposures):'—','Новый поток V2'),
+   metric('Гости',v?format(v.guestDevices):'—','Гостевые устройства V2'),
+   metric('Аккаунты',a?format(a.distinctIdentities):'—','Активные в V41'),
+   metric('Время просмотра',v?minutes(v.recordedMs)+' мин':'—','Новый поток V2'),
+   metric('Паттерны',v?format(v.patternCount):'—','Просмотрены в V2')
+  ];
+  const days=Array.isArray(v?.timeline)?v.timeline:[];
+  const maximum=Math.max(1,...days.map(d=>Number(d.exposures)||0));
+  const bars=days.map(d=>{
+   const value=Math.max(0,Number(d.exposures)||0),height=value?Math.max(3,Math.round(value/maximum*100)):1;
+   return '<div class="v6-bar-col" title="'+esc(d.date+': '+value)+'"><i style="height:'+height+'%"></i></div>';
   }).join('');
-  const metric=(label,value)=>'<div style="background:#222;border:1px solid #444;border-radius:10px;padding:13px;min-width:120px;flex:1"><div style="font-size:11px;color:#bbb">'+label+'</div><strong style="display:block;font-size:23px;font-weight:500;margin-top:4px">'+escape(value)+'</strong></div>';
-  const latest=d.lastIngestAt?new Date(d.lastIngestAt).toLocaleString('ru-RU',{timeZone:'Europe/Samara'}):'нет';
-  const scope= d.source==='account_v41'?'Аккаунты внутри V41':d.source==='guest_v40'?'Гостевые ключи внутри V40':'Идентификаторы устройств/аккаунтов внутри V2';
-  const warning=d.truncated?'<p style="color:#ffcc88">Выборка ограничена: итоговые значения неполные.</p>':'';
-  const list=top.map(x=>'<tr><td>'+escape(x.pattern_id)+'</td><td>'+number(x.exposures)+'</td><td>'+number(Math.round(Number(x.recorded_ms||0)/60000))+'</td></tr>').join('');
-  moreResults.innerHTML='<div style="margin-top:12px"><strong style="font-size:16px">Лаборатория V6 · '+escape(sourceTitles[d.source]||d.source)+'</strong><p style="color:#aaa;margin-top:6px">Реальные события, период '+escape(d.periodDays?String(d.periodDays)+' дней':'всё время')+' · часовой пояс Саратов (UTC+4)</p></div>'+
-  '<div style="display:flex;flex-wrap:wrap;gap:8px;margin:15px 0">'+metric('Просмотры',number(events))+metric(scope,number(identities))+metric('Минуты просмотра',number(Math.round(ms/60000)))+metric('Паттерны',number(d.patternCount))+'</div>'+
-  '<h4 style="font-size:13px;margin:20px 0 8px">Динамика просмотров по дням</h4>'+
-  (daily.length?'<div role="img" aria-label="Гистограмма просмотров по дням" style="display:flex;align-items:end;gap:3px;height:110px;overflow-x:auto;padding:8px 0;border-bottom:1px solid #555">'+bars+'</div><div style="display:flex;justify-content:space-between;color:#aaa;font-size:10px"><span>'+escape(daily[0].date)+'</span><span>'+escape(daily.at(-1).date)+'</span></div>':'<p style="color:#aaa">Данных за период нет.</p>')+
-  '<h4 style="font-size:13px;margin:20px 0 6px">Паттерны по времени просмотра</h4>'+
-  (list?'<div style="overflow:auto"><table style="width:100%;color:#fff"><thead><tr><th>Паттерн</th><th>Просмотры</th><th>Минуты</th></tr></thead><tbody>'+list+'</tbody></table></div>':'<p style="color:#aaa">Нет зарегистрированных просмотров.</p>')+
-  warning+'<p style="color:#bbb;font-size:11px;margin-top:12px">Строк прочитано: '+number(d.rowsConsidered)+' · повторов исключено: '+number(d.duplicateRows)+' · вне периода/формата: '+number(d.excludedRows)+' · последнее получение/обновление: '+escape(latest)+'.</p>'+
-  '<p style="color:#bbb;font-size:11px">Источники не объединены и не дедуплицированы между собой. Это измерения использования, а не доказательство эффективности или терапевтического эффекта.</p>';
+  const rows=(Array.isArray(v?.patterns)?v.patterns:[]).slice(0,6).map(p=>
+   '<button type="button" class="v6-pattern-row" data-v6-pattern="'+esc(p.pattern_id)+'"><span>'+esc(getPatternName(p.pattern_id)||p.pattern_id)+'</span><span>'+format(p.exposures)+' просмотров · '+minutes(p.recorded_ms)+' мин</span></button>'
+  ).join('');
+  const errors=SOURCES.filter(source=>result[source]?.error).map(source=>titles[source]).join(', ');
+  return '<div class="v6-stats">'+items.join('')+'</div>'+
+   '<div class="v6-secondary small muted">Исторические записи: V40 — '+(h?format(h.exposures):'—')+
+   ' просмотров · аккаунты V41 — '+(a?format(a.exposures):'—')+' просмотров. С ними V2 не складываем.</div>'+
+   '<div class="v6-charts"><div><h3>Посещения по дням</h3>'+
+   (days.length?'<div class="v6-chart-bars" role="img" aria-label="Просмотры V2 по дням">'+bars+'</div>'+
+   '<div class="v6-chart-axis"><span>'+esc(days[0].date)+'</span><span>'+esc(days.at(-1).date)+'</span></div>':
+   '<p class="muted small">За период нет зарегистрированных просмотров V2.</p>')+
+   '</div><div><h3>Популярные паттерны</h3>'+
+   (rows||'<p class="muted small">Пока нет зарегистрированных просмотров.</p>')+'</div></div>'+
+   (errors?'<p class="v6-warning">Не удалось загрузить: '+esc(errors)+'. Остальные показатели доступны.</p>':'')+
+   '<p class="v6-source-note">'+esc(sourceCaption)+'</p>';
  }
-
- extra.querySelector('#setka-copy-more-toggle').onclick=()=>{moreBody.hidden=!moreBody.hidden;extra.querySelector('#setka-copy-more-toggle').textContent=moreBody.hidden?'Развернуть':'Свернуть'};
- const historicalApi='https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-standalone-v34';
- async function loadMore(view){
-  const item=newItems.find(x=>x.id===(view==='lab'?'v6-research-lab':view==='guests'?'v6-guest-path':'v6-historical-sync'));
-  if(item)markSeen(item);
-  labTools.hidden=view!=='lab';
-  moreResults.textContent='Загрузка…';
-  if(!key()){moreResults.textContent='Сначала войдите в админку.';return}
-  if(view==='lab'){
-   try{const d=await call('lab-summary',{source:labSource.value,days:Number(labDays.value)});renderLab(d)}
-   catch(e){moreResults.textContent='Не удалось загрузить измерения: '+String(e.message||e)}
-   return;
-  }
-  try{
-   if(view==='sync'){
-    const response=await fetch(historicalApi,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'admin-overview',adminKey:key(),channel:'yulia_lab_v34'})});
-    const d=await response.json();if(!response.ok||d.ok!==true)throw Error(d.error||'server_error');
-    const devices=Array.isArray(d.devices)?d.devices:[],sessions=Array.isArray(d.sessions)?d.sessions:[];
-    moreResults.innerHTML='<p>Устройства V34: <strong>'+devices.length+'</strong> · Исторические сессии V34: <strong>'+sessions.length+'</strong></p><small>Исторические данные не подтверждают доставку в V2.</small>';
-   }else{
-    const d=await call('quality'),sources=Array.isArray(d.sources)?d.sources:[];
-    const selected=sources.filter(x=>/events_v2|identity_links/i.test(x.table));
-    moreResults.innerHTML='<p><strong>Гостевая телеметрия V2</strong></p><ul>'+selected.map(x=>'<li>'+escape(x.table)+': '+escape(x.error?'недоступно':x.count)+'</li>').join('')+'</ul><small>Количество событий не равно количеству уникальных гостей. Сквозная доставка ещё не подтверждена.</small>';
-   }
-  }catch(e){moreResults.textContent='Источник недоступен: '+String(e.message||e)}
+ function attachButtons(root){
+  root.querySelectorAll('[data-v6-pattern]').forEach(button=>{
+   button.addEventListener('click',()=>openPattern(button.dataset.v6Pattern));
+  });
  }
- for(const btn of extra.querySelectorAll('[data-v6-view]'))btn.onclick=()=>loadMore(btn.dataset.v6View);
- labSource.onchange=()=>loadMore('lab');
- labDays.onchange=()=>loadMore('lab');
- labTools.querySelector('#setka-v6-lab-refresh').onclick=()=>loadMore('lab');
- // Both V6 sections now participate in normal page flow on mobile and desktop.
- // Make the badges on mobile navigation visible even with legacy .nav span rules.
- const style=document.createElement('style');style.textContent='.nav .setka-copy-new-badge{color:#fff!important;font-size:10px!important;line-height:1.5!important;flex-shrink:0!important}.nav[data-page]{gap:6px!important}';document.head.appendChild(style);
- const showByPage=()=>{const active=document.querySelector('.nav.selected')?.dataset.page;host.hidden=!['home','participants','patterns','research'].includes(active);box.style.display=active==='patterns'?'block':'none';extra.style.display=['home','participants','research'].includes(active)?'block':'none';};
- document.querySelectorAll('.nav[data-page]').forEach(nav=>nav.addEventListener('click',()=>queueMicrotask(showByPage)));
- showByPage();
-
+ function showHome(period){
+  const content=document.getElementById('content');
+  if(!content)return;
+  const current=++sequence;
+  const wrapper=document.createElement('section');
+  wrapper.className='card v6-overview';
+  wrapper.id='setka-v6-overview';
+  wrapper.innerHTML='<div class="v6-heading"><div><h2>Использование SETKA</h2><p class="muted small">Общая картина · '+esc(periodText(period))+'</p></div><span class="v6-updated">Обновляем…</span></div><div class="v6-overview-body"><p class="muted">Получаем статистику…</p></div>';
+  content.prepend(wrapper);
+  read(period).then(result=>{
+   if(current!==sequence||!wrapper.isConnected)return;
+   wrapper.querySelector('.v6-overview-body').innerHTML=overviewHTML(result,period);
+   wrapper.querySelector('.v6-updated').textContent='Обновлено';
+   attachButtons(wrapper);
+  }).catch(()=>{
+   if(wrapper.isConnected)wrapper.querySelector('.v6-overview-body').textContent='Не удалось получить статистику.';
+  });
+ }
+ function showPatternSummary(period){
+  const content=document.getElementById('content');if(!content)return;
+  const current=++sequence,wrapper=document.createElement('section');
+  wrapper.className='card v6-pattern-overview';wrapper.id='setka-v6-pattern-overview';
+  wrapper.innerHTML='<h2>Активность паттернов</h2><p class="muted small">Статистика обновляется автоматически. Откройте любой паттерн ниже для подробностей.</p><div class="v6-pattern-inline muted">Загрузка…</div>';
+  content.prepend(wrapper);
+  read(period).then(result=>{
+   if(current!==sequence||!wrapper.isConnected)return;
+   const v=getRecord(result,'unified_v2'),a=getRecord(result,'account_v41'),h=getRecord(result,'guest_v40');
+   wrapper.querySelector('.v6-pattern-inline').innerHTML=
+    '<span><b>'+(v?format(v.exposures):'—')+'</b> просмотров V2</span>'+
+    '<span><b>'+(h?format(h.exposures):'—')+'</b> исторических V40</span>'+
+    '<span><b>'+(a?format(a.exposures):'—')+'</b> аккаунтных V41</span>';
+  });
+ }
+ function showPatternDetail(id,period){
+  const target=document.getElementById('detail-content');
+  if(!target)return;
+  const node=document.createElement('section');
+  node.className='card v6-detail';node.id='setka-v6-pattern-detail';
+  node.innerHTML='<h3>Использование паттерна</h3><p class="muted small">Обновляем статистику по всем источникам…</p>';
+  const header=target.querySelector('.row');if(header)header.after(node);else target.prepend(node);
+  read(period).then(result=>{
+   if(!node.isConnected)return;
+   const v=getRecord(result,'unified_v2'),h=getRecord(result,'guest_v40'),a=getRecord(result,'account_v41');
+   const line=(title,data)=>{
+    const p=data?byId(data,id):null;
+    return metric(title,p?format(p.exposures):'—',p?minutes(p.recorded_ms)+' мин просмотра':'Нет связи с источником');
+   };
+   node.innerHTML='<h3>Использование паттерна · '+esc(getPatternName(id)||id)+'</h3>'+
+    '<div class="v6-stats v6-detail-stats">'+line('Новый поток V2',v)+line('Исторические гости V40',h)+line('Аккаунты V41',a)+'</div>'+
+    '<p class="v6-source-note">'+esc(sourceCaption)+'</p>';
+  });
+ }
+ function render(page,{period='all'}={}){
+  sequence++;
+  if(page==='home')showHome(period);
+  if(page==='patterns')showPatternSummary(period);
+ }
+ return {render,showPatternDetail,invalidate};
 }
