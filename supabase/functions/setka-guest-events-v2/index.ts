@@ -18,6 +18,7 @@ Deno.serve(async req=>{
    const exposure=e.eventType==="pattern_exposure",journey=JOURNEY_EVENTS.has(e.eventType);
    if(!uuid(e.eventId)||(!exposure&&!journey)||!(e.sessionId==null||validId(e.sessionId,180)))return J({error:"invalid_event"},400);
    if(exposure){
+    if(e.sessionType!=null&&e.sessionType!=="outcome"&&e.sessionType!=="exploration")return J({error:"invalid_session_type"},400);
     if(!validId(e.patternId,120)||!Number.isInteger(e.durationMs)||e.durationMs<1||e.durationMs>86400000)return J({error:"invalid_event"},400);
    }else{
     if(e.patternId!=null&&!validId(e.patternId,120))return J({error:"invalid_event"},400);
@@ -29,7 +30,7 @@ Deno.serve(async req=>{
    }
    const at=Date.parse(e.occurredAt);
    if(!Number.isFinite(at)||at>now+300000||at<now-90*86400000)return J({error:"invalid_timestamp"},400);
-   records.push({event_id:e.eventId,device_id:body.deviceId,actor_type:"guest",account_id:null,event_type:e.eventType,session_id:e.sessionId??null,pattern_id:e.patternId??null,occurred_at:new Date(at).toISOString(),duration_ms:e.durationMs??null,properties:{source:"standalone-v34",schema:exposure?2:3,...(e.eventType==="music_play"?{track_id:e.trackId}:{})}});
+   records.push({event_id:e.eventId,device_id:body.deviceId,actor_type:"guest",account_id:null,event_type:e.eventType,session_id:e.sessionId??null,pattern_id:e.patternId??null,occurred_at:new Date(at).toISOString(),duration_ms:e.durationMs??null,properties:{source:"standalone-v34",schema:exposure?2:3,...(exposure?{session_type:e.sessionType??null}:{}),...(e.eventType==="music_play"?{track_id:e.trackId}:{})}});
   }
   const {count:hourCount,error:countError}=await db.from("setka_research_events_v2").select("event_id",{count:"exact",head:true}).eq("device_id",body.deviceId).gte("received_at",new Date(now-3600000).toISOString());
   if(countError)throw countError;
