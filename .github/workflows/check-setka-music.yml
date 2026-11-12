@@ -52,6 +52,7 @@ jobs:
           node -e "const d=require('/tmp/setka-music-catalog.json'); if (!d.ok || !Array.isArray(d.categories) || !Array.isArray(d.tracks)) process.exit(1)"
   browser:
     runs-on: ubuntu-latest
+    container: mcr.microsoft.com/playwright:v1.64.1-noble
     timeout-minutes: 12
     strategy:
       fail-fast: false
@@ -63,8 +64,6 @@ jobs:
         with:
           node-version: "22"
       - run: npm install --no-save --ignore-scripts playwright@1.64.1
-      - run: npx playwright install --with-deps ${{ matrix.browser }}
-      - run: node scripts/build-pattern-manifest.mjs
       - run: node scripts/build-pattern-manifest.mjs
       - run: node tests/setka-music-restored-sheet-browser.mjs
         env:
