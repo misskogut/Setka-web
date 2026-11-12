@@ -47,8 +47,8 @@ export function createV6Analytics({getAdminKey,openPattern,getPatternName}){
    metric('Возвращались',j?format(j.returningGuestDevices):'—','Гостевые устройства · разные дни'),
    metric('Новые устройства',j?format(j.firstSeenGuestDevices):'—','Первое событие в доступной истории'),
    metric('Просмотры паттернов',v?format(v.exposures):'—','Завершённые просмотры · V2'),
-   metric('С отслеживанием состояния',v?.sessionBreakdown?format(v.sessionBreakdown.outcome):'—','Просмотры в исследовательских сессиях'),
-   metric('Просто исследую',v?.sessionBreakdown?format(v.sessionBreakdown.exploration):'—','Просмотры в свободных сессиях'),
+   metric('Во время сессий',v?.sessionBreakdown?format((v.sessionBreakdown.outcome||0)+(v.sessionBreakdown.exploration||0)):'—','Включая запрос «Просто исследую»'),
+   metric('Просто посмотреть',v?.sessionBreakdown?format(v.sessionBreakdown.unbound):'—','Просмотры без запуска сессии'),
    metric('Открытия паттернов',j?format(j.patternOpens):'—','Запуски просмотра · V3'),
    metric('Избранное',j?format(j.favoriteSaves):'—','Сохранения · V3'),
    metric('Музыка',j?format(j.musicStarts):'—','Фактические запуски · V3'),
@@ -148,9 +148,8 @@ export function createV6Analytics({getAdminKey,openPattern,getPatternName}){
      details('Средняя длительность', 'average_ms',true)+
      details('Медианная длительность','median_ms',true)+
      details('Повторно просматривали · ID','repeat_identities')+
-     '<tr><th>В исследовательской сессии</th><td>'+(v?format(byId(v,id).mode_breakdown?.outcome||0):'—')+'</td><td colspan="2">—</td></tr>'+
-     '<tr><th>Просто исследую</th><td>'+(v?format(byId(v,id).mode_breakdown?.exploration||0):'—')+'</td><td colspan="2">—</td></tr>'+
-     '<tr><th>Без выбранной сессии</th><td>'+(v?format(byId(v,id).mode_breakdown?.unbound||0):'—')+'</td><td colspan="2">—</td></tr>'+
+     '<tr><th>Во время сессий</th><td>'+(v?format((byId(v,id).mode_breakdown?.outcome||0)+(byId(v,id).mode_breakdown?.exploration||0)):'—')+'</td><td colspan="2">—</td></tr>'+
+     '<tr><th>Просто посмотреть</th><td>'+(v?format(byId(v,id).mode_breakdown?.unbound||0):'—')+'</td><td colspan="2">—</td></tr>'+
      details('Разных идентификаторов','distinct_identities')+
     '</tbody></table></div>'+
     '<p class="v6-source-note">'+esc(sourceCaption)+'</p>';
