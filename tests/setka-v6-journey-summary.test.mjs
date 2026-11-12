@@ -129,3 +129,23 @@ test('D1 and D7 never count a cohort before its return day has fully ended',()=>
  const c=summarizeJourneyV3(custom,{days:0,now,from:'2026-11-01T00:00:00Z',to:'2026-11-02T02:00:00Z'});
  assert.equal(c.retentionD1.eligible,0,'custom range with partial final day cannot establish D1');
 });
+
+test('receipt telemetry reports only actually received journey events, by separate source',()=>{
+ const seen='2026-11-12T07:10:00Z';
+ const rows=[
+  row('guest-arrived','G','visit_start','2026-11-11T22:00:00Z',{received_at:seen}),
+  row('old-exposure','G','pattern_exposure','2026-11-11T22:01:00Z',
+    {received_at:'2026-11-12T07:59:00Z',pattern_id:'medusa'}),
+  row('account-arrived','G','visit_start','2026-11-11T23:00:00Z',
+    {actor_type:'account',account_id:'A-1',received_at:'2026-11-12T07:30:00Z'})
+ ];
+ const guest=summarizeJourneyV3(rows,{scope:'guest',days:1,now});
+ const account=summarizeJourneyV3(rows,{scope:'account',days:1,now});
+ assert.equal(guest.lastJourneyReceiptAt,seen);
+ assert.equal(guest.journeyEventsInPeriod,1);
+ assert.equal(account.lastJourneyReceiptAt,'2026-11-12T07:30:00.000Z');
+ assert.equal(account.journeyEventsInPeriod,1);
+ const empty=summarizeJourneyV3([],{scope:'account',days:1,now});
+ assert.equal(empty.lastJourneyReceiptAt,null);
+ assert.equal(empty.journeyEventsInPeriod,0);
+});
