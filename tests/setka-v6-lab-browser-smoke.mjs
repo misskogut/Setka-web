@@ -47,7 +47,9 @@ try{
     ...(guest?{usageMode:{duringSession:3,justWatch:5}}:account?{usageMode:{duringSession:1,justWatch:3},
      accountInventory:{registeredAccounts:11,existingFavorites:17,recordedSessions:4,verifiedDeviceLinks:0}}:{}),
     rowsConsidered:8,duplicateRows:0,excludedRows:0,
-    ...(guest?{journey:{visits:3,activeGuestDevices:2,firstSeenGuestDevices:1,returningGuestDevices:1,patternOpens:5,favoriteSaves:2,musicStarts:1,foregroundMs:90000,timeline:[{date:"2026-11-12",visits:3}],patternOpensById:[{pattern_id:"gravity-atom",opens:5}]},accountJourney:{visits:4,activeAccounts:2,firstSeenAccounts:1,returningAccounts:1,musicStarts:3,foregroundMs:40000,timeline:[{date:"2026-11-12",visits:4}]}}:{})};
+    ...(guest?{journey:{visits:3,activeGuestDevices:2,firstSeenGuestDevices:1,returningGuestDevices:1,patternOpens:5,favoriteSaves:2,musicStarts:1,foregroundMs:90000,timeline:[{date:"2026-11-12",visits:3}],patternOpensById:[{pattern_id:"gravity-atom",opens:5}]},accountJourney:{visits:4,activeAccounts:2,firstSeenAccounts:1,returningAccounts:1,musicStarts:3,foregroundMs:40000,timeline:[{date:"2026-11-12",visits:4}]},
+    outcomes:{trackedSessions:10,completedSessions:8,pairedSessions:7,overall:{meanPre:2,meanPost:3,meanChange:1},groups:[{requestKey:'sleep',pairedSessions:5,meanPre:2,meanPost:3}]}}:
+    account?{transitions:{sessionsWithSequence:9,transitions:[{fromPattern:'gravity-atom',toPattern:'medusa',sessionCount:4}]}}:{})};
   await route.fulfill({status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*','access-control-allow-headers':'content-type'},body:JSON.stringify(result)});
  });
  await page.goto(base+'/standalone-research-admin-copy-v6.html');
@@ -72,6 +74,11 @@ try{
  assert.match(dashboard,/11/);
  assert.match(dashboard,/V40/);
  assert.match(dashboard,/V41/);
+ assert.match(dashboard,/Изменение состояния/);
+ assert.match(dashboard,/Завершённые исследовательские сессии/);
+ assert.match(dashboard,/Субъективные оценки/);
+ assert.match(dashboard,/Последовательности паттернов/);
+ assert.match(dashboard,/медуза|medusa/i);
  assert.equal(await page.locator('select[id*="source"],select[id*="lab"]').count(),0);
  const bg=await page.locator('#setka-v6-overview').evaluate(el=>getComputedStyle(el).backgroundColor);
  assert.equal(bg,'rgb(255, 255, 255)');
