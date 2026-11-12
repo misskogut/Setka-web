@@ -62,11 +62,14 @@ export function createV6Analytics({getAdminKey,openPattern,getPatternName}){
   ];
   const days=Array.isArray(j?.timeline)?j.timeline:Array.isArray(v?.timeline)?v.timeline:[];
   const chartKey=j?'visits':'exposures';
-  const chartTitle=j?'Визиты по дням':'Просмотры паттернов по дням';
-  const maximum=Math.max(1,...days.map(d=>Number(d[chartKey])||0));
+  const chartTitle=j?'Посещения по дням':'Просмотры паттернов по дням';
+  const accountDays=new Map((Array.isArray(aj?.timeline)?aj.timeline:[]).map(d=>[d.date,Number(d.visits)||0]));
+  const maximum=Math.max(1,...days.map(d=>Number(d[chartKey])||0),...(j?[...accountDays.values()]:[]));
   const bars=days.map(d=>{
    const value=Math.max(0,Number(d[chartKey])||0),height=value?Math.max(3,Math.round(value/maximum*100)):1;
-   return '<div class="v6-bar-col" title="'+esc(d.date+': '+value)+'"><i style="height:'+height+'%"></i></div>';
+   const other=Math.max(0,accountDays.get(d.date)||0),otherHeight=other?Math.max(3,Math.round(other/maximum*100)):1;
+   return j?'<div class="v6-day-pair" title="'+esc(d.date+': гостей '+value+', аккаунтов '+other)+'"><i class="v6-day-guest" style="height:'+height+'%"></i><i class="v6-day-account" style="height:'+otherHeight+'%"></i></div>':
+   '<div class="v6-bar-col" title="'+esc(d.date+': '+value)+'"><i style="height:'+height+'%"></i></div>';
   }).join('');
   const rows=(Array.isArray(v?.patterns)?v.patterns:[]).slice(0,6).map(p=>
    '<button type="button" class="v6-pattern-row" data-v6-pattern="'+esc(p.pattern_id)+'"><span>'+esc(getPatternName(p.pattern_id)||p.pattern_id)+'</span><span>'+format(p.exposures)+' просмотров · '+minutes(p.recorded_ms)+' мин</span></button>'
@@ -100,7 +103,8 @@ export function createV6Analytics({getAdminKey,openPattern,getPatternName}){
     ' · подтверждённых связей устройств с аккаунтами: '+format(a.accountInventory.verifiedDeviceLinks)+'.':'')+
    (v?.sessionBreakdown?.legacy_unknown?' Старых V2 с неизвестным режимом: '+format(v.sessionBreakdown.legacy_unknown)+'.':'')+'</div>'+
    '<div class="v6-charts"><div><h3>'+esc(chartTitle)+'</h3>'+
-   (days.length?'<div class="v6-chart-bars" role="img" aria-label="'+esc(chartTitle)+'">'+bars+'</div>'+
+   (days.length?(j?'<div class="v6-chart-legend"><span><i class="guest"></i>Гости</span><span><i class="account"></i>Аккаунты</span></div>':'')+
+    '<div class="v6-chart-bars" role="img" aria-label="'+esc(chartTitle)+'">'+bars+'</div>'+
    '<div class="v6-chart-axis"><span>'+esc(days[0].date)+'</span><span>'+esc(days.at(-1).date)+'</span></div>':
    '<p class="muted small">За период событий для графика нет.</p>')+
    '</div><div><h3>Популярные паттерны</h3>'+
