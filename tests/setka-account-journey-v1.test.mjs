@@ -111,3 +111,11 @@ test('standalone frontend loads both isolated journeys; server never bypasses ex
  assert.match(server,/if\(action==="journey-v1"\)return J\(\{error:"auth_required"\},401\)/);
  assert.match(server,/persistAccountJourney\(db,\{deviceId,testerId,events:b\.events\}\)/);
 });
+
+
+test('account pagehide flushes the close event with a bounded keepalive request',()=>{
+ const src=fs.readFileSync('standalone-account-journey-v1.js','utf8');
+ assert.match(src,/window\.addEventListener\("pagehide",\(\)=>\{end\(\);void flush\(\)\}\)/);
+ assert.match(src,/keepalive:true/);
+ assert.match(src,/Content-Type":"text\/plain;charset=UTF-8"/);
+});
