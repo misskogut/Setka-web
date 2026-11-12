@@ -29,7 +29,7 @@ export function summarizeJourneyV3(rows,{days=30,from=null,to=null,now=Date.now(
   events.push({...row,day:d,at});
  }
  const active=new Set(),newDevices=new Set(),returning=new Set();
- const visitsByDay=new Map(),opensByPattern=new Map(),musicByTrack=new Map();
+ const visitsByDay=new Map(),opensByPattern=new Map(),favoritesByPattern=new Map(),musicByTrack=new Map();
  let visits=0,returns=0,patternOpens=0,favoriteSaves=0,favoriteRemoves=0,musicStarts=0,foregroundMs=0,visitEnds=0;
  for(const e of events){
   if(e.day>today||e.day<first||e.day>last||(custom&&(e.at<low||e.at>=high)))continue;
@@ -43,7 +43,10 @@ export function summarizeJourneyV3(rows,{days=30,from=null,to=null,now=Date.now(
   if(kind==="pattern_open"&&e.pattern_id){
    patternOpens++;const pattern=String(e.pattern_id);opensByPattern.set(pattern,(opensByPattern.get(pattern)||0)+1);
   }
-  if(kind==="favorite_save")favoriteSaves++;
+  if(kind==="favorite_save"){
+   favoriteSaves++;
+   if(e.pattern_id){const p=String(e.pattern_id);favoritesByPattern.set(p,(favoritesByPattern.get(p)||0)+1)}
+  }
   if(kind==="favorite_remove")favoriteRemoves++;
   if(kind==="music_play"){
    musicStarts++;
@@ -59,6 +62,8 @@ export function summarizeJourneyV3(rows,{days=30,from=null,to=null,now=Date.now(
   musicStarts,foregroundMs,visitEnds,dayTimeZone:"UTC+04:00",
   timeline,patternOpensById:[...opensByPattern].map(([pattern_id,opens])=>({pattern_id,opens}))
    .sort((a,b)=>b.opens-a.opens).slice(0,50),
+  favoritesByPattern:[...favoritesByPattern].map(([pattern_id,saves])=>({pattern_id,saves}))
+   .sort((a,b)=>b.saves-a.saves).slice(0,50),
   topPlayedTracks:[...musicByTrack].map(([track_id,starts])=>({track_id,starts}))
    .sort((a,b)=>b.starts-a.starts).slice(0,12),
   scannedEvents:events.length,invalidRows:invalid,duplicateRows:duplicates,
