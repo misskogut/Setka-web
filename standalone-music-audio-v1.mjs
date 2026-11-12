@@ -92,11 +92,23 @@ export function createOrbitEarlyReflections(ctx,input,master,model="HRTF"){
   return [];
  }
 }
+// Repeated finger drags and the 40ms motion tick must replace prior
+// automation, not accumulate stale targets in the AudioParam timeline.
+export function scheduleOrbitParam(param,value,time,tracking){
+ if(!param?.setTargetAtTime||!Number.isFinite(value))return false;
+ const when=Math.max(0,Number(time)||0),smooth=Math.max(.006,Math.min(.18,Number(tracking)||.018));
+ try{
+  if(typeof param.cancelAndHoldAtTime==="function")param.cancelAndHoldAtTime(when);
+  else param.cancelScheduledValues?.(when);
+ }catch(_){try{param.cancelScheduledValues?.(when)}catch(_){}}
+ param.setTargetAtTime(value,when,smooth);
+ return true;
+}
 function setOrbitPosition(node,x,z,time,tracking){
  if(node.positionX?.setTargetAtTime){
-  node.positionX.setTargetAtTime(x,time,tracking);
-  node.positionY?.setTargetAtTime(0,time,tracking);
-  node.positionZ.setTargetAtTime(z,time,tracking);
+  scheduleOrbitParam(node.positionX,x,time,tracking);
+  scheduleOrbitParam(node.positionY,0,time,tracking);
+  scheduleOrbitParam(node.positionZ,z,time,tracking);
  }else node.setPosition(x,0,z);
 }
 export class SetkaMusicMixer {
@@ -339,21 +351,37 @@ export class SetkaMusicMixer {
   const t=this.ctx.currentTime;
   // Diffuse late field and physically directed early reflections are
   // independent paths. Smooth changes to prevent clicks on finger drags.
-  if(s.roomSend)s.roomSend.gain.setTargetAtTime(roomSend,t,s.manual?.055:.095);
+  if(s.roomSend)scheduleOrbitParam(s.roomSend.gain,roomSend,t,s.manual?.055:.095);
   const acoustic=orbitEarlyReflectionProfile(a,r);
   for(let i=0;i<(s.reflections?.length||0);i++){
    const reflection=s.reflections[i],q=acoustic[i];
    const response=s.manual?.05:.10;
-   reflection.gain.gain.setTargetAtTime(q.gain,t,response);
-   reflection.filter.frequency.setTargetAtTime(q.cutoff,t,.12);
-   reflection.delay.delayTime.setTargetAtTime(q.delay,t,.12);
+   scheduleOrbitParam(reflection.gain.gain,q.gain,t,response);
+   scheduleOrbitParam(reflection.filter.frequency,q.cutoff,t,.12);
+   scheduleOrbitParam(reflection.delay.delayTime,q.delay,t,.12);
    setOrbitPosition(reflection.panner,q.x,q.z,t,response);
   }
   if(s.rearFilter?.gain?.setTargetAtTime){
-   s.rearFilter.gain.setTargetAtTime(gentleRearDb,t,s.manual?.028:.055);
+   scheduleOrbitParam(s.rearFilter.gain,gentleRearDb,t,s.manual?.028:.055);
   }else if(s.rearFilter?.gain){s.rearFilter.gain.value=gentleRearDb}
   // Dry HRTF follows the icon without inheriting the long room tail.
-  setOrbitPosition(s.panner,x,z,t,s.manual?.018:.036);
+  setOrbitPosition(s.panner,x,z,t,s.manual?.012:.036);
+ }
+ diagnostics(){
+  const ctx=this.ctx;
+  const sources=[...this.items.values()].map(s=>{
+   const unit=orbitUnit(s.angle),profile=orbitDepthProfile(s.radius);
+   return {trackId:s.id,angle:s.angle,radius:s.radius,
+    x:unit.x*profile.distance,z:unit.z*profile.distance,
+    hrtfSpatialized:!s.nativeOnly&&s.panner?.panningModel==="HRTF",
+    nativeStereoFallback:!!s.nativeOnly,earlyReflectionCount:s.nativeOnly?0:s.reflections?.length||0};
+  });
+  const base=Number(ctx?.baseLatency),output=Number(ctx?.outputLatency);
+  return {audioContextActive:!!ctx,audioContextState:ctx?.state||"uninitialized",
+   baseLatencyMs:Number.isFinite(base)?Math.round(base*1000):null,
+   outputLatencyMs:Number.isFinite(output)?Math.round(output*1000):null,
+   supportsHrtf:!!ctx?.createPanner,sources,
+   warning:sources.some(s=>s.nativeStereoFallback)?"Large WAV on Safari is native stereo; icon movement is not HRTF spatialized.":null};
  }
  drag(id,a,r){
   const s=this.items.get(id);if(!s)return;
