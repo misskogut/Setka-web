@@ -9,7 +9,13 @@ const escapeText=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
 const BASE_CATEGORIES=[{id:"hand",title:"Рука"},{id:"eye",title:"Открытый глаз"},{id:"sleep",title:"Закрытый глаз"},{id:"8d",title:"8D"}];
 const mixer=new SetkaMusicMixer();
 // Only real audio playback events are counted; no identifying listener data.
-mixer.onTrackEvent=event=>{fetch(API,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"track-event",...event}),keepalive:true}).catch(()=>{})};
+mixer.onTrackEvent=event=>{
+ // Only the audio element's real "playing" callback can emit a guest
+ // playback-start count; never record selected icons as audio playback.
+ if(event?.event_type==="play"&&typeof event.track_id==="string")
+  window.dispatchEvent(new CustomEvent("setka:music-play",{detail:{trackId:event.track_id}}));
+ fetch(API,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"track-event",...event}),keepalive:true}).catch(()=>{});
+};
 const uiIcons=Object.create(null);
 let categories=BASE_CATEGORIES,tracks=[],globalOrder={track_ids:[]},selected=null,visible=false,loading=false,status="";
 let root=null,categoriesRow=null,grid=null,catalog=null,orbit=null,note=null,title=null,patternPanels=null,powerButton=null;
