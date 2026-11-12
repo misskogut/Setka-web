@@ -42,7 +42,10 @@ try{
     exposures:guest?8:account?4:15,distinctIdentities:guest?2:account?1:3,
     guestDevices:guest?2:0,accountActors:0,recordedMs:guest?155000:250000,patternCount:1,
     timeline:[{date:'2026-11-12',exposures:8,recorded_ms:155000}],
-    patterns:[{pattern_id:'gravity-atom',exposures:guest?8:account?4:15,recorded_ms:guest?155000:250000}],
+    patterns:[{pattern_id:'gravity-atom',exposures:guest?8:account?4:15,recorded_ms:guest?155000:250000,
+      ...(guest?{usage_mode:{duringSession:3,justWatch:5}}:account?{usage_mode:{duringSession:1,justWatch:3}}:{})}],
+    ...(guest?{usageMode:{duringSession:3,justWatch:5}}:account?{usageMode:{duringSession:1,justWatch:3},
+     accountInventory:{registeredAccounts:11,existingFavorites:17,recordedSessions:4}}:{}),
     rowsConsidered:8,duplicateRows:0,excludedRows:0,
     ...(guest?{journey:{visits:3,activeGuestDevices:2,firstSeenGuestDevices:1,returningGuestDevices:1,patternOpens:5,favoriteSaves:2,musicStarts:1,foregroundMs:90000,timeline:[{date:"2026-11-12",visits:3}],patternOpensById:[{pattern_id:"gravity-atom",opens:5}]}}:{})};
   await route.fulfill({status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*','access-control-allow-headers':'content-type'},body:JSON.stringify(result)});
@@ -56,7 +59,12 @@ try{
  assert.match(dashboard,/Визиты/);
  assert.match(dashboard,/Возвращались/);
  assert.match(dashboard,/Музыка/);
- assert.match(dashboard,/Аккаунты/);
+ assert.match(dashboard,/Аккаунты с просмотрами/);
+ assert.match(dashboard,/Зарегистрированы/);
+ assert.match(dashboard,/во время сессий/);
+ assert.match(dashboard,/просто посмотреть/);
+ assert.match(dashboard,/сохранений в избранном сейчас/);
+ assert.match(dashboard,/11/);
  assert.match(dashboard,/V40/);
  assert.match(dashboard,/V41/);
  assert.equal(await page.locator('select[id*="source"],select[id*="lab"]').count(),0);
@@ -69,6 +77,9 @@ try{
  assert.match(await page.locator('#setka-v6-pattern-detail').innerText(),/Медианная длительность/);
  assert.match(await page.locator('#setka-v6-pattern-detail').innerText(),/Повторно просматривали/);
  assert.match(await page.locator('#setka-v6-pattern-detail').innerText(),/Сохранений в избранное/);
+ const detail=await page.locator('#setka-v6-pattern-detail').innerText();
+ assert.match(detail,/Просто посмотреть/);
+ assert.match(detail,/Во время сессий/);
  await page.evaluate(()=>window.renderV6('home','7'));
  await page.waitForFunction(()=>document.querySelector('.v6-overview-body')?.textContent?.includes('Гостевые устройства'));
  assert.ok(calls.some(c=>c.days===7),'period flows to server without any source picker');
