@@ -57,7 +57,7 @@ async function flush(){
   const items=batch.map(({accountId,...e})=>e);
   let res;
   try{res=await fetch(API,{method:"POST",headers:{"Content-Type":"text/plain;charset=UTF-8"},
-   body:JSON.stringify({action:"journey-v1",channel:CHANNEL,deviceId:device(),sessionToken:a.token,events:items}),signal:ctrl.signal})}
+   body:JSON.stringify({action:"journey-v1",channel:CHANNEL,deviceId:device(),sessionToken:a.token,events:items}),keepalive:true,signal:ctrl.signal})}
   finally{clearTimeout(timeout)}
   const data=await res.json();
   if(!res.ok||data.ok!==true||data.accepted!==items.length)throw Error("not_acknowledged");
@@ -85,7 +85,7 @@ window.addEventListener("setka:v40-account",()=>{
 });
 window.addEventListener("online",()=>schedule(250));
 window.addEventListener("pageshow",()=>{if(!visit)start();schedule(250)});
-window.addEventListener("pagehide",end);
+window.addEventListener("pagehide",()=>{end();void flush()});
 window.addEventListener("storage",e=>{if(e.key===QUEUE_KEY)schedule(1200)});
 document.addEventListener("visibilitychange",()=>{
  if(document.hidden){hiddenSince=Date.now();end();schedule(250)}
