@@ -115,6 +115,7 @@ on:
       - 'supabase/functions/setka-admin-v6-metrics/**'
       - 'tests/setka-account-journey-v1.test.mjs'
       - 'tests/setka-account-exposure-v2.test.mjs'
+      - 'tests/setka-telemetry-automated-production.test.mjs'
       - 'tests/setka-identity-link-v1.test.mjs'
       - 'tests/setka-orbit-acoustics-gate.test.mjs'
       - 'tests/setka-v6-journey-summary.test.mjs'
@@ -216,6 +217,7 @@ jobs:
       # coordinate/HRTF math checks. Real authenticated traffic and headphones
       # remain separate acceptance gates; no synthetic production events.
       - run: node --test tests/setka-account-journey-v1.test.mjs tests/setka-account-exposure-v2.test.mjs tests/setka-identity-link-v1.test.mjs tests/setka-v6-journey-summary.test.mjs tests/setka-v6-copy-integration.test.mjs tests/setka-orbit-acoustics-gate.test.mjs tests/setka-wav-stream-v1.test.mjs
+      - run: node --test tests/setka-telemetry-automated-production.test.mjs
       - run: node --test tests/standalone-v34-admin-integrity.test.mjs
       - run: node --test tests/standalone-v34-admin-restoration.test.mjs
 
