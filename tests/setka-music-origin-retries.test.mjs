@@ -16,9 +16,14 @@ function app(sequence){
   if(uri.includes('/rest/v1/setka_music_tracks_v1'))return new Response(JSON.stringify([track]),{status:200,headers:{'content-type':'application/json'}});
   if(uri.includes('/releases/download/setka-original-music-20261107/')){
    const item=sequence[Math.min(requests++,sequence.length-1)];
+   const range=/^bytes=([0-9]+)-([0-9]+)$/.exec(opts.headers?.range||'');
+   assert.ok(range,'proxy always requests an explicit original range');
+   const start=Number(range[1]),end=Number(range[2]);
    if(item==='500')return new Response('temporary upstream problem',{status:500});
    if(item==='bad-range')return new Response(bytes,{status:206,headers:{'content-range':'bytes 1-1024/1024'}});
-   return new Response(bytes,{status:206,headers:{'content-range':'bytes 0-1023/1024','content-type':'audio/wav'}});
+   const audio=item==='partial-close'?bytes.slice(start,Math.min(end+1,start+300)):bytes.slice(start,end+1);
+   return new Response(audio,{status:206,headers:{
+    'content-range':'bytes '+start+'-'+end+'/1024','content-type':'audio/wav'}});
   }
   throw Error('unexpected network request: '+uri);
  };
@@ -51,4 +56,13 @@ test('mismatched Content-Range is rejected, never mixed with original audio',asy
  const response=await fixture.respond();
  assert.equal(response.status,502);
  assert.equal(fixture.calls(),1);
+});
+
+test('interrupted upstream 206 stream resumes at exact next byte with zero duplication',async()=>{
+ const fixture=app(['partial-close','206']);
+ const response=await fixture.respond();
+ assert.equal(response.status,206);
+ const received=new Uint8Array(await response.arrayBuffer());
+ assert.deepEqual(received,bytes,'recover original bytes exactly, including packet boundary');
+ assert.equal(fixture.calls(),2);
 });
