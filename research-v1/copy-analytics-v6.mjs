@@ -72,7 +72,8 @@ export function createV6Analytics({getAdminKey,openPattern,getPatternName}){
    ' просмотров · аккаунты V41 — '+(a?format(a.exposures):'—')+' просмотров. С ними V2 не складываем. Паттернов с просмотром: '+(v?format(v.patternCount):'—')+'.'+
    (a?.usageMode?' В аккаунтах V41: '+format(a.usageMode.duringSession)+' во время сессий, '+format(a.usageMode.justWatch)+' просто посмотреть.':'')+
    (a?.accountInventory?' Сессий аккаунтов (всё время): '+format(a.accountInventory.recordedSessions)+
-    ' · сохранений в избранном сейчас: '+format(a.accountInventory.existingFavorites)+'.':'')+
+    ' · сохранений в избранном сейчас: '+format(a.accountInventory.existingFavorites)+
+    ' · подтверждённых связей устройств с аккаунтами: '+format(a.accountInventory.verifiedDeviceLinks)+'.':'')+
    (v?.sessionBreakdown?.legacy_unknown?' Старых V2 с неизвестным режимом: '+format(v.sessionBreakdown.legacy_unknown)+'.':'')+'</div>'+
    '<div class="v6-charts"><div><h3>'+esc(chartTitle)+'</h3>'+
    (days.length?'<div class="v6-chart-bars" role="img" aria-label="'+esc(chartTitle)+'">'+bars+'</div>'+
