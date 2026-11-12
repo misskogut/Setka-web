@@ -51,9 +51,22 @@ let browser;
 // reject a pagehide/keepalive fetch whose URL is rewritten to localhost.
  // Playwright reroutes only network transport to this isolated fixture server.
 const routeIsolatedApi=async context=>context.route('https://gfchgaphzhxufwdhrcis.supabase.co/**',async route=>{
- const requested=new URL(route.request().url());
- const response=await route.fetch({url:base+requested.pathname+requested.search});
- await route.fulfill({response});
+ // Browser-side CORS + WebKit keepalive requests are inconsistent when a
+ // Playwright route.fetch changes HTTPS origin to an HTTP localhost fixture.
+ // Proxy via Node's fetch and fulfill the original HTTPS URL explicitly.
+ // This ONLY exists inside the isolated browser smoke test.
+ const request=route.request(),requested=new URL(request.url());
+ const method=request.method(),payload=request.postData();
+ const cors={'access-control-allow-origin':'*',
+   'access-control-allow-headers':'content-type,authorization,apikey,x-client-info',
+   'access-control-allow-methods':'POST,OPTIONS',
+   'access-control-allow-private-network':'true'};
+ if(method==='OPTIONS'){await route.fulfill({status:204,headers:cors,body:''});return}
+ const response=await fetch(base+requested.pathname+requested.search,{
+   method,headers:{'content-type':request.headers()['content-type']||'application/json'},
+   ...(payload!==null&&method!=='GET'&&method!=='HEAD'?{body:payload}:{})
+ });
+ await route.fulfill({status:response.status,headers:{...cors,'content-type':'application/json'},body:await response.text()});
 });
 try{
  await new Promise((ok,fail)=>{server.once('error',fail);server.listen(port,'127.0.0.1',ok)});
