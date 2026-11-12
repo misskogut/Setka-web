@@ -141,7 +141,7 @@ test('receipt telemetry reports only actually received journey events, by separa
  ];
  const guest=summarizeJourneyV3(rows,{scope:'guest',days:1,now});
  const account=summarizeJourneyV3(rows,{scope:'account',days:1,now});
- assert.equal(guest.lastJourneyReceiptAt,seen);
+ assert.equal(guest.lastJourneyReceiptAt,'2026-11-12T07:10:00.000Z');
  assert.equal(guest.journeyEventsInPeriod,1);
  assert.equal(account.lastJourneyReceiptAt,'2026-11-12T07:30:00.000Z');
  assert.equal(account.journeyEventsInPeriod,1);
