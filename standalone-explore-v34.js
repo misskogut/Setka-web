@@ -72,6 +72,7 @@
       continuationStartedAt:s.startedAt,continuationEndedAt:null,completionReason:null,completed:false
     });
     if(row)Object.assign(row,clone(s));
+    C.persistActiveSession?.();
     const startEvent=[...(d.events||[])].reverse().find(e=>e.sessionId===s.id&&e.type==="session_start");
     if(startEvent)startEvent.payload={requestKey:EXPLORE_KEY,sessionType:"exploration",state:C.stateSnapshot?.()||null};
     C.save();
@@ -133,7 +134,7 @@
       originalStart({requestKey:key,preState,plannedSeconds,symptomGetters,pendingConfig});
       const s=C.getActiveSession(),row=s?C.getData().sessions.find(x=>x.id===s.id):null;
       if(s){s.sessionType="outcome";s.isExploration=false;s.trackedSymptomIds=selected.map(x=>x.symptom.id);s.trackedSymptomNames=selected.map(x=>x.symptom.name)}
-      if(row){row.sessionType="outcome";row.isExploration=false;row.trackedSymptomIds=[...(s?.trackedSymptomIds||[])];row.trackedSymptomNames=[...(s?.trackedSymptomNames||[])];C.save()}
+      if(row){row.sessionType="outcome";row.isExploration=false;row.trackedSymptomIds=[...(s?.trackedSymptomIds||[])];row.trackedSymptomNames=[...(s?.trackedSymptomNames||[])];C.persistActiveSession?.();C.save()}
       C.recordEvent?.("session_states_selected",{symptoms:selected.map(x=>({id:x.symptom.id,name:x.symptom.name,intensity:x.getValue()})),count:selected.length},true);
     };
     b.appendChild(go);
