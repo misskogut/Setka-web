@@ -106,38 +106,79 @@ const streamExternalTrack=async(request,origin,id)=>{
   const file=githubOriginalAsset(t);
   if(!file)return json({error:"audio_release_missing"},503,origin);
   // The client sees the complete original file range (accurate Safari duration).
-  // Internally fetch only 2 MiB Yandex ranges at a time, avoiding 500 MiB upstream stalls.
+  // Internally fetch only 2 MiB original GitHub ranges at a time.
   // Forward byte-for-byte, never buffer the whole file or transcode audio.
   const segmentSize=2*1024*1024;
-  // Fetch only the exact original byte ranges from SETKA's verified GitHub
-  // release asset. Never fallback to Yandex, transcode, or alter samples.
+  // Retry only transient upstream failures; never accept a mismatched byte range.
   const source=async(first,last)=>{
-    const res=await fetch(file,{method:"GET",headers:{"range":"bytes="+first+"-"+last},
-      redirect:"follow",signal:AbortSignal.timeout(45000)});
-    if(res.status!==206||!res.body)throw Error("audio_github_release_unavailable");
-    const header=res.headers.get("content-range");
-    const m=header&&/^bytes (\d+)-(\d+)\/(\d+)$/.exec(header);
-    if(!m||Number(m[1])!==first||Number(m[2])!==last||Number(m[3])!==size){
-      await res.body.cancel().catch(()=>{});
-      throw Error("audio_range_mismatch");
+    let lastError;
+    for(let attempt=0;attempt<3;attempt++){
+      if(attempt)await new Promise(done=>setTimeout(done,250*attempt*attempt));
+      try{
+        const res=await fetch(file,{method:"GET",headers:{"range":"bytes="+first+"-"+last},
+          redirect:"follow",signal:AbortSignal.timeout(16000)});
+        if(res.status===206&&res.body){
+          const header=res.headers.get("content-range");
+          const m=header&&/^bytes (\d+)-(\d+)\/(\d+)$/.exec(header);
+          if(!m||Number(m[1])!==first||Number(m[2])!==last||Number(m[3])!==size){
+            await res.body.cancel().catch(()=>{});
+            throw Error("audio_range_mismatch");
+          }
+          return res.body.getReader();
+        }
+        await res.body?.cancel().catch(()=>{});
+        if(![429,500,502,503,504].includes(res.status))
+          throw Error("audio_github_release_unavailable");
+        lastError=Error("audio_github_release_unavailable");
+      }catch(error){
+        if(String(error?.message||error)==="audio_range_mismatch")throw error;
+        lastError=error;
+      }
     }
-    return res.body.getReader();
+    throw lastError||Error("audio_github_release_unavailable");
   };
   let cursor=start,sectionEnd=Math.min(end,start+segmentSize-1),reader;
   try{reader=await source(cursor,sectionEnd)}
   catch(_){return json({error:"audio_origin_unavailable"},502,origin)}
+  let recoveryCount=0;
+  const closeReader=async()=>{
+    try{await reader?.cancel()}catch(_){}
+    try{reader?.releaseLock()}catch(_){}
+  };
+  // The upstream can fail *after* returning 206 and some audio bytes. Resume
+  // from the next un-emitted byte, never repeating or skipping PCM/MP3 samples.
+  const resumeRemainder=async()=>{
+    if(++recoveryCount>3)throw Error("audio_upstream_stream_exhausted");
+    await closeReader();
+    reader=await source(cursor,sectionEnd);
+  };
   const audio=new ReadableStream({
     async pull(controller){
       try{
         while(true){
-          const next=await reader.read();
-          if(!next.done){controller.enqueue(next.value);return}
-          reader.releaseLock();cursor=sectionEnd+1;
+          let next;
+          try{next=await reader.read()}
+          catch(_){await resumeRemainder();continue}
+          if(!next.done){
+            const bytes=next.value?.byteLength||0;
+            if(cursor+bytes>sectionEnd+1)throw Error("audio_range_overrun");
+            if(!bytes)continue;
+            cursor+=bytes;
+            recoveryCount=0;
+            controller.enqueue(next.value);
+            return;
+          }
+          try{reader.releaseLock()}catch(_){}
+          if(cursor<=sectionEnd){await resumeRemainder();continue}
           if(cursor>end){controller.close();return}
           sectionEnd=Math.min(end,cursor+segmentSize-1);
           reader=await source(cursor,sectionEnd);
+          recoveryCount=0;
         }
-      }catch(error){controller.error(error)}
+      }catch(error){
+        console.error("audio_stream_unavailable",String(error?.message||error));
+        controller.error(error);
+      }
     },
     cancel(){reader?.cancel().catch(()=>{})}
   });
@@ -146,17 +187,23 @@ const streamExternalTrack=async(request,origin,id)=>{
     "content-length":String(end-start+1)}});
 };
 const catalogue=async manage=>{
-  const cats=await rowQuery("setka_music_categories_v1","select=id,title,icon_path,sort_order,visible,is_system,updated_at"+(manage?"":"&visible=eq.true")+"&order=sort_order.asc,id.asc");
-  const icons=await rowQuery("setka_music_ui_icons_v1","select=slot,icon_path,updated_at&order=slot.asc");
-  let tracks=await rowQuery("setka_music_tracks_v1","select=id,title,audio_path,icon_key,icon_path,category_ids,sort_order,published,loop,duration_seconds,revision,updated_at,external_source_path,external_source_hash,external_source_bytes"+(manage?"":"&published=eq.true")+"&order=sort_order.asc,created_at.asc");
-  const availableAssets=await musicReleaseAssets();
+  // Independent reads run together; serial REST calls followed by a GitHub
+  // metadata wait could exceed the browser's 15-second catalog deadline.
+  const [cats,icons,sourceTracks,availableAssets,hiddenIcons,globalRows,stats]=await Promise.all([
+    rowQuery("setka_music_categories_v1","select=id,title,icon_path,sort_order,visible,is_system,updated_at"+(manage?"":"&visible=eq.true")+"&order=sort_order.asc,id.asc"),
+    rowQuery("setka_music_ui_icons_v1","select=slot,icon_path,updated_at&order=slot.asc"),
+    rowQuery("setka_music_tracks_v1","select=id,title,audio_path,icon_key,icon_path,category_ids,sort_order,published,loop,duration_seconds,revision,updated_at,external_source_path,external_source_hash,external_source_bytes"+(manage?"":"&published=eq.true")+"&order=sort_order.asc,created_at.asc"),
+    musicReleaseAssets(),
+    manage?rowQuery("setka_music_hidden_icons_v1","select=icon_key&order=icon_key.asc"):Promise.resolve([]),
+    rowQuery("setka_music_global_order_v1","select=id,track_ids,revision,updated_at&id=eq.1"),
+    manage?rowQuery("setka_music_track_stats_v1","select=track_id,plays,completions,plays_7d,last_activity_at"):Promise.resolve([])
+  ]);
+  let tracks=sourceTracks;
   if(!manage&&availableAssets)tracks=tracks.filter(t=>isOnGitHub(t,availableAssets));
-  const hiddenIcons=manage?await rowQuery("setka_music_hidden_icons_v1","select=icon_key&order=icon_key.asc"):[];
-  const globalRows=await rowQuery("setka_music_global_order_v1","select=id,track_ids,revision,updated_at&id=eq.1");
   const visible=new Set(tracks.map(t=>t.id));
   const record=globalRows[0]||{id:1,track_ids:[],revision:1};
   const global_order={...record,track_ids:(record.track_ids||[]).filter(id=>visible.has(id))};
-  const stats=manage?await rowQuery("setka_music_track_stats_v1","select=track_id,plays,completions,plays_7d,last_activity_at"):[];
+
   return {ok:true,categories:cats,ui_icons:icons.map(i=>({...i,icon_url:PROJECT+"/storage/v1/object/public/"+BUCKET+"/"+i.icon_path})),tracks:tracks.map(t=>({...t,release_uploaded:isOnGitHub(t,availableAssets),audio_url:t.external_source_path?PROJECT+"/functions/v1/setka-music-v1?stream="+encodeURIComponent(t.id):PROJECT+"/storage/v1/object/public/"+BUCKET+"/"+t.audio_path,icon_url:t.icon_path?PROJECT+"/storage/v1/object/public/"+BUCKET+"/"+t.icon_path:null})),global_order,stats,hidden_icon_keys:hiddenIcons.map(x=>x.icon_key)};
 };
 const ensureObject=async path=>{

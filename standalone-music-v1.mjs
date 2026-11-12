@@ -1,7 +1,7 @@
 import {iconSvg} from "./standalone-music-icons-v1.mjs?v=8-restored-pre-master-20261107";
 import {selectedMusicCategorySVG} from "./standalone-music-approved-icons-v1.mjs?v=nature-optical-size-20261106";
 import {uiIconHTML,assetIconMask,UI_ICON_IDS} from "./standalone-music-ui-icons-v2.mjs?v=4-exact-approved-vector-20261106";
-import {SetkaMusicMixer} from "./standalone-music-audio-v1.mjs?v=16-lossless-wav-safari-20261112";
+import {SetkaMusicMixer} from "./standalone-music-audio-v1.mjs?v=17-all-wav-webkit-hrtf-20261112";
 import {createOrbitUI} from "./standalone-music-orbits-reference-20261106.mjs?v=15-orbit-centerline-bounds-20261107";
 const API="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-music-v1";
 const $=id=>document.getElementById(id);
@@ -18,6 +18,7 @@ mixer.onTrackEvent=event=>{
 };
 const uiIcons=Object.create(null);
 let categories=BASE_CATEGORIES,tracks=[],globalOrder={track_ids:[]},selected=null,visible=false,loading=false,status="";
+let catalogRetryCount=0,catalogRetryTimer=null;
 let root=null,categoriesRow=null,grid=null,catalog=null,orbit=null,note=null,title=null,patternPanels=null,powerButton=null;
 function trackHTML(track){
  const custom=assetIconMask(track.icon_path);
@@ -77,9 +78,25 @@ async function reload(){
  if(loading)return;
  loading=true;status="";redraw();
  try{
-  const r=await fetch(API,{cache:"no-store"});if(!r.ok)throw Error("unavailable");
-  const d=await r.json();if(!d.ok||!Array.isArray(d.categories)||!Array.isArray(d.tracks))throw Error("invalid_catalog");
+  // A transient Supabase or GitHub Release metadata timeout must not leave
+  // the music panel permanently empty. Always require a valid real catalog.
+  let d=null,lastError=null;
+  for(let attempt=0;attempt<2;attempt++){
+   const controller=new AbortController(),clock=setTimeout(()=>controller.abort(),18000);
+   try{
+    const r=await fetch(API,{cache:"no-store",signal:controller.signal});
+    if(!r.ok)throw Error("unavailable");
+    const response=await r.json();
+    if(!response.ok||!Array.isArray(response.categories)||!Array.isArray(response.tracks))
+     throw Error("invalid_catalog");
+    d=response;break;
+   }catch(error){lastError=error}
+   finally{clearTimeout(clock)}
+   if(attempt===0)await new Promise(done=>setTimeout(done,600));
+  }
+  if(!d)throw lastError||Error("unavailable");
   categories=d.categories;tracks=d.tracks.filter(t=>t.id&&t.audio_url);globalOrder=d.global_order||{track_ids:[]};
+  catalogRetryCount=0;clearTimeout(catalogRetryTimer);catalogRetryTimer=null;
   for(const key of UI_ICON_IDS)delete uiIcons[key];
   for(const item of Array.isArray(d.ui_icons)?d.ui_icons:[]){
    if(UI_ICON_IDS.includes(item.slot)&&typeof item.icon_path==="string")uiIcons[item.slot]=item.icon_path;
@@ -89,17 +106,25 @@ async function reload(){
   orbit?.refreshIcons();
   const allowed=new Set(tracks.map(t=>t.id));
   for(const id of [...mixer.items.keys()])if(!allowed.has(id))mixer.remove(id);
- }catch(_){status="Сейчас не удалось загрузить музыкальный каталог."}
+ }catch(_){
+  status="Сейчас не удалось загрузить музыкальный каталог.";
+  if(visible&&catalogRetryCount<3){
+   const delay=[1200,3500,8500][catalogRetryCount++];
+   clearTimeout(catalogRetryTimer);
+   catalogRetryTimer=setTimeout(()=>{catalogRetryTimer=null;if(visible)void reload()},delay);
+  }
+ }
  loading=false;redraw();
 }
 function openMusic(){
  visible=true;root.parentElement?.classList.add("setka-music-open");patternPanels.hidden=true;patternPanels.style.display="none";root.hidden=false;
  title.textContent="Музыка";
  for(const b of document.querySelectorAll(".library-pager .pager-button"))b.classList.toggle("active",b===note);
+ catalogRetryCount=0;clearTimeout(catalogRetryTimer);catalogRetryTimer=null;
  redraw();reload();
 }
 function hideMusic(){
- if(!visible)return;visible=false;root.parentElement?.classList.remove("setka-music-open");root.hidden=true;patternPanels.hidden=false;patternPanels.style.display="";
+ if(!visible)return;visible=false;clearTimeout(catalogRetryTimer);catalogRetryTimer=null;root.parentElement?.classList.remove("setka-music-open");root.hidden=true;patternPanels.hidden=false;patternPanels.style.display="";
  note.classList.remove("active");
 }
 function install(){

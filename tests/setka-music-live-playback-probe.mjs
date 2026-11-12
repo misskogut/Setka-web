@@ -2,10 +2,24 @@
 // Exercises the deployed catalog, actual click activation, native media, Web Audio,
 // and the in-app track button on Chromium and WebKit (iPhone-like touch viewport).
 import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
 import {chromium,webkit} from "playwright";
 const API="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-music-v1";
 const FRONT="https://misskogut.github.io/Setka-web/standalone-v34.html";
-const catalog=await fetch(API,{signal:AbortSignal.timeout(18000)}).then(r=>r.json());
+let catalog=null;
+for(let attempt=0;attempt<3;attempt++){
+ try{
+  const response=await fetch(API,{signal:AbortSignal.timeout(30000),cache:"no-store"});
+  if(!response.ok)throw Error("catalog_http_"+response.status);
+  const item=await response.json();
+  if(!item?.ok||!Array.isArray(item.tracks))throw Error("invalid_catalog");
+  catalog=item;break;
+ }catch(error){
+  console.log("LIVE_CATALOG_RETRY",attempt+1,String(error?.message||error).slice(0,110));
+  if(attempt<2)await new Promise(done=>setTimeout(done,500*(attempt+1)));
+ }
+}
+assert.ok(catalog,"production catalog must actually respond with valid original tracks");
 assert.ok(catalog.ok&&Array.isArray(catalog.tracks),"live music catalog");
 assert.ok(catalog.tracks.length>=27&&catalog.tracks.length<=28,"published only verified GitHub audio assets");
 const local=catalog.tracks.find(t=>!t.external_source_path);
@@ -19,12 +33,21 @@ for(const t of [remote,mp3])assert.match(t.audio_url,/^https:\/\/gfchgaphzhxufwd
 const name=process.env.SETKA_BROWSER==="webkit"?"webkit":"chromium";
 const browser=await (name==="webkit"?webkit:chromium).launch({headless:true});
 try{
- const page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
- page.on("pageerror",e=>console.log("PAGE_ERROR",e.message.slice(0,170)));
- page.on("console",m=>{
-  if(m.type()==="error")console.log("BROWSER_ERROR",m.text().replace(/https:\/\/\S+/g,"<media URL>").slice(0,170));
- });
- await page.addInitScript(()=>{
+ // Keep each decoder + WebAudio graph in an independent page. WebKit may
+ // retain a previous MediaElementSource until navigation even after close().
+ const newPage=async()=>{
+  const p=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+  p.on("pageerror",e=>console.log("PAGE_ERROR",e.message.slice(0,170)));
+  p.on("console",m=>{
+   if(m.type()==="error")console.log("BROWSER_ERROR",m.text().replace(/https:\/\/\S+/g,"<media URL>").slice(0,170));
+  });
+  // Serve candidate PR audio modules at the actual Pages origin; other assets
+  // and the catalog still come from live SETKA, and no media is mocked.
+  await p.route(/^https:\/\/misskogut\.github\.io\/Setka-web\/(?:standalone-v34\.html|standalone-music-v1\.mjs|standalone-music-audio-v1\.mjs|standalone-music-wav-stream-v1\.mjs)(?:\?.*)?$/,route=>{
+   const file=new URL(route.request().url()).pathname.split("/").at(-1);
+   return route.fulfill({status:200,contentType:file.endsWith(".html")?"text/html":"text/javascript",body:readFileSync(file)});
+  });
+  await p.addInitScript(()=>{
   const OriginalAudio=window.Audio;
   window.__setkaCapturedAudio=[];
   function InstrumentedAudio(...args){
@@ -34,10 +57,22 @@ try{
   }
   InstrumentedAudio.prototype=OriginalAudio.prototype;
   window.Audio=InstrumentedAudio;
- });
- await page.goto(FRONT,{waitUntil:"domcontentloaded",timeout:90000});
+  window.__setkaBufferSourceStarts=0;
+  const proto=window.AudioBufferSourceNode?.prototype;
+  if(proto?.start){const previous=proto.start;proto.start=function(...args){
+   window.__setkaBufferSourceStarts++;return previous.apply(this,args)
+  }}
+  });
+  await p.goto(FRONT,{waitUntil:"domcontentloaded",timeout:90000});
+  return p;
+ };
+ let page=await newPage();
  for(const track of samples){
-  for(const graph of [false,true]){
+  // WebKit PCM WAV uses the real app's AudioBufferSource pipeline, not the
+  // intermittently stalled raw MediaElementSource path.
+  for(const graph of (name==="webkit"&&track.external_source_path?.toLowerCase().endsWith(".wav")?[false]:[false,true])){
+   await page.close();
+   page=await newPage();
    await page.evaluate(({audio_url,graph})=>{
     window.__media=null;
     document.querySelector("#setka-real-probe")?.remove();
@@ -62,18 +97,24 @@ try{
     };
     document.body.append(button);
    },{audio_url:track.audio_url,graph});
-   await page.locator("#setka-real-probe").click();
-   await page.waitForFunction(()=>{const p=window.__media;return !!p&&(p.el.currentTime>0.8||!!p.el.error||!!p.state.startError)},null,{timeout:22000}).catch(()=>{});
-   const result=await page.evaluate(()=>{
-    const p=window.__media;if(!p)return {missing:true};
-    const e=p.el;
-    const out={...p.state,mediaErrorCode:e.error?.code||null,network:e.networkState,
-     ready:e.readyState,paused:e.paused,seconds:e.currentTime,
-     duration:Number.isFinite(e.duration)?e.duration:null,ctx:p.ctx?.state||"none"};
-    try{e.pause();e.removeAttribute("src");e.load();p.ctx?.close()}catch(_){}
-    return out;
-   });
    const type=!track.external_source_path?"supabase-local":track.external_source_path.endsWith(".mp3")?"yandex-mp3":"yandex-wav";
+   let result;
+   for(let attempt=0;attempt<2;attempt++){
+    await page.locator("#setka-real-probe").click();
+    await page.waitForFunction(()=>{const p=window.__media;return !!p&&(p.el.currentTime>0.8||!!p.el.error||!!p.state.startError)},null,{timeout:attempt===0?22000:35000}).catch(()=>{});
+    result=await page.evaluate(async()=>{
+     const p=window.__media;if(!p)return {missing:true};
+     const e=p.el;
+     const out={...p.state,mediaErrorCode:e.error?.code||null,network:e.networkState,
+      ready:e.readyState,paused:e.paused,seconds:e.currentTime,
+      duration:Number.isFinite(e.duration)?e.duration:null,ctx:p.ctx?.state||"none"};
+     e.pause();e.removeAttribute("src");e.load();
+     await p.ctx?.close?.().catch(()=>{});
+     return out;
+    });
+    if(!result.missing&&!result.startError&&!result.mediaErrorCode&&result.seconds>0.8&&(!graph||result.ctx==="running"))break;
+    if(attempt===0)console.log("REAL_AUDIO_RETRY",JSON.stringify({browser:name,type,graph,reason:result.events?.slice(-3),network:result.network}));
+   }
    console.log("REAL_AUDIO_RESULT",JSON.stringify({browser:name,type,...result}));
    assert.ok(!result.missing&&!result.startError&&!result.mediaErrorCode&&result.seconds>0.8&&(!graph||result.ctx==="running"),
     name+" cannot actually play "+type+" in "+(graph?"WebAudio":"native audio"));
@@ -82,27 +123,51 @@ try{
     name+" wrong "+type+" duration: this would prematurely cut off the soundtrack");
   }
  }
- // Verify the actual music UI click, not just the isolated HTMLMediaElement.
- await page.locator("#setka-real-probe").evaluate(el=>el.remove());
+ // Verify the real app on a clean page after all isolated media probes.
+ await page.close();
+ page=await newPage();
+ await page.locator("#setka-real-probe").count().then(n=>{if(n!==0)throw Error("probe_button_leaked")});
  await page.locator("#setkaMusicPagerButton").click();
- await page.locator(".sm-track").first().waitFor({timeout:22000});
+ // A transient catalog 5xx must not become a permanent empty music page.
+ // Retry the real production API, and still require the exact full catalog and
+ // decoded advancing audio afterwards; no fake tracks or media callbacks.
+ let hasTracks=false;
+ for(let attempt=0;attempt<3;attempt++){
+  hasTracks=await page.locator(".sm-track").first().waitFor({timeout:7000})
+   .then(()=>true).catch(()=>false);
+  if(hasTracks)break;
+  await page.evaluate(()=>window.SetkaMusicV1?.reload?.());
+ }
+ assert.ok(hasTracks,"actual SETKA catalog unavailable after three real API attempts");
  assert.equal(await page.locator(".sm-track").count(),catalog.tracks.length,"all playable GitHub tracks visible in UI");
  const actual=page.locator(".sm-track").filter({hasText:remote.title});
  const trackButton=await actual.count()===1?actual:page.locator('.sm-track[aria-label^="Утренний лес"]');
  await trackButton.first().click();
- await page.waitForFunction(id=>{
+ await page.waitForFunction(({id,webkit})=>{
    const active=window.SetkaMusicV1?.state()?.active?.some(x=>x.id===id&&x.level>=1);
-   const playable=window.__setkaCapturedAudio?.some(e=>e.src.includes(id)&&e.currentTime>0.8);
+   const spatial=window.SetkaMusicV1?.diagnostics?.()?.sources?.find(s=>s.trackId===id);
+   const playable=webkit?
+    (spatial?.losslessWavStreaming===true&&spatial?.hrtfSpatialized===true&&window.__setkaBufferSourceStarts>=2):
+    window.__setkaCapturedAudio?.some(e=>e.src.includes(id)&&e.currentTime>0.8);
    return active&&playable;
- },remote.id,{timeout:24000}).catch(()=>{});
+ },{id:remote.id,webkit:name==="webkit"},{timeout:35000});
  const app=await page.evaluate(id=>{
   const active=window.SetkaMusicV1?.state()?.active?.find(x=>x.id===id);
   const playing=window.__setkaCapturedAudio.filter(e=>e.src.includes(id)).map(e=>({
    seconds:e.currentTime,ready:e.readyState,error:e.error?.code||null,paused:e.paused
   }));
-  return {active,playing,buttonDots:document.querySelectorAll(".sm-track.active .sm-dots i").length};
+  return {active,playing,spatial:window.SetkaMusicV1?.diagnostics?.()?.sources?.find(s=>s.trackId===id),
+   starts:window.__setkaBufferSourceStarts,buttonDots:document.querySelectorAll(".sm-track.active .sm-dots i").length};
  },remote.id);
  console.log("SETKA_REAL_UI_AUDIO",JSON.stringify({browser:name,...app}));
- assert.ok(app.active?.level>=1&&app.playing.some(e=>e.seconds>0.8&&e.ready>=2&&!e.error),
+ if(name==="webkit"){
+  assert.equal(app.active?.level,1);
+  assert.equal(app.spatial?.losslessWavStreaming,true,"small original WAV must stream as PCM through Safari HRTF");
+  assert.equal(app.spatial?.hrtfSpatialized,true);
+  assert.equal(app.spatial?.nativeStereoFallback,false);
+  assert.ok(app.starts>=2,"actual WebAudio buffers from original audio must play");
+ }else{
+  assert.ok(app.active?.level>=1&&app.playing.some(e=>e.seconds>0.8&&e.ready>=2&&!e.error),
    name+" actual SETKA track click must produce decoded progressing sound");
+ }
 }finally{await browser.close()}

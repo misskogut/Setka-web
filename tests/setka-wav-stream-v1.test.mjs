@@ -89,7 +89,9 @@ test('Safari spatial route stays opt-in to valid PCM range streaming and retains
  const source=readFileSync('standalone-music-audio-v1.mjs','utf8');
  assert.match(source,/inspectWavSource\(track\.audio_url/);
  assert.match(source,/new SetkaChunkedWavDeck/);
- assert.match(source,/nativeOnly=singleDeck&&webkit&&!streamOnly/);
+ assert.match(source,/nativeOnly=externalWav&&webkit&&!streamOnly/);
+ assert.match(source,/streamInfo=externalWav&&webkit&&!this\.unstreamable\.has\(id\)/, 'even smaller original WAV uses HRTF streaming on Safari');
+ assert.match(source,/!singleDeck&&!streamOnly&&!nativeOnly/, 'streaming and fallback never duplicate decoder decks');
  assert.match(source,/losslessWavStreaming/);
  assert.match(source,/unstreamable\.add\(id\)/);
 });
