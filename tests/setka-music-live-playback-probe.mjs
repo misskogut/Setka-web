@@ -19,12 +19,15 @@ for(const t of [remote,mp3])assert.match(t.audio_url,/^https:\/\/gfchgaphzhxufwd
 const name=process.env.SETKA_BROWSER==="webkit"?"webkit":"chromium";
 const browser=await (name==="webkit"?webkit:chromium).launch({headless:true});
 try{
- const page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
- page.on("pageerror",e=>console.log("PAGE_ERROR",e.message.slice(0,170)));
- page.on("console",m=>{
-  if(m.type()==="error")console.log("BROWSER_ERROR",m.text().replace(/https:\/\/\S+/g,"<media URL>").slice(0,170));
- });
- await page.addInitScript(()=>{
+ // Keep each decoder + WebAudio graph in an independent page. WebKit may
+ // retain a previous MediaElementSource until navigation even after close().
+ const newPage=async()=>{
+  const p=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+  p.on("pageerror",e=>console.log("PAGE_ERROR",e.message.slice(0,170)));
+  p.on("console",m=>{
+   if(m.type()==="error")console.log("BROWSER_ERROR",m.text().replace(/https:\/\/\S+/g,"<media URL>").slice(0,170));
+  });
+  await p.addInitScript(()=>{
   const OriginalAudio=window.Audio;
   window.__setkaCapturedAudio=[];
   function InstrumentedAudio(...args){
@@ -34,10 +37,15 @@ try{
   }
   InstrumentedAudio.prototype=OriginalAudio.prototype;
   window.Audio=InstrumentedAudio;
- });
- await page.goto(FRONT,{waitUntil:"domcontentloaded",timeout:90000});
+  });
+  await p.goto(FRONT,{waitUntil:"domcontentloaded",timeout:90000});
+  return p;
+ };
+ let page=await newPage();
  for(const track of samples){
   for(const graph of [false,true]){
+   await page.close();
+   page=await newPage();
    await page.evaluate(({audio_url,graph})=>{
     window.__media=null;
     document.querySelector("#setka-real-probe")?.remove();
@@ -70,9 +78,11 @@ try{
     const out={...p.state,mediaErrorCode:e.error?.code||null,network:e.networkState,
      ready:e.readyState,paused:e.paused,seconds:e.currentTime,
      duration:Number.isFinite(e.duration)?e.duration:null,ctx:p.ctx?.state||"none"};
-    try{e.pause();e.removeAttribute("src");e.load();p.ctx?.close()}catch(_){}
+    e.pause();e.removeAttribute("src");e.load();
     return out;
    });
+   // The media and AudioContext are owned by this page; close it before
+   // opening the next playback probe, never reusing a stalled WebKit decoder.
    const type=!track.external_source_path?"supabase-local":track.external_source_path.endsWith(".mp3")?"yandex-mp3":"yandex-wav";
    console.log("REAL_AUDIO_RESULT",JSON.stringify({browser:name,type,...result}));
    assert.ok(!result.missing&&!result.startError&&!result.mediaErrorCode&&result.seconds>0.8&&(!graph||result.ctx==="running"),
@@ -82,8 +92,10 @@ try{
     name+" wrong "+type+" duration: this would prematurely cut off the soundtrack");
   }
  }
- // Verify the actual music UI click, not just the isolated HTMLMediaElement.
- await page.locator("#setka-real-probe").evaluate(el=>el.remove());
+ // Verify the real app on a clean page after all isolated media probes.
+ await page.close();
+ page=await newPage();
+ await page.locator("#setka-real-probe").count().then(n=>{if(n!==0)throw Error("probe_button_leaked")});
  await page.locator("#setkaMusicPagerButton").click();
  await page.locator(".sm-track").first().waitFor({timeout:22000});
  assert.equal(await page.locator(".sm-track").count(),catalog.tracks.length,"all playable GitHub tracks visible in UI");
