@@ -28,7 +28,7 @@ Deno.serve(async req=>{
   if(body.action==="lab-summary"){
    const source=typeof body.source==="string"&&Object.hasOwn(V6_SOURCES,body.source)?body.source:null;
    const days=Number(body.days);
-   if(!source||![0,7,30,90].includes(days))return response({error:"invalid_lab_query"},400);
+   if(!source||![0,1,7,30,90].includes(days))return response({error:"invalid_lab_query"},400);
    const cfg=V6_SOURCES[source],isV2=source==="unified_v2";
    const columns=isV2?
     "event_id,device_id,account_id,pattern_id,event_type,duration_ms,occurred_at,received_at":
