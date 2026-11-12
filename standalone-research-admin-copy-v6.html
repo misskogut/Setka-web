@@ -9,6 +9,7 @@
   <title>SETKA · Копия админки V6</title>
   <link rel="stylesheet" href="research-v1/style.css?v=1.1.2">
 <link rel="stylesheet" href="research-v1/music-admin.css?v=9-geometry-antialias-20261107">
+<link rel="stylesheet" href="research-v1/copy-v6.css?v=1">
 </head>
 <body>
   <a class="skip" href="#content">Перейти к содержимому</a>
@@ -32,13 +33,13 @@
     </nav><div class="sidebar-bottom"><span class="status-dot"></span><span>Настоящие данные</span><button id="diagnostics-button" class="text-button">Доступ и диагностика</button><a href="standalone-v34.html" target="_blank" rel="noopener">Открыть приложение ↗</a><a href="standalone-admin-v34.html" target="_blank" rel="noopener">Прежняя админка ↗</a><button id="logout" class="text-button">Выйти</button><small>Версия 1.4 · Только SETKA</small></div></aside>
     <main class="main"><header class="topbar"><span class="eyebrow">ИССЛЕДОВАТЕЛЬСКАЯ СИСТЕМА</span><div class="top-actions"><span id="updated" class="muted small"></span><button id="refresh">↻ Обновить</button></div></header>
       <div class="page-heading"><div><div id="page-number" class="eyebrow">01 / ОБЗОР</div><h1 id="page-title">Главная</h1><p id="page-description" class="muted">Общая картина использования приложения.</p></div><span id="live-status" class="badge">Проверка данных</span></div>
-      <div class="filters"><label>Период<select id="period"><option value="today">Сегодня</option><option value="7">7 дней</option><option value="30">30 дней</option><option value="all" selected>Всё время</option><option value="custom">Произвольные даты</option></select></label><div id="custom-dates" class="row" hidden><label>С<input id="from-date" type="date"></label><label>По<input id="to-date" type="date"></label></div><label>Источники<select id="scope"><option value="current">Текущие аккаунты</option><option value="history">Исторические записи</option><option value="all">Все доступные записи</option></select></label><span class="muted small">Время: Саратов (UTC+4)</span></div>
+      <div class="filters"><label>Период<select id="period"><option value="today">Сегодня</option><option value="7">7 дней</option><option value="30">30 дней</option><option value="all" selected>Всё время</option><option value="custom">Произвольные даты</option></select></label><div id="custom-dates" class="row" hidden><label>С<input id="from-date" type="date"></label><label>По<input id="to-date" type="date"></label></div><label hidden>Источники<select id="scope"><option value="current">Текущие аккаунты</option><option value="history">Исторические записи</option><option value="all">Все доступные записи</option></select></label><span class="muted small">Время: Саратов (UTC+4)</span></div>
       <div id="notice" role="status"></div><section id="content" tabindex="-1" aria-live="polite"></section>
       <footer class="main-footer">Данные о поведении и самооценках помогают исследовать продукт. Они не доказывают медицинскую эффективность.</footer>
     </main>
   </div>
   <dialog id="detail-dialog"><div class="dialog-top"><span id="dialog-label" class="eyebrow">ПОДРОБНОСТИ</span><button id="close-dialog" class="icon-button" aria-label="Закрыть подробности">×</button></div><div id="detail-content"></div></dialog>
-  <script type="module" src="research-v1/copy-app-v6.mjs?v=1"></script>
-  <script type="module" src="research-v1/copy-analytics-v6.mjs?v=4"></script>
+  <script type="module" src="research-v1/copy-app-v6.mjs?v=2-native-overview"></script>
+  <script type="module" src="research-v1/copy-analytics-v6.mjs?v=5-native-overview"></script>
 </body>
 </html>
