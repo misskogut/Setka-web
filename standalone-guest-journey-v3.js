@@ -52,7 +52,7 @@ async function flush(){
  try{
   const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),10000);
   let response;
-  try{response=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({deviceId:device(),events:batch}),keepalive:true,signal:controller.signal})}
+  try{response=await fetch(API,{method:"POST",headers:{"Content-Type":"text/plain;charset=UTF-8"},body:JSON.stringify({deviceId:device(),events:batch}),keepalive:true,signal:controller.signal})}
   finally{clearTimeout(timeout)}
   const result=await response.json();
   if(!response.ok||result.ok!==true||result.accepted!==batch.length)throw Error("not_acknowledged");
