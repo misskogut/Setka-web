@@ -7,7 +7,8 @@ const day=t=>Math.floor((t+OFFSET)/DAY);
 const label=d=>new Date(d*DAY).toISOString().slice(0,10);
 const positive=x=>Number.isFinite(Number(x))?Math.max(0,Math.min(DAY,Number(x))):0;
 
-export function summarizeJourneyV3(rows,{days=30,from=null,to=null,now=Date.now()}={}){
+export function summarizeJourneyV3(rows,{days=30,from=null,to=null,now=Date.now(),scope="guest"}={}){
+ if(scope!=="guest"&&scope!=="account")throw Error("invalid_scope");
  if(!Number.isFinite(now)||![0,1,7,30,90].includes(days))throw Error("invalid_period");
  const custom=from!==null||to!==null,low=custom?time(from):null,high=custom?time(to):null;
  if(custom&&(low===null||high===null||low>=high||high-low>370*DAY))throw Error("invalid_period");
@@ -17,23 +18,24 @@ export function summarizeJourneyV3(rows,{days=30,from=null,to=null,now=Date.now(
  // First-seen/returning require the whole available source, not just rows in
  // the selected date range. All identities here are *device IDs*, not people.
  for(const row of Array.isArray(rows)?rows:[]){
-  const at=time(row?.occurred_at),device=row?.device_id,type=row?.event_type;
-  if(at===null||at>now+300000||!device||!TYPES.has(type)||!row?.event_id||row.actor_type==="account"){invalid++;continue}
+  const at=time(row?.occurred_at),identity=scope==="account"?row?.account_id:row?.device_id,type=row?.event_type;
+  const matching=scope==="account"?row?.actor_type==="account":row?.actor_type!=="account";
+  if(at===null||at>now+300000||!identity||!matching||!TYPES.has(type)||!row?.event_id){invalid++;continue}
   const key=String(row.event_id);
   if(seen.has(key)){duplicates++;continue}seen.add(key);
-  const d=day(at),id=String(device);
+  const d=day(at),id=String(identity);
   const previous=firstSeen.get(id);
   if(previous===undefined||at<previous)firstSeen.set(id,at);
   if(!allDays.has(id))allDays.set(id,new Set());
   allDays.get(id).add(d);
-  events.push({...row,day:d,at});
+  events.push({...row,day:d,at,journeyIdentity:id});
  }
  const active=new Set(),newDevices=new Set(),returning=new Set();
  const visitsByDay=new Map(),opensByPattern=new Map(),favoritesByPattern=new Map(),musicByTrack=new Map();
  let visits=0,returns=0,patternOpens=0,favoriteSaves=0,favoriteRemoves=0,musicStarts=0,foregroundMs=0,visitEnds=0;
  for(const e of events){
   if(e.day>today||e.day<first||e.day>last||(custom&&(e.at<low||e.at>=high)))continue;
-  const id=String(e.device_id),kind=e.event_type;
+  const id=e.journeyIdentity,kind=e.event_type;
   active.add(id);
   if(firstSeen.get(id)>= (custom?low:days?(first*DAY-OFFSET):-Infinity))newDevices.add(id);
   if([...allDays.get(id)].some(d=>d<e.day))returning.add(id);
@@ -57,8 +59,8 @@ export function summarizeJourneyV3(rows,{days=30,from=null,to=null,now=Date.now(
   Array.from({length:custom?last-first+1:days},(_,i)=>({date:label(first+i),visits:visitsByDay.get(first+i)||0})):
   [...visitsByDay].sort((a,b)=>a[0]-b[0]).map(([d,n])=>({date:label(d),visits:n}));
  return {
-  visits,activeGuestDevices:active.size,firstSeenGuestDevices:newDevices.size,
-  returningGuestDevices:returning.size,returns,patternOpens,favoriteSaves,favoriteRemoves,
+  visits,...(scope==="guest"?{activeGuestDevices:active.size,firstSeenGuestDevices:newDevices.size,returningGuestDevices:returning.size}:{activeAccounts:active.size,firstSeenAccounts:newDevices.size,returningAccounts:returning.size}),
+  returns,patternOpens,favoriteSaves,favoriteRemoves,
   musicStarts,foregroundMs,visitEnds,dayTimeZone:"UTC+04:00",
   timeline,patternOpensById:[...opensByPattern].map(([pattern_id,opens])=>({pattern_id,opens}))
    .sort((a,b)=>b.opens-a.opens).slice(0,50),
@@ -67,6 +69,7 @@ export function summarizeJourneyV3(rows,{days=30,from=null,to=null,now=Date.now(
   topPlayedTracks:[...musicByTrack].map(([track_id,starts])=>({track_id,starts}))
    .sort((a,b)=>b.starts-a.starts).slice(0,12),
   scannedEvents:events.length,invalidRows:invalid,duplicateRows:duplicates,
-  caveat:"Devices are not unique people; new means first seen in available V2 data. Visits count foreground starts, and duration covers completed foreground segments."
+  identityScope:scope==="account"?"verified_account_ids":"device_ids",
+  caveat:scope==="account"?"Accounts represent authenticated tester IDs, not people; new means first seen in available V2 events.":"Devices are not unique people; new means first seen in available V2 data. Visits count foreground starts, and duration covers completed foreground segments."
  };
 }
