@@ -76,6 +76,8 @@ test("sign-in closes only the already-open guest visit and replays no account ac
 });
 test("server whitelist only accepts bounded metadata; existing exposure and rate contracts stay intact",()=>{
  assert.match(server,/const JOURNEY_EVENTS=new Set/);
+ assert.match(script,/setka:v34-sync-request/);
+ assert.match(script,/guest-journey-acknowledged/);
  for(const type of ["visit_start","visit_end","app_return","pattern_open","favorite_save","favorite_remove","music_play"])assert.ok(server.includes('"'+type+'"'));
  assert.match(server,/session_id:e\.sessionId\?\?null/);
  assert.match(server,/ignoreDuplicates:true/);
