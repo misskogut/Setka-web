@@ -23,7 +23,7 @@ function setup(initialRevision=-1){
     location:{href:'https://misskogut.github.io/Setka-web/standalone-v34.html'},
     fetch:async()=>({ok:true,json:async()=>snapshot})};
   vm.runInNewContext(source,context,{filename:'standalone-catalog-fallback-v1.js'});
-  return {calls,revision:()=>revision};
+  return {calls,revision:()=>revision,load:()=>win.__SETKA_PUBLIC_CATALOG_FALLBACK_V1__.apply()};
 }
 
 test('published-only static snapshot never exposes testing or disabled patterns',()=>{
@@ -40,7 +40,8 @@ test('published-only static snapshot never exposes testing or disabled patterns'
 
 test('offline fallback restores the last published version',async()=>{
   const x=setup();
-  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(x.calls.length,0,'fallback must not run before a live error');
+  await x.load();
   assert.equal(x.revision(),snapshot.publicationRevision);
   const applied=x.calls.find(row=>row[0]==='publication');
   assert.ok(applied);
@@ -50,7 +51,7 @@ test('offline fallback restores the last published version',async()=>{
 
 test('offline fallback never replaces a newer live revision',async()=>{
   const x=setup(snapshot.publicationRevision+1);
-  await new Promise(resolve=>setImmediate(resolve));
+  await x.load();
   assert.equal(x.calls.filter(row=>row[0]==='publication').length,0);
   assert.equal(x.revision(),snapshot.publicationRevision+1);
 });
