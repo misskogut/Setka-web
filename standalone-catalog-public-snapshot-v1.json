@@ -1,0 +1,645 @@
+{
+  "items": [
+    {
+      "title": "Биолюминесцентный океан",
+      "revision": 1,
+      "pattern_id": "bioluminescent-ocean"
+    },
+    {
+      "title": "Плавающий фрактал",
+      "revision": 2,
+      "pattern_id": "branching-impulse"
+    },
+    {
+      "title": "Дышащий фрактал",
+      "revision": 2,
+      "pattern_id": "breathing-fractal-growth"
+    },
+    {
+      "title": "Парящие платформы",
+      "revision": 2,
+      "pattern_id": "breathing-grid"
+    },
+    {
+      "title": "Одуванчик",
+      "revision": 1,
+      "pattern_id": "dandelion"
+    },
+    {
+      "title": "Танцующий круг",
+      "revision": 2,
+      "pattern_id": "fish-wave"
+    },
+    {
+      "title": "Фрактальный портал",
+      "revision": 1,
+      "pattern_id": "fractal-portal"
+    },
+    {
+      "title": "Многослойная сетка",
+      "revision": 2,
+      "pattern_id": "genuary-16x16"
+    },
+    {
+      "title": "Огненный круг",
+      "revision": 2,
+      "pattern_id": "hemispheric-spirals"
+    },
+    {
+      "title": "Колесо Будды",
+      "revision": 2,
+      "pattern_id": "hex-wheel-buddha"
+    },
+    {
+      "title": "Волновая гексасетка",
+      "revision": 1,
+      "pattern_id": "hexwave"
+    },
+    {
+      "title": "Гексаволна 3D",
+      "revision": 1,
+      "pattern_id": "hexwave-3d"
+    },
+    {
+      "title": "Струнная свеча",
+      "revision": 2,
+      "pattern_id": "interlaced-spirals"
+    },
+    {
+      "title": "Кубический батут",
+      "revision": 2,
+      "pattern_id": "matrix-trampoline"
+    },
+    {
+      "title": "Медуза",
+      "revision": 2,
+      "pattern_id": "medusa"
+    },
+    {
+      "title": "Космический путь",
+      "revision": 2,
+      "pattern_id": "neurobridge"
+    },
+    {
+      "title": "Орбитальные нити",
+      "revision": 1,
+      "pattern_id": "orbital-threads"
+    },
+    {
+      "title": "Радиальная волна",
+      "revision": 1,
+      "pattern_id": "radial-wave"
+    },
+    {
+      "title": "Космический дождь",
+      "revision": 2,
+      "pattern_id": "rain"
+    },
+    {
+      "title": "Трасса",
+      "revision": 2,
+      "pattern_id": "rainbow-road-tunnel"
+    },
+    {
+      "title": "Дрейфующий круг",
+      "revision": 2,
+      "pattern_id": "rgb-glitch-rings"
+    },
+    {
+      "title": "Танцующий тороид",
+      "revision": 2,
+      "pattern_id": "spiral-snakes-3d"
+    },
+    {
+      "title": "Космический шаттл",
+      "revision": 2,
+      "pattern_id": "star-flight"
+    },
+    {
+      "title": "Стерео ДНК",
+      "revision": 2,
+      "pattern_id": "stereo-dna"
+    },
+    {
+      "title": "Стрейф ДНК",
+      "revision": 2,
+      "pattern_id": "stereo-dna-trails"
+    },
+    {
+      "title": "Tentacle Orbit",
+      "revision": 1,
+      "pattern_id": "tentacle-orbit"
+    }
+  ],
+  "order": {
+    "revision": 0,
+    "patternIds": []
+  },
+  "format": "setka-public-catalog-static-fallback-v1",
+  "source": "published_publication_snapshot",
+  "defaults": [
+    {
+      "config": {
+        "zoom": 1,
+        "depth": 1.2,
+        "speed": 1.8,
+        "waves": 1.2,
+        "impactX": 10,
+        "impactY": 10,
+        "impulse": 0,
+        "originX": 0,
+        "originY": 0,
+        "patternId": "bioluminescent-ocean",
+        "brightness": 1.5,
+        "refraction": 1.4,
+        "_startFrame": 751.3184973630053,
+        "impactFrame": 0,
+        "colorModeIndex": 0
+      },
+      "revision": 1,
+      "pattern_id": "bioluminescent-ocean",
+      "schema_version": 1,
+      "pattern_version": 1
+    },
+    {
+      "config": {
+        "glow": 65,
+        "neon": 85,
+        "rays": 12,
+        "spin": 0,
+        "tips": 20,
+        "angle": 0,
+        "depth": 7,
+        "phase": 5.5,
+        "pulse": 85,
+        "scale": 1,
+        "speed": 1,
+        "breath": 0,
+        "invert": 0,
+        "spread": 1,
+        "touchX": 0.5,
+        "touchY": 0.5,
+        "touchDX": 0,
+        "touchDY": 0,
+        "hueShift": 0,
+        "rotation": 0,
+        "flowFrame": 0,
+        "flowPhase": 0,
+        "flowSpeed": 1,
+        "lineWidth": 0.22,
+        "patternId": "branching-impulse",
+        "touchNode": -1,
+        "touchRoot": -1,
+        "phaseFrame": 0,
+        "touchFrame": 0,
+        "touchActive": false,
+        "rotationFrame": 0,
+        "touchEndFrame": 0,
+        "touchStrength": 100,
+        "colorModeIndex": 0,
+        "interactionMode": 0,
+        "touchRetractEpoch": 0
+      },
+      "revision": 1,
+      "pattern_id": "branching-impulse",
+      "schema_version": 1,
+      "pattern_version": 2
+    },
+    {
+      "config": {
+        "zoom": 1,
+        "baseLen": 70,
+        "hueRate": 0.004,
+        "strokeW": 0.9,
+        "branches": 31,
+        "maxDepth": 8,
+        "patternId": "breathing-fractal-growth",
+        "pulseSpeed": 0.004,
+        "colorModeIndex": 0,
+        "levelSpeedRatio": 0.86,
+        "firstLevelFactor": 2
+      },
+      "revision": 1,
+      "pattern_id": "breathing-fractal-growth",
+      "schema_version": 1,
+      "pattern_version": 1
+    },
+    {
+      "config": {
+        "strokeW": 1,
+        "numLayers": 40,
+        "patternId": "fish-wave",
+        "ringAlpha": 180,
+        "waveSpeed": 0.08,
+        "baseRadius": 10,
+        "ringSpacing": 9,
+        "glitchOffset": 0.5,
+        "glitchEnabled": true,
+        "waveAmplitude": 16.5,
+        "colorModeIndex": 0
+      },
+      "revision": 1,
+      "pattern_id": "fish-wave",
+      "schema_version": 1,
+      "pattern_version": 35
+    },
+    {
+      "config": {
+        "num": 40.2,
+        "glow": 6,
+        "turn": 13.71,
+        "lineW": 0.87,
+        "pitch": 0.21,
+        "zFrom": 0,
+        "invert": 0,
+        "zFrame": 0,
+        "numFrom": 20,
+        "autoTurn": 2,
+        "numFrame": 0,
+        "tapCount": 0,
+        "turnFrom": 0,
+        "lineWFrom": 1.2,
+        "patternId": "genuary-16x16",
+        "pitchFrom": 0,
+        "turnFrame": 0,
+        "colorFrame": 0,
+        "colorPhase": 0,
+        "colorSpeed": 1.25,
+        "lineWFrame": 0,
+        "pitchFrame": 0,
+        "gestureAxis": 0,
+        "gestureMoved": false,
+        "lastTapFrame": -1000,
+        "gestureRegion": 0,
+        "gestureStartX": 0.5,
+        "gestureStartY": 0.5,
+        "colorModeIndex": 0,
+        "gestureStartFrame": 0
+      },
+      "revision": 2,
+      "pattern_id": "genuary-16x16",
+      "schema_version": 1,
+      "pattern_version": 1
+    },
+    {
+      "config": {
+        "arms": 4,
+        "zoom": 1,
+        "speed": 0.14,
+        "layers": 6,
+        "waveDir": 1,
+        "tapMoved": false,
+        "armsFloat": 5,
+        "patternId": "hemispheric-spirals",
+        "tapStartX": 0.5,
+        "tapStartY": 0.5,
+        "thickness": 1,
+        "touchZone": "center",
+        "phaseFrame": 0,
+        "phaseStart": 0,
+        "layersFloat": 6,
+        "touchActive": false,
+        "tapStartFrame": 0,
+        "waveIntensity": 0.85,
+        "colorModeIndex": 0,
+        "outsideTapCount": 0,
+        "lastOutsideTapFrame": -1000
+      },
+      "revision": 1,
+      "pattern_id": "hemispheric-spirals",
+      "schema_version": 1,
+      "pattern_version": 1
+    },
+    {
+      "config": {
+        "omega": 0.08,
+        "hexSize": 31,
+        "strokeW": 1,
+        "patternId": "hex-wheel-buddha",
+        "anchorFrame": 0,
+        "angleOffset": 0,
+        "colorModeIndex": 0
+      },
+      "revision": 1,
+      "pattern_id": "hex-wheel-buddha",
+      "schema_version": 1,
+      "pattern_version": 1
+    },
+    {
+      "config": {
+        "panX": 0,
+        "panY": 0,
+        "dotSize": 3.9,
+        "tapCount": 0,
+        "hexRadius": 5,
+        "patternId": "hexwave",
+        "waveFrame": 964.1980716038586,
+        "wavePhase": 43.441059,
+        "waveSpeed": 0.031,
+        "_startFrame": 1880.6362387275226,
+        "glitchAlpha": 90,
+        "gestureMoved": false,
+        "glitchOffset": 1.3,
+        "lastTapFrame": -1000,
+        "gestureRegion": 0,
+        "gestureStartX": 0.5,
+        "gestureStartY": 0.5,
+        "waveAmplitude": 27.4,
+        "colorModeIndex": 0,
+        "gestureAmpStart": 8,
+        "gestureDotStart": 5,
+        "gestureHexStart": 5,
+        "gestureSpeedStart": 0.05,
+        "gestureStartFrame": 0
+      },
+      "revision": 1,
+      "pattern_id": "hexwave",
+      "schema_version": 1,
+      "pattern_version": 2
+    },
+    {
+      "config": {
+        "holdX": 0.21071428571428572,
+        "holdY": 0.47481398809522946,
+        "lineW": 0.5,
+        "waves": [
+          0.210714,
+          0.474814,
+          91.6198
+        ],
+        "hexCount": 21,
+        "spinRate": 1.08,
+        "tapCount": 2,
+        "patternId": "hexwave-3d",
+        "savedSpin": 1.08,
+        "waveSpeed": 170,
+        "colorSpeed": 0.6,
+        "_startFrame": 17191.88561622877,
+        "perspective": 700,
+        "densityFloat": 21,
+        "holdPossible": false,
+        "lastTapFrame": 91.61981676036626,
+        "colorModeIndex": 0,
+        "holdStartFrame": 91.61981676036626
+      },
+      "revision": 2,
+      "pattern_id": "hexwave-3d",
+      "schema_version": 1,
+      "pattern_version": 1
+    },
+    {
+      "config": {
+        "arms": 7,
+        "zoom": 0.85,
+        "braid": 1.6,
+        "speed": 1.92,
+        "layers": 5,
+        "tapCount": 0,
+        "tapMoved": false,
+        "armsFloat": 6,
+        "breathing": 1,
+        "patternId": "interlaced-spirals",
+        "tapStartX": 0.5,
+        "tapStartY": 0.5,
+        "thickness": 1,
+        "touchZone": "center",
+        "layerFloat": 7,
+        "phaseFrame": 0,
+        "phaseStart": 0,
+        "touchActive": false,
+        "lastTapFrame": -1000,
+        "tapStartFrame": 0,
+        "waveIntensity": 1.85,
+        "colorModeIndex": 0
+      },
+      "revision": 1,
+      "pattern_id": "interlaced-spirals",
+      "schema_version": 1,
+      "pattern_version": 1
+    },
+    {
+      "config": {
+        "yaw": 0.18,
+        "pitch": 0.35,
+        "lineWidth": 1,
+        "patternId": "matrix-trampoline",
+        "cameraZoom": 155,
+        "shapeIndex": 0,
+        "bounceSpeed": 0.5,
+        "manualDepth": 0,
+        "bounceEnabled": 1,
+        "bounceDistance": 230,
+        "colorModeIndex": 0,
+        "bounceElasticity": 75,
+        "depthSensitivity": 1
+      },
+      "revision": 1,
+      "pattern_id": "matrix-trampoline",
+      "schema_version": 2,
+      "pattern_version": 2
+    },
+    {
+      "config": {
+        "seed": 2011,
+        "dragX": 300,
+        "dragY": 300,
+        "speed": 0.8,
+        "dragFrame": 0,
+        "dragIndex": -1,
+        "patternId": "medusa",
+        "dragActive": false,
+        "sizeFactor": 0.57,
+        "dragOffsetX": 0,
+        "dragOffsetY": 0,
+        "medusaCount": 4,
+        "swayStrength": 1,
+        "tentacleCount": 10,
+        "colorModeIndex": 0,
+        "tentacleLength": 50,
+        "dragReleaseFrame": 0
+      },
+      "revision": 2,
+      "pattern_id": "medusa",
+      "schema_version": 2,
+      "pattern_version": 2
+    },
+    {
+      "config": {
+        "fov": 77,
+        "bank": 0.45,
+        "glow": 0.46,
+        "mode": 0,
+        "pulse": 0.2,
+        "speed": 1.5,
+        "turns": 1,
+        "width": 1,
+        "climbs": 1,
+        "follow": 0.66,
+        "steerX": 0,
+        "steerY": 0,
+        "density": 1.9,
+        "lookYaw": 0,
+        "starSize": 1.3,
+        "dropDepth": 1,
+        "lookPitch": 0,
+        "particles": 0.43,
+        "patternId": "neurobridge",
+        "proximity": 0.72,
+        "routeSeed": 1,
+        "starBokeh": 0.17,
+        "starCount": 0.84,
+        "randomness": 0.45,
+        "anchorFrame": 0,
+        "sensitivity": 1,
+        "starTwinkle": 0.42,
+        "anchorTravel": 12,
+        "lanePosition": 0,
+        "hillSharpness": 1,
+        "turnSharpness": 1,
+        "colorModeIndex": 0,
+        "growthPosition": 0.16,
+        "starBrightness": 0.78
+      },
+      "revision": 1,
+      "pattern_id": "neurobridge",
+      "schema_version": 1,
+      "pattern_version": 1
+    },
+    {
+      "config": {
+        "bank": 0,
+        "glow": 1,
+        "seed": 92341,
+        "size": 1,
+        "zoom": 1,
+        "hills": 0,
+        "pulse": 1,
+        "shape": 0,
+        "solid": 0,
+        "speed": 2.45,
+        "turns": 10.9,
+        "follow": 1.25,
+        "steerX": 0,
+        "steerY": 0,
+        "touchX": 0,
+        "touchY": 0,
+        "density": 1,
+        "opacity": 1,
+        "frequency": 10,
+        "patternId": "rainbow-road-tunnel",
+        "roadBends": [
+          120.03831992336016,
+          -5.687500000000001,
+          22.75,
+          146.86706626586746,
+          -7.366666666666667,
+          36,
+          211.94213611572778,
+          0.6499999999999999,
+          -4.2250000000000005,
+          227.6605046789907,
+          -18.904166666666672,
+          15.925,
+          295.07796984406036,
+          -28.220833333333335,
+          23.616666666666468
+        ],
+        "touchMode": 0,
+        "yawOffset": 0,
+        "randomness": 0,
+        "touchScale": 1,
+        "_startFrame": 4669.010661978677,
+        "roadOpacity": 1,
+        "sensitivity": 1,
+        "colorModeIndex": 0,
+        "hillsFrequency": 5,
+        "touchBendIndex": -1,
+        "touchReleaseFrame": 0
+      },
+      "revision": 3,
+      "pattern_id": "rainbow-road-tunnel",
+      "schema_version": 6,
+      "pattern_version": 6
+    },
+    {
+      "config": {
+        "zoom": 1,
+        "waveFreq": 3,
+        "numSnakes": 60,
+        "patternId": "spiral-snakes-3d",
+        "pointSize": 1.2,
+        "waveSpeed": 0.02,
+        "baseHistory": 260,
+        "colorModeIndex": 0
+      },
+      "revision": 1,
+      "pattern_id": "spiral-snakes-3d",
+      "schema_version": 1,
+      "pattern_version": 1
+    },
+    {
+      "config": {
+        "yaw": 0,
+        "seed": 1,
+        "bokeh": 0,
+        "pitch": 0,
+        "speed": 172.3,
+        "originX": 0,
+        "originY": 0,
+        "originZ": 0,
+        "rollRate": 0,
+        "patternId": "star-flight",
+        "starCount": 10000,
+        "rollOffset": 0,
+        "anchorFrame": 0,
+        "colorModeIndex": 0
+      },
+      "revision": 1,
+      "pattern_id": "star-flight",
+      "schema_version": 1,
+      "pattern_version": 1
+    },
+    {
+      "config": {
+        "zoom": 1,
+        "spacing": 8.2,
+        "amplitude": 55,
+        "angleStep": 0.25,
+        "numPoints": 150,
+        "patternId": "stereo-dna-trails",
+        "timeSpeed": 0.02,
+        "lineWeight": 2,
+        "stereoAngle": 0.22,
+        "trailLength": 43,
+        "glowStrength": 150,
+        "eyeSeparation": 150,
+        "colorModeIndex": 0
+      },
+      "revision": 1,
+      "pattern_id": "stereo-dna-trails",
+      "schema_version": 1,
+      "pattern_version": 1
+    },
+    {
+      "config": {
+        "patternId": "tentacle-orbit",
+        "baseRadius": 10,
+        "circleSize": 5.7,
+        "colorSpeed": 1,
+        "lineWeight": 0.9,
+        "segmentStep": 2,
+        "numTentacles": 18,
+        "movementSpeed": 1,
+        "colorModeIndex": 0,
+        "tentacleLength": 100
+      },
+      "revision": 1,
+      "pattern_id": "tentacle-orbit",
+      "schema_version": 1,
+      "pattern_version": 1
+    }
+  ],
+  "generatedAt": "2026-11-14T09:08:52.416034+00:00",
+  "registryAvailable": true,
+  "publicationRevision": 57
+}
