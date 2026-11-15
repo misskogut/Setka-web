@@ -1,0 +1,53 @@
+name: Publish SETKA New Year squish experiments
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "experiments/new-year-squish-2027/**"
+      - ".github/workflows/pages-squish.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Serialize with the main Pages publisher, without dropping a valid deployment.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  publish-experiments:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout website
+        uses: actions/checkout@v6
+      - name: Prepare Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Rebuild the public SETKA manifests for consistent website assets
+        run: |
+          node scripts/build-pattern-manifest.mjs
+          node scripts/build-standalone-release.mjs
+      - name: Verify the experiment pages are present
+        run: |
+          test -s experiments/new-year-squish-2027/v4.html
+          test -s experiments/new-year-squish-2027/v5.html
+          test -s experiments/new-year-squish-2027/v6.html
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Upload complete site including experimental pages
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: "."
+      - name: Give Pages time to index uploaded artifact
+        run: sleep 20
+      - name: Publish site to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
