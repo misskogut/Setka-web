@@ -205,6 +205,7 @@
     if(!st.consented)button(b,"Подтвердить актуальные условия",null,showConsent,true);
     button(b,"Пригласить в SETKA","Создать ID и посмотреть принятые приглашения",showInvites);
     button(b,"Сменить пароль",null,showChangePassword);
+    button(b,"Зашифрованная копия моей истории","Сохранить и восстановить данные на этом устройстве без Supabase",()=>window.SetkaPersonalOfflineVaultV1?.show?.());
     button(b,"Выйти","Личные заметки и история останутся на этом устройстве",logout);
   }
 
