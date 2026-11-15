@@ -63,8 +63,8 @@ export async function decryptPersonalBackup(envelope,passphrase,provider=globalT
 }
 export function checkBackupScope(data,scope,deviceId){
  if(!plain(data)||data.scope!==scope||!scope)throw Error("backup_other_account");
- if(scope==="guest"&&(!data.deviceId||!deviceId||data.deviceId!==deviceId))
-  throw Error("backup_other_device");
+ // An encrypted guest archive is portable when its owner knows the passphrase.
+ // Registered account archives still require the same tester ID.
  return true;
 }
 function personalPayload(C){
@@ -79,7 +79,6 @@ function personalPayload(C){
 function statusText(error){
  const labels={passphrase_minimum_12:"Пароль архива должен содержать минимум 12 символов.",
   backup_other_account:"Этот архив принадлежит другому ID SETKA. Переключение аккаунта запрещено.",
-  backup_other_device:"Гостевой архив можно восстановить только на исходном устройстве.",
   backup_too_large:"Архив слишком большой для безопасного сохранения в браузере.",
   secure_browser_required:"Браузер не поддерживает защищённое шифрование.",
   local_archive_unavailable:"Локальные данные пока недоступны.",
@@ -100,7 +99,7 @@ function showVault(){
  const panel=C.screen("Резервная копия","Зашифрованный личный архив создаётся только на устройстве. GitHub, Supabase и SETKA не получают содержимое или пароль архива.","ЛИЧНАЯ ПАМЯТЬ",C.showMe);
  const description=document.createElement("p");
  description.className="st40-copy";
- description.textContent="Содержит локальные заметки, сессии, состояния, события и избранное. Сохранённое только на сервере сюда не попадает. Запомни пароль: восстановить его невозможно.";
+ description.textContent="Содержит локальные заметки, сессии, состояния, события и избранное. Сохранённое только на сервере сюда не попадает. Гостевой архив переносится между устройствами; аккаунтный восстанавливается под тем же ID. Запомни пароль: восстановить его невозможно.";
  panel.appendChild(description);
  const pass=document.createElement("input");pass.type="password";pass.autocomplete="new-password";pass.placeholder="Пароль архива: минимум 12 символов";
  pass.setAttribute("aria-label","Пароль шифрования резервной копии");
