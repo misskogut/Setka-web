@@ -5,7 +5,7 @@
   const API="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-community-patterns-v38";
   const API_KEY="sb_publishable_1jL-x9_kp6rpfGghpSp_OA_OiXDnvsv";
   const MODES=new Set(["for_me","popular","new","notes"]);
-  let items=[],metrics=null,patternMetrics=[],patternScenarios=[],historicalPatterns=[],publicNotes=[],busy=false,refreshQueued=false,notesBusy=false,timer=0,lastOkAt=null,lastError=null,lastPage=Setka.getState?.()?.libraryPage||null,viewEpoch=0;
+  let items=[],metrics=null,patternMetrics=[],patternScenarios=[],historicalPatterns=[],publicNotes=[],snapshotActive=false,busy=false,refreshQueued=false,notesBusy=false,timer=0,lastOkAt=null,lastError=null,lastPage=Setka.getState?.()?.libraryPage||null,viewEpoch=0;
 
   const style=document.createElement("style");
   style.textContent=`
@@ -169,6 +169,31 @@
     }
   }
 
+  // Read-only community backup: derive ONLY from published, account-confirmed
+  // aggregate data. Never expose individual guests, identifiers or notes here.
+  async function restorePublishedFeed(){
+    if(items.length)return false;
+    try{
+      const url=new URL("./standalone-community-public-snapshot-v1.json",location.href);
+      const r=await fetch(url,{cache:"no-store",credentials:"same-origin"});
+      if(!r.ok)return false;
+      const d=await r.json();
+      if(d?.format!=="setka-public-community-static-fallback-v1"||
+         d?.feedScope!=="registered_account_favorites_v41"||d.readOnly!==true||
+         !Array.isArray(d.items)||d.items.length>300)return false;
+      const safe=d.items.filter(x=>
+        x&&typeof x.id==="string"&&x.id.startsWith("community-")&&
+        typeof x.patternId==="string"&&x.patternId===x.pattern_id&&
+        x.config&&typeof x.config==="object"&&!Array.isArray(x.config)&&
+        x.config.patternId===x.patternId&&
+        Number.isInteger(Number(x.saveCount))&&Number(x.saveCount)>0&&
+        x.localOnly===false);
+      if(safe.length!==d.items.length)return false;
+      items=safe.map(x=>({...x,createdAt:x.created_at||x.createdAt||null,localOnly:false}));
+      snapshotActive=true;
+      return true;
+    }catch(_){return false;}
+  }
   async function refresh(){
     if(busy){refreshQueued=true;return;}busy=true; // Retain stale/error status until a successful read.
     const epoch=viewEpoch;
@@ -185,7 +210,7 @@
         Number.isInteger(Number(x.saveCount))&&Number(x.saveCount)>0)
         .map(x=>({...x,createdAt:x.created_at||x.createdAt||null,localOnly:false}));
       metrics=out.metrics&&typeof out.metrics==="object"?out.metrics:null;patternMetrics=activeItems(out.patternMetrics);patternScenarios=activeItems(out.patternScenarios);historicalPatterns=activeItems(out.historicalPatterns);
-      lastError=null;lastOkAt=new Date().toISOString();
+      snapshotActive=false;lastError=null;lastOkAt=new Date().toISOString();
       if(epoch===viewEpoch){
         if(mode()==="notes"){await loadNotes(false);if(epoch===viewEpoch&&mode()==="notes")renderNotes()}
         else renderPatterns();
@@ -193,7 +218,11 @@
       window.dispatchEvent(new CustomEvent("setka:community-cloud",{detail:{ok:true,count:items.length,mode:mode(),updatedAt:lastOkAt,metrics,patternMetrics,patternScenarios,historicalPatterns}}));
     }catch(e){
       lastError=String(e?.message||e);retainLegacyLocal();
-      if(mode()!=="notes"){if(!items.length){C.publicCommunity=[];Setka.setCommunity?.([])}showAvailability()}
+      if(!items.length)await restorePublishedFeed();
+      if(mode()!=="notes"){
+        if(items.length)renderPatterns();
+        else {C.publicCommunity=[];Setka.setCommunity?.([]);showAvailability()}
+      }
       window.dispatchEvent(new CustomEvent("setka:community-cloud",{detail:{ok:false,error:lastError}}));
     }finally{busy=false;if(refreshQueued){refreshQueued=false;schedule(0)}}
   }
@@ -205,6 +234,8 @@
     setMode(b.dataset.m);applyMode();
   },true);
 
+  // A delayed pattern-catalog fallback must update the community tiles too.
+  window.addEventListener("setka:catalog-offline-snapshot",()=>{if(items.length&&mode()!=="notes")renderPatterns()});
   window.addEventListener("setka:favorite-saved",()=>{retainLegacyLocal();if(mode()!=="notes")renderPatterns();schedule(900)});
   window.addEventListener("setka:favorite-removed",()=>{retainLegacyLocal();if(mode()!=="notes")renderPatterns();schedule(900)});
   window.addEventListener("setka:v34-sync",e=>schedule(e.detail?.ok?120:1200));
@@ -236,6 +267,6 @@
     }).observe(communityPanel,{childList:true});
   }
   bootstrap();
-  C.cloudCommunity={refresh,status:()=>({count:items.length,lastOkAt,lastError,mode:mode(),metrics,patternMetrics,patternScenarios,historicalPatterns,publicNotes:publicNotes.length})};
+  C.cloudCommunity={refresh,status:()=>({count:items.length,lastOkAt,lastError,offlineSnapshot:snapshotActive,mode:mode(),metrics,patternMetrics,patternScenarios,historicalPatterns,publicNotes:publicNotes.length})};
   window.__SETKA_CLOUD_COMMUNITY_V38__=9;
 })();
