@@ -1,0 +1,42 @@
+name: Demo Public Read-only Failover
+on:
+  pull_request:
+    paths:
+      - 'standalone-music-public-snapshot-v1.json'
+      - 'standalone-community-public-snapshot-v1.json'
+      - 'standalone-music-v1.mjs'
+      - 'standalone-music-audio-v1.mjs'
+      - 'standalone-community-cloud-v38.js'
+      - 'standalone-v34.html'
+      - 'tests/setka-demo-public-failover.test.mjs'
+      - '.github/workflows/check-demo-public-failover.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'standalone-music-public-snapshot-v1.json'
+      - 'standalone-community-public-snapshot-v1.json'
+      - 'standalone-music-v1.mjs'
+      - 'standalone-music-audio-v1.mjs'
+      - 'standalone-community-cloud-v38.js'
+      - 'standalone-v34.html'
+      - 'tests/setka-demo-public-failover.test.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+jobs:
+  offline-read-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check syntax without external APIs
+        run: |
+          node --check standalone-community-cloud-v38.js
+          node --check standalone-music-v1.mjs
+          node --check standalone-music-audio-v1.mjs
+          node --check tests/setka-demo-public-failover.test.mjs
+      - name: Test public-only backup validity and live-priority
+        run: node --test tests/setka-demo-public-failover.test.mjs
