@@ -58,6 +58,8 @@ test("live server remains primary and failover is read only and versioned",()=>{
  assert.match(music,/readPublishedMusicSnapshot\(\)/);
  assert.match(music,/if\(musicSnapshotActive\)return/);
  assert.match(mixer,/releaseDirect/);
+ // The per-track source flag must be in function scope, including volume updates.
+ assert.ok(mixer.indexOf("const releaseDirect=track.source") < mixer.indexOf("if(!state){"));
  assert.match(mixer,/__setkaNative/);
  assert.match(html,/standalone-music-v1\.mjs\?v=47-public-snapshot-20261115/);
  assert.match(html,/standalone-community-cloud-v38\.js\?v=1\.4\.14-public-snapshot-20261115/);
