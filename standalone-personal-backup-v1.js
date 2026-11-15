@@ -109,9 +109,9 @@
     const pass=add("input","");
     pass.type="password";pass.placeholder="Пароль для архива — минимум 12 символов";
     pass.autocomplete="new-password";pass.setAttribute("aria-label","Пароль резервной копии");
-    const confirm=add("input","");
-    confirm.type="password";confirm.placeholder="Повтори пароль для архива";
-    confirm.autocomplete="new-password";
+    const confirmField=add("input","");
+    confirmField.type="password";confirmField.placeholder="Повтори пароль для архива";
+    confirmField.autocomplete="new-password";
     const save=add("button","Сохранить зашифрованную копию");
     const file=add("input","");
     file.type="file";file.accept=".json,application/json";
@@ -133,7 +133,7 @@
       })[v]||"Не удалось завершить операцию. Личные данные не отправлялись на сервер.";
     };
     save.onclick=async()=>{
-      if(pass.value!==confirm.value){status.textContent="Пароли не совпадают.";return}
+      if(pass.value!==confirmField.value){status.textContent="Пароли не совпадают.";return}
       save.disabled=true;status.textContent="Шифрую личную историю на устройстве…";
       try{
         const packet=await exportArchive(pass.value);
@@ -143,12 +143,12 @@
         a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();
         setTimeout(()=>URL.revokeObjectURL(url),30000);
         status.textContent="Зашифрованный архив подготовлен. Проверь, что файл сохранился в «Файлы», и не теряй пароль.";
-      }catch(e){fail(e)}finally{pass.value="";confirm.value="";save.disabled=false}
+      }catch(e){fail(e)}finally{pass.value="";confirmField.value="";save.disabled=false}
     };
     restore.onclick=async()=>{
       if(!file.files?.length){status.textContent="Сначала выбери файл резервной копии.";return}
       if(!pass.value){status.textContent="Введи пароль архива в первое поле.";return}
-      if(!confirm("Объединить личные записи из файла с уже сохранёнными на этом устройстве?"))return;
+      if(!window.confirm("Объединить личные записи из файла с уже сохранёнными на этом устройстве?"))return;
       restore.disabled=true;status.textContent="Расшифровываю и объединяю личную историю…";
       try{
         const selected=file.files[0];
@@ -157,7 +157,7 @@
         status.textContent="Личная история восстановлена на этом устройстве: заметки "+
           (counts.notes||0)+", сессии "+(counts.sessions||0)+", события "+(counts.events||0)+
           ". Облачная синхронизация будет доступна после восстановления Supabase.";
-      }catch(e){fail(e)}finally{pass.value="";confirm.value="";restore.disabled=false}
+      }catch(e){fail(e)}finally{pass.value="";confirmField.value="";restore.disabled=false}
     };
   }
   window.__SETKA_OFFLINE_BACKUP_V1__={show,exportArchive,restoreArchive,format:FORMAT};
