@@ -4,6 +4,7 @@ on:
     paths:
       - 'standalone-music-public-snapshot-v1.json'
       - 'standalone-community-public-snapshot-v1.json'
+      - 'standalone-community-public-notes-snapshot-v1.json'
       - 'standalone-music-v1.mjs'
       - 'standalone-music-audio-v1.mjs'
       - 'standalone-community-cloud-v38.js'
@@ -15,6 +16,7 @@ on:
     paths:
       - 'standalone-music-public-snapshot-v1.json'
       - 'standalone-community-public-snapshot-v1.json'
+      - 'standalone-community-public-notes-snapshot-v1.json'
       - 'standalone-music-v1.mjs'
       - 'standalone-music-audio-v1.mjs'
       - 'standalone-community-cloud-v38.js'
