@@ -164,6 +164,7 @@ export class SetkaMusicMixer {
   if(level<1){this.remove(id);return}
   try{this.init()}catch(e){this.changed(e.message);return}
   let state=old;
+  const releaseDirect=track.source==="github-release-verified";
   if(!state){
    const index=this.items.size,angle=index*2.399963229728653;
    const gain=this.ctx.createGain(),rearFilter=this.ctx.createBiquadFilter(),panner=this.ctx.createPanner();
@@ -188,14 +189,15 @@ export class SetkaMusicMixer {
    // Keep original PCM bytes for ALL eligible WAVs via bounded, lossless HRTF
    // streaming; fall back to one native deck when byte ranges are unsupported.
    // Chromium keeps its existing full-length WebAudio playback graph.
+
    const externalWav=!!track.external_source_path&&/\.wav$/i.test(track.external_source_path)&&
      Number(track.external_source_bytes)>0;
    const singleDeck=externalWav&&Number(track.external_source_bytes)>=24*1024*1024;
    const webkit=/AppleWebKit/i.test(navigator.userAgent)&&!/Chrom(?:e|ium)\//i.test(navigator.userAgent);
-   const streamInfo=externalWav&&webkit&&!this.unstreamable.has(id)?
+   const streamInfo=externalWav&&webkit&&!this.unstreamable.has(id)&&!track.__setkaNative?
      await inspectWavSource(track.audio_url,Number(track.external_source_bytes)):null;
    if(this.changeSeq.get(id)!==sequence)return;
-   const streamOnly=!!streamInfo,nativeOnly=externalWav&&webkit&&!streamOnly;
+   const streamOnly=!!streamInfo,nativeOnly=externalWav&&webkit&&!streamOnly||!!track.__setkaNative;
    const makeDeck=(volume)=>{
     if(streamOnly){
      const el=new SetkaChunkedWavDeck({url:track.audio_url,total:Number(track.external_source_bytes),
@@ -204,7 +206,10 @@ export class SetkaMusicMixer {
     }
     const el=new Audio();
     el.loop=(singleDeck||nativeOnly)&&track.loop!==false;
-    el.crossOrigin="anonymous";el.preload=nativeOnly?"metadata":"auto";el.src=track.audio_url;
+    // GitHub release downloads can play natively even if cross-origin WebAudio
+    // access is denied. Only bypass CORS for that explicit read-only fallback.
+    if(!nativeOnly||!releaseDirect)el.crossOrigin="anonymous";
+    el.preload=nativeOnly?"metadata":"auto";el.src=track.audio_url;
     if(nativeOnly)return {el,src:null,fade:null};
     const src=this.ctx.createMediaElementSource(el);
     const fade=this.ctx.createGain();fade.gain.value=volume;
@@ -245,6 +250,9 @@ export class SetkaMusicMixer {
      this.unstreamable.add(id);this.remove(id);
      void this.change(track,level);return;
     }
+    if(releaseDirect&&!track.__setkaNative){
+     this.remove(id);void this.change({...track,__setkaNative:true},level);return;
+    }
     this.remove(id);this.changed("Не удалось воспроизвести аудиофайл");
    });
    // Prime the silent second deck during the same user interaction for iOS Safari.
@@ -268,7 +276,7 @@ export class SetkaMusicMixer {
    state.gain.gain.setTargetAtTime(outputLevel,now,.045);
   }
   if(!this.clock)this.clock=setInterval(()=>this.tick(),40);
-  this.changed();
+  this.changed(state.nativeOnly&&releaseDirect?"Резервный трек воспроизводится обычным стерео без 3D-орбиты.":undefined);
  }
  // Advance a deck independently of orbital motion: even a static sound loops.
  advanceLoop(state,force=false){

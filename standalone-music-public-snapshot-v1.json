@@ -1,0 +1,512 @@
+{
+  "format": "setka-public-music-static-fallback-v1",
+  "generatedAt": "2026-11-15T19:52:48.485Z",
+  "source": "published_supabase_music_verified_against_github_release",
+  "note": "Read-only fallback; browser CORS and streaming must be independently validated.",
+  "categories": [
+    {
+      "id": "hand",
+      "title": "Природные",
+      "sort_order": 0,
+      "visible": true,
+      "is_system": true
+    },
+    {
+      "id": "eye",
+      "title": "Открытый глаз",
+      "sort_order": 1,
+      "visible": true,
+      "is_system": true
+    },
+    {
+      "id": "sleep",
+      "title": "Закрытый глаз",
+      "sort_order": 2,
+      "visible": true,
+      "is_system": true
+    },
+    {
+      "id": "8d",
+      "title": "8D",
+      "sort_order": 3,
+      "visible": true,
+      "is_system": true
+    }
+  ],
+  "tracks": [
+    {
+      "id": "33f99f83-4278-4aad-91a9-84022932bc0e",
+      "title": "8D актив hang&sitar",
+      "icon_key": "old-planet-orbit",
+      "category_ids": [
+        "8d"
+      ],
+      "sort_order": 11,
+      "loop": true,
+      "duration_seconds": null,
+      "external_source_path": "/8D/8D актив hang&sitar.mp3",
+      "external_source_hash": "4383c3e0ff9d31ea3f178e86bb4b4aff0c1d743ab4d73ec4276f9e03eeb0e564",
+      "external_source_bytes": 39897255,
+      "revision": 2,
+      "source": "github-release-verified",
+      "audio_url": "https://github.com/misskogut/Setka-web/releases/download/setka-original-music-20261107/setka-original-4383c3e0ff9d31ea3f178e86.mp3"
+    },
+    {
+      "id": "8337cb6c-8a0b-4f8d-aa64-88c7158a351d",
+      "title": "8D актив Арабская",
+      "icon_key": "old-planet-orbit",
+      "category_ids": [
+        "8d"
+      ],
+      "sort_order": 12,
+      "loop": true,
+      "duration_seconds": null,
+      "external_source_path": "/8D/8D актив Арабская.wav",
+      "external_source_hash": "d78475ee03867a5b333ae90b5686a1ef6eb622fcbcea900e5117119e2aded6c9",
+      "external_source_bytes": 104181440,
+      "revision": 2,
+      "source": "github-release-verified",
+      "audio_url": "https://github.com/misskogut/Setka-web/releases/download/setka-original-music-20261107/setka-original-d78475ee03867a5b333ae90b.wav"
+    },
+    {
+      "id": "7b12a867-d478-4a55-99cb-061e054c9929",
+      "title": "8D актив поиск",
+      "icon_key": "old-planet-orbit",
+      "category_ids": [
+        "8d"
+      ],
+      "sort_order": 13,
+      "loop": true,
+      "duration_seconds": null,
+      "external_source_path": "/8D/8D актив поиск.wav",
+      "external_source_hash": "457bb0759514a5ae33b2fa37c1b89e529c6ed8f0b43b847c3a56e50768ea9f6e",
+      "external_source_bytes": 51561480,
+      "revision": 2,
+      "source": "github-release-verified",
+      "audio_url": "https://github.com/misskogut/Setka-web/releases/download/setka-original-music-20261107/setka-original-457bb0759514a5ae33b2fa37.wav"
+    },
+    {
+      "id": "09d34d57-3628-42b6-9930-02f56a1c25d1",
+      "title": "8D пассив Om mantra & bowls",
+      "icon_key": "old-planet-orbit",
+      "category_ids": [
+        "8d"
+      ],
+      "sort_order": 14,
+      "loop": true,
+      "duration_seconds": null,
+      "external_source_path": "/8D/8D пассив Om mantra & bowls.wav",
+      "external_source_hash": "77b8825e169a875534a4db576eb7729b781206857e4e1d78ac972e11ece74303",
+      "external_source_bytes": 346942410,
+      "revision": 2,
+      "source": "github-release-verified",
+      "audio_url": "https://github.com/misskogut/Setka-web/releases/download/setka-original-music-20261107/setka-original-77b8825e169a875534a4db57.wav"
+    },
+    {
+      "id": "e6de240a-d480-4f90-b592-a7c2cdc2bf99",
+      "title": "8D пассив Shavasana",
+      "icon_key": "old-planet-orbit",
+      "category_ids": [
+        "8d"
+      ],
+      "sort_order": 15,
+      "loop": true,
+      "duration_seconds": null,
+      "external_source_path": "/8D/8D пассив Shavasana.wav",
+      "external_source_hash": "49e4897e244796a2c7fc66f71281e5b725e56cf9497c67931b3bf3efe2e22e2d",
+      "external_source_bytes": 496318392,
+      "revision": 2,
+      "source": "github-release-verified",
+      "audio_url": "https://github.com/misskogut/Setka-web/releases/download/setka-original-music-20261107/setka-original-49e4897e244796a2c7fc66f7.wav"
+    },
+    {
+      "id": "4ff6051e-b634-4390-ad08-c1351ee44193",
+      "title": "8D пассив",
+      "icon_key": "old-planet-orbit",
+      "category_ids": [
+        "8d"
+      ],
+      "sort_order": 16,
+      "loop": true,
+      "duration_seconds": null,
+      "external_source_path": "/8D/8D пассив.wav",
+      "external_source_hash": "4115d02e6b1994762553acb20209a3d54c6aab02ffdf27499f36389b6a2b870e",
+      "external_source_bytes": 369535314,
+      "revision": 2,
+      "source": "github-release-verified",
+      "audio_url": "https://github.com/misskogut/Setka-web/releases/download/setka-original-music-20261107/setka-original-4115d02e6b1994762553acb2.wav"
+    },
+    {
+      "id": "321b9d9d-75bd-48a5-9ef3-94cc15c7f2a3",
+      "title": "8Dактив.луна",
+      "icon_key": "old-planet-orbit",
+      "category_ids": [
+        "8d"
+      ],
+      "sort_order": 17,
+      "loop": true,
+      "duration_seconds": null,
+      "external_source_path": "/8D/8Dактив.луна.wav",
+      "external_source_hash": "df2792b712179bab95595a8177b3b232e8cc7f77cd2956788d95ecf5f7aaed12",
+      "external_source_bytes": 77470550,
+      "revision": 2,
+      "source": "github-release-verified",
+      "audio_url": "https://github.com/misskogut/Setka-web/releases/download/setka-original-music-20261107/setka-original-df2792b712179bab95595a81.wav"
+    },
+    {
+      "id": "e33cd403-7ef2-4b7e-a3f1-fffd98f4b8c0",
+      "title": "Buddah тета",
+      "icon_key": "old-mandala",
+      "category_ids": [
+        "eye"
+      ],
+      "sort_order": 18,
+      "loop": true,
+      "duration_seconds": null,
+      "external_source_path": "/актив/актив Buddah тета_01.wav",
+      "external_source_hash": "b9d517a9f9d9ae46f62b73fed291ea85ad220790b7b0c0c20e8fc17fb5af0efb",
+      "external_source_bytes": 140371624,
+      "revision": 2,
+      "source": "github-release-verified",
+      "audio_url": "https://github.com/misskogut/Setka-web/releases/download/setka-original-music-20261107/setka-original-b9d517a9f9d9ae46f62b73fe.wav"
+    },
+    {
+      "id": "a0a02d02-981a-46eb-a151-1ba6fef4661b",
+      "title": "Gates of Paradise Gregorian Chants",
+      "icon_key": "old-mandala",
+      "category_ids": [
+        "eye"
+      ],
+      "sort_order": 19,
+      "loop": true,
+      "duration_seconds": null,
+      "external_source_path": "/актив/актив Gates of Paradise Gregorian Chants_01.wav",
+      "external_source_hash": "d35f37ededc0ba6eff3e6f60328517ac252e6654e001c2587e7a4217da479ed0",
+      "external_source_bytes": 24013728,
+      "revision": 2,
+      "source": "github-release-verified",
+      "audio_url": "https://github.com/misskogut/Setka-web/releases/download/setka-original-music-20261107/setka-original-d35f37ededc0ba6eff3e6f60.wav"
+    },
+    {
+      "id": "9a0002e5-cb93-4dce-a6e3-af350d0d25a6",
+      "title": "Underwater тета",
+      "icon_key": "old-mandala",
+      "category_ids": [
+        "eye"
+      ],
+      "sort_order": 20,
+      "loop": true,
+      "duration_seconds": null,
+      "external_source_path": "/актив/актив Underwater тета_01.wav",
+      "external_source_hash": "d978c7c187bbbfcf3aa78269fd59ee830270ee3a84980f34d1c3d40868649626",
+      "external_source_bytes": 133913202,
+      "revision": 2,
+      "source": "github-release-verified",
+      "audio_url": "https://github.com/misskogut/Setka-web/releases/download/setka-original-music-20261107/setka-original-d978c7c187bbbfcf3aa78269.wav"
+    },
+    {
+      "id": "5a1624c8-2078-4755-bd69-84e98b71663d",
+      "title": "Пульс пустыни",
+      "icon_key": "old-mandala",
+      "category_ids": [
+        "eye"
+      ],
+      "sort_order": 22,
+      "loop": true,
+      "duration_seconds": null,
+      "external_source_path": "/актив/актив пульс пустыни.wav",
+      "external_source_hash": "2bd72f08e36446dc78cbfe8b6b14ebb1f464f1013b8c645f758303691c7f3e09",
+      "external_source_bytes": 167314170,
+      "revision": 2,
+      "source": "github-release-verified",
+      "audio_url": "https://github.com/misskogut/Setka-web/releases/download/setka-original-music-20261107/setka-original-2bd72f08e36446dc78cbfe8b.wav"
+    },
+    {
+      "id": "8ef0c29a-3922-43c1-80d6-1bb4f9081ce8",
+      "title": "Ambient Meditative Relaxing Spiritual",
+      "icon_key": "old-lotus",
+      "category_ids": [
+        "sleep"
+      ],
+      "sort_order": 23,
+      "loop": true,
+      "duration_seconds": null,
+      "external_source_path": "/пассив/пассив Ambient Meditative Relaxing Spiritual_01.wav",
+      "external_source_hash": "3ea70c863bb809a451227364e2a8505d4dc1f3f4cfb885c80e8e945401bdb1d9",
+      "external_source_bytes": 50064394,
+      "revision": 2,
+      "source": "github-release-verified",
+      "audio_url": "https://github.com/misskogut/Setka-web/releases/download/setka-original-music-20261107/setka-original-3ea70c863bb809a451227364.wav"
+    },
+    {
+      "id": "15ab7209-3790-4bce-a871-5316f145ea9a",
+      "title": "For Meditation",
+      "icon_key": "old-lotus",
+      "category_ids": [
+        "sleep"
+      ],
+      "sort_order": 24,
+      "loop": true,
+      "duration_seconds": null,
+      "external_source_path": "/пассив/пассив For Meditation_01.wav",
+      "external_source_hash": "ed559326aaa4781a475f6a4932c8868f7cdf27d5379716478403580256410101",
+      "external_source_bytes": 100818298,
+      "revision": 2,
+      "source": "github-release-verified",
+      "audio_url": "https://github.com/misskogut/Setka-web/releases/download/setka-original-music-20261107/setka-original-ed559326aaa4781a475f6a49.wav"
+    },
+    {
+      "id": "b52a1cfd-d0c4-4892-840a-691cc44fe687",
+      "title": "Meditation",
+      "icon_key": "old-lotus",
+      "category_ids": [
+        "sleep"
+      ],
+      "sort_order": 25,
+      "loop": true,
+      "duration_seconds": null,
+      "external_source_path": "/пассив/пассив meditation_01.wav",
+      "external_source_hash": "9ce5256a019f6021bc99d18f7fb142caaca8c006f6adb695cdee71e27cfa597d",
+      "external_source_bytes": 102521154,
+      "revision": 2,
+      "source": "github-release-verified",
+      "audio_url": "https://github.com/misskogut/Setka-web/releases/download/setka-original-music-20261107/setka-original-9ce5256a019f6021bc99d18f.wav"
+    },
+    {
+      "id": "eba6e870-3c3d-41ab-9317-0ef2996db62e",
+      "title": "Untitled Session 2_mixdown",
+      "icon_key": "old-lotus",
+      "category_ids": [
+        "sleep"
+      ],
+      "sort_order": 26,
+      "loop": true,
+      "duration_seconds": null,
+      "external_source_path": "/пассив/пассив Untitled Session 2_mixdown.wav",
+      "external_source_hash": "be5bb86aaafc1d4618b83bd3e0b9644f7a28110db314cf4a3c18701864f393f8",
+      "external_source_bytes": 108107594,
+      "revision": 2,
+      "source": "github-release-verified",
+      "audio_url": "https://github.com/misskogut/Setka-web/releases/download/setka-original-music-20261107/setka-original-be5bb86aaafc1d4618b83bd3.wav"
+    },
+    {
+      "id": "a6974427-5e3a-430f-a7f9-048bb8a08dd8",
+      "title": "Ветер",
+      "icon_key": "vintage-wind",
+      "category_ids": [
+        "hand"
+      ],
+      "sort_order": 27,
+      "loop": true,
+      "duration_seconds": null,
+      "external_source_path": "/звуки природы/звук ветер.wav",
+      "external_source_hash": "5bebadf383425712a64925eda1549e90c28b30c8568028e3040a43439a61f8ef",
+      "external_source_bytes": 46838940,
+      "revision": 2,
+      "source": "github-release-verified",
+      "audio_url": "https://github.com/misskogut/Setka-web/releases/download/setka-original-music-20261107/setka-original-5bebadf383425712a64925ed.wav"
+    },
+    {
+      "id": "ff943079-ca68-43eb-b83e-7f0b39087efd",
+      "title": "Волна у берега",
+      "icon_key": "vintage-sea-wave",
+      "category_ids": [
+        "hand"
+      ],
+      "sort_order": 28,
+      "loop": true,
+      "duration_seconds": null,
+      "external_source_path": "/звуки природы/звук волна у берега.wav",
+      "external_source_hash": "97b02d8b4fcc64a91f53628f43e7aff2e9d6bf526a29ea12c9a61a458a7c411e",
+      "external_source_bytes": 16293990,
+      "revision": 2,
+      "source": "github-release-verified",
+      "audio_url": "https://github.com/misskogut/Setka-web/releases/download/setka-original-music-20261107/setka-original-97b02d8b4fcc64a91f53628f.wav"
+    },
+    {
+      "id": "80809f63-56b4-4a72-9dd1-13126351046f",
+      "title": "Волны",
+      "icon_key": "vintage-sea-wave",
+      "category_ids": [
+        "hand"
+      ],
+      "sort_order": 29,
+      "loop": true,
+      "duration_seconds": null,
+      "external_source_path": "/звуки природы/звук волны.wav",
+      "external_source_hash": "b903f8da0af65acbb6ea64896684f37cd81261114e38de45ca331345a7561aa0",
+      "external_source_bytes": 25401644,
+      "revision": 2,
+      "source": "github-release-verified",
+      "audio_url": "https://github.com/misskogut/Setka-web/releases/download/setka-original-music-20261107/setka-original-b903f8da0af65acbb6ea6489.wav"
+    },
+    {
+      "id": "fdd63d13-978a-437a-a6ca-ee1eac4f2f5c",
+      "title": "Гроза ",
+      "icon_key": "old-storm",
+      "category_ids": [
+        "hand"
+      ],
+      "sort_order": 30,
+      "loop": true,
+      "duration_seconds": null,
+      "external_source_path": "/звуки природы/звук гроза (уже есть).wav",
+      "external_source_hash": "d2d085eb0e4518ef1fdf7cb67a578cef88fe86d6c7fefe41786da2dc8deabea4",
+      "external_source_bytes": 20299386,
+      "revision": 2,
+      "source": "github-release-verified",
+      "audio_url": "https://github.com/misskogut/Setka-web/releases/download/setka-original-music-20261107/setka-original-d2d085eb0e4518ef1fdf7cb6.wav"
+    },
+    {
+      "id": "9d87e016-e142-45cc-912a-ea6b4445660a",
+      "title": "Дождь в лесу",
+      "icon_key": "vintage-raindrops",
+      "category_ids": [
+        "hand"
+      ],
+      "sort_order": 31,
+      "loop": true,
+      "duration_seconds": null,
+      "external_source_path": "/звуки природы/звук дождь в лесу.wav",
+      "external_source_hash": "014a92a9e98cd264dd18b81296fea1595da891236c57f81db7fcd78de3ca3ed9",
+      "external_source_bytes": 20186094,
+      "revision": 2,
+      "source": "github-release-verified",
+      "audio_url": "https://github.com/misskogut/Setka-web/releases/download/setka-original-music-20261107/setka-original-014a92a9e98cd264dd18b812.wav"
+    },
+    {
+      "id": "96681906-e679-4c59-b37d-20a586617eb2",
+      "title": "Лес",
+      "icon_key": "old-forest",
+      "category_ids": [
+        "hand"
+      ],
+      "sort_order": 32,
+      "loop": true,
+      "duration_seconds": null,
+      "external_source_path": "/звуки природы/звук лес(уже есть).wav",
+      "external_source_hash": "ad00627af6cf0af66f08929ba7fc2c5b1d110826a6ea11458fa245a89a794c4a",
+      "external_source_bytes": 29294366,
+      "revision": 2,
+      "source": "github-release-verified",
+      "audio_url": "https://github.com/misskogut/Setka-web/releases/download/setka-original-music-20261107/setka-original-ad00627af6cf0af66f08929b.wav"
+    },
+    {
+      "id": "73249017-4a40-4314-8043-f37871a1317b",
+      "title": "Лесная река",
+      "icon_key": "vintage-round-landscape",
+      "category_ids": [
+        "hand"
+      ],
+      "sort_order": 33,
+      "loop": true,
+      "duration_seconds": null,
+      "external_source_path": "/звуки природы/звук лесная река.wav",
+      "external_source_hash": "fa5755c62cb882acf2f4c7362954302d210272d517c9dd2864eec2a73c29f3c0",
+      "external_source_bytes": 41975662,
+      "revision": 2,
+      "source": "github-release-verified",
+      "audio_url": "https://github.com/misskogut/Setka-web/releases/download/setka-original-music-20261107/setka-original-fa5755c62cb882acf2f4c736.wav"
+    },
+    {
+      "id": "616d46e2-a3cb-4b10-9b75-4075bb07a551",
+      "title": "Ночь в лесу",
+      "icon_key": "vintage-crescent",
+      "category_ids": [
+        "hand"
+      ],
+      "sort_order": 34,
+      "loop": true,
+      "duration_seconds": null,
+      "external_source_path": "/звуки природы/звук ночь в лесу.wav",
+      "external_source_hash": "fa1d930689d88d829894f26391061b12acc1f6eacb4322bcbd4bb3678181f22d",
+      "external_source_bytes": 22081850,
+      "revision": 2,
+      "source": "github-release-verified",
+      "audio_url": "https://github.com/misskogut/Setka-web/releases/download/setka-original-music-20261107/setka-original-fa1d930689d88d829894f263.wav"
+    },
+    {
+      "id": "b8270963-ed23-417a-b868-ac076e86e6fc",
+      "title": "Сердце глухое",
+      "icon_key": "old-heart",
+      "category_ids": [
+        "hand"
+      ],
+      "sort_order": 35,
+      "loop": true,
+      "duration_seconds": null,
+      "external_source_path": "/звуки природы/звук Сердце глухое_01.wav",
+      "external_source_hash": "a1984ee8ec95c7daa6b3429f41cc5406d0b9b0c6fabc315644228e20db73c542",
+      "external_source_bytes": 57571782,
+      "revision": 2,
+      "source": "github-release-verified",
+      "audio_url": "https://github.com/misskogut/Setka-web/releases/download/setka-original-music-20261107/setka-original-a1984ee8ec95c7daa6b3429f.wav"
+    },
+    {
+      "id": "db6793d9-5863-48b7-87a3-862547bdb313",
+      "title": "У дороги",
+      "icon_key": "vintage-rolling-wheel",
+      "category_ids": [
+        "hand"
+      ],
+      "sort_order": 36,
+      "loop": true,
+      "duration_seconds": null,
+      "external_source_path": "/звуки природы/звук у дороги.wav",
+      "external_source_hash": "709aff821335b62035c0accf52ec8bdbc90785884c690a24605f81b4516b88a5",
+      "external_source_bytes": 17688724,
+      "revision": 2,
+      "source": "github-release-verified",
+      "audio_url": "https://github.com/misskogut/Setka-web/releases/download/setka-original-music-20261107/setka-original-709aff821335b62035c0accf.wav"
+    },
+    {
+      "id": "aed73e11-c648-4f09-aa00-d599764c2cec",
+      "title": "Утренний лес",
+      "icon_key": "old-forest",
+      "category_ids": [
+        "hand"
+      ],
+      "sort_order": 37,
+      "loop": true,
+      "duration_seconds": null,
+      "external_source_path": "/звуки природы/звук утренний лес.wav",
+      "external_source_hash": "39be4473f1898f88fa4e0139d21f61415bd646274ec664675dd39fe04b2415f2",
+      "external_source_bytes": 10070346,
+      "revision": 2,
+      "source": "github-release-verified",
+      "audio_url": "https://github.com/misskogut/Setka-web/releases/download/setka-original-music-20261107/setka-original-39be4473f1898f88fa4e0139.wav"
+    }
+  ],
+  "global_order": {
+    "track_ids": [
+      "33f99f83-4278-4aad-91a9-84022932bc0e",
+      "8337cb6c-8a0b-4f8d-aa64-88c7158a351d",
+      "7b12a867-d478-4a55-99cb-061e054c9929",
+      "09d34d57-3628-42b6-9930-02f56a1c25d1",
+      "e6de240a-d480-4f90-b592-a7c2cdc2bf99",
+      "4ff6051e-b634-4390-ad08-c1351ee44193",
+      "321b9d9d-75bd-48a5-9ef3-94cc15c7f2a3",
+      "e33cd403-7ef2-4b7e-a3f1-fffd98f4b8c0",
+      "a0a02d02-981a-46eb-a151-1ba6fef4661b",
+      "9a0002e5-cb93-4dce-a6e3-af350d0d25a6",
+      "5a1624c8-2078-4755-bd69-84e98b71663d",
+      "8ef0c29a-3922-43c1-80d6-1bb4f9081ce8",
+      "15ab7209-3790-4bce-a871-5316f145ea9a",
+      "b52a1cfd-d0c4-4892-840a-691cc44fe687",
+      "eba6e870-3c3d-41ab-9317-0ef2996db62e",
+      "a6974427-5e3a-430f-a7f9-048bb8a08dd8",
+      "ff943079-ca68-43eb-b83e-7f0b39087efd",
+      "80809f63-56b4-4a72-9dd1-13126351046f",
+      "fdd63d13-978a-437a-a6ca-ee1eac4f2f5c",
+      "9d87e016-e142-45cc-912a-ea6b4445660a",
+      "96681906-e679-4c59-b37d-20a586617eb2",
+      "73249017-4a40-4314-8043-f37871a1317b",
+      "616d46e2-a3cb-4b10-9b75-4075bb07a551",
+      "b8270963-ed23-417a-b868-ac076e86e6fc",
+      "db6793d9-5863-48b7-87a3-862547bdb313",
+      "aed73e11-c648-4f09-aa00-d599764c2cec"
+    ],
+    "revision": 2
+  },
+  "ui_icons": []
+}

@@ -1,0 +1,36 @@
+{
+  "format": "setka-public-notes-static-fallback-v1",
+  "generatedAt": "2026-11-15T20:02:33.893Z",
+  "source": "prototype_v36_public_notes_explicit_public_published_only",
+  "readOnly": true,
+  "items": [
+    {
+      "id": "d8865957-d30a-4241-8f8a-c120f9d467ea",
+      "patternId": "dandelion",
+      "text": "Привет) это публичная заметка. Тестирую функционал",
+      "config": {
+        "v1": 0.280786365504928,
+        "zoom": 0.9498191897421115,
+        "tSpeed": 0.0014233333333333335,
+        "numShapes": 999,
+        "patternId": "dandelion",
+        "pointSize": 4,
+        "v1History": [
+          0.473,
+          0.583912350720205,
+          0.3752642124439138,
+          0.4703878160499208,
+          0.5699469818077155,
+          0.41939367497552027
+        ],
+        "angleSpeed": 0.0075333333333333285,
+        "lineWeight": 0.40666666666666634,
+        "colorModeIndex": 1,
+        "backgroundAlpha": 255
+      },
+      "frame": 79.739840520319,
+      "createdAt": "2026-10-15 19:41:10.516426+00",
+      "readOnly": true
+    }
+  ]
+}
