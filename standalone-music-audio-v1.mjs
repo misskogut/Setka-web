@@ -194,10 +194,10 @@ export class SetkaMusicMixer {
      Number(track.external_source_bytes)>0;
    const singleDeck=externalWav&&Number(track.external_source_bytes)>=24*1024*1024;
    const webkit=/AppleWebKit/i.test(navigator.userAgent)&&!/Chrom(?:e|ium)\//i.test(navigator.userAgent);
-   const streamInfo=externalWav&&webkit&&!track.__setkaNative&&!this.unstreamable.has(id)?
+   const streamInfo=externalWav&&webkit&&!this.unstreamable.has(id)&&!track.__setkaNative?
      await inspectWavSource(track.audio_url,Number(track.external_source_bytes)):null;
    if(this.changeSeq.get(id)!==sequence)return;
-   const streamOnly=!!streamInfo,nativeOnly=!!track.__setkaNative||(externalWav&&webkit&&!streamOnly);
+   const streamOnly=!!streamInfo,nativeOnly=externalWav&&webkit&&!streamOnly||!!track.__setkaNative;
    const makeDeck=(volume)=>{
     if(streamOnly){
      const el=new SetkaChunkedWavDeck({url:track.audio_url,total:Number(track.external_source_bytes),
