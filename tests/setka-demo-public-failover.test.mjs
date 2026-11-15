@@ -47,6 +47,23 @@ test("community failover excludes personal data and unapproved content",()=>{
  assert.equal(snap.historicalPatterns.length,0);
 });
 
+test("public note snapshot contains only explicitly published, anonymous reader fields",()=>{
+ const snap=load("standalone-community-public-notes-snapshot-v1.json");
+ const pub=load("standalone-catalog-public-snapshot-v1.json");
+ const allowed=new Set(pub.items.map(p=>p.pattern_id));
+ assert.equal(snap.format,"setka-public-notes-static-fallback-v1");
+ assert.equal(snap.readOnly,true);
+ assert.ok(snap.items.length<=100);
+ const safeKeys=new Set(["id","patternId","text","config","frame","createdAt","readOnly"]);
+ for(const note of snap.items){
+  assert.ok(allowed.has(note.patternId));
+  assert.equal(note.config?.patternId,note.patternId);
+  assert.equal(note.readOnly,true);
+  assert.ok(Object.keys(note).every(key=>safeKeys.has(key)));
+  assert.equal(typeof note.text,"string");
+ }
+});
+
 test("live server remains primary and failover is read only and versioned",()=>{
  const com=read("standalone-community-cloud-v38.js");
  const music=read("standalone-music-v1.mjs");
@@ -54,6 +71,8 @@ test("live server remains primary and failover is read only and versioned",()=>{
  const html=read("standalone-v34.html");
  assert.match(com,/if\(!items\.length\)await restorePublishedFeed\(\)/);
  assert.match(com,/snapshotActive=false;lastError=null/);
+ assert.match(com,/restorePublishedNotes/);
+ assert.match(com,/notesSnapshotActive/);
  assert.match(music,/if\(!d\)\{/);
  assert.match(music,/readPublishedMusicSnapshot\(\)/);
  assert.match(music,/if\(musicSnapshotActive\)return/);
