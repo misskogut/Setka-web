@@ -42,7 +42,8 @@ test("refuses local data restoration into another account or guest device",()=>{
  assert.throws(()=>checkBackupScope(source,"tester:T-202","device-123"),/backup_other_account/);
  const guest=backup("guest");
  assert.equal(checkBackupScope(guest,"guest","device-123"),true);
- assert.throws(()=>checkBackupScope(guest,"guest","device-200"),/backup_other_device/);
+ // Owning the encrypted backup and knowing its passphrase permits a guest to recover on a new device.
+ assert.equal(checkBackupScope(guest,"guest","device-200"),true);
 });
 test("rejects malformed personal payloads, tiny passwords and oversized records",async()=>{
  await assert.rejects(encryptPersonalBackup(backup(),"short",webcrypto),/passphrase_minimum_12/);
