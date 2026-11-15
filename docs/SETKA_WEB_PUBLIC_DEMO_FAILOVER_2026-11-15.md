@@ -4,7 +4,7 @@ Scope: public SETKA Web static frontend, not SETKA Canon. This is a **non-destru
 
 ## Published sources
 - Existing pattern snapshot: `standalone-catalog-public-snapshot-v1.json`, 26 published patterns, last verified server revision 57.
-- Music: `standalone-music-public-snapshot-v1.json`, 26 currently published tracks with GitHub Release assets independently matched by recorded bytes and SHA-256 digests. The published **Мур** is only in Supabase Storage and **Монахи** has no matching asset in the current GitHub Release; neither is claimed as available offline.
+- Music: `standalone-music-public-snapshot-v1.json`, 27 currently published tracks with GitHub Release assets independently matched by recorded bytes and SHA-256 digests. **Мур** has an already verified Release asset, now included in the fallback. **Монахи** is still missing; repeated direct source downloads returned Yandex HTTP 500, while the existing Supabase API is blocked by 402.
 - Community: `standalone-community-public-snapshot-v1.json`, 14 aggregate pattern configuration cards from the same published, registered-account-only metrics view used by the public feed. No tester IDs, device IDs, private archives, private notes, or personal session records are exported.
 - Public notes: `standalone-community-public-notes-snapshot-v1.json`, 1 explicitly published, moderated note. Exported fields are only publicly visible note text, linked pattern config and date; all author identifiers, moderation internals and private notes are excluded. Saving a snapshot note is disabled until the server returns.
 

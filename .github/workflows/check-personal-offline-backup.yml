@@ -1,0 +1,29 @@
+name: Check SETKA Personal Encrypted Offline Backup
+on:
+  pull_request:
+    paths:
+      - 'standalone-personal-backup-v1.js'
+      - 'standalone-core-v34.js'
+      - 'standalone-v34.html'
+      - 'tests/setka-personal-encrypted-backup.test.mjs'
+      - '.github/workflows/check-personal-offline-backup.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'standalone-personal-backup-v1.js'
+      - 'standalone-core-v34.js'
+      - 'standalone-v34.html'
+      - 'tests/setka-personal-encrypted-backup.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-crypto:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node --check standalone-personal-backup-v1.js
+      - run: node --check standalone-core-v34.js
+      - run: node --test tests/setka-personal-encrypted-backup.test.mjs
