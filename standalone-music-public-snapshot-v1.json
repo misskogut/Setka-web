@@ -1,8 +1,8 @@
 {
   "format": "setka-public-music-static-fallback-v1",
-  "generatedAt": "2026-11-15T19:52:48.485Z",
+  "generatedAt": "2026-11-15T20:18:04.814Z",
   "source": "published_supabase_music_verified_against_github_release",
-  "note": "Read-only fallback; browser CORS and streaming must be independently validated.",
+  "note": "Read-only backup, 27 verified Release assets; Монахи unavailable until matching original is restored. Browser CORS/range support must be tested.",
   "categories": [
     {
       "id": "hand",
@@ -34,6 +34,23 @@
     }
   ],
   "tracks": [
+    {
+      "id": "86b99801-df90-4810-9915-99475cfa361b",
+      "title": "Мур",
+      "icon_key": "old-cat",
+      "category_ids": [
+        "hand"
+      ],
+      "sort_order": 1,
+      "loop": true,
+      "duration_seconds": null,
+      "external_source_path": "/звуки природы/звук мурр(уже есть).wav",
+      "external_source_hash": "37986ae9035f1d4bb8863a6d9e9d64dcaf6b780618802b0540337fda39b69e80",
+      "external_source_bytes": 13304108,
+      "revision": 2,
+      "source": "github-release-verified",
+      "audio_url": "https://github.com/misskogut/Setka-web/releases/download/setka-original-music-20261107/setka-original-37986ae9035f1d4bb8863a6d.wav"
+    },
     {
       "id": "33f99f83-4278-4aad-91a9-84022932bc0e",
       "title": "8D актив hang&sitar",
@@ -479,6 +496,7 @@
   ],
   "global_order": {
     "track_ids": [
+      "86b99801-df90-4810-9915-99475cfa361b",
       "33f99f83-4278-4aad-91a9-84022932bc0e",
       "8337cb6c-8a0b-4f8d-aa64-88c7158a351d",
       "7b12a867-d478-4a55-99cb-061e054c9929",
