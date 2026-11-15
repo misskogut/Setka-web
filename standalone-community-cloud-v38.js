@@ -5,7 +5,7 @@
   const API="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-community-patterns-v38";
   const API_KEY="sb_publishable_1jL-x9_kp6rpfGghpSp_OA_OiXDnvsv";
   const MODES=new Set(["for_me","popular","new","notes"]);
-  let items=[],metrics=null,patternMetrics=[],patternScenarios=[],historicalPatterns=[],publicNotes=[],snapshotActive=false,busy=false,refreshQueued=false,notesBusy=false,timer=0,lastOkAt=null,lastError=null,lastPage=Setka.getState?.()?.libraryPage||null,viewEpoch=0;
+  let items=[],metrics=null,patternMetrics=[],patternScenarios=[],historicalPatterns=[],publicNotes=[],snapshotActive=false,notesSnapshotActive=false,busy=false,refreshQueued=false,notesBusy=false,timer=0,lastOkAt=null,lastError=null,lastPage=Setka.getState?.()?.libraryPage||null,viewEpoch=0;
 
   const style=document.createElement("style");
   style.textContent=`
@@ -109,12 +109,34 @@
     const shown=sorted();C.publicCommunity=shown;Setka.setCommunity?.(shown);syncModeUi();cleanPatternTiles();showAvailability();
   }
 
+  async function restorePublishedNotes(){
+    try{
+      const url=new URL("./standalone-community-public-notes-snapshot-v1.json",location.href);
+      const r=await fetch(url,{cache:"no-store",credentials:"same-origin"});
+      if(!r.ok)return false;
+      const d=await r.json();
+      if(d?.format!=="setka-public-notes-static-fallback-v1"||
+         d.readOnly!==true||!Array.isArray(d.items)||d.items.length>100)return false;
+      const safe=d.items.filter(n=>n&&typeof n.id==="string"&&
+         typeof n.patternId==="string"&&typeof n.text==="string"&&
+         n.config&&typeof n.config==="object"&&!Array.isArray(n.config)&&
+         n.config.patternId===n.patternId&&n.readOnly===true);
+      if(safe.length!==d.items.length)return false;
+      publicNotes=safe;notesSnapshotActive=true;
+      return true;
+    }catch(_){return false}
+  }
   async function loadNotes(force=false){
     if(notesBusy)return publicNotes;notesBusy=true;
     try{
       const loader=C.publicNotes?.load;
       publicNotes=typeof loader==="function"?await loader(100):[];
-    }catch(_){if(force)publicNotes=[]}finally{notesBusy=false}
+      notesSnapshotActive=false;
+    }catch(_){
+      // A live outage is not an empty community. Preserve confirmed live notes;
+      // otherwise show only previously moderated, published, read-only notes.
+      if(!publicNotes.length)await restorePublishedNotes();
+    }finally{notesBusy=false}
     return publicNotes;
   }
   function renderNotes(){
@@ -122,6 +144,11 @@
     const panel=document.getElementById("communityPanel");if(!panel)return;
     panel.replaceChildren();
     const wrap=document.createElement("div");wrap.id="st40CommunityNotes";
+    if(notesSnapshotActive){
+      const hint=document.createElement("p");hint.className="st40-community-empty";hint.setAttribute("role","status");
+      hint.textContent="Показаны ранее опубликованные заметки. Сервер временно недоступен, сохранение из сообщества отключено.";
+      wrap.appendChild(hint);
+    }
     const activeNotes=publicNotes.filter(note=>{
       const id=note.replaySnapshot?.patternId||note.patternId||note.config?.patternId;
       return !id||window.SetkaPatternRegistryV1?.has?.(id);
@@ -153,6 +180,7 @@
       const already=(data().notes||[]).some(x=>x.publicNoteId===note.id&&x.sourceType==="public_note");
       save.textContent=already?"Сохранено у меня ✓":"Сохранить себе";
       if(already){save.disabled=true;save.classList.add("published")}
+      else if(notesSnapshotActive){save.disabled=true;save.textContent="Только просмотр — сервер недоступен"}
       else save.onclick=async()=>{save.disabled=true;try{await C.publicNotes?.save?.(note);save.textContent="Сохранено у меня ✓";save.classList.add("published")}catch(_){save.disabled=false;save.textContent="Не удалось сохранить"}};
       card.appendChild(save);wrap.appendChild(card);
     }
@@ -267,6 +295,6 @@
     }).observe(communityPanel,{childList:true});
   }
   bootstrap();
-  C.cloudCommunity={refresh,status:()=>({count:items.length,lastOkAt,lastError,offlineSnapshot:snapshotActive,mode:mode(),metrics,patternMetrics,patternScenarios,historicalPatterns,publicNotes:publicNotes.length})};
+  C.cloudCommunity={refresh,status:()=>({count:items.length,lastOkAt,lastError,offlineSnapshot:snapshotActive,mode:mode(),metrics,patternMetrics,patternScenarios,historicalPatterns,publicNotes:publicNotes.length,offlineNotesSnapshot:notesSnapshotActive})};
   window.__SETKA_CLOUD_COMMUNITY_V38__=9;
 })();
