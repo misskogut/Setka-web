@@ -9,6 +9,10 @@ on:
       - 'standalone-music-audio-v1.mjs'
       - 'standalone-community-cloud-v38.js'
       - 'standalone-v34.html'
+      - 'standalone-core-v34.js'
+      - 'standalone-tester-cabinet-v40.js'
+      - 'standalone-personal-offline-vault-v1.mjs'
+      - 'tests/setka-personal-offline-vault.test.mjs'
       - 'tests/setka-demo-public-failover.test.mjs'
       - '.github/workflows/check-demo-public-failover.yml'
   push:
@@ -21,6 +25,10 @@ on:
       - 'standalone-music-audio-v1.mjs'
       - 'standalone-community-cloud-v38.js'
       - 'standalone-v34.html'
+      - 'standalone-core-v34.js'
+      - 'standalone-tester-cabinet-v40.js'
+      - 'standalone-personal-offline-vault-v1.mjs'
+      - 'tests/setka-personal-offline-vault.test.mjs'
       - 'tests/setka-demo-public-failover.test.mjs'
   workflow_dispatch:
 
@@ -40,5 +48,7 @@ jobs:
           node --check standalone-music-v1.mjs
           node --check standalone-music-audio-v1.mjs
           node --check tests/setka-demo-public-failover.test.mjs
+          node --check standalone-personal-offline-vault-v1.mjs
+          node --check tests/setka-personal-offline-vault.test.mjs
       - name: Test public-only backup validity and live-priority
-        run: node --test tests/setka-demo-public-failover.test.mjs
+        run: node --test tests/setka-demo-public-failover.test.mjs tests/setka-personal-offline-vault.test.mjs
