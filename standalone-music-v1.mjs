@@ -7,6 +7,7 @@ const API="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-music-v1"
 const $=id=>document.getElementById(id);
 const escapeText=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const BASE_CATEGORIES=[{id:"hand",title:"Рука"},{id:"eye",title:"Открытый глаз"},{id:"sleep",title:"Закрытый глаз"},{id:"8d",title:"8D"}];
+let musicSnapshotActive=false;
 const mixer=new SetkaMusicMixer();
 // Only real audio playback events are counted; no identifying listener data.
 mixer.onTrackEvent=event=>{
@@ -16,6 +17,7 @@ mixer.onTrackEvent=event=>{
  // playback-start count; never record selected icons as audio playback.
  if(event?.event_type==="play"&&typeof event.track_id==="string")
   window.dispatchEvent(new CustomEvent("setka:music-play",{detail:{trackId:event.track_id}}));
+ if(musicSnapshotActive)return; // Never flood blocked Supabase with fallback playback events.
  fetch(API,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"track-event",...event}),keepalive:true}).catch(()=>{});
 };
 const uiIcons=Object.create(null);
@@ -76,18 +78,41 @@ function redraw(){
  catalog.hidden=inOrbits;orbit.root.hidden=!inOrbits;
  if(inOrbits)orbit.render();else redrawCatalog();
 }
+// Offline fallback is an immutable, published-only catalogue. The actual audio
+// files remain in GitHub Releases; no secrets, unpublished tracks or user data.
+const FALLBACK_AUDIO_BASE="https://github.com/misskogut/Setka-web/releases/download/setka-original-music-20261107/";
+async function readPublishedMusicSnapshot(){
+ const r=await fetch(new URL("./standalone-music-public-snapshot-v1.json",import.meta.url),{cache:"no-store"});
+ if(!r.ok)throw Error("fallback_catalog_unavailable");
+ const d=await r.json();
+ if(d?.format!=="setka-public-music-static-fallback-v1"||!Array.isArray(d.categories)||
+    !Array.isArray(d.tracks)||!d.tracks.length||d.tracks.length>100||
+    !Array.isArray(d.global_order?.track_ids)||!Array.isArray(d.ui_icons))throw Error("fallback_catalog_invalid");
+ const seen=new Set();
+ for(const t of d.tracks){
+  const hash=String(t.external_source_hash||"").toLowerCase(),path=String(t.external_source_path||"");
+  const ext=/\.mp3$/i.test(path)?".mp3":/\.wav$/i.test(path)?".wav":null;
+  if(!/^[0-9a-f-]{36}$/.test(String(t.id))||seen.has(t.id)||!ext||
+     !/^[0-9a-f]{64}$/.test(hash)||!Number.isSafeInteger(Number(t.external_source_bytes))||
+     Number(t.external_source_bytes)<=0||t.audio_url!==FALLBACK_AUDIO_BASE+"setka-original-"+hash.slice(0,24)+ext)
+     throw Error("fallback_track_invalid");
+  seen.add(t.id);
+ }
+ if(d.global_order.track_ids.some(id=>!seen.has(id)))throw Error("fallback_order_invalid");
+ return d;
+}
 async function reload(){
  if(loading)return;
  loading=true;status="";redraw();
  try{
   // A transient Supabase or GitHub Release metadata timeout must not leave
   // the music panel permanently empty. Always require a valid real catalog.
-  let d=null,lastError=null;
+  let d=null,lastError=null,usingSnapshot=false;
   for(let attempt=0;attempt<2;attempt++){
    const controller=new AbortController(),clock=setTimeout(()=>controller.abort(),18000);
    try{
     const r=await fetch(API,{cache:"no-store",signal:controller.signal});
-    if(!r.ok)throw Error("unavailable");
+    if(!r.ok){if(r.status===402){lastError=Error("service_restricted_402");break}throw Error("unavailable")};
     const response=await r.json();
     if(!response.ok||!Array.isArray(response.categories)||!Array.isArray(response.tracks))
      throw Error("invalid_catalog");
@@ -96,8 +121,14 @@ async function reload(){
    finally{clearTimeout(clock)}
    if(attempt===0)await new Promise(done=>setTimeout(done,600));
   }
-  if(!d)throw lastError||Error("unavailable");
+  if(!d){
+   // Preserve any previously confirmed live catalogue on transient errors.
+   if(tracks.length&&!musicSnapshotActive)throw lastError||Error("unavailable");
+   d=await readPublishedMusicSnapshot();usingSnapshot=true;
+  }
   categories=d.categories;tracks=d.tracks.filter(t=>t.id&&t.audio_url);globalOrder=d.global_order||{track_ids:[]};
+  musicSnapshotActive=usingSnapshot;
+  status=usingSnapshot?"Резервная музыка: показана последняя подтверждённая версия. Некоторые функции 3D могут быть недоступны без сервера.":"";
   catalogRetryCount=0;clearTimeout(catalogRetryTimer);catalogRetryTimer=null;
   for(const key of UI_ICON_IDS)delete uiIcons[key];
   for(const item of Array.isArray(d.ui_icons)?d.ui_icons:[]){
@@ -163,7 +194,7 @@ function install(){
  power.onclick=()=>{mixer.stopAll();redraw()};root.append(power);library.append(root);
  mixer.changed=message=>{if(message)status=message;if(visible)redraw()};
  mixer.moved=()=>{if(visible&&selected==="orbits")orbit.updatePositions()};
- window.SetkaMusicV1={state:()=>({visible,filter:selected,mode:mixer.mode,speed:mixer.speed,tracks:tracks.length,active:[...mixer.items.values()].map(s=>({id:s.id,level:s.level,angle:s.angle,radius:s.radius,earlyReflections:s.nativeOnly?0:s.reflections?.length||0,spatialized:!s.nativeOnly}))}),
+ window.SetkaMusicV1={state:()=>({visible,filter:selected,mode:mixer.mode,speed:mixer.speed,offlineSnapshot:musicSnapshotActive,tracks:tracks.length,active:[...mixer.items.values()].map(s=>({id:s.id,level:s.level,angle:s.angle,radius:s.radius,earlyReflections:s.nativeOnly?0:s.reflections?.length||0,spatialized:!s.nativeOnly}))}),
   diagnostics:()=>mixer.diagnostics(),reload,stopAll:()=>mixer.stopAll()};
  window.addEventListener("pageshow",()=>{if(visible)reload()});
  redraw();
