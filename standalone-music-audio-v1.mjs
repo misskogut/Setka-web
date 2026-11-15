@@ -164,6 +164,7 @@ export class SetkaMusicMixer {
   if(level<1){this.remove(id);return}
   try{this.init()}catch(e){this.changed(e.message);return}
   let state=old;
+  const releaseDirect=track.source==="github-release-verified";
   if(!state){
    const index=this.items.size,angle=index*2.399963229728653;
    const gain=this.ctx.createGain(),rearFilter=this.ctx.createBiquadFilter(),panner=this.ctx.createPanner();
@@ -188,7 +189,7 @@ export class SetkaMusicMixer {
    // Keep original PCM bytes for ALL eligible WAVs via bounded, lossless HRTF
    // streaming; fall back to one native deck when byte ranges are unsupported.
    // Chromium keeps its existing full-length WebAudio playback graph.
-   const releaseDirect=track.source==="github-release-verified";
+
    const externalWav=!!track.external_source_path&&/\.wav$/i.test(track.external_source_path)&&
      Number(track.external_source_bytes)>0;
    const singleDeck=externalWav&&Number(track.external_source_bytes)>=24*1024*1024;
