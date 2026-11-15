@@ -1,29 +1,9 @@
 name: Check SETKA Music and Spatial Orbits
-# Run on music-engine releases only, not on a timer or a background computer.
+# Manual diagnostic only during Supabase HTTP 402 / read-only demo mode.
+# Prevent redundant push / PR failures and notification spam.
+# GitHub Pages publishing and its independent release gates stay automatic.
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - 'standalone-music-audio-v1.mjs'
-      - 'supabase/functions/setka-music-v1/index.ts'
-      - 'tests/setka-music-origin-retries.test.mjs'
-      - 'standalone-music-wav-stream-v1.mjs'
-      - 'standalone-music-v1.mjs'
-      - 'tests/setka-music-v1.test.mjs'
-      - 'tests/setka-music-big-webkit-probe.mjs'
-      - 'tests/setka-music-live-playback-probe.mjs'
-      - '.github/workflows/check-setka-music.yml'
-  push:
-    branches: [main]
-    paths:
-      - 'standalone-music-audio-v1.mjs'
-      - 'supabase/functions/setka-music-v1/index.ts'
-      - 'tests/setka-music-origin-retries.test.mjs'
-      - 'standalone-music-wav-stream-v1.mjs'
-      - 'standalone-music-v1.mjs'
-      - 'tests/setka-music-big-webkit-probe.mjs'
-      - 'tests/setka-music-live-playback-probe.mjs'
-      - '.github/workflows/check-setka-music.yml'
 
 jobs:
   contracts:
