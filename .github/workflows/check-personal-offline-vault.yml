@@ -1,0 +1,30 @@
+name: Check SETKA Personal Offline Vault
+on:
+  pull_request:
+    paths:
+      - 'standalone-personal-offline-vault-v1.mjs'
+      - 'tests/setka-personal-offline-vault.test.mjs'
+      - 'standalone-core-v34.js'
+      - 'standalone-tester-cabinet-v40.js'
+      - 'standalone-v34.html'
+      - '.github/workflows/check-personal-offline-vault.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  encrypted-local-backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate module and tests
+        run: |
+          node --check standalone-personal-offline-vault-v1.mjs
+          node --check tests/setka-personal-offline-vault.test.mjs
+          node --check standalone-core-v34.js
+          node --check standalone-tester-cabinet-v40.js
+      - name: Check encryption and strict owner-scope restoration
+        run: node --test tests/setka-personal-offline-vault.test.mjs
