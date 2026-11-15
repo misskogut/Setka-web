@@ -14,6 +14,7 @@ function setup(scope="tester:account-1"){
  const favorite={id:"f1",config:{patternId:"rain",seed:1}};
  const received=[];
  const w={
+   dispatchEvent:()=>true,
    SetkaDataScopeV1:{id:scope},
    SetkaStandaloneV34:{getData:()=>state,ready:Promise.resolve(),whenSaved:async()=>true},
    SetkaApp:{getFavorites:()=>[favorite]},
