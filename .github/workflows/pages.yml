@@ -3,6 +3,10 @@ name: Deploy SETKA Web to GitHub Pages
 on:
   push:
     branches: ["main"]
+    # Standalone collectible experiments have their own isolated Pages publisher.
+    # Do not run the full SETKA application release gate for these files alone.
+    paths-ignore:
+      - "experiments/new-year-squish-2027/**"
   workflow_dispatch:
 
 permissions:
