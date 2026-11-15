@@ -1,16 +1,9 @@
 name: Upload original SETKA audio into this GitHub repository
 
+# Manual only: original assets are immutable; unattended 6-hour retries failed
+# repeatedly while external source delivery is unavailable.
+# Run via Actions > Run workflow only when missing tracks are source-verified.
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/import-setka-original-audio.yml"
-      - "scripts/import-setka-original-audio.py"
-      - "docs/SETKA_MUSIC_GITHUB_ASSETS_20261107.json"
-  # Retry only missing originals while Yandex restores a temporarily unavailable source.
-  # Once present with exact SHA-256, the importer skips the file automatically.
-  schedule:
-    - cron: "17 */6 * * *"
   workflow_dispatch:
 
 permissions:
