@@ -103,7 +103,7 @@
       body.appendChild(el);return el;
     };
     const hint=document.createElement("p");
-    hint.textContent="Файл шифруется на этом телефоне. Никому не передавай пароль. Без него архив восстановить невозможно. В GitHub файл автоматически не отправляется.";
+    hint.textContent="Файл шифруется на этом телефоне. Никому не передавай пароль. Без него архив восстановить невозможно. В GitHub файл автоматически не отправляется. Не публикуй даже зашифрованный архив в открытом репозитории.";
     hint.style.cssText="font-size:12px;line-height:1.6;color:#bbb";
     body.appendChild(hint);
     const pass=add("input","");
