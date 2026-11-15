@@ -32,7 +32,7 @@ test("encrypts and decrypts local notes, sessions, events and favorites without 
 test("rejects incorrect password, modified ciphertext and invalid envelope",async()=>{
  const encrypted=await encryptPersonalBackup(backup(),"another-passphrase-safe",webcrypto);
  await assert.rejects(decryptPersonalBackup(encrypted,"incorrect-long-password",webcrypto),/backup_password_or_file_invalid/);
- const modified={...encrypted,payload:"A"+encrypted.payload.slice(1)};
+ const modified={...encrypted,payload:(encrypted.payload[0]==="A"?"B":"A")+encrypted.payload.slice(1)};
  await assert.rejects(decryptPersonalBackup(modified,"another-passphrase-safe",webcrypto),/backup_password_or_file_invalid/);
  await assert.rejects(decryptPersonalBackup({format:"unexpected"},"another-passphrase-safe",webcrypto),/invalid_backup_file/);
 });
