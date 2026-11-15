@@ -117,7 +117,7 @@ function showVault(){
    const deviceId=C.sandbox?.deviceId||null;
    if(scope==="guest"&&!deviceId)throw Error("local_archive_unavailable");
    const data={format:CONTENT_FORMAT,scope,deviceId,createdAt:new Date().toISOString(),
-    payload:personalPayload(C),favorites:window.SetkaApp?.getFavorites?.()||[]};
+    payload:personalPayload(C),favorites:window.Setka?.getFavorites?.()||[]};
    const backup=await encryptPersonalBackup(data,pass.value);
    const file=new Blob([JSON.stringify(backup)],{type:"application/json"});
    const url=URL.createObjectURL(file),a=document.createElement("a");
