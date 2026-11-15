@@ -97,7 +97,8 @@
     if(!lastError||mode()==="notes")return;
     const warning=document.createElement("div");warning.id="st40CommunityLoadError";
     warning.className="st40-community-empty";warning.setAttribute("role","status");
-    warning.textContent=items.length?
+    warning.textContent=snapshotActive?
+      "Сообщество временно недоступно. Актуальные данные не подтверждены сервером. Показан последний опубликованный снимок.":items.length?
       "Не удалось обновить сообщество. Показаны ранее подтверждённые данные.":
       "Сообщество временно недоступно. Актуальные данные не подтверждены сервером.";
     panel.prepend(warning);
