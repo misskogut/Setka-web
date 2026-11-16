@@ -17,3 +17,5 @@ which publishes the complete existing site while leaving the SETKA Web
 production test requirements unchanged for main app changes.
 
 - [v10: from-scratch procedural WebGL2 holographic surfaces, six living anti-stress families, controlled variations and hybrids](./v10.html)
+
+- [v11: video-referenced procedural 3D cocoon squish with interactive deformations](./v11.html)
