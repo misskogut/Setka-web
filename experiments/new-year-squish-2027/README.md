@@ -6,6 +6,7 @@ These are **independent experimental pages**, not part of SETKA Web's account/se
 - [v5: ten 3D families, stronger bloom](./v5.html)
 - [v6: ten 3D families, reduced bloom and more readable geometry](./v6.html)
 - [v7: cyber-fine optical filaments with independent waves and flow tracers](./v7.html)
+- [v8: coherent low-density anti-stress kinetic structures, inspired by SETKA Web renderers](./v8.html)
 
 The `gift` query parameter supplies a deterministic per-QR identity. Without it,
 a local demo identity is used. No account is required.
