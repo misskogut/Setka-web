@@ -21,3 +21,5 @@ production test requirements unchanged for main app changes.
 - [v11: video-referenced procedural 3D cocoon squish with interactive deformations](./v11.html)
 
 - [v12: video-grounded mathematical WebGL cocoon, dark translucent shell, rainbow streams and warm gold orbital fields](./v12.html)
+
+- [v13: procedural metallic chevron scales / geometric shell, inspired by user-supplied video; tactile modes and 3D software fallback](./v13.html)
