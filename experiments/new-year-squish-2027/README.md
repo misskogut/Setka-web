@@ -23,3 +23,5 @@ production test requirements unchanged for main app changes.
 - [v12: video-grounded mathematical WebGL cocoon, dark translucent shell, rainbow streams and warm gold orbital fields](./v12.html)
 
 - [v13: procedural metallic chevron scales / geometric shell, inspired by user-supplied video; tactile modes and 3D software fallback](./v13.html)
+
+- [v14: reconstructed nested V-chevron origami pattern; 3D geometric plates, synchronized waves, touch/rotation, software renderer fallback](./v14.html)
