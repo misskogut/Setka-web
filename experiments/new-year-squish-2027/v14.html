@@ -1,0 +1,244 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"><meta name="theme-color" content="#030303"><title>585 × SETKA — Кинетическое оригами · v14</title>
+<style>
+*{box-sizing:border-box}html,body{height:100%;margin:0;overflow:hidden;overscroll-behavior:none}body{background:#030303;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;user-select:none;-webkit-user-select:none}button{font:inherit;cursor:pointer;color:inherit;-webkit-tap-highlight-color:transparent}
+#app{height:100dvh;width:100%;position:relative;overflow:hidden;background:#000;isolation:isolate}#gl{width:100%;height:100%;display:block;touch-action:none}
+header{position:absolute;z-index:3;pointer-events:none;top:calc(19px + env(safe-area-inset-top));left:0;right:0;text-align:center}header .brand{font-size:18px;font-weight:780;letter-spacing:-.04em}header .brand i{font-style:normal;color:#e5be80;padding:0 3px}header p{font-size:10px;letter-spacing:.2em;margin:12px 0 0;color:#c1aa88}header h1{font:400 clamp(25px,7vw,35px) Georgia,serif;margin:13px 0 0;letter-spacing:-.025em}header .tag{margin-top:8px;font-size:11px;color:#9faeb1}#app.shown header h1,#app.shown .tag{display:none}
+footer{position:absolute;z-index:4;bottom:calc(20px + env(safe-area-inset-bottom));left:0;right:0;display:flex;align-items:center;flex-direction:column;gap:10px;text-align:center;padding:0 12px;pointer-events:none}footer .tip{font-size:12px;color:#d6c4aa;text-shadow:0 1px 8px #000}footer .serial{color:#a29e93;font-size:9px;letter-spacing:.14em}.buttons{display:flex;justify-content:center;gap:9px;flex-wrap:wrap;pointer-events:auto}button{border:1px solid #94897877;background:#161717b0;border-radius:99px;padding:10px 17px;font-size:12px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}button:active{background:#554b3a}button[hidden]{display:none!important}#open{background:linear-gradient(135deg,#b78d4c,#745633);border-color:#d4ae77;font-weight:760;letter-spacing:.05em;padding:13px 25px}#loading{position:absolute;inset:0;z-index:9;display:flex;align-items:center;justify-content:center;background:#030303;color:#b7c1c0;font-size:12px;transition:opacity .4s}#loading.out{opacity:0;pointer-events:none;visibility:hidden}
+@media(max-height:590px){header{top:10px}header p{margin-top:6px}header h1{font-size:23px;margin-top:7px}header .tag{display:none}footer{bottom:calc(7px + env(safe-area-inset-bottom));gap:6px}button{padding:8px 12px;font-size:11px}}
+</style></head><body><main id="app" class="shown"><canvas id="gl" aria-label="Интерактивная математическая 3D-структура из металлических V-образных чешуек. Вращай за верхнюю петлю, нажимай на чешую и удерживай."></canvas>
+<header><div class="brand">585 <i>✳</i> ЗОЛОТОЙ <span style="color:#c2ab86;font-weight:400">× SETKA</span></div><p>НОВОГОДНЯЯ КОЛЛЕКЦИЯ · v14</p><h1>Кинетическое оригами</h1><div class="tag">Симметричные вложенные V-грани · живое 3D</div></header>
+<footer><div class="tip" id="tip">Нажимай на грани · за петлю — вращай</div><div class="serial" id="id"></div><div class="buttons"><button hidden id="open">✧ РАСПАКОВАТЬ ✧</button><button hidden id="box">↶ Коробочка</button><button id="variant">✧ Вариация</button><button id="mode">◎ Режим: дыхание</button></div></footer><div id="loading">Подготавливаю 3D-геометрию…</div></main>
+<script>
+(()=>{'use strict';
+const $=id=>document.getElementById(id),canvas=$('gl'),app=$('app'),tip=$('tip'),load=$('loading');const TAU=Math.PI*2,clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+const qs=new URLSearchParams(location.search),id=(qs.get('gift')||'').trim().slice(0,120),bound=!!id;
+function unique(){let a=new Uint32Array(2);if(globalThis.crypto?.getRandomValues)crypto.getRandomValues(a);else{a[0]=Date.now()>>>0;a[1]=(Math.random()*4294967296)>>>0}return 'NY'+a[0].toString(36)+a[1].toString(36)}
+let key=id;if(!key)try{key=localStorage.getItem('setka-585-v14')||''}catch(e){}if(!key){key=unique();try{localStorage.setItem('setka-585-v13',key)}catch(e){}}
+function hash(str){let h=2166136261;for(let i=0;i<str.length;i++)h=Math.imul(h^str.charCodeAt(i),16777619);return h>>>0}
+function prng(seed){return()=>{seed=(seed+0x6d2b79f5)|0;let x=Math.imul(seed^(seed>>>15),1|seed);x=(x+Math.imul(x^(x>>>7),61|x))^x;return ((x^(x>>>14))>>>0)/4294967296}}
+let variant=0,seed=hash(key),rnd=prng(seed),mode=0,open=true,opening=0,openAt=0;
+let yaw=.015,pitch=-.035,spin=0,spinPitch=0,press=0,pressTo=0,pulse=0,heat=0,drag=null,time=0,last=0,dist=4.4,glow=.08;
+const gpu=canvas.getContext('webgl2',{antialias:true,alpha:false,powerPreference:'high-performance'});
+const ctx2=gpu?null:canvas.getContext('2d');
+const dummy=()=>({});
+const gl=gpu||{VERTEX_SHADER:35633,FRAGMENT_SHADER:35632,COMPILE_STATUS:35713,LINK_STATUS:35714,ARRAY_BUFFER:34962,STATIC_DRAW:35044,FLOAT:5126,TRIANGLES:4,DEPTH_TEST:2929,LEQUAL:515,COLOR_BUFFER_BIT:16384,DEPTH_BUFFER_BIT:256,
+ createShader:dummy,shaderSource:()=>{},compileShader:()=>{},getShaderParameter:()=>true,getShaderInfoLog:()=>'',createProgram:dummy,attachShader:()=>{},linkProgram:()=>{},getProgramParameter:()=>true,getProgramInfoLog:()=>'',useProgram:()=>{},getUniformLocation:dummy,createBuffer:dummy,deleteBuffer:()=>{},bindBuffer:()=>{},bufferData:()=>{},vertexAttribPointer:()=>{},enableVertexAttribArray:()=>{},uniform1f:()=>{},enable:()=>{},depthFunc:()=>{},clearColor:()=>{},clear:()=>{},viewport:()=>{},drawArrays:()=>{}};
+let vShader=`#version 300 es
+precision highp float;
+layout(location=0) in vec3 aPos;layout(location=1) in vec3 aNormal;layout(location=2) in vec3 aColor;layout(location=3) in vec3 aInfo;
+uniform float uTime,uYaw,uPitch,uPress,uPulse,uHeat,uOpening,uAspect,uDist,uMode,uTouchAngle,uTouchLat;
+out vec3 vColor,vN,vPos;out float vEdge;
+void main(){
+ vec3 p=aPos;
+ float row=aInfo.x,az=aInfo.y,phase=aInfo.z;
+ float breathing=sin(uTime*.78+row*2.0)*.010;
+ float orderedWave=.016*sin(uTime*(uMode>.5?1.43:.61)-row*(uMode>.5?11.:4.7)+phase*.3);
+ vec3 outward=normalize(vec3(p.x,.30*p.y,p.z)+vec3(.00001));
+ p += outward*(breathing+orderedWave);
+ float dy=(row-uTouchLat)*4.0;
+ float da=atan(sin(az-uTouchAngle),cos(az-uTouchAngle));
+ float local=exp(-dy*dy*1.8-da*da*2.6);
+ p -= outward*uPress*.19*local;
+ p += outward*uPulse*.026*sin(uTime*12.-row*22.)*exp(-abs(row-.5)*1.4);
+ // Plates move in coherent stacked rows rather than independently jittering.
+ float swing=.010*sin(uTime*.54+row*7.5);
+ p.y+=swing;
+ mat3 Y=mat3(cos(uYaw),0.,-sin(uYaw),0.,1.,0.,sin(uYaw),0.,cos(uYaw));
+ mat3 X=mat3(1.,0.,0.,0.,cos(uPitch),sin(uPitch),0.,-sin(uPitch),cos(uPitch));
+ p=Y*X*p;vN=normalize(Y*X*aNormal);vPos=p;
+ vColor=aColor;vEdge=phase;
+ float z=uDist-p.z;float f=2.36;
+ gl_Position=vec4(p.x*f/uAspect,p.y*f,z*1.0202-.606,z);
+}`;
+let fShader=`#version 300 es
+precision highp float;
+in vec3 vColor,vN,vPos;in float vEdge;
+out vec4 outColor;
+uniform float uHeat;
+void main(){
+ vec3 N=normalize(vN),V=normalize(vec3(-vPos.x*.06,-vPos.y*.04,4.6-vPos.z));
+ vec3 L1=normalize(vec3(-.55,.83,1.4)),L2=normalize(vec3(.6,.2,-.52)),L3=normalize(vec3(-.3,-.88,.8));
+ float diffuse=max(dot(N,L1),0.)*.75+max(dot(N,L2),0.)*.22+max(dot(N,L3),0.)*.18;
+ float lambert=.37+diffuse;
+ vec3 H1=normalize(L1+V),H2=normalize(L3+V);
+ float spec=pow(max(dot(N,H1),0.),72.)*.76+pow(max(dot(N,H2),0.),30.)*.28;
+ float fres=pow(1.-abs(dot(N,V)),3.)*.19;
+ vec3 base=vColor*lambert + vec3(1.,.96,.82)*spec + vColor*fres;
+ base+=uHeat*.10*vec3(1.,.68,.34);
+ base=base/(base+vec3(.47));base=pow(base,vec3(.90));
+ outColor=vec4(base,1.);
+}`;
+function shader(type,source){const s=gl.createShader(type);gl.shaderSource(s,source);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(s));return s}
+function program(){let p=gl.createProgram();gl.attachShader(p,shader(gl.VERTEX_SHADER,vShader));gl.attachShader(p,shader(gl.FRAGMENT_SHADER,fShader));gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(p));return p}
+const prog=program();gl.useProgram(prog);const un={};for(let name of ['uTime','uYaw','uPitch','uPress','uPulse','uHeat','uOpening','uAspect','uDist','uMode','uTouchAngle','uTouchLat'])un[name]=gl.getUniformLocation(prog,name);
+const pos=[],norm=[],cols=[],infos=[];
+const PALE=[[.69,.82,.80],[.82,.86,.82],[.93,.75,.50],[.80,.62,.39],[.92,.87,.70],[.58,.68,.66]];
+let config={rings:20,columns:11,split:.052,size:1,colors:0};
+// Spherical profile is only the layout function. We never draw a spherical shell.
+function profile(y){let y0=Math.max(-1.18,Math.min(1.18,y));return 1.30*Math.pow(Math.max(.002,1-y0*y0/(1.24*1.24)),.48)}
+function anchor(angle,y,rise=0){let r=profile(y);return [r*Math.sin(angle)*(1+rise*.23),y,r*Math.cos(angle)+rise]}
+function tri(a,b,c,color,inf){
+ const e1=[b[0]-a[0],b[1]-a[1],b[2]-a[2]],e2=[c[0]-a[0],c[1]-a[1],c[2]-a[2]];
+ let n=[e1[1]*e2[2]-e1[2]*e2[1],e1[2]*e2[0]-e1[0]*e2[2],e1[0]*e2[1]-e1[1]*e2[0]];
+ const len=Math.hypot(...n)||1;n=n.map(k=>k/len);
+ const center=[(a[0]+b[0]+c[0])/3,(a[1]+b[1]+c[1])/3,(a[2]+b[2]+c[2])/3];
+ if(n[0]*center[0]+n[1]*center[1]+n[2]*center[2]<0)n=n.map(k=>-k);
+ for(let p of [a,b,c]){pos.push(...p);norm.push(...n);cols.push(...color);infos.push(...inf)}
+}
+function quad(a,b,c,d,color,inf){tri(a,b,c,color,inf);tri(a,c,d,color,inf)}
+function tint(color,scale){return color.map(x=>clamp(x*scale,0,1))}
+function plate(theta,y,side,halfAngle,ridgeDrop,thickness,color,inf,accent){
+ const N=4,main=tint(color,1.04),bevel=tint(color,1.28),returnColor=tint(color,.42),sides=tint(color,.80);
+ let top=[],front=[],back=[],base=[];
+ for(let k=0;k<=N;k++){
+  const t=k/N,a=theta+side*halfAngle*t;
+  const peakY=y+.052-ridgeDrop*t-.011*Math.sin(t*Math.PI);
+  const radiusLift=.040+.009*Math.sin(t*Math.PI);
+  const crest=anchor(a,peakY,radiusLift);
+  const lower=anchor(a,peakY-thickness,.016);
+  const rear=anchor(a,peakY-thickness-.025,-.012);
+  const crown=anchor(a,peakY-.012,radiusLift+.012);
+  top.push(crest);front.push(crown);back.push(lower);base.push(rear);
+ }
+ for(let k=0;k<N;k++){
+  quad(top[k],top[k+1],back[k+1],back[k],main,inf);
+  quad(top[k],front[k],front[k+1],top[k+1],bevel,inf);
+  quad(back[k],back[k+1],base[k+1],base[k],returnColor,inf);
+ }
+ quad(top[N],front[N],base[N],back[N],sides,inf);
+}
+function hangerMesh(){
+  const info=[0,0,0],gold=[.92,.75,.48],dark=[.51,.37,.19];
+  // Actual toroidal loop, not a bitmap or decorative 2D label.
+  const segments=28,tubeSteps=8,R=.112,r=.022;
+  function point(a,b){let rr=R+r*Math.cos(b);return [rr*Math.cos(a),1.30+rr*Math.sin(a),r*Math.sin(b)]}
+  for(let i=0;i<segments;i++)for(let j=0;j<tubeSteps;j++){
+    let a=i/segments*TAU,b=j/tubeSteps*TAU,A=(i+1)/segments*TAU,B=(j+1)/tubeSteps*TAU;
+    quad(point(a,b),point(A,b),point(A,B),point(a,B),gold,info)
+  }
+  // Slim metal mount, separating the ornament loop from the geometric body.
+  const x=.12,ya=1.12,yb=1.18,z=.075;
+  const p=(xx,yy,zz)=>[xx,yy,zz];
+  quad(p(-x,ya,z),p(x,ya,z),p(x,yb,z),p(-x,yb,z),gold,info);
+  quad(p(-x,ya,-z),p(-x,yb,-z),p(x,yb,-z),p(x,ya,-z),dark,info);
+  quad(p(-x,yb,-z),p(-x,yb,z),p(x,yb,z),p(x,yb,-z),gold,info);
+}
+function rebuild(){pos.length=norm.length=cols.length=infos.length=0;
+ rnd=prng(hash(key+'|'+variant));
+ const rows=20+Math.floor(rnd()*3),sectors=11+Math.floor(rnd()*2),gap=.060+rnd()*.012,frontPower=1.1+rnd()*.09;
+ config={rings:rows,columns:sectors,split:gap,size:1,colors:variant};
+ for(let j=0;j<rows;j++){
+  let yy=1.09-j*2.16/(rows-1),profileScale=profile(yy)/1.3;
+  let inclination=.34*profileScale+.045;
+  for(let k=0;k<sectors;k++){
+   // Angular cells extend over long V arms rather than short separate scales.
+   const nearest=k<=Math.floor(sectors/2)?k:k-sectors;
+   const theta=nearest*TAU/sectors;
+   const central=k===0;
+   const half=central?.54:.24; // a broad recognisable central chevron
+   const d=inclination*(central?frontPower:1);
+   const yColour=yy+.12;
+   let base=yColour>.42?PALE[0]:(yColour<-.25?PALE[3]:PALE[2]);
+   if(!central){base=yColour>.1?PALE[1]:PALE[4]}
+   if(central&&j<7)base=PALE[0];
+   const shift=(rnd()-.5)*.018;
+   const color=base.map((v,c)=>clamp(v+shift+(variant%5)*.003,0,1));
+   const inf=[j/(rows-1),theta,j*.23+k*.07];
+   plate(theta,yy,-1,half,d,gap,color,inf,central);
+   plate(theta,yy, 1,half,d,gap,color,inf,central);
+  }
+ }
+ hangerMesh();bufferPositions();$('id').textContent='ЭКЗЕМПЛЯР '+hash(key+'|'+variant).toString(16).toUpperCase().padStart(8,'0')+' · ВАРИАЦИЯ '+(variant+1);
+}
+let buffer=null,vertexCount=0;
+function bufferPositions(){if(buffer)gl.deleteBuffer(buffer);const n=pos.length/3,merged=new Float32Array(n*12);for(let i=0;i<n;i++){const off=i*12;merged.set(pos.slice(i*3,i*3+3),off);merged.set(norm.slice(i*3,i*3+3),off+3);merged.set(cols.slice(i*3,i*3+3),off+6);merged.set(infos.slice(i*3,i*3+3),off+9)}
+ buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,merged,gl.STATIC_DRAW);gl.vertexAttribPointer(0,3,gl.FLOAT,false,48,0);gl.vertexAttribPointer(1,3,gl.FLOAT,false,48,12);gl.vertexAttribPointer(2,3,gl.FLOAT,false,48,24);gl.vertexAttribPointer(3,3,gl.FLOAT,false,48,36);for(let i=0;i<4;i++)gl.enableVertexAttribArray(i);vertexCount=n;}
+// A true procedural 3D gift made from low-poly facets, not an image.
+let mainData=null,boxData=null;
+function makeBox(){const old=[pos.slice(),norm.slice(),cols.slice(),infos.slice()];pos.length=norm.length=cols.length=infos.length=0;
+ const p=(x,y,z)=>[x,y,z],red=[.72,.19,.15],gold=[.91,.75,.49],ivory=[.89,.86,.77],info=[0,0,0];
+ function face(a,b,c,d,color){quad(a,b,c,d,color,info)}
+ function block(x0,y0,z0,x1,y1,z1,color){const aa=p(x0,y0,z0),bb=p(x1,y0,z0),cc=p(x1,y1,z0),dd=p(x0,y1,z0),ee=p(x0,y0,z1),ff=p(x1,y0,z1),gg=p(x1,y1,z1),hh=p(x0,y1,z1);
+ face(aa,bb,cc,dd,color);face(ff,ee,hh,gg,color);face(ee,aa,dd,hh,color);face(bb,ff,gg,cc,color);face(dd,cc,gg,hh,color);face(ee,ff,bb,aa,color)}
+ block(-.74,-.75,-.74,.74,.45,.74,red);
+ block(-.84,.39,-.84,.84,.66,.84,ivory);
+ block(-.14,.42,-.855,.14,.685,.855,gold);block(-.86,.42,-.145,.86,.685,.145,gold);
+ const array=new Float32Array(pos.length/3*12);for(let i=0;i<pos.length/3;i++){array.set(pos.slice(i*3,i*3+3),i*12);array.set(norm.slice(i*3,i*3+3),i*12+3);array.set(cols.slice(i*3,i*3+3),i*12+6);array.set(infos.slice(i*3,i*3+3),i*12+9)}
+ boxData=array;for(let j=0;j<4;j++){const dest=[pos,norm,cols,infos][j];dest.length=0;for(let i=0;i<old[j].length;i++)dest.push(old[j][i])}}
+let boxBuffer=gl.createBuffer(),mainBuffer=null;
+function bindBuffer(b){gl.bindBuffer(gl.ARRAY_BUFFER,b);for(let i=0;i<4;i++){gl.enableVertexAttribArray(i);gl.vertexAttribPointer(i,3,gl.FLOAT,false,48,i*12)}}
+rebuild();makeBox();gl.bindBuffer(gl.ARRAY_BUFFER,boxBuffer);gl.bufferData(gl.ARRAY_BUFFER,boxData,gl.STATIC_DRAW);bindBuffer(buffer);
+function resize(){const dpr=Math.min(devicePixelRatio||1,1.8),w=canvas.clientWidth,h=canvas.clientHeight;canvas.width=Math.max(1,Math.round(w*dpr));canvas.height=Math.max(1,Math.round(h*dpr));dist=Math.max(4.4,3.78/(w/h));if(gpu)gl.viewport(0,0,canvas.width,canvas.height)}
+addEventListener('resize',resize);resize();gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.clearColor(0,0,0,1);
+function uniforms(yaw0,pitch0,pressure,pulse0){gl.uniform1f(un.uTime,time);gl.uniform1f(un.uYaw,yaw0);gl.uniform1f(un.uPitch,pitch0);gl.uniform1f(un.uPress,pressure);gl.uniform1f(un.uPulse,pulse0);gl.uniform1f(un.uHeat,heat);gl.uniform1f(un.uOpening,open?1:0);gl.uniform1f(un.uAspect,canvas.clientWidth/canvas.clientHeight);gl.uniform1f(un.uDist,dist);gl.uniform1f(un.uMode,mode);gl.uniform1f(un.uTouchAngle,drag?.a||0);gl.uniform1f(un.uTouchLat,drag?.lat||.5)}
+let lastCpu=0;
+function cpuDraw(){
+ if(!ctx2)return;
+ const W=canvas.clientWidth,H=canvas.clientHeight,F=Math.min(W*.365,H*.31),C=Math.cos(yaw+(!open?time*.17:0)),S=Math.sin(yaw+(!open?time*.17:0)),cp=Math.cos(pitch),sp=Math.sin(pitch);
+ ctx2.clearRect(0,0,W,H);ctx2.fillStyle='#000';ctx2.fillRect(0,0,W,H);
+ const values=open?pos:[],colorValues=open?cols:[],normalValues=open?norm:[];
+ const triData=[];
+ function rot(p){let y=p[1]*cp-p[2]*sp,z=p[1]*sp+p[2]*cp;return [p[0]*C+z*S,y,-p[0]*S+z*C]}
+ function proj(p){const z=4.3-p[2],k=4.3/z;return [W*.5+p[0]*F*k,H*.51-p[1]*F*k]}
+ function shade(rgb,n){let na=rot(n),L=[-.35,.74,.55],dot=Math.max(0,na[0]*L[0]+na[1]*L[1]+na[2]*L[2]);let bright=.64+.65*dot;
+ let spec=Math.pow(Math.max(0,na[2]*.65+na[1]*.68),12)*.38;
+ return 'rgb('+[0,1,2].map((i)=>Math.round(Math.min(255,Math.pow(Math.max(0,rgb[i]*bright+spec),.82)*245))).join(',')+')';}
+ const n=open?pos.length/9:boxData.length/36;
+ for(let j=0;j<n;j++){
+  
+  let vtx=[],depth=0,color=[0,0,0],normal=[0,0,0],zsum=0;
+  for(let a=0;a<3;a++){
+    let p=open?pos.slice(j*9+a*3,j*9+a*3+3):Array.from(boxData.slice(j*36+a*12,j*36+a*12+3));
+    let info=open?infos.slice(j*9+a*3,j*9+a*3+3):[0,0,0];
+    if(open){let wave=.018*Math.sin(time*1.3+info[0]*10+info[2]);let factor=1+wave-press*.11*Math.exp(-Math.pow((info[0]-(drag?.lat||.5))*3,2));p=p.map(v=>v*factor)}
+    const q=rot(p);depth+=q[2];zsum+=q[2];vtx.push(proj(q));
+    for(let k=0;k<3;k++){
+      color[k]+=open?cols[j*9+a*3+k]:boxData[j*36+a*12+6+k];
+      normal[k]+=open?norm[j*9+a*3+k]:boxData[j*36+a*12+3+k];
+    }
+  }
+  for(let k=0;k<3;k++){color[k]/=3;normal[k]/=3}
+  if(open && zsum/3 < -.02)continue;
+  triData.push({verts:vtx,depth:depth/3,fill:shade(color,normal)});
+ }
+ triData.sort((a,b)=>a.depth-b.depth);
+ for(const f of triData){ctx2.beginPath();ctx2.moveTo(f.verts[0][0],f.verts[0][1]);ctx2.lineTo(f.verts[1][0],f.verts[1][1]);ctx2.lineTo(f.verts[2][0],f.verts[2][1]);ctx2.closePath();ctx2.fillStyle=f.fill;ctx2.fill()}
+ if(open){
+   let top=H*.51-F*1.33;
+   ctx2.save();ctx2.lineWidth=Math.max(2,F*.018);ctx2.strokeStyle='#dcb779';ctx2.shadowColor='#bc8d49';ctx2.shadowBlur=6;
+   ctx2.beginPath();ctx2.ellipse(W*.5,top,F*.065,F*.082,0,0,TAU);ctx2.stroke();ctx2.shadowBlur=0;
+   let grad=ctx2.createLinearGradient(W*.5-F*.09,top,W*.5+F*.09,top);
+   grad.addColorStop(0,'#7e5d36');grad.addColorStop(.5,'#f7d7a0');grad.addColorStop(1,'#99713b');ctx2.fillStyle=grad;
+   ctx2.fillRect(W*.5-F*.09,top+F*.073,F*.18,F*.047);ctx2.restore();
+ }
+}
+function render(){if(!gpu){if(time-lastCpu>.08){cpuDraw();lastCpu=time}return}gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.useProgram(prog);
+ if(!open){uniforms(yaw+time*.09,pitch,0,0);bindBuffer(boxBuffer);gl.drawArrays(gl.TRIANGLES,0,boxData.length/12)}
+ else {uniforms(yaw,pitch,press,pulse);bindBuffer(buffer);gl.drawArrays(gl.TRIANGLES,0,vertexCount)}
+}
+function frame(now){const dt=Math.min(.05,(now-last)/1000||0);last=now;time+=dt;
+ if(open){press+=(pressTo-press)*Math.min(1,dt*8);pulse*=Math.pow(.94,dt*60);heat*=Math.pow(.981,dt*60);if(!drag){yaw+=spin;pitch=clamp(pitch+spinPitch,-.7,.7);spin*=Math.pow(.94,dt*60);spinPitch*=Math.pow(.93,dt*60);yaw+=dt*.016}}
+ render();requestAnimationFrame(frame)}requestAnimationFrame(frame);load.classList.add('out');tip.textContent='V-грани двигаются сами · нажми на них · вращай за петлю';
+function coordinates(e){let r=canvas.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}}
+canvas.addEventListener('pointerdown',e=>{
+ let p=coordinates(e),cx=canvas.clientWidth/2,cy=canvas.clientHeight/2,size=Math.min(canvas.clientWidth*.4,canvas.clientHeight*.32);
+ let loop=open&&Math.hypot(p.x-cx,p.y-(cy-size*.96))<size*.23;
+ let inside=open&&Math.hypot(p.x-cx,p.y-cy)<size*1.03;
+ let kind=!open?'rotate':loop?'loop':inside?'squish':'rotate';
+ drag={id:e.pointerId,x:p.x,y:p.y,startX:p.x,startY:p.y,kind,a:yaw,lat:clamp((p.y-cy+size)/(2*size),0,1)};
+ if(kind==='squish'){pressTo=.66;pulse=1;heat=.08;tip.textContent='Сжатие · согласованная волна по вложенным рядам'};
+ try{canvas.setPointerCapture(e.pointerId)}catch(err){}e.preventDefault()
+},{passive:false});
+canvas.addEventListener('pointermove',e=>{
+ if(!drag||drag.id!==e.pointerId)return;const p=coordinates(e),dx=p.x-drag.x,dy=p.y-drag.y;drag.x=p.x;drag.y=p.y;
+ if(drag.kind==='squish'){pressTo=clamp(.50+Math.hypot(p.x-drag.startX,p.y-drag.startY)/500,.52,.82);drag.lat=clamp((p.y-canvas.clientHeight*.5)/canvas.clientHeight+.5,0,1)}
+ else{yaw+=dx*.009;pitch=clamp(pitch+dy*.006,-.68,.68);spin=dx*.0012;spinPitch=dy*.0007}e.preventDefault()
+},{passive:false});
+function release(e){if(!drag||drag.id!==e.pointerId)return;if(drag.kind==='squish'){pressTo=0;pulse=.7;heat=.08}drag=null}
+canvas.addEventListener('pointerup',release);canvas.addEventListener('pointercancel',release);canvas.addEventListener('lostpointercapture',release);
+$('open').addEventListener('click',()=>{open=true;app.classList.add('shown');$('open').hidden=true;$('box').hidden=false;$('variant').hidden=bound;$('mode').hidden=false;tip.textContent='За петлю — вращай · по V-граням — нажимай';yaw=.03;pitch=-.035;heat=.1;pulse=1});
+$('box').addEventListener('click',()=>{open=false;app.classList.remove('shown');$('open').hidden=false;$('box').hidden=true;$('variant').hidden=true;$('mode').hidden=true;tip.textContent='Поверни коробочку — открой сюрприз'});
+$('variant').addEventListener('click',()=>{if(bound)return;variant++;rebuild();heat=.4;pulse=1});
+$('mode').addEventListener('click',()=>{mode=1-mode;$('mode').textContent=mode?'◎ Режим: волны':'◎ Режим: дыхание';pulse=1});
+})();
+</script></body></html>
