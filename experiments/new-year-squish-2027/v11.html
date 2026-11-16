@@ -1,0 +1,72 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>SETKA · Живой кокон</title><style>
+*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden;background:#05070a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}#prototype{width:100%;height:100dvh;max-width:600px;margin:0 auto;position:relative;overflow:hidden;background:radial-gradient(ellipse at 48% 51%,#0e1521 0%,#05070c 70%)}canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}canvas:active{cursor:grabbing}.brand{position:absolute;top:max(24px,env(safe-area-inset-top));left:0;right:0;text-align:center;pointer-events:none;z-index:2}.brand b{font-weight:730;letter-spacing:.1em;font-size:16px;color:#f5dab1}.brand p{margin:7px 0 0;font-size:11px;letter-spacing:.12em;color:#93aab4}.note{position:absolute;z-index:2;bottom:calc(86px + env(safe-area-inset-bottom));left:15px;right:15px;text-align:center;pointer-events:none;font-size:12px;color:#bed7d7;letter-spacing:.02em;text-shadow:0 2px 9px #020303}.actions{display:flex;gap:10px;justify-content:center;position:absolute;bottom:calc(25px + env(safe-area-inset-bottom));width:100%;z-index:3}.actions button{color:#f4d6bb;background:#10151cdd;border:1px solid #9476568c;border-radius:26px;padding:11px 20px;font-size:13px;cursor:pointer;touch-action:manipulation}.actions button:active{background:#28363f}.actions button:focus-visible{outline:2px solid #ffe3a3}
+</style></head><body><div id="prototype"><canvas id="scene" aria-label="Живой интерактивный математический сквиш. Касайтесь и тяните за центральную часть; верхняя петелька вращает объект."></canvas><div class="brand"><b>585 × SETKA</b><p>ЖИВОЙ КОКОН · ПРОТОТИП</p></div><div class="note" id="hint">Сожми середину · потяни · за петельку вращай</div><div class="actions"><button id="pack">Коробочка</button><button id="variation">Вариация ✦</button></div></div>
+<script>
+(()=>{'use strict';
+const canvas=document.getElementById('scene'),g=canvas.getContext('2d',{alpha:false}),hint=document.getElementById('hint'),packBtn=document.getElementById('pack'),varBtn=document.getElementById('variation');
+let w=360,h=700,dpr=1,cx=180,cy=340,unit=125,mode='artifact',seed=17,variation=0,elapsed=0,last=0,spin=.21,pitch=-.15,rotVel=.001,press=0,targetPress=0,bendX=0,bendY=0,targetBendX=0,targetBendY=0,impulse=0,rippleT=0,held=null,boxAngle=.42,opening=0;
+const PI=Math.PI,TAU=2*PI;const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));const rnd=(x)=>{x=Math.sin(x*127.1+seed*311.7)*43758.5453123;return x-Math.floor(x)};
+function resize(){let b=canvas.getBoundingClientRect();w=Math.max(200,b.width);h=Math.max(340,b.height);dpr=Math.min(2,window.devicePixelRatio||1);canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);g.setTransform(dpr,0,0,dpr,0,0);cx=w/2;cy=h*(h<500?.53:.51);unit=Math.min(w*.38,h*.24,155)}
+window.addEventListener('resize',resize);resize();
+function project(x,y,z){let a=Math.cos(spin),b=Math.sin(spin),xx=x*a+z*b,zz=z*a-x*b;let c=Math.cos(pitch),d=Math.sin(pitch),yy=y*c-zz*d,dep=zz*c+y*d;let p=5.9/(5.9-dep);return {x:cx+xx*unit*p+bendX*(.15+.4*(1-Math.min(1,Math.abs(y)/2))),y:cy-yy*unit*p+bendY*.14,dep,scale:p}}
+function path(points,color,width=1,alpha=1,blur=0){if(points.length<2)return;g.beginPath();g.moveTo(points[0].x,points[0].y);for(let i=1;i<points.length;i++)g.lineTo(points[i].x,points[i].y);g.strokeStyle=color;g.lineWidth=width;g.globalAlpha=alpha;g.shadowBlur=blur;g.shadowColor=color;g.stroke();g.shadowBlur=0;g.globalAlpha=1}
+function glow(x,y,r,color,power=.5){if(r<=0)return;let a=g.createRadialGradient(x,y,0,x,y,r);a.addColorStop(0,color);a.addColorStop(1,'rgba(0,0,0,0)');g.globalAlpha=power;g.fillStyle=a;g.beginPath();g.arc(x,y,r,0,TAU);g.fill();g.globalAlpha=1}
+function base(t){return Math.pow(Math.max(.0001,Math.sin(PI*t)),.77)}
+function shapeY(t,theta,time){const r0=base(t),phase=Math.sin(time*.8+variation*.5),elongate=.12*phase+press*.2;let r=r0*(.86+.06*Math.sin(time*.88)+.05*Math.sin(5*theta+time*.3));let squeeze=Math.exp(-Math.pow((t-.50)/.18,2));r*=1-press*.45*squeeze;let y=(.5-t)*(3.15+elongate*1.7);y+=press*.22*Math.sin(t*PI);r*=1+.04*Math.sin(6*theta+time*.4)*(1-t);return {r,y}}
+function shellPoint(t,theta,time){let sh=shapeY(t,theta,time),r=sh.r;let flex=.045*Math.sin(time*.56+t*6+theta*2);return project(r*Math.cos(theta)+flex+ bendX/unit*sh.r*.2,sh.y,r*Math.sin(theta))}
+function ringPoint(a,R,y,t,order=0){let wa=a+spin*.2;const r=R*(1+.04*Math.sin(a*5+t*.61+order));let yy=y+.032*Math.sin(3*a+t*.7+order)+.015*Math.cos(5*a-t*.4);return project(r*Math.cos(wa),yy,r*Math.sin(wa));}
+function drawShell(t){let time=t;let lines=[];
+ // The membrane itself is mathematical: tangent meridians define a translucent optical volume.
+ let left=[],right=[];
+ for(let i=0;i<=82;i++){let lat=.008+i/82*.984;left.push(shellPoint(lat,spin+PI,t));}
+ for(let i=82;i>=0;i--){let lat=.008+i/82*.984;right.push(shellPoint(lat,spin,t));}
+ g.beginPath();g.moveTo(left[0].x,left[0].y);
+ for(let p of left)g.lineTo(p.x,p.y);
+ for(let p of right)g.lineTo(p.x,p.y);
+ g.closePath();
+ const membrane=g.createLinearGradient(cx-unit,cy,cx+unit,cy);
+ membrane.addColorStop(0,'rgba(32,125,132,.16)');membrane.addColorStop(.18,'rgba(10,42,62,.075)');
+ membrane.addColorStop(.52,'rgba(12,48,54,.055)');membrane.addColorStop(.8,'rgba(24,71,73,.05)');
+ membrane.addColorStop(1,'rgba(89,139,103,.17)');
+ g.fillStyle=membrane;g.fill();
+
+ // Transparent parametric shell: 3D meridians and latitudes, not a raster image.
+ for(let k=0;k<18;k++){let theta=k/18*TAU,pts=[];for(let j=0;j<=64;j++)pts.push(shellPoint(.024+j/64*.95,theta,time));let mid=pts[32].dep;lines.push({points:pts,dep:mid,alpha:mid>0?.16:.07,color:k%4===0?'#d6a752':k%4===1?'#59b7a1':'#9c803c',width:k%6===0?.85:.48})}
+ for(let j=1;j<17;j++){let lat=j/17,pts=[];for(let k=0;k<=96;k++)pts.push(shellPoint(lat,k/96*TAU,time));let dep=pts[0].dep;lines.push({points:pts,dep,alpha:lat>.34&&lat<.66?.12:.08,color:j%5===0?'#dba64d':'#6e9176',width:.6})}
+ lines.sort((a,b)=>a.dep-b.dep);for(let line of lines)path(line.points,line.color,line.width,line.alpha,0);
+ // Specular rim highlights derive from mathematical surface tangencies.
+ for(let side of [-1,1]){let pts=[];for(let i=0;i<=88;i++){let tt=.026+i/88*.95;let theta=spin+side*PI*.5;pts.push(shellPoint(tt,theta,time))}path(pts,'#e3aa50',.86,.19,2)}
+}
+function drawAxial(t){let top=project(0,1.08,0),bottom=project(0,-.89,0);
+ let grad=g.createLinearGradient(top.x,top.y,bottom.x,bottom.y);grad.addColorStop(0,'rgba(34,117,251,0)');grad.addColorStop(.3,'rgba(53,154,222,.18)');grad.addColorStop(.59,'rgba(104,44,203,.19)');grad.addColorStop(.78,'rgba(255,141,12,.48)');grad.addColorStop(1,'rgba(235,191,49,0)');
+ path([top,bottom],grad,14,1,11);
+ for(let j=0;j<6;j++){let phi=j*TAU/6,pts=[];for(let i=0;i<80;i++){let f=i/79,y=1.12-f*2.03,rad=.09+.05*Math.sin(f*PI);let x=rad*Math.cos(phi+t*.46+f*7),z=rad*Math.sin(phi+t*.46+f*7);pts.push(project(x,y,z))}let col=j%2===0?'#38a2f2':'#b467e5';path(pts,col,.74,.17,3)}
+ const n=390;for(let i=0;i<n;i++){let f=(rnd(i*6.04)+t*(.035+.04*rnd(i+3)))%1,y=1.03-f*2.16;let phi=rnd(i*2.35)*TAU+t*(.25+rnd(i+8)*.5),r=.20*Math.sqrt(rnd(i*3.11));let x=r*Math.cos(phi),z=r*Math.sin(phi),p=project(x,y,z);let alpha=.25+.55*Math.pow(.5+.5*Math.sin(i*5.7+t*2),3);let col=f<.45?'67,183,247':f<.68?'179,93,249':'251,186,63';let rad=(.36+rnd(i*.7)*1)*p.scale;g.fillStyle=`rgba(${col},${alpha*.72})`;g.beginPath();g.arc(p.x,p.y,rad,0,TAU);g.fill()}
+ const core=project(0,-.09,0);glow(core.x,core.y,unit*.75,'rgba(255,110,35,.55)',.23);
+}
+function drawTori(t){let orbits=[];for(let ring=0;ring<11;ring++){let pts=[],R=.28+ring*.048,yy=.08+Math.sin(t*.84+ring*.36)*.085;let ph=ring*.16+t*(ring%2?.26:-.19);for(let k=0;k<=155;k++){let a=k/155*TAU,r=R*(1+.065*Math.sin(5*a+ph));let y=yy+.047*Math.cos(3*a+t*.37+ring*.14)+.012*Math.sin(6*a+t);let p=project(r*Math.cos(a+ph*.2),y,r*Math.sin(a+ph*.2));pts.push(p)}orbits.push({pts,dep:pts[50].dep,color:ring%3===0?'#ffea9e':ring%3===1?'#e8832b':'#f9b844',alpha:.20+(ring%4===0?.19:0),width:ring%5===0?1.5:.86})}
+ orbits.sort((a,b)=>a.dep-b.dep);
+ for(let r of orbits){path(r.pts,r.color,r.width+2,r.alpha*.12,7);path(r.pts,r.color,r.width,r.alpha,2)}
+ // A broad luminous disc emerges from a deformed toroidal parametric surface.
+ for(let k=0;k<9;k++){let rr=.48+k*.044,y=-.13+k*.013,pts=[];for(let i=0;i<=130;i++){let a=i/130*TAU+t*.12;pts.push(project(rr*Math.cos(a),y+.022*Math.sin(4*a+t*.61),rr*Math.sin(a)))}path(pts,k%3===0?'#ffe18e':'#f78e34',.8,.27,5)}
+ let c=project(0,-.18,0);glow(c.x,c.y,unit*.51,'rgba(250,158,35,.77)',.23);glow(c.x,c.y,unit*.12,'rgba(255,253,193,.84)',.5);
+}
+function drawLower(t){for(let j=0;j<10;j++){let pts=[],radius=.17+j*.043,yy=-.78+j*.041;for(let i=0;i<=130;i++){let a=i/130*TAU+t*(.07+j*.015);let r=radius*(1+.05*Math.cos(a*4+t*.53)),y=yy+.065*Math.cos(3*a+t*.76+j*.3);pts.push(project(r*Math.cos(a),y,r*Math.sin(a)))}path(pts,j%3===0?'#e8aa36':'#27b4a1',.6,j%4===0?.29:.13,1)}
+ let spiral=[];for(let i=0;i<130;i++){let q=i/129,r=.09+q*.51,a=q*TAU*2.4+t*.42;spiral.push(project(r*Math.cos(a),-.91+.12*Math.sin(q*PI),r*Math.sin(a)))}path(spiral,'#c9b65d',.9,.18,4)
+}
+function drawHanger(){let top=project(0,1.60,0),p=project(0,1.81,0);g.save();g.strokeStyle='#d6a24b';g.lineWidth=3;g.shadowColor='#ffc46d';g.shadowBlur=7;g.beginPath();g.ellipse(p.x,p.y,unit*.084,unit*.11,0,0,TAU);g.stroke();g.shadowBlur=0;let grad=g.createLinearGradient(top.x-unit*.13,0,top.x+unit*.13,0);grad.addColorStop(0,'#664221');grad.addColorStop(.5,'#ffdd95');grad.addColorStop(1,'#8d531b');g.fillStyle=grad;g.fillRect(top.x-unit*.12,top.y-unit*.06,unit*.24,unit*.12);g.restore()}
+function starField(t){for(let i=0;i<65;i++){let x=rnd(i*1.11)*w,y=rnd(i*3.11)*h,size=.35+.75*rnd(i*.83),alpha=.13+.29*Math.pow(.5+.5*Math.sin(t*.6+i*8),4);g.beginPath();g.arc(x,y,size,0,TAU);g.fillStyle=`rgba(183,204,220,${alpha})`;g.fill()}}
+function drawBackground(t){g.fillStyle='#05070a';g.fillRect(0,0,w,h);let glow0=g.createRadialGradient(cx,cy,unit*.1,cx,cy,unit*2.8);glow0.addColorStop(0,'rgba(18,43,61,.36)');glow0.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=glow0;g.fillRect(0,0,w,h);starField(t)}
+function boxFace(points,fill,stroke){g.beginPath();g.moveTo(points[0].x,points[0].y);for(let j=1;j<points.length;j++)g.lineTo(points[j].x,points[j].y);g.closePath();g.fillStyle=fill;g.fill();g.strokeStyle=stroke;g.lineWidth=1;g.stroke()}
+function drawBox(t){let savedSpin=spin,savedPitch=pitch;spin=boxAngle;pitch=-.28;const b=(x,y,z)=>project(x,y,z);let y=.0,s=.85,bot=[b(-s,-s,-s),b(s,-s,-s),b(s,-s,s),b(-s,-s,s)],top=[b(-s,.62,-s),b(s,.62,-s),b(s,.62,s),b(-s,.62,s)];
+ boxFace([bot[1],bot[2],top[2],top[1]],'#731e20','#d35c40');boxFace([bot[2],bot[3],top[3],top[2]],'#b82c25','#d95c48');boxFace(top,'#d73f2f','#f5a873');let lidLift=opening>0?opening:0,lp=[b(-.97,.82+lidLift,-.97),b(.97,.82+lidLift,-.97),b(.97,.82+lidLift,.97),b(-.97,.82+lidLift,.97)];boxFace(lp,'#f0e8d8','#efbd7b');g.strokeStyle='#d6a04d';g.lineWidth=6;g.beginPath();g.moveTo((lp[0].x+lp[3].x)/2,(lp[0].y+lp[3].y)/2);g.lineTo((lp[1].x+lp[2].x)/2,(lp[1].y+lp[2].y)/2);g.stroke();spin=savedSpin;pitch=savedPitch}
+function render(time){drawBackground(time);if(mode==='box'){drawBox(time);return}let breathing=.5+.5*Math.sin(time*.73+variation*.4);g.save();g.globalCompositeOperation='lighter';drawShell(time);drawAxial(time);drawLower(time);drawTori(time);g.restore();drawHanger();if(impulse>.02){let p=project(0,0,0),r=unit*(.2+(1-impulse)*1.5);g.beginPath();g.ellipse(p.x,p.y,r,r*.83,0,0,TAU);g.strokeStyle=`rgba(235,209,144,${impulse*.2})`;g.lineWidth=1.3;g.stroke()}}
+function frame(now){let dt=Math.min(.05,(now-last)/1000||0);last=now;elapsed+=dt;press+=(targetPress-press)*Math.min(1,dt*8);bendX+=(targetBendX-bendX)*Math.min(1,dt*7);bendY+=(targetBendY-bendY)*Math.min(1,dt*8);impulse*=Math.pow(.93,dt*60);if(!held){spin+=rotVel;rotVel*=Math.pow(.96,dt*60);spin+=dt*.095}if(mode==='box')boxAngle+=dt*.15;render(elapsed);requestAnimationFrame(frame)}requestAnimationFrame(frame);
+function point(e){const b=canvas.getBoundingClientRect();return {x:e.clientX-b.left,y:e.clientY-b.top}}
+canvas.addEventListener('pointerdown',e=>{let p=point(e),onRing=Math.abs(p.x-cx)<unit*.3&&p.y<cy-unit*1.32&&p.y>cy-unit*1.95;held={id:e.pointerId,x:p.x,y:p.y,startX:p.x,startY:p.y,kind:mode==='box'?'box':onRing?'loop':'body'};if(held.kind==='body'){targetPress=.52;impulse=1;targetBendX=(p.x-cx)*.25}canvas.setPointerCapture(e.pointerId);e.preventDefault()},{passive:false});
+canvas.addEventListener('pointermove',e=>{if(!held||held.id!==e.pointerId)return;let p=point(e),dx=p.x-held.x,dy=p.y-held.y;held.x=p.x;held.y=p.y;if(held.kind==='box')boxAngle+=dx*.013;else if(held.kind==='loop'){spin+=dx*.013;pitch=clamp(pitch+dy*.003,-.5,.5);rotVel=dx*.0014}else{targetBendX=clamp((p.x-held.startX)*.65,-unit*.55,unit*.55);targetBendY=clamp((p.y-held.startY)*.4,-unit*.35,unit*.35);targetPress=clamp(.4+Math.abs(p.y-held.startY)/unit*.23,.4,.9)}e.preventDefault()},{passive:false});
+function release(e){if(!held||held.id!==e.pointerId)return;let was=held.kind;held=null;targetPress=0;targetBendX=0;targetBendY=0;impulse=was==='body'?1:.3;if(mode==='box'){mode='artifact';packBtn.textContent='Коробочка';hint.textContent='Сожми середину · потяни · за петельку вращай'}}canvas.addEventListener('pointerup',release);canvas.addEventListener('pointercancel',release);canvas.addEventListener('lostpointercapture',release);
+packBtn.addEventListener('click',()=>{mode=mode==='box'?'artifact':'box';packBtn.textContent=mode==='box'?'Распаковать':'Коробочка';hint.textContent=mode==='box'?'Поверни коробочку пальцем и распакуй':'Сожми середину · потяни · за петельку вращай'});
+varBtn.addEventListener('click',()=>{variation++;seed+=113;spin=.21+(variation%3)*.2;pitch=-.15;press=.15;impulse=1});
+})();
+</script></body></html>
