@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"><meta name="theme-color" content="#0b070e">
+<title>585 × SETKA · Кинетические паттерны v8</title>
+<style>
+*{box-sizing:border-box}html,body{height:100%;margin:0;overflow:hidden;overscroll-behavior:none}
+body{background:#08070b;color:#fff;font:13px -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;user-select:none;-webkit-user-select:none}
+button{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+#app{position:relative;height:100dvh;width:100%;background:#09070c;overflow:hidden}
+canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block}
+header{position:absolute;left:0;right:0;top:calc(22px + env(safe-area-inset-top));text-align:center;z-index:2;pointer-events:none}
+.logo{font-size:20px;font-weight:850;letter-spacing:-.04em}.logo i{font-style:normal;color:#fa4a31}.logo b{font-size:14px;font-weight:700}
+.edition{margin:15px 0 0;color:#e8aa96;letter-spacing:.22em;font-size:9px;font-weight:730}
+h1{font:400 clamp(26px,7vw,38px) Georgia,serif;margin:12px 0 0}
+#sub{margin:8px 0 0;color:#d6b0a4;font-size:12px}
+#info{position:absolute;z-index:3;left:0;right:0;top:calc(134px + env(safe-area-inset-top));text-align:center;pointer-events:none;opacity:0;transform:translateY(9px);transition:opacity .6s,transform .6s}
+#info.show{opacity:1;transform:translateY(0)}
+#app.artifact-open header h1,#app.artifact-open #sub{display:none}
+#app.artifact-open #info{top:calc(90px + env(safe-area-inset-top))}
+#app.artifact-open .edition{margin-top:10px}
+#name{font:400 22px Georgia,serif}
+#type{font-size:9px;letter-spacing:.16em;color:#e6aa98;margin-top:8px}
+footer{position:absolute;z-index:3;bottom:calc(21px + env(safe-area-inset-bottom));left:0;right:0;text-align:center;display:flex;align-items:center;flex-direction:column;gap:10px;padding:0 12px}
+#tip{font-size:12px;line-height:1.45;color:#f8d6c7;max-width:325px;text-shadow:0 2px 9px #000}
+#id{font-size:9px;letter-spacing:.15em;color:#b88b7e}
+.buttons{display:flex;gap:8px}
+button{padding:10px 17px;border-radius:99px;background:#3c2020bb;border:1px solid #ebb89170;font-size:11px;backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
+button:active{background:#873b31}
+#open{background:linear-gradient(130deg,#e83c30,#b71f27);border:1px solid #ffaf92;padding:14px 25px;font-weight:780;letter-spacing:.11em;box-shadow:0 3px 25px #f04a3033}
+button[hidden]{display:none}
+#load{position:absolute;inset:0;z-index:9;display:flex;align-items:center;justify-content:center;background:#0b070e;color:#dbac9d;letter-spacing:.06em;text-align:center;padding:25px}
+#load.hide{display:none}
+@media(max-height:580px){header{top:10px}.edition{margin-top:7px}h1{font-size:23px;margin-top:6px}#sub{display:none}#info{top:88px}#name{font-size:18px}footer{bottom:calc(7px + env(safe-area-inset-bottom));gap:5px}button{padding:8px 12px}}
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script></head>
+<body><main id="app">
+<canvas id="scene" aria-label="Настоящая процедурная 3D-графика. Вращайте подарок, открывайте коробочку, сжимайте пространственный паттерн."></canvas>
+<header><div class="logo">585 <i>✳</i> <b>ЗОЛОТОЙ</b></div><div class="edition">НОВОГОДНЯЯ КОЛЛЕКЦИЯ · v8</div><h1>Живые паттерны</h1><p id="sub">Ритм · Симметрия · Пространство</p></header>
+<div id="info"><div id="name"></div><div id="type"></div></div>
+<footer><div id="tip">Покрути коробочку вокруг оси. Потом открой её.</div><div id="id"></div>
+<button id="open">✦ ОТКРЫТЬ СЮРПРИЗ ✦</button><div class="buttons"><button hidden id="back">↶ Коробочка</button><button hidden id="next">✳ Другой артефакт</button></div></footer>
+<div id="load">Запускаем математическое 3D-пространство…</div>
+</main>
+<script type="module">
+import * as THREE from "three";
+import {EffectComposer} from "three/addons/postprocessing/EffectComposer.js";
+import {RenderPass} from "three/addons/postprocessing/RenderPass.js";
+import {UnrealBloomPass} from "three/addons/postprocessing/UnrealBloomPass.js";
+const el=s=>document.getElementById(s),canvas=el("scene"),tip=el("tip"),btn=el("open"),back=el("back"),next=el("next"),info=el("info"),TAU=2*Math.PI;
+const clamp=(a,b,c)=>Math.min(c,Math.max(b,a)),v=(x,y,z)=>new THREE.Vector3(x,y,z);
+const query=new URLSearchParams(location.search),fixed=(query.get("gift")||"").trim().slice(0,120);
+function keyGen(){let a=new Uint32Array(2);crypto.getRandomValues(a);return "SQ-"+a[0].toString(36)+"-"+a[1].toString(36)}
+let key=fixed;if(!key)try{key=localStorage.getItem("585-squish-v4")||""}catch(e){}
+if(!key){key=keyGen();try{localStorage.setItem("585-squish-v4",key)}catch(e){}}
+next.hidden=!!fixed;
+function hash(s){let h=2166136261;for(let i=0;i<s.length;i++)h=Math.imul(h^s.charCodeAt(i),16777619);return h>>>0}
+function rng(seed){return function(){seed+=0x6d2b79f5;let t=Math.imul(seed^(seed>>>15),1|seed);t=(t+Math.imul(t^(t>>>7),61|t))^t;return ((t^(t>>>14))>>>0)/4294967296}}
+const kinds=[
+{name:"Гекса-дыхание",category:"УСТОЙЧИВАЯ ВОЛНОВАЯ ГЕКСАГЕОМЕТРИЯ",kind:"hex"},
+{name:"Полусферические спирали",category:"ЗЕРКАЛЬНАЯ РИТМИЧНАЯ СПИРАЛЬ",kind:"hemi"},
+{name:"Колесо Будды",category:"КОНЦЕНТРИЧЕСКОЕ ДЫХАНИЕ",kind:"buddha"},
+{name:"Северная медуза",category:"УПРУГИЕ РАДИАЛЬНЫЕ ВОЛОКНА",kind:"jelly"},
+{name:"Нейро-ДНК",category:"ДВОЙНАЯ КИНЕТИЧЕСКАЯ СПИРАЛЬ",kind:"dna"},
+{name:"Орбитальный атом",category:"ГАРМОНИЧЕСКИЕ ОРБИТЫ",kind:"atom"},
+{name:"Снежный фрактал",category:"САМОПОДОБНАЯ ГЕОМЕТРИЯ В 3D",kind:"crystal"},
+{name:"Нейромост",category:"СИММЕТРИЧНЫЙ ПРОСТРАНСТВЕННЫЙ ТОННЕЛЬ",kind:"bridge"}
+];
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x09070c);scene.fog=new THREE.FogExp2(0x09070c,.04);
+const camera=new THREE.PerspectiveCamera(38,1,.1,80);camera.position.set(0,.05,8.6);
+const render=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:"high-performance"});
+render.setPixelRatio(Math.min(devicePixelRatio||1,1.5));render.outputColorSpace=THREE.SRGBColorSpace;
+render.toneMapping=THREE.ACESFilmicToneMapping;render.toneMappingExposure=1.2;
+scene.add(new THREE.AmbientLight(0xffd9cd,.85));
+function light(color,power,pos){let L=new THREE.PointLight(color,power,16,2);L.position.copy(pos);scene.add(L)}
+light(0xffc49c,44,v(-3,4,5));light(0xff3756,25,v(4,-1,4));light(0x7099ff,16,v(0,2,-4));
+let composer;try{composer=new EffectComposer(render);composer.addPass(new RenderPass(scene,camera));let bloom=new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),.58,.35,.18);bloom.strength=.24;bloom.radius=.16;bloom.threshold=.92;composer.addPass(bloom)}catch(err){composer=null}
+function resize(){let w=innerWidth,h=innerHeight;render.setSize(w,h,false);camera.aspect=w/h;camera.fov=w/h>1?45:38;camera.updateProjectionMatrix();if(composer)composer.setSize(w,h)}
+addEventListener("resize",resize);resize();
+const red=new THREE.MeshPhysicalMaterial({color:0xe42b28,metalness:.42,roughness:.2,clearcoat:1});
+const deepRed=new THREE.MeshPhysicalMaterial({color:0x821421,metalness:.45,roughness:.21,clearcoat:1});
+const ivory=new THREE.MeshPhysicalMaterial({color:0xfff3eb,metalness:.26,roughness:.17,clearcoat:1});
+const gold=new THREE.MeshStandardMaterial({color:0xfbd196,metalness:.94,roughness:.13,emissive:0x301305,emissiveIntensity:.25});
+const metal=new THREE.MeshStandardMaterial({color:0xa96224,metalness:.89,roughness:.18});
+const world=new THREE.Group();scene.add(world);
+const pack=new THREE.Group();world.add(pack);
+function box(parent,w,h,d,x,y,z,mat){let ob=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);ob.position.set(x,y,z);parent.add(ob);return ob}
+// True 3D box, separate walls + a hinged volumetric lid; all surfaces built from primitives.
+box(pack,1.92,.14,1.92,0,-.91,0,deepRed);
+for(let s of [-1,1]){box(pack,.15,1.32,1.92,s*.89,-.18,0,red);box(pack,1.62,1.32,.15,0,-.18,s*.89,red)}
+for(let s of [-1,1])box(pack,.035,1.28,.035,s*.28,-.20,.987,gold);
+const lidJoint=new THREE.Group();lidJoint.position.set(0,.58,-.89);pack.add(lidJoint);
+const lid=new THREE.Group();lidJoint.add(lid);
+box(lid,2.12,.27,2.14,0,.1,1.05,ivory);
+box(lid,.25,.292,2.16,0,.105,1.05,gold);box(lid,2.14,.294,.24,0,.105,1.05,metal);
+box(lid,.24,.015,2.18,0,.25,1.05,gold);box(lid,2.17,.015,.23,0,.25,1.05,gold);
+const frontLogo=new THREE.Group();pack.add(frontLogo);
+let shape=new THREE.Shape();
+for(let i=0;i<16;i++){let a=i*Math.PI/8+Math.PI/2,rad=i%2===0?.22:.09;if(!i)shape.moveTo(Math.cos(a)*rad,Math.sin(a)*rad);else shape.lineTo(Math.cos(a)*rad,Math.sin(a)*rad)}shape.closePath();
+let goldStar=new THREE.Mesh(new THREE.ExtrudeGeometry(shape,{depth:.03,bevelEnabled:true,bevelThickness:.008,bevelSize:.006}),gold);goldStar.position.set(0,-.16,.97);frontLogo.add(goldStar);
+// Artifact shapes are tubes or true polyhedra in XYZ, not 2D patterns in a silhouette or texture.
+const artifact=new THREE.Group();world.add(artifact);artifact.visible=false;
+const body=new THREE.Group();artifact.add(body);
+const hanger=new THREE.Group();artifact.add(hanger);
+let ring=new THREE.Mesh(new THREE.TorusGeometry(.12,.027,10,32),gold);ring.position.y=1.99;hanger.add(ring);
+let cap=new THREE.Mesh(new THREE.CylinderGeometry(.15,.17,.15,24),gold);cap.position.y=1.78;hanger.add(cap);
+let ringInner=new THREE.Mesh(new THREE.TorusGeometry(.087,.008,6,20),ivory);ringInner.position.y=1.99;hanger.add(ringInner);
+const picker=new THREE.Mesh(new THREE.SphereGeometry(1.63,16,12),new THREE.MeshBasicMaterial({visible:false}));body.add(picker);const gripZone=new THREE.Mesh(new THREE.SphereGeometry(.33,12,10),new THREE.MeshBasicMaterial({visible:false}));gripZone.position.y=1.95;hanger.add(gripZone);
+let spec,rnd,materialMap=[],baseUniforms={time:{value:0},touch:{value:v(0,0,1)},drag:{value:v(0,0,0)},press:{value:0},wave:{value:5},power:{value:0},family:{value:0}};
+function makeMaterial(color,glow=1){
+ let mat=new THREE.MeshPhysicalMaterial({color:color,metalness:.17,roughness:.3,clearcoat:.46,clearcoatRoughness:.18,emissive:color,emissiveIntensity:glow*.25,side:THREE.DoubleSide,toneMapped:true});
+ mat.onBeforeCompile=sh=>{
+ sh.uniforms.sqTime=baseUniforms.time;sh.uniforms.sqTouch=baseUniforms.touch;sh.uniforms.sqDrag=baseUniforms.drag;sh.uniforms.sqPress=baseUniforms.press;sh.uniforms.sqWave=baseUniforms.wave;sh.uniforms.sqPower=baseUniforms.power;sh.uniforms.sqFamily=baseUniforms.family;
+ sh.vertexShader=sh.vertexShader.replace("#include <common>","#include <common>\nuniform float sqTime,sqPress,sqWave,sqPower,sqFamily;uniform vec3 sqTouch,sqDrag;varying float vSqSignal;");
+ sh.fragmentShader=sh.fragmentShader.replace("#include <common>","#include <common>\nvarying float vSqSignal;");
+ sh.fragmentShader=sh.fragmentShader.replace("#include <emissivemap_fragment>","#include <emissivemap_fragment>\ntotalEmissiveRadiance += diffuseColor.rgb * (.12*vSqSignal);");
+ sh.vertexShader=sh.vertexShader.replace("#include <begin_vertex>","#include <begin_vertex>\nfloat dd=length(position-sqTouch);\nfloat touchFactor=exp(-(dd*dd)/(.36+sqPress*.20));\nfloat phase=sqTime*(.58+.075*sqFamily);\nfloat a=atan(position.y,position.x);\nfloat orbit=length(position.xy);\nfloat wave1=sin(position.x*4.8+position.z*3.5+phase*1.7);\nfloat wave2=cos(position.y*5.1-position.z*3.2-phase*1.3);\nvec3 curl=vec3(wave2,sin(position.x*3.5+position.y*2.8-phase),wave1);\nfloat amplitude=.028+.009*sin(sqFamily*1.91);\nif(sqFamily<.5){\n float twist=.085*sin(phase+position.z*3.2);\n float ct=cos(twist),st=sin(twist);\n transformed.xy=mat2(ct,-st,st,ct)*transformed.xy;\n}else if(sqFamily<1.5){\n float wobble=.055*sin(phase*1.1+position.z*6.5+orbit*3.);\n transformed.xy+=vec2(cos(a+phase*.4),sin(a+phase*.4))*wobble;\n}else if(sqFamily<2.5){\n transformed.x+=.065*sin(position.y*4.7+phase*2.0+position.z*2.);\n transformed.z+=.047*cos(position.y*6.1-phase*1.5+position.x*2.);\n}else if(sqFamily<3.5){\n transformed+=normal*.04*sin(phase*1.2+position.y*7.+position.z*5.);\n}else if(sqFamily<4.5){\n float twist=.06*sin(position.z*8.+phase*2.7);\n transformed+=normalize(position+vec3(.001))*twist;\n}else if(sqFamily<5.5){\n float spin=.1*sin(phase+position.y*3.);\n float c0=cos(spin),s0=sin(spin);\n transformed.xz=mat2(c0,-s0,s0,c0)*transformed.xz;\n}else if(sqFamily<6.5){\n transformed+=curl*.038;\n}else if(sqFamily<7.5){\n transformed+=normal*.055*sin(orbit*13.-phase*3.+a*4.);\n}else if(sqFamily<8.5){\n transformed.xy*=1.+.038*sin(position.z*5.8-phase*2.2);\n}else{\n transformed+=curl*.031;\n}\ntransformed+=curl*amplitude;\nfloat impulse=sin(dd*17.-sqWave*19.)*exp(-abs(dd-sqWave)*3.2)*sqPower*.065;\ntransformed+=normal*impulse;\ntransformed-=normalize(position+vec3(.0001))*sqPress*.52*touchFactor;\ntransformed+=sqDrag*touchFactor*.88;\nvSqSignal=.35+.65*pow(.5+.5*sin(phase*3.4+position.x*8.+position.y*6.+position.z*5.),4.);");
+ };
+ mat.userData.baseGlow=glow*.25;materialMap.push(mat);return mat
+}
+let flowPaths=[],flowAnim=[],flowCloud=null;
+function pathTube(points,radius,mat,segments=6,closed=false){
+ let curve=new THREE.CatmullRomCurve3(points,closed,"centripetal");
+ let geom=new THREE.TubeGeometry(curve,Math.max(20,points.length-1),Math.max(.003,radius*.46),Math.max(4,Math.min(6,segments)),closed);
+ let mesh=new THREE.Mesh(geom,mat);body.add(mesh);
+ if(flowPaths.length<650 && points.length>20)flowPaths.push({curve,color:mat.color});
+ return mesh
+}
+function buildFlow(){
+ if(!flowPaths.length)return;
+ let count=Math.min(112,Math.max(62,flowPaths.length)),pos=new Float32Array(count*3),colors=new Float32Array(count*3);
+ let color=new THREE.Color(),g=new THREE.BufferGeometry();
+ flowAnim=[];
+ for(let i=0;i<count;i++){
+  let n=Math.floor(rnd()*flowPaths.length),f=rnd(),speed=.022+rnd()*.09;
+  flowAnim.push({n,f,speed});
+  const point=flowPaths[n].curve.getPoint(f);
+  pos.set([point.x,point.y,point.z],i*3);
+  color.copy(flowPaths[n].color).lerp(new THREE.Color(0xffffff),.45+rnd()*.45);
+  colors.set([color.r,color.g,color.b],i*3);
+ }
+ g.setAttribute("position",new THREE.BufferAttribute(pos,3).setUsage(THREE.DynamicDrawUsage));
+ g.setAttribute("color",new THREE.BufferAttribute(colors,3));
+ flowCloud=new THREE.Points(g,new THREE.PointsMaterial({size:.016,vertexColors:true,transparent:true,opacity:.66,depthWrite:false,blending:THREE.AdditiveBlending}));
+ body.add(flowCloud)
+}
+function animateFlow(dt){
+ if(!flowCloud)return;
+ let a=flowCloud.geometry.attributes.position;
+ for(let i=0;i<flowAnim.length;i++){
+  let f=flowAnim[i];f.f=(f.f+f.speed*dt)%1;
+  const p=flowPaths[f.n].curve.getPoint(f.f);
+  a.setXYZ(i,p.x,p.y,p.z);
+ }
+ a.needsUpdate=true
+}
+function seedColor(hex,light=.0){let c=new THREE.Color(hex);c.offsetHSL((rnd()-.5)*.06,0,light);return c}
+
+// Each family has one coherent topology. No random knot crossing, no enclosing shell.
+function palette(a,b,c){
+ return [makeMaterial(a,1.2),makeMaterial(b,1.45),makeMaterial(c,1.12)]
+}
+function curve(pts,thickness,mat,closed=false){return pathTube(pts,thickness,mat,5,closed)}
+function closedPoints(fn,n=90){
+ let pts=[];for(let i=0;i<=n;i++)pts.push(fn(i/n*TAU,i/n));
+ return pts
+}
+function makeHexa(){
+ const m=palette(0xe3f8ff,0x65bdff,0x9d82e8);
+ const side=.205,spacing=1.5*side,height=Math.sqrt(3)*side,limit=1.2;
+ const cells=[];
+ for(let i=-5;i<=5;i++)for(let j=-5;j<=5;j++){
+  let x=i*spacing,y=(j+(i&1)*.5)*height;
+  if(Math.hypot(x,y)>limit)continue;
+  cells.push([x,y]);
+ }
+ // Original HexWave's staggered cells: each remains a readable true hexagon.
+ for(let i=0;i<cells.length;i++){
+  let [x,y]=cells[i],pts=[];
+  for(let a=0;a<=6;a++){
+   let ang=a*TAU/6,px=x+side*.88*Math.cos(ang),py=y+side*.88*Math.sin(ang);
+   let z=.32*Math.cos(Math.hypot(px,py)*2.4)+.045*Math.cos(6*ang+spec.mutation);
+   pts.push(v(px,py,z));
+  }
+  curve(pts,i%7===0?.021:.015,m[i%4===0?1:i%6===0?2:0]);
+ }
+ for(let i=0;i<cells.length;i+=3){
+  let [x,y]=cells[i],z=.32*Math.cos(Math.hypot(x,y)*2.4);
+  let node=new THREE.Mesh(new THREE.IcosahedronGeometry(.022,0),m[1]);node.position.set(x,y,z);body.add(node)
+ }
+}
+function makeHemi(){
+ const m=palette(0xf7f8ff,0x98b7fc,0xc3a6ff);
+ const arms=6,layers=5,turns=1.45;
+ // Based on SETKA's hemispheric spirals: mirrored arms and depth-coded layers.
+ for(let half of [-1,1])for(let layer=0;layer<layers;layer++)for(let arm=0;arm<arms;arm++){
+  let pts=[],shift=arm*TAU/arms+layer*.18;
+  let spread=1.12-layer*.087;
+  for(let k=0;k<=108;k++){
+   let u=k/108,r=.075+u*spread,theta=shift+u*turns*TAU+spec.mutation*.045;
+   let x=r*Math.cos(theta),y=r*Math.sin(theta);
+   let z=half*(.19+.57*Math.sqrt(Math.max(0,1-u*u)))+Math.sin(u*9+arm)*.025;
+   pts.push(v(x,y,z))
+  }
+  curve(pts,layer===0?.025:.015,m[layer===0?1:layer===4?2:0])
+ }
+}
+function makeBuddha(){
+ const m=palette(0xf7f8fb,0xf0d3a0,0x8ed9ff);
+ const rings=12,spokes=12;
+ // Stable nested rhythm with a gentle radial wave — no overlapping knot.
+ for(let ring=1;ring<=rings;ring++){
+  let radius=.12+ring*.084,pts=[];
+  for(let i=0;i<=110;i++){
+   let a=i/110*TAU,z=.14*Math.sin(a*spokes/2+ring*.29)+.12*Math.cos(ring*.5);
+   let r=radius*(1+.028*Math.sin(a*spokes+ring*.43));
+   pts.push(v(r*Math.cos(a),r*Math.sin(a),z))
+  }
+  curve(pts,ring%4===0?.025:.015,m[ring%4===0?1:0])
+ }
+ for(let arm=0;arm<spokes;arm++){
+  let pts=[],theta=arm*TAU/spokes;
+  for(let k=0;k<=75;k++){
+   let u=k/75,r=.16+u*1.02,a=theta+.075*Math.sin(u*TAU);
+   pts.push(v(r*Math.cos(a),r*Math.sin(a),.1*Math.sin(u*TAU+theta*3)))
+  }
+  curve(pts,.012,m[2])
+ }
+}
+function makeJelly(){
+ const m=palette(0xdffeff,0x5ddce9,0xa6a8f5);
+ // A clear dome, exactly ordered radial lines and 26 coherent trailing tentacles.
+ const strands=26,capRows=9;
+ for(let j=0;j<strands;j++){
+  let a=j/strands*TAU,pts=[];
+  for(let k=0;k<=48;k++){
+   let t=k/48,r=.95*Math.sin(t*Math.PI*.5),y=.57+.9*Math.cos(t*Math.PI*.5);
+   pts.push(v(r*Math.cos(a),y,r*Math.sin(a)))
+  }
+  curve(pts,j%5===0?.023:.014,m[j%5===0?1:0]);
+  const tail=[];
+  for(let k=0;k<=72;k++){
+   let t=k/72,rr=.95*(1-t*.27),y=.57-t*1.75;
+   let offset=.085*t*t*Math.sin(t*TAU*1.5+a+spec.mutation*.09);
+   tail.push(v(rr*Math.cos(a)+offset,y,rr*Math.sin(a)+offset*.7))
+  }
+  curve(tail,j%7===0?.022:.012,m[j%7===0?2:1])
+ }
+ for(let row=1;row<=capRows;row++){
+  let t=row/(capRows+1)*Math.PI*.5,r=.95*Math.sin(t),y=.57+.9*Math.cos(t);
+  curve(closedPoints(a=>v(r*Math.cos(a),y,r*Math.sin(a)),90),row%3===0?.021:.012,m[row%3===0?2:0])
+ }
+}
+function makeDNA(){
+ const m=palette(0xe6feff,0x71d5fa,0xccb9ff),turns=2.35,half=1.24,R=.54,offset=spec.mutation*.15;
+ for(let side=0;side<2;side++){
+  let pts=[];
+  for(let i=0;i<=160;i++){let t=i/160,a=t*turns*TAU+side*Math.PI+offset;
+   pts.push(v(R*Math.cos(a),-half+2*half*t,R*Math.sin(a)))
+  }
+  curve(pts,.034,side?m[1]:m[0])
+ }
+ for(let rung=0;rung<=23;rung++){
+  let t=rung/23,a=t*turns*TAU+offset,pa=v(R*Math.cos(a),-half+2*half*t,R*Math.sin(a)),pb=v(-R*Math.cos(a),pa.y,-R*Math.sin(a));
+  let pts=[pa,pa.clone().lerp(pb,.25),pa.clone().lerp(pb,.5),pa.clone().lerp(pb,.75),pb];
+  curve(pts,.011,rung%3===0?m[2]:m[1])
+ }
+}
+function makeAtom(){
+ const m=palette(0xf5faff,0x69c6fa,0xe0adf9);
+ const rotations=[[0,0,0],[1.06,.4,.1],[-.82,.88,1.3],[.4,1.4,.6]];
+ for(let j=0;j<rotations.length;j++){
+  const [rx,ry,rz]=rotations[j],pts=[];
+  const euler=new THREE.Euler(rx,ry,rz),q=new THREE.Quaternion().setFromEuler(euler);
+  for(let k=0;k<=132;k++){
+   let a=k/132*TAU,p=v(1.05*Math.cos(a),.66*Math.sin(a),0).applyQuaternion(q);
+   pts.push(p)
+  }curve(pts,j===0?.023:.017,m[j%3])
+ }
+ let nucleus=new THREE.Mesh(new THREE.IcosahedronGeometry(.115,1),m[2]);body.add(nucleus);
+}
+function makeCrystal(){
+ const m=palette(0xf5fbff,0x9ebbea,0xd7b8ff),arms=8;
+ function branch(origin,dir,len,depth,armId){
+  let end=origin.clone().addScaledVector(dir,len),pts=[];
+  for(let i=0;i<=6;i++)pts.push(origin.clone().lerp(end,i/6));
+  curve(pts,depth===3?.027:depth===2?.018:.013,m[armId%3]);
+  if(depth<=1)return;
+  let perpendicular=v(-dir.y,dir.x,.13).normalize(),at=origin.clone().lerp(end,.66);
+  for(let side of [-1,1]){
+   let next=dir.clone().multiplyScalar(.73).addScaledVector(perpendicular,side*.68).normalize();
+   branch(at,next,len*.52,depth-1,armId)
+  }
+ }
+ for(let j=0;j<arms;j++){
+  let a=j/arms*TAU,dir=v(Math.cos(a),Math.sin(a),Math.sin(a*3)*.17).normalize();
+  branch(v(0,0,0),dir,.69,3,j)
+ }
+ for(let ring=1;ring<=4;ring++){
+  let rad=.19+ring*.19,pts=[];
+  for(let i=0;i<=arms;i++){
+   let a=i/arms*TAU;pts.push(v(rad*Math.cos(a),rad*Math.sin(a),.11*Math.sin(i*3+spec.mutation)))
+  }
+  curve(pts,.011,m[2])
+ }
+}
+function makeBridge(){
+ const m=palette(0xf3f8ff,0x83bce7,0xb5a5ff),sides=8,rings=10;
+ // The Neurobridge perspective principle but wrapped into a collectible spatial structure.
+ function point(a,z){
+  let t=(z+1.15)/2.3,rad=.21+.9*Math.pow(Math.sin(Math.PI*t),.65);
+  return v(rad*Math.cos(a),rad*Math.sin(a),z)
+ }
+ for(let r=0;r<rings;r++){
+  let z=-1.15+2.3*r/(rings-1),pts=[];
+  for(let i=0;i<=sides;i++)pts.push(point(i/sides*TAU,z));
+  curve(pts,r%3===0?.023:.015,m[r%3===0?1:0])
+ }
+ for(let arm=0;arm<sides;arm++){
+  let pts=[];
+  for(let k=0;k<=120;k++){
+   let z=-1.15+k/120*2.3,a=arm/sides*TAU+.14*Math.sin(z*2.3);
+   pts.push(point(a,z))
+  }
+  curve(pts,arm%2===0?.024:.014,m[arm%3===0?2:1])
+ }
+}
+function regenerate(){
+ rnd=rng(hash(key));spec={...kinds[Math.floor(rnd()*kinds.length)],mutation:rnd()*TAU};flowPaths=[];flowAnim=[];flowCloud=null;
+ for(let i=body.children.length-1;i>=0;i--){let mesh=body.children[i];if(mesh===picker)continue;body.remove(mesh);mesh.geometry?.dispose()}
+ for(let mat of materialMap)mat.dispose();materialMap=[];
+ baseUniforms.family.value=kinds.indexOf(kinds.find(k=>k.kind===spec.kind));
+ if(spec.kind==="hex")makeHexa();else if(spec.kind==="hemi")makeHemi();else if(spec.kind==="buddha")makeBuddha();else if(spec.kind==="jelly")makeJelly();else if(spec.kind==="dna")makeDNA();else if(spec.kind==="atom")makeAtom();else if(spec.kind==="crystal")makeCrystal();else makeBridge();
+ buildFlow();
+ el("name").textContent=spec.name;el("type").textContent=spec.category;
+ el("id").textContent="ПЕРСОНАЛЬНЫЙ № "+hash(key).toString(16).toUpperCase().padStart(8,"0");
+ baseUniforms.press.value=0;baseUniforms.power.value=0;baseUniforms.wave.value=5;baseUniforms.drag.value.set(0,0,0);baseUniforms.touch.value.set(0,0,1);
+ artifact.rotation.set(-.15,.35,.02);artifact.scale.setScalar(.0001);hanger.position.y=spec.kind==="jelly"?-.42:-.52
+}
+regenerate();
+let dustR=rng(172399),dGeo=new THREE.BufferGeometry(),coords=new Float32Array(360*3),rgb=new Float32Array(360*3);
+for(let i=0;i<360;i++){let a=dustR()*TAU,r=1.8+dustR()*6;coords[i*3]=r*Math.cos(a);coords[i*3+1]=r*Math.sin(a);coords[i*3+2]=(dustR()-.5)*13;let co=new THREE.Color(0xffd1a3);co.offsetHSL(dustR()*.06-.03,0,(dustR()-.5)*.3);rgb.set([co.r,co.g,co.b],i*3)}
+dGeo.setAttribute("position",new THREE.BufferAttribute(coords,3));dGeo.setAttribute("color",new THREE.BufferAttribute(rgb,3));
+let stars=new THREE.Points(dGeo,new THREE.PointsMaterial({size:.018,vertexColors:true,transparent:true,opacity:.65,depthWrite:false,blending:THREE.AdditiveBlending}));scene.add(stars);
+let orbital=new THREE.Mesh(new THREE.TorusGeometry(2.15,.006,6,120),new THREE.MeshBasicMaterial({color:0xb94f36,transparent:true,opacity:.07}));orbital.rotation.x=1.24;scene.add(orbital);
+const coronaGeo=new THREE.BufferGeometry(),coronaPos=new Float32Array(250*3),coronaRgb=new Float32Array(250*3),coronaRnd=rng(83828);
+for(let i=0;i<250;i++){let a=coronaRnd()*TAU,b=coronaRnd()*TAU,r=.35+coronaRnd()*1.3;coronaPos.set([r*Math.cos(a),r*Math.sin(a)*Math.cos(b),r*Math.sin(a)*Math.sin(b)],i*3);let cc=new THREE.Color().setHSL(.03+coronaRnd()*.12,1,.66+coronaRnd()*.32);coronaRgb.set([cc.r,cc.g,cc.b],i*3)}
+coronaGeo.setAttribute("position",new THREE.BufferAttribute(coronaPos,3));coronaGeo.setAttribute("color",new THREE.BufferAttribute(coronaRgb,3));
+const corona=new THREE.Points(coronaGeo,new THREE.PointsMaterial({size:.02,vertexColors:true,transparent:true,opacity:.13,depthWrite:false,blending:THREE.AdditiveBlending}));artifact.add(corona);
+let state="box",openStart=0,clock=new THREE.Clock(),lastTime=0,held=null,pressTarget=0,pressValue=0,pressVel=0,dragTarget=v(0,0,0),dragPos=v(0,0,0),dragVel=v(0,0,0),wave=6,spinX=0,spinY=0;
+let heat=0,charge=0,spinZ=0,lastTap=0,charged=false;
+const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();
+function hit(e,target){let b=canvas.getBoundingClientRect();mouse.set(2*(e.clientX-b.left)/b.width-1,1-2*(e.clientY-b.top)/b.height);artifact.updateMatrixWorld(true);ray.setFromCamera(mouse,camera);return ray.intersectObject(target)[0]}
+function shock(power=1){wave=0;baseUniforms.wave.value=0;baseUniforms.power.value=Math.max(baseUniforms.power.value,power)}
+canvas.addEventListener("pointerdown",e=>{
+ if(held)return;
+ held={id:e.pointerId,x:e.clientX,y:e.clientY,x0:e.clientX,y0:e.clientY,start:performance.now(),mode:"rotate",moved:false};
+ try{canvas.setPointerCapture(e.pointerId)}catch(err){}
+ if(state==="artifact"){
+  if(hit(e,gripZone)){held.mode="grip";tip.textContent="За петлю — вращай и раскачивай."}
+  else{let rayHit=hit(e,picker);if(rayHit){held.mode="body";pressTarget=.48;charged=false;baseUniforms.touch.value.copy(body.worldToLocal(rayHit.point.clone()));shock(1);tip.textContent="Мягкая волна · удержание · пульс по структуре"}}
+ }
+ e.preventDefault()
+},{passive:false});
+canvas.addEventListener("pointermove",e=>{
+ if(!held||held.id!==e.pointerId)return;
+ let x=e.clientX-held.x,y=e.clientY-held.y;held.x=e.clientX;held.y=e.clientY;
+ if(Math.abs(held.x0-e.clientX)+Math.abs(held.y0-e.clientY)>9)held.moved=true;
+ if(state==="box"){pack.rotation.y+=x*.008;pack.rotation.x=clamp(pack.rotation.x+y*.006,-.45,.45)}
+ if(state==="artifact"){
+  if(held.mode==="body"){dragTarget.x=clamp((e.clientX-held.x0)/135,-.8,.8);dragTarget.y=clamp((held.y0-e.clientY)/135,-.8,.8);pressTarget=.78;heat=Math.min(2.2,heat+.023);if(Math.abs(x)+Math.abs(y)>12)shock(1.3)}
+  else{artifact.rotation.y+=x*(held.mode==="grip"?.014:.009);artifact.rotation.x=clamp(artifact.rotation.x+y*.007,-1.2,1.2);if(held.mode==="grip"){artifact.rotation.z=clamp(artifact.rotation.z-x*.004,-.5,.5);spinZ=-x*.0014}spinY=x*.0008;spinX=y*.0005}
+ }e.preventDefault()
+},{passive:false});
+function release(e){
+ if(!held||held.id!==e.pointerId)return;
+ if(state==="box"&&!held.moved)openBox();
+ if(state==="artifact"&&held.mode==="body"){
+  pressTarget=0;dragTarget.set(0,0,0);shock(1.7);
+  if(!held.moved&&performance.now()-held.start<340){
+   if(performance.now()-lastTap<350){heat=3;charge=1.6;shock(3.2);tip.textContent="✳ ВОЛНА ПО ГЕОМЕТРИИ"}
+   else{heat=Math.min(2,heat+.4)}
+   lastTap=performance.now()
+  }
+ }
+ held=null;charged=false
+}
+canvas.addEventListener("pointerup",release);canvas.addEventListener("pointercancel",release);canvas.addEventListener("lostpointercapture",release);
+function openBox(){if(state!=="box")return;state="opening";openStart=clock.elapsedTime;btn.hidden=true;tip.textContent="Раскрываем пространство…"}
+function closeBox(){
+ state="box";btn.hidden=false;back.hidden=true;next.hidden=true;info.classList.remove("show");el("app").classList.remove("artifact-open");tip.textContent="Вращай 3D-коробку и открой сюрприз.";
+ pack.visible=true;lidJoint.rotation.x=0;pack.position.y=0;pack.scale.setScalar(1);
+ artifact.visible=false;pressTarget=0;el("id").textContent=""
+}
+btn.addEventListener("click",openBox);back.addEventListener("click",closeBox);
+next.addEventListener("click",()=>{if(fixed)return;key=keyGen();try{localStorage.setItem("585-squish-v4",key)}catch(e){}regenerate();state="artifact";artifact.visible=true;artifact.scale.setScalar(1);info.classList.add("show");el("app").classList.add("artifact-open");heat=1.1;charge=0;shock(1.5)});
+function tick(){
+ requestAnimationFrame(tick);
+ let dt=Math.min(clock.getDelta(),.035),t=clock.elapsedTime,s=clamp(dt*60,.1,1.8);
+ baseUniforms.time.value=t;if(state==="artifact"||state==="opening")animateFlow(dt);
+ if(state==="box"){pack.rotation.y+=dt*.15;pack.position.y=Math.sin(t*1.1)*.05;pack.visible=true}
+ if(state==="opening"){
+  let n=clamp((t-openStart)/1.7,0,1),a=n*n*(3-2*n);
+  lidJoint.rotation.x=-2.5*a;pack.position.y=-2.35*a;pack.scale.setScalar(1-.75*a);pack.visible=n<.995;
+  artifact.visible=n>.22;let f=clamp((n-.22)/.78,0,1);artifact.scale.setScalar(Math.max(.001,f*f*(3-2*f)));artifact.rotation.y+=dt*.6;
+  if(n>=1){state="artifact";artifact.scale.setScalar(1);pack.visible=false;info.classList.add("show");el("app").classList.add("artifact-open");back.hidden=false;next.hidden=!!fixed;tip.textContent="За петлю — вращай. Узоры живут сами. Прикоснись — пошли волну."}
+ }
+ if(state==="artifact"){
+  if(!held||held.mode!=="body"){artifact.rotation.y+=dt*.13+spinY;artifact.rotation.x=clamp(artifact.rotation.x+spinX,-1.15,1.15);artifact.rotation.z=clamp(artifact.rotation.z+spinZ,-.55,.55)}
+  spinX*=.92;spinY*=.92;spinZ*=.92;artifact.rotation.z*=.999;artifact.scale.setScalar(1+.024*Math.sin(t*(1.3+heat)))
+ }
+ if(held&&held.mode==="body"&&!charged&&performance.now()-held.start>560){charged=true;charge=1.65;heat=2.3;shock(2.7);tip.textContent="✳ ПАТТЕРН В РЕЗОНАНСЕ"}
+ if(held&&held.mode==="body"&&charged){charge=Math.min(2.5,charge+dt*.3);heat=Math.min(3.2,heat+dt*.24)}
+ heat*=Math.pow(.99,s);charge*=Math.pow(.988,s);
+ for(let m of materialMap)m.emissiveIntensity=m.userData.baseGlow*(1+Math.min(.22,heat*.045+charge*.06));
+ pressVel=(pressVel+(pressTarget-pressValue)*.16*s)*Math.pow(.76,s);pressValue+=pressVel*s;baseUniforms.press.value=Math.max(0,pressValue);
+ dragVel.add(dragTarget.clone().sub(dragPos).multiplyScalar(.13*s)).multiplyScalar(Math.pow(.75,s));dragPos.addScaledVector(dragVel,s);baseUniforms.drag.value.copy(dragPos);
+ wave+=dt*1.6;baseUniforms.wave.value=wave;baseUniforms.power.value*=Math.pow(.975,s);
+ stars.rotation.y=t*.002;orbital.rotation.z=t*.04;corona.rotation.y=t*(.14+heat*.3);corona.rotation.x=Math.sin(t*.3)*.18;corona.material.opacity=.065+Math.min(.09,heat*.019);
+ if(composer)composer.render();else render.render(scene,camera)
+}
+el("load").classList.add("hide");tick();
+</script></body></html>
