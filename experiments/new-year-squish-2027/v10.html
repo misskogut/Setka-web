@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"><meta name="theme-color" content="#08090f"><title>585 × SETKA · Новое поколение v10</title>
+<style>
+*{box-sizing:border-box}html,body{height:100%;margin:0;overflow:hidden;overscroll-behavior:none}body{background:#070811;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-user-select:none;user-select:none}button{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+#app{height:100dvh;width:100%;position:relative;isolation:isolate;background:radial-gradient(ellipse at 50% 47%,#13182a 0%,#090b14 57%,#06070a 100%);overflow:hidden}#scene{width:100%;height:100%;display:block;touch-action:none}
+header{pointer-events:none;position:absolute;z-index:2;left:0;right:0;top:calc(21px + env(safe-area-inset-top));text-align:center}.brand{font-weight:850;letter-spacing:-.045em;font-size:20px}.brand span{font-size:14px;font-weight:700}.brand i{font-style:normal;color:#f63b36}.eyebrow{margin-top:13px;letter-spacing:.23em;font-size:9px;font-weight:730;color:#edafa4}.headline{font:400 clamp(26px,7vw,37px) Georgia,serif;margin-top:11px}.sub{font-size:11px;margin-top:8px;color:#bbbfca}
+#meta{position:absolute;z-index:3;top:calc(106px + env(safe-area-inset-top));left:10px;right:10px;text-align:center;pointer-events:none;opacity:0;transition:opacity .4s}#meta.active{opacity:1}#name{font:400 clamp(22px,6vw,29px) Georgia,serif;letter-spacing:.012em}#details{color:#9ebad4;font-size:9px;letter-spacing:.13em;margin-top:8px}#app.revealed .headline,#app.revealed .sub{display:none}
+footer{position:absolute;z-index:4;left:0;right:0;bottom:calc(18px + env(safe-area-inset-bottom));text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;padding:0 10px}#hint{font-size:12px;color:#d6d9e9;line-height:1.45;text-shadow:0 2px 8px #000}#serial{font-size:10px;color:#8390ad;letter-spacing:.14em}.buttons{display:flex;gap:7px;flex-wrap:wrap;justify-content:center;max-width:99vw}button{border-radius:99px;padding:11px 15px;background:#11172dcc;border:1px solid #5c759c77;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);font-size:11px}button:active{background:#293965}button[hidden]{display:none!important}#open{padding:14px 24px;background:linear-gradient(125deg,#e23934,#a71c27);border:1px solid #f8a3a0;font-weight:700;letter-spacing:.09em;box-shadow:0 7px 22px #ac171d35}
+#loading{position:absolute;z-index:9;inset:0;background:#08090f;display:flex;align-items:center;justify-content:center;font-size:12px;color:#9db2cb;text-align:center;padding:22px}#loading.hidden{display:none}
+@media(max-height:620px){header{top:8px}.eyebrow{margin-top:7px}.headline{font-size:24px;margin-top:7px}.sub{display:none}#meta{top:calc(75px + env(safe-area-inset-top))}#name{font-size:21px}footer{bottom:calc(6px + env(safe-area-inset-bottom));gap:5px}button{padding:8px 12px}}
+</style></head><body><main id="app">
+<canvas id="scene" aria-label="Процедурная 3D-коллекция. Поворачивайте коробку, открывайте и взаимодействуйте с живыми математическими мембранами."></canvas>
+<header><div class="brand">585 <i>✳</i> <span>ЗОЛОТОЙ</span></div><div class="eyebrow">НОВОГОДНЯЯ КОЛЛЕКЦИЯ · v10 · КОНЦЕПТ</div><div class="headline">Новая материя</div><div class="sub">Живые формы из математики, а не рисунков</div></header>
+<div id="meta"><div id="name"></div><div id="details"></div></div>
+<footer><div id="hint">Поверни настоящую 3D-коробочку и открой сюрприз</div><div id="serial"></div><button id="open" type="button">✦ ОТКРЫТЬ СЮРПРИЗ ✦</button><div class="buttons"><button id="back" hidden>↶ Коробочка</button><button id="next" hidden>◈ Другой тип</button><button id="variation" hidden>✳ Вариация</button><button id="mix" hidden>◇ Гибрид</button></div></footer>
+<div id="loading">Подготавливаем процедурное 3D…</div>
+</main>
+<script>
+(()=>{'use strict';
+const el=id=>document.getElementById(id),canvas=el('scene'),app=el('app'),ctx=canvas.getContext('webgl2',{antialias:true,alpha:false,depth:true,premultipliedAlpha:false,powerPreference:'high-performance'});
+if(!ctx){el('loading').textContent='Этот браузер не поддерживает WebGL2. Открой в Safari или Chrome.';return}
+const gl=ctx,TAU=6.283185307179586,PI=Math.PI,clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+function hash(s){let h=2166136261;for(let i=0;i<s.length;i++)h=Math.imul(h^s.charCodeAt(i),16777619);return h>>>0}
+function random(seed){return()=>{seed=(seed+0x6D2B79F5)|0;let t=Math.imul(seed^(seed>>>15),1|seed);t=(t+Math.imul(t^(t>>>7),61|t))^t;return ((t^(t>>>14))>>>0)/4294967296}}
+function makeKey(){let b=new Uint32Array(2);if(crypto&&crypto.getRandomValues)crypto.getRandomValues(b);else{b[0]=Date.now()>>>0;b[1]=Math.random()*4294967296>>>0}return 'SQ-'+b[0].toString(36)+'-'+b[1].toString(36)}
+const qr=(new URLSearchParams(location.search).get('gift')||'').trim().slice(0,120);let key=qr;
+if(!key)try{key=localStorage.getItem('setka-new-matter-v10')||''}catch(e){}if(!key){key=makeKey();try{localStorage.setItem('setka-new-matter-v10',key)}catch(e){}}
+const families=[
+{name:'Хроматическая вуаль',label:'НЕВЕСОМАЯ КИНЕТИЧЕСКАЯ МЕМБРАНА',layers:5,h:188},
+{name:'Ирис сознания',label:'РАДИАЛЬНОЕ РАСКРЫТИЕ ПОЛЯ',layers:9,h:286},
+{name:'Гексагравитация',label:'ЛЕВИТИРУЮЩИЕ ПОЛЯ СИММЕТРИИ',layers:5,h:175},
+{name:'Резонансные кольца',label:'ТОРОИДАЛЬНОЕ ГАРМОНИЧЕСКОЕ ДЫХАНИЕ',layers:4,h:213},
+{name:'Призматическая волна',label:'КРИСТАЛЛИЧЕСКИЕ ГОЛОГРАФИЧЕСКИЕ ГРАНИ',layers:6,h:35},
+{name:'Спиральные паруса',label:'ПРОСТРАНСТВЕННАЯ КИНЕТИЧЕСКАЯ АРХИТЕКТУРА',layers:7,h:335}
+];
+let chosen=-1,variation=0,mixMode=false,settings=null,phase='box',boxAngleX=-.16,boxAngleY=.42,artAngleX=-.12,artAngleY=.33,artAngleZ=0,velocityX=0,velocityY=0,gripSpeed=0,openAt=0,now=0,lastFrame=0,pointing=new Map(),press=0,targetPress=0,charge=0,waveTime=9,touch=[0,0,0],zoom=1;
+function settingsFor(){const rr=random(hash(key+'|'+chosen+'|'+variation));if(chosen<0)chosen=Math.floor(rr()*families.length);const f=families[chosen];settings={seed:rr()*TAU,tempo:.56+rr()*.33,amp:.82+rr()*.27,hue:((f.h+(rr()-.5)*33)%360+360)%360,twist:.83+rr()*.31,layers:f.layers,mix:mixMode?.21:0};
+ el('name').textContent=f.name;el('details').textContent=f.label;el('serial').textContent='УНИКАЛЬНЫЙ КОД · '+hash(key+':'+chosen+':'+variation).toString(16).toUpperCase().padStart(8,'0')+' · ВАРИАЦИЯ '+String(variation+1).padStart(2,'0');}
+function matId(){return new Float32Array([1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1])}
+function matMul(a,b){const r=new Float32Array(16);for(let col=0;col<4;col++)for(let row=0;row<4;row++){let n=0;for(let k=0;k<4;k++)n+=a[k*4+row]*b[col*4+k];r[col*4+row]=n}return r}
+function move(x,y,z){let m=matId();m[12]=x;m[13]=y;m[14]=z;return m}
+function size(x,y,z){let m=matId();m[0]=x;m[5]=y;m[10]=z;return m}
+function rotateX(a){let m=matId(),c=Math.cos(a),s=Math.sin(a);m[5]=c;m[6]=s;m[9]=-s;m[10]=c;return m}
+function rotateY(a){let m=matId(),c=Math.cos(a),s=Math.sin(a);m[0]=c;m[2]=-s;m[8]=s;m[10]=c;return m}
+function rotateZ(a){let m=matId(),c=Math.cos(a),s=Math.sin(a);m[0]=c;m[1]=s;m[4]=-s;m[5]=c;return m}
+function combo(...parts){let m=matId();for(let p of parts)m=matMul(m,p);return m}
+function perspective(fovy,aspect,near,far){let f=1/Math.tan(fovy*.5),nf=1/(near-far);return new Float32Array([f/aspect,0,0,0,0,f,0,0,0,0,(far+near)*nf,-1,0,0,2*far*near*nf,0])}
+function vecTransform(m,p){return [m[0]*p[0]+m[4]*p[1]+m[8]*p[2]+m[12],m[1]*p[0]+m[5]*p[1]+m[9]*p[2]+m[13],m[2]*p[0]+m[6]*p[1]+m[10]*p[2]+m[14]]}
+function project(p,m){const x=m[0]*p[0]+m[4]*p[1]+m[8]*p[2]+m[12],y=m[1]*p[0]+m[5]*p[1]+m[9]*p[2]+m[13],w=m[3]*p[0]+m[7]*p[1]+m[11]*p[2]+m[15];return [(x/w+1)*canvas.clientWidth*.5,(1-y/w)*canvas.clientHeight*.5]}
+function compile(type,source){let shader=gl.createShader(type);gl.shaderSource(shader,source);gl.compileShader(shader);if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(shader));return shader}
+function program(vertex,fragment){let p=gl.createProgram();gl.attachShader(p,compile(gl.VERTEX_SHADER,vertex));gl.attachShader(p,compile(gl.FRAGMENT_SHADER,fragment));gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));return p}
+const baseVertex=`#version 300 es
+precision highp float;layout(location=0) in vec3 aPosition;layout(location=1) in vec3 aNormal;uniform mat4 uMVP,uModel;out vec3 vN,vP;
+void main(){vec4 p=uModel*vec4(aPosition,1.0);vP=p.xyz;vN=normalize(mat3(uModel)*aNormal);gl_Position=uMVP*vec4(aPosition,1.0);}`;
+const baseFragment=`#version 300 es
+precision highp float;in vec3 vN,vP;uniform vec3 uColor;uniform float uMetal;out vec4 outColor;
+void main(){vec3 n=normalize(vN),l=normalize(vec3(-0.55,0.78,1.));vec3 eye=normalize(vec3(0.0,0.3,7.6)-vP);float diffuse=.22+.75*max(0.,dot(n,l));float specular=pow(max(0.,dot(reflect(-l,n),eye)),28.)*(.3+.7*uMetal);float edge=pow(1.-max(0.,dot(n,eye)),2.);vec3 color=uColor*(diffuse+.25*edge)+specular*vec3(1.,.87,.7);outColor=vec4(color,1.);}`;
+const membraneVert=`#version 300 es
+precision highp float;
+layout(location=0) in vec2 aUv;uniform mat4 uVP,uModel;uniform float uTime,uSeed,uTempo,uAmp,uTwist,uMode,uLayer,uLayers,uHybrid,uMix,uPress,uCharge,uWave;uniform vec3 uTouch;
+out vec3 vWorld,vLocal;out vec2 vUv;out float vLayer,vTouch;
+const float PI=3.141592653589793,TAU=6.28318530718;
+vec3 form(float mode,vec2 uv,float layer){
+float u=uv.x,v=uv.y,time=uTime*uTempo,lc=(layer-(uLayers-1.)*.5);
+vec3 p=vec3(0.);
+if(mode<.5){
+ float x=(u*2.-1.)*(.86+.11*sin(time*.58+lc));float y=(v*2.-1.)*1.18;
+ float taper=pow(max(.0,1.-pow(abs(y)/1.4,2.0)),.6);
+ p=vec3(x*taper+.08*sin(y*3.+lc+time*.55),y,lc*.19+.23*sin(y*3.1+time+lc*.58)*cos(x*1.7)+.075*sin(x*5.-time*.9));
+}else if(mode<1.5){
+ float a0=layer*TAU/uLayers+uSeed*.18;
+ float r=.11+u*1.09;float spread=(v*2.-1.)*(.12+.31*sin(PI*u));
+ float a=a0+spread+.10*sin(u*PI*2.-time*.64+layer*.19)*u;
+ p=vec3(r*cos(a),r*sin(a),.17+.38*sin(PI*u)+.14*(v*2.-1.)+.13*sin(time*.7+layer*.77+u*2.));
+}else if(mode<2.5){
+ float a=TAU*v+time*.14*(mod(layer,2.)<1.?1.:-1.);
+ float sector=mod(a+PI/6.,PI/3.)-PI/6.;float edge=cos(PI/6.)/max(.8,cos(sector));
+ float r=(.27+.16*layer+u*.15)*edge;
+ p=vec3(r*cos(a),r*sin(a),lc*.27+.075*sin(a*6.+time*.72+layer*.8)+.045*cos(r*7.-time));
+}else if(mode<3.5){
+ float a=u*TAU+time*.12*(mod(layer,2.)<1.?1.:-1.);
+ float b=v*TAU;float big=.61+lc*.15;float small=.105+.026*sin(a*4.+time*.9+layer);
+ p=vec3((big+small*cos(b))*cos(a),(big+small*cos(b))*sin(a),small*sin(b)+lc*.075+.15*sin(a*2.+time*.5+layer)*cos(b));
+}else if(mode<4.5){
+ float a=TAU*v+layer*TAU/uLayers;float r=.17+u*.99;
+ float cuts=pow(abs(cos(a*4.)),2.5);float hex=cos(PI/6.)/max(.8,cos(mod(a+PI/6.,PI/3.)-PI/6.));
+ float rr=r*(.8+.2*cuts)*hex;
+ p=vec3(rr*cos(a),rr*sin(a),lc*.19+.37*(1.-u)*cos(4.*a+time*.4+layer*.3)+.045*sin(time+u*8.));
+}else{
+ float t=u*1.78*TAU;float a=layer*TAU/uLayers+t+time*.23;
+ float r=.24+.76*u;float width=(v*2.-1.)*(.08+.17*sin(u*PI));
+ p=vec3((r+width)*cos(a),(r+width)*sin(a),(.5-u)*1.63+.16*sin(t*.6+layer*.8+time*.47)+width*.7);
+}
+return p*uAmp;
+}
+void main(){vUv=aUv;vLayer=uLayer;
+vec3 p=form(uMode,aUv,uLayer);
+if(uMix>.001){vec3 alternate=form(uHybrid,aUv,uLayer);p=mix(p,alternate,uMix);}
+float dd=distance(p,uTouch);float wt=exp(-(dd*dd)/(.18+uPress*.12));
+float ripple=sin(dd*16.-uWave*17.)*exp(-abs(dd-uWave)*4.2)*uCharge;
+vec3 displacement=normalize(p+vec3(.001))*(.035*ripple-.12*uPress*wt);
+p+=displacement;
+vTouch=wt*uPress;vLocal=p;
+vec4 world=uModel*vec4(p,1.);vWorld=world.xyz;
+gl_Position=uVP*world;}`;
+const membraneFrag=`#version 300 es
+precision highp float;in vec3 vWorld,vLocal;in vec2 vUv;in float vLayer,vTouch;
+uniform float uMode,uTime,uHue,uSeed,uLayers,uCharge;out vec4 outColor;
+vec3 hsl2rgb(float h,float s,float l){vec3 rgb=clamp(abs(mod(h*6.+vec3(0.,4.,2.),6.)-3.)-1.,0.,1.);rgb=rgb*rgb*(3.-2.*rgb);return l+s*(rgb-.5)*(1.-abs(2.*l-1.));}
+void main(){
+float edgeU=smoothstep(.004,.085,vUv.x)*(1.-smoothstep(.915,.996,vUv.x));
+float edgeV=smoothstep(.003,.105,vUv.y)*(1.-smoothstep(.895,.997,vUv.y));
+float fade=(uMode<1.5||uMode>4.5)?edgeU*edgeV:edgeU;
+vec3 dx=dFdx(vWorld),dy=dFdy(vWorld);vec3 n=normalize(cross(dx,dy));vec3 view=normalize(vec3(0.,.2,7.6)-vWorld);
+float fres=pow(1.-abs(dot(n,view)),1.7);
+float phase=uTime*.5+vUv.x*15.+vUv.y*8.+vLayer*.6+uSeed;
+float rib=.5+.5*sin(phase);float lines=pow(rib,8.);
+float hue=fract(uHue/360.+.055*sin(vLayer*1.6)+.025*sin(vUv.y*8.+uSeed));
+vec3 base=hsl2rgb(hue,.70,.42);vec3 highlight=hsl2rgb(fract(hue+.10),.72,.72);
+vec3 color=mix(base,highlight,.38*fres+.33*lines+.15*vTouch);
+color*=.60+.55*fres+.10*lines;
+float alpha=clamp((.21+.45*fres+.10*lines)*fade,.0,.79);
+if(alpha<.009)discard;
+outColor=vec4(color,alpha);}`;
+const starVertex=`#version 300 es
+precision highp float;layout(location=0) in vec3 aPosition;layout(location=1) in float aAlpha;uniform mat4 uVP;uniform float uTime;out float vAlpha;
+void main(){vAlpha=aAlpha;vec3 p=aPosition;p.y+=sin(uTime*.16+aPosition.x*2.)*.03;gl_Position=uVP*vec4(p,1.);gl_PointSize=1.5+2.*aAlpha;}`;
+const starFragment=`#version 300 es
+precision highp float;in float vAlpha;out vec4 outColor;void main(){float d=length(gl_PointCoord-.5);if(d>.5)discard;outColor=vec4(.69,.76,.9,(1.-d*2.)*vAlpha*.5);}`;
+const programs={box:program(baseVertex,baseFragment),form:program(membraneVert,membraneFrag),star:program(starVertex,starFragment)};
+function uniforms(p,names){const obj={};for(let s of names)obj[s]=gl.getUniformLocation(p,s);return obj}
+const bU=uniforms(programs.box,['uMVP','uModel','uColor','uMetal']);
+const fU=uniforms(programs.form,['uVP','uModel','uTime','uSeed','uTempo','uAmp','uTwist','uMode','uLayer','uLayers','uHybrid','uMix','uPress','uCharge','uWave','uTouch','uHue']);
+const sU=uniforms(programs.star,['uVP','uTime']);
+function buf(data,target=gl.ARRAY_BUFFER){const out=gl.createBuffer();gl.bindBuffer(target,out);gl.bufferData(target,data,gl.STATIC_DRAW);return out}
+const faces=[
+[[0,0,1],[[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]]],
+[[0,0,-1],[[1,-1,-1],[-1,-1,-1],[-1,1,-1],[1,1,-1]]],
+[[1,0,0],[[1,-1,1],[1,-1,-1],[1,1,-1],[1,1,1]]],
+[[-1,0,0],[[-1,-1,-1],[-1,-1,1],[-1,1,1],[-1,1,-1]]],
+[[0,1,0],[[-1,1,1],[1,1,1],[1,1,-1],[-1,1,-1]]],
+[[0,-1,0],[[-1,-1,-1],[1,-1,-1],[1,-1,1],[-1,-1,1]]]
+];
+let cubeV=[];for(let [normal,verts] of faces){for(let index of [0,1,2,0,2,3])cubeV.push(...verts[index].map(x=>x*.5),...normal)}
+const cubeVao=gl.createVertexArray();gl.bindVertexArray(cubeVao);const cubeBuf=buf(new Float32Array(cubeV));gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,24,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,3,gl.FLOAT,false,24,12);gl.bindVertexArray(null);
+let gridUv=[],indices=[],meshW=72,meshH=38;for(let j=0;j<=meshH;j++)for(let i=0;i<=meshW;i++)gridUv.push(i/meshW,j/meshH);
+for(let j=0;j<meshH;j++)for(let i=0;i<meshW;i++){let a=j*(meshW+1)+i,b=a+1,c=a+meshW+1,d=c+1;indices.push(a,c,b,b,c,d)}
+const surfVao=gl.createVertexArray();gl.bindVertexArray(surfVao);buf(new Float32Array(gridUv));gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,8,0);const surfaceIndices=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,surfaceIndices);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint16Array(indices),gl.STATIC_DRAW);gl.bindVertexArray(null);
+let ringVertices=[],ringNormals=[];const major=32,minor=10;for(let j=0;j<major;j++)for(let i=0;i<minor;i++){
+ let aj=j/major*TAU,ai=i/minor*TAU,an=(j+1)/major*TAU,ain=(i+1)/minor*TAU;
+ function vertex(a,b){return [(.155+.034*Math.cos(b))*Math.cos(a),(.155+.034*Math.cos(b))*Math.sin(a),.034*Math.sin(b)];}
+ let p1=vertex(aj,ai),p2=vertex(an,ai),p3=vertex(an,ain),p4=vertex(aj,ain);
+ for(let p of [p1,p2,p3,p1,p3,p4])ringVertices.push(...p);
+}
+const ringBuf=buf(new Float32Array(ringVertices));
+// Background stars are GPU points; no textures or image assets.
+let starData=[],rr=random(128811);for(let i=0;i<130;i++){let x=(rr()-.5)*12,y=(rr()-.5)*17,z=-1.8-rr()*4;starData.push(x,y,z,.3+rr()*.6)}
+const starsVao=gl.createVertexArray();gl.bindVertexArray(starsVao);buf(new Float32Array(starData));gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,16,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,1,gl.FLOAT,false,16,12);gl.bindVertexArray(null);
+let VP=matId(),width=1,height=1,dpr=1;
+function resize(){width=canvas.clientWidth;height=canvas.clientHeight;dpr=Math.min(devicePixelRatio||1,1.7);canvas.width=Math.floor(width*dpr);canvas.height=Math.floor(height*dpr);gl.viewport(0,0,canvas.width,canvas.height);
+let fovy=(width/height>1?46:39)*PI/180;VP=matMul(perspective(fovy,width/height,.15,100),move(0,0,-7.55));}
+window.addEventListener('resize',resize);resize();
+function drawCube(parent,offset,dimensions,color,metal=0){let model=combo(parent,move(...offset),size(...dimensions));gl.uniformMatrix4fv(bU.uModel,false,model);gl.uniformMatrix4fv(bU.uMVP,false,matMul(VP,model));gl.uniform3fv(bU.uColor,color);gl.uniform1f(bU.uMetal,metal);gl.drawArrays(gl.TRIANGLES,0,36)}
+const RED=[.82,.055,.06],DEEP=[.39,.025,.07],WHITE=[.97,.93,.86],GOLD=[.85,.55,.25];
+function drawBox(t,opening=0){gl.useProgram(programs.box);gl.bindVertexArray(cubeVao);
+let parent=combo(move(0,Math.sin(t*.7)*.08-opening*2.1,0),rotateY(boxAngleY),rotateX(boxAngleX),size(1-opening*.68,1-opening*.68,1-opening*.68));
+ drawCube(parent,[0,-.72,0],[1.78,.13,1.78],DEEP,.4);
+ for(let sign of [-1,1]){drawCube(parent,[sign*.845,-.18,0],[.12,1.0,1.78],RED,.25);drawCube(parent,[0,-.18,sign*.845],[1.56,1.0,.12],RED,.25)}
+ drawCube(parent,[0,-.18,.92],[.14,1.0,.022],GOLD,1);
+ const hinge=combo(parent,move(0,.37,-.87),rotateX(-opening*2.52),move(0,.04,.87));
+ drawCube(hinge,[0,0,0],[1.95,.24,1.98],WHITE,.45);
+ drawCube(hinge,[0,.004,0],[.17,.255,1.98],GOLD,.95);drawCube(hinge,[0,.004,0],[1.98,.255,.17],GOLD,.95);
+ gl.bindVertexArray(null)
+}
+function drawHanger(parent){gl.useProgram(programs.box);gl.bindVertexArray(cubeVao);drawCube(parent,[0,1.35,0],[.17,.125,.2],GOLD,.95);gl.bindVertexArray(null);
+ // Metal loop is generated from periodic 3D geometry, separate from the living pattern.
+ gl.useProgram(programs.box);gl.bindVertexArray(null);gl.bindBuffer(gl.ARRAY_BUFFER,ringBuf);
+ gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,12,0);
+ gl.disableVertexAttribArray(1);gl.vertexAttrib3f(1,0,0,1);
+ const loop=combo(parent,move(0,1.53,0),rotateX(PI/2));gl.uniformMatrix4fv(bU.uModel,false,loop);gl.uniformMatrix4fv(bU.uMVP,false,matMul(VP,loop));gl.uniform3fv(bU.uColor,GOLD);gl.uniform1f(bU.uMetal,1);
+ gl.drawArrays(gl.TRIANGLES,0,ringVertices.length/3);
+}
+function artModel(t){return combo(move(0,-.03,0),rotateY(artAngleY),rotateX(artAngleX),rotateZ(artAngleZ),size(zoom,zoom,zoom))}
+function drawForm(t,alpha){gl.useProgram(programs.form);gl.bindVertexArray(surfVao);
+ const model=artModel(t),s=settings;gl.uniformMatrix4fv(fU.uVP,false,VP);gl.uniformMatrix4fv(fU.uModel,false,model);
+ gl.uniform1f(fU.uTime,t);gl.uniform1f(fU.uSeed,s.seed);gl.uniform1f(fU.uTempo,s.tempo);gl.uniform1f(fU.uAmp,s.amp);gl.uniform1f(fU.uTwist,s.twist);
+ gl.uniform1f(fU.uMode,chosen);gl.uniform1f(fU.uHybrid,(chosen+1)%6);gl.uniform1f(fU.uMix,s.mix);gl.uniform1f(fU.uLayers,s.layers);
+ gl.uniform1f(fU.uHue,s.hue);gl.uniform1f(fU.uPress,press);gl.uniform1f(fU.uCharge,charge);gl.uniform1f(fU.uWave,waveTime);gl.uniform3fv(fU.uTouch,touch);
+ gl.disable(gl.CULL_FACE);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);
+ for(let layer=0;layer<s.layers;layer++){gl.uniform1f(fU.uLayer,layer);gl.drawElements(gl.TRIANGLES,indices.length,gl.UNSIGNED_SHORT,0)}
+ gl.depthMask(true);gl.disable(gl.BLEND);gl.bindVertexArray(null);
+ drawHanger(model);
+}
+function drawStars(t){gl.useProgram(programs.star);gl.bindVertexArray(starsVao);gl.uniformMatrix4fv(sU.uVP,false,VP);gl.uniform1f(sU.uTime,t);gl.depthMask(false);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE);gl.drawArrays(gl.POINTS,0,130);gl.disable(gl.BLEND);gl.depthMask(true);gl.bindVertexArray(null)}
+function startOpen(){if(phase!=='box')return;phase='opening';openAt=now;el('open').hidden=true;el('hint').textContent='Форма рождается из живой математики…';settingsFor()}
+function finishOpen(){phase='art';app.classList.add('revealed');el('meta').classList.add('active');el('back').hidden=false;el('next').hidden=!!qr;el('variation').hidden=!!qr;el('mix').hidden=!!qr;el('hint').textContent='Петля — вращай · структура — касайся · удерживай — волна'}
+function resetBox(){phase='box';app.classList.remove('revealed');el('meta').classList.remove('active');el('open').hidden=false;for(let id of ['back','next','variation','mix'])el(id).hidden=true;el('hint').textContent='Поверни 3D-коробочку и открой сюрприз';el('serial').textContent='';pointing.clear();targetPress=0;press=0}
+function switchMode(variant){if(qr)return;if(!variant){chosen=(chosen+1)%families.length;variation=0;mixMode=false}else variation++;
+ settingsFor();waveTime=0;charge=.24;press=0;targetPress=0;el('mix').textContent='◇ Гибрид';}
+el('open').addEventListener('click',startOpen);el('back').addEventListener('click',resetBox);
+el('next').addEventListener('click',()=>switchMode(false));el('variation').addEventListener('click',()=>switchMode(true));
+el('mix').addEventListener('click',()=>{if(qr)return;mixMode=!mixMode;settingsFor();el('mix').textContent=mixMode?'◇ Снять микс':'◇ Гибрид'});
+function pointerLoc(e){let rect=canvas.getBoundingClientRect();return {x:e.clientX-rect.left,y:e.clientY-rect.top}}
+canvas.addEventListener('pointerdown',e=>{let loc=pointerLoc(e),mode='rotate';
+ if(phase==='art'){
+  let loopPoint=project([0,1.53,0],matMul(VP,artModel(now)));
+  if(Math.hypot(loc.x-loopPoint[0],loc.y-loopPoint[1])<56)mode='grip';
+  else if(Math.hypot(loc.x-width*.5,loc.y-height*.53)<Math.min(width,height)*.38){mode='touch';targetPress=.6;charge=.22;waveTime=0;touch=[(loc.x-width*.5)/(width*.25),-(loc.y-height*.52)/(height*.23),.25]}
+ }
+ pointing.set(e.pointerId,{x:loc.x,y:loc.y,ox:loc.x,oy:loc.y,mode,time:performance.now(),moved:false});
+ try{canvas.setPointerCapture(e.pointerId)}catch(_e){}e.preventDefault()
+},{passive:false});
+canvas.addEventListener('pointermove',e=>{let p=pointing.get(e.pointerId);if(!p)return;let loc=pointerLoc(e),dx=loc.x-p.x,dy=loc.y-p.y;p.x=loc.x;p.y=loc.y;if(Math.abs(p.ox-p.x)+Math.abs(p.oy-p.y)>7)p.moved=true;
+ if(phase==='box'){boxAngleY+=dx*.009;boxAngleX=clamp(boxAngleX+dy*.007,-.6,.6)}
+ else if(phase==='art'){
+  if(p.mode==='touch'){
+   touch=[clamp((loc.x-width*.5)/(width*.27),-1.5,1.5),clamp(-(loc.y-height*.52)/(height*.27),-1.5,1.5),.26];targetPress=.72;charge=Math.min(.85,charge+.04)
+  }else{
+   artAngleY+=dx*(p.mode==='grip'?.017:.009);artAngleX=clamp(artAngleX+dy*.007,-1.3,1.3);velocityY=dx*.0009;velocityX=dy*.0007;
+   if(p.mode==='grip')artAngleZ=clamp(artAngleZ-dx*.003,-.5,.5)
+  }
+ }
+ e.preventDefault()
+},{passive:false});
+canvas.addEventListener('pointerup',e=>{let p=pointing.get(e.pointerId);if(!p)return;
+ if(phase==='box'&&!p.moved)startOpen();if(phase==='art'&&p.mode==='touch'){targetPress=0;charge=.6;waveTime=0}
+ pointing.delete(e.pointerId);e.preventDefault()
+},{passive:false});
+canvas.addEventListener('pointercancel',e=>{pointing.delete(e.pointerId);targetPress=0},{passive:false});
+function frame(timestamp){requestAnimationFrame(frame);let t=timestamp*.001,dt=clamp((timestamp-lastFrame)*.001,.001,.045);lastFrame=timestamp;now=t;
+ gl.viewport(0,0,canvas.width,canvas.height);gl.clearColor(.026,.029,.053,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);
+ drawStars(t);
+ if(phase==='box')drawBox(t,0);
+ if(phase==='opening'){
+  let x=clamp((t-openAt)/1.55,0,1),f=x*x*(3-2*x);drawBox(t,f);
+  if(x>.28){drawForm(t,f)}if(x>=1)finishOpen()
+ }
+ if(phase==='art'){
+  artAngleY+=dt*.085+velocityY;artAngleX=clamp(artAngleX+velocityX,-1.3,1.3);velocityX*=.93;velocityY*=.93;artAngleZ*=.997;
+  press+=(targetPress-press)*Math.min(1,dt*6.5);charge*=Math.pow(.96,dt*60);waveTime+=dt*1.45;
+  drawForm(t,1)
+ }
+}
+settingsFor();
+el('loading').classList.add('hidden');requestAnimationFrame(frame);
+})();
+</script></body></html>
