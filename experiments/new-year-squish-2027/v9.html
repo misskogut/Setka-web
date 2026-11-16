@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"><meta name="theme-color" content="#0b070e">
+<title>585 × SETKA · Гибридные паттерны v9</title>
+<style>
+*{box-sizing:border-box}html,body{height:100%;margin:0;overflow:hidden;overscroll-behavior:none}
+body{background:#08070b;color:#fff;font:13px -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;user-select:none;-webkit-user-select:none}
+button{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+#app{position:relative;height:100dvh;width:100%;background:#09070c;overflow:hidden}
+canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block}
+header{position:absolute;left:0;right:0;top:calc(22px + env(safe-area-inset-top));text-align:center;z-index:2;pointer-events:none}
+.logo{font-size:20px;font-weight:850;letter-spacing:-.04em}.logo i{font-style:normal;color:#fa4a31}.logo b{font-size:14px;font-weight:700}
+.edition{margin:15px 0 0;color:#e8aa96;letter-spacing:.22em;font-size:9px;font-weight:730}
+h1{font:400 clamp(26px,7vw,38px) Georgia,serif;margin:12px 0 0}
+#sub{margin:8px 0 0;color:#d6b0a4;font-size:12px}
+#info{position:absolute;z-index:3;left:0;right:0;top:calc(134px + env(safe-area-inset-top));text-align:center;pointer-events:none;opacity:0;transform:translateY(9px);transition:opacity .6s,transform .6s}
+#info.show{opacity:1;transform:translateY(0)}
+#app.artifact-open header h1,#app.artifact-open #sub{display:none}
+#app.artifact-open #info{top:calc(90px + env(safe-area-inset-top))}
+#app.artifact-open .edition{margin-top:10px}
+#name{font:400 22px Georgia,serif}
+#type{font-size:9px;letter-spacing:.16em;color:#e6aa98;margin-top:8px}
+footer{position:absolute;z-index:3;bottom:calc(21px + env(safe-area-inset-bottom));left:0;right:0;text-align:center;display:flex;align-items:center;flex-direction:column;gap:10px;padding:0 12px}
+#tip{font-size:12px;line-height:1.45;color:#f8d6c7;max-width:325px;text-shadow:0 2px 9px #000}
+#id{font-size:9px;letter-spacing:.15em;color:#b88b7e}
+.buttons{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;max-width:96vw}.buttons button{padding:10px 13px}
+button{padding:10px 17px;border-radius:99px;background:#3c2020bb;border:1px solid #ebb89170;font-size:11px;backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
+button:active{background:#873b31}
+#open{background:linear-gradient(130deg,#e83c30,#b71f27);border:1px solid #ffaf92;padding:14px 25px;font-weight:780;letter-spacing:.11em;box-shadow:0 3px 25px #f04a3033}
+button[hidden]{display:none}
+#load{position:absolute;inset:0;z-index:9;display:flex;align-items:center;justify-content:center;background:#0b070e;color:#dbac9d;letter-spacing:.06em;text-align:center;padding:25px}
+#load.hide{display:none}
+@media(max-height:580px){header{top:10px}.edition{margin-top:7px}h1{font-size:23px;margin-top:6px}#sub{display:none}#info{top:88px}#name{font-size:18px}footer{bottom:calc(7px + env(safe-area-inset-bottom));gap:5px}button{padding:8px 12px}}
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script></head>
+<body><main id="app">
+<canvas id="scene" aria-label="Настоящая процедурная 3D-графика. Вращайте подарок, открывайте коробочку, сжимайте пространственный паттерн."></canvas>
+<header><div class="logo">585 <i>✳</i> <b>ЗОЛОТОЙ</b></div><div class="edition">НОВОГОДНЯЯ КОЛЛЕКЦИЯ · v9</div><h1>Живые гибриды</h1><p id="sub">На основе паттернов SETKA Web</p></header>
+<div id="info"><div id="name"></div><div id="type"></div></div>
+<footer><div id="tip">Покрути коробочку вокруг оси. Потом открой её.</div><div id="id"></div>
+<button id="open">✦ ОТКРЫТЬ СЮРПРИЗ ✦</button><div class="buttons"><button hidden id="back">↶ Коробочка</button><button hidden id="next">◈ Другой тип</button><button hidden id="mutate">✳ Вариация</button></div></footer>
+<div id="load">Запускаем математическое 3D-пространство…</div>
+</main>
+<script type="module">
+import * as THREE from "three";
+import {EffectComposer} from "three/addons/postprocessing/EffectComposer.js";
+import {RenderPass} from "three/addons/postprocessing/RenderPass.js";
+import {UnrealBloomPass} from "three/addons/postprocessing/UnrealBloomPass.js";
+const el=s=>document.getElementById(s),canvas=el("scene"),tip=el("tip"),btn=el("open"),back=el("back"),next=el("next"),mutate=el("mutate"),info=el("info"),TAU=2*Math.PI;
+const clamp=(a,b,c)=>Math.min(c,Math.max(b,a)),v=(x,y,z)=>new THREE.Vector3(x,y,z);
+const query=new URLSearchParams(location.search),fixed=(query.get("gift")||"").trim().slice(0,120);
+function keyGen(){let a=new Uint32Array(2);crypto.getRandomValues(a);return "SQ-"+a[0].toString(36)+"-"+a[1].toString(36)}
+let key=fixed;if(!key)try{key=localStorage.getItem("585-squish-v9")||""}catch(e){}
+if(!key){key=keyGen();try{localStorage.setItem("585-squish-v9",key)}catch(e){}}
+next.hidden=!!fixed;mutate.hidden=!!fixed;
+function hash(s){let h=2166136261;for(let i=0;i<s.length;i++)h=Math.imul(h^s.charCodeAt(i),16777619);return h>>>0}
+function rng(seed){return function(){seed+=0x6d2b79f5;let t=Math.imul(seed^(seed>>>15),1|seed);t=(t+Math.imul(t^(t>>>7),61|t))^t;return ((t^(t>>>14))>>>0)/4294967296}}
+const kinds=[
+ {name:"HexaTunnel",category:"HEXWAVE × НЕЙРОМОСТ · ДЫШАЩАЯ ГЕКСАГЛУБИНА",kind:"hexatunnel"},
+ {name:"MedusaWheel",category:"МЕДУЗА × РАДИАЛЬНАЯ ВОЛНА · ЖИВОЕ КОЛЕСО",kind:"medusawheel"},
+ {name:"NeuroDNA",category:"НЕЙРОМОСТ × СТЕРЕО-ДНК · ДВОЙНАЯ СПИРАЛЬ",kind:"neurodna"},
+ {name:"Fractal Halo",category:"ФРАКТАЛ × ПОЛУСФЕРИЧЕСКИЕ СПИРАЛИ",kind:"fractalhalo"},
+ {name:"Atom Grid",category:"АТОМ × HEXWAVE · ОРБИТАЛЬНАЯ РЕШЁТКА",kind:"atomgrid"},
+ {name:"Bridge Bloom",category:"НЕЙРОМОСТ × РАДИАЛЬНАЯ ВОЛНА · РАСКРЫТИЕ",kind:"bridgebloom"}
+];
+let selectedKind=null,variation=0;
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x09070c);scene.fog=new THREE.FogExp2(0x09070c,.04);
+const camera=new THREE.PerspectiveCamera(38,1,.1,80);camera.position.set(0,.05,8.6);
+const render=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:"high-performance"});
+render.setPixelRatio(Math.min(devicePixelRatio||1,1.5));render.outputColorSpace=THREE.SRGBColorSpace;
+render.toneMapping=THREE.ACESFilmicToneMapping;render.toneMappingExposure=1.16;
+scene.add(new THREE.AmbientLight(0xffd9cd,.85));
+function light(color,power,pos){let L=new THREE.PointLight(color,power,16,2);L.position.copy(pos);scene.add(L)}
+light(0xffc49c,44,v(-3,4,5));light(0xff3756,25,v(4,-1,4));light(0x7099ff,16,v(0,2,-4));
+let composer;try{composer=new EffectComposer(render);composer.addPass(new RenderPass(scene,camera));let bloom=new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),.58,.35,.18);bloom.strength=.25;bloom.radius=.16;bloom.threshold=.90;composer.addPass(bloom)}catch(err){composer=null}
+function resize(){let w=innerWidth,h=innerHeight;render.setSize(w,h,false);camera.aspect=w/h;camera.fov=w/h>1?45:38;camera.updateProjectionMatrix();if(composer)composer.setSize(w,h)}
+addEventListener("resize",resize);resize();
+const red=new THREE.MeshPhysicalMaterial({color:0xe42b28,metalness:.42,roughness:.2,clearcoat:1});
+const deepRed=new THREE.MeshPhysicalMaterial({color:0x821421,metalness:.45,roughness:.21,clearcoat:1});
+const ivory=new THREE.MeshPhysicalMaterial({color:0xfff3eb,metalness:.26,roughness:.17,clearcoat:1});
+const gold=new THREE.MeshStandardMaterial({color:0xfbd196,metalness:.94,roughness:.13,emissive:0x301305,emissiveIntensity:.25});
+const metal=new THREE.MeshStandardMaterial({color:0xa96224,metalness:.89,roughness:.18});
+const world=new THREE.Group();scene.add(world);
+const pack=new THREE.Group();world.add(pack);
+function box(parent,w,h,d,x,y,z,mat){let ob=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);ob.position.set(x,y,z);parent.add(ob);return ob}
+// True 3D box, separate walls + a hinged volumetric lid; all surfaces built from primitives.
+box(pack,1.92,.14,1.92,0,-.91,0,deepRed);
+for(let s of [-1,1]){box(pack,.15,1.32,1.92,s*.89,-.18,0,red);box(pack,1.62,1.32,.15,0,-.18,s*.89,red)}
+for(let s of [-1,1])box(pack,.035,1.28,.035,s*.28,-.20,.987,gold);
+const lidJoint=new THREE.Group();lidJoint.position.set(0,.58,-.89);pack.add(lidJoint);
+const lid=new THREE.Group();lidJoint.add(lid);
+box(lid,2.12,.27,2.14,0,.1,1.05,ivory);
+box(lid,.25,.292,2.16,0,.105,1.05,gold);box(lid,2.14,.294,.24,0,.105,1.05,metal);
+box(lid,.24,.015,2.18,0,.25,1.05,gold);box(lid,2.17,.015,.23,0,.25,1.05,gold);
+const frontLogo=new THREE.Group();pack.add(frontLogo);
+let shape=new THREE.Shape();
+for(let i=0;i<16;i++){let a=i*Math.PI/8+Math.PI/2,rad=i%2===0?.22:.09;if(!i)shape.moveTo(Math.cos(a)*rad,Math.sin(a)*rad);else shape.lineTo(Math.cos(a)*rad,Math.sin(a)*rad)}shape.closePath();
+let goldStar=new THREE.Mesh(new THREE.ExtrudeGeometry(shape,{depth:.03,bevelEnabled:true,bevelThickness:.008,bevelSize:.006}),gold);goldStar.position.set(0,-.16,.97);frontLogo.add(goldStar);
+// Artifact shapes are tubes or true polyhedra in XYZ, not 2D patterns in a silhouette or texture.
+const artifact=new THREE.Group();world.add(artifact);artifact.visible=false;
+const body=new THREE.Group();artifact.add(body);
+const hanger=new THREE.Group();artifact.add(hanger);
+let ring=new THREE.Mesh(new THREE.TorusGeometry(.12,.027,10,32),gold);ring.position.y=1.99;hanger.add(ring);
+let cap=new THREE.Mesh(new THREE.CylinderGeometry(.15,.17,.15,24),gold);cap.position.y=1.78;hanger.add(cap);
+let ringInner=new THREE.Mesh(new THREE.TorusGeometry(.087,.008,6,20),ivory);ringInner.position.y=1.99;hanger.add(ringInner);
+const picker=new THREE.Mesh(new THREE.SphereGeometry(1.63,16,12),new THREE.MeshBasicMaterial({visible:false}));body.add(picker);const gripZone=new THREE.Mesh(new THREE.SphereGeometry(.33,12,10),new THREE.MeshBasicMaterial({visible:false}));gripZone.position.y=1.95;hanger.add(gripZone);
+let spec,rnd,materialMap=[],baseUniforms={time:{value:0},touch:{value:v(0,0,1)},drag:{value:v(0,0,0)},press:{value:0},wave:{value:5},power:{value:0},family:{value:0}};
+function makeMaterial(color,glow=1){
+ let mat=new THREE.MeshPhysicalMaterial({color:color,metalness:.17,roughness:.3,clearcoat:.46,clearcoatRoughness:.18,emissive:color,emissiveIntensity:glow*.25,side:THREE.DoubleSide,toneMapped:true});
+ mat.onBeforeCompile=sh=>{
+ sh.uniforms.sqTime=baseUniforms.time;sh.uniforms.sqTouch=baseUniforms.touch;sh.uniforms.sqDrag=baseUniforms.drag;sh.uniforms.sqPress=baseUniforms.press;sh.uniforms.sqWave=baseUniforms.wave;sh.uniforms.sqPower=baseUniforms.power;sh.uniforms.sqFamily=baseUniforms.family;
+ sh.vertexShader=sh.vertexShader.replace("#include <common>","#include <common>\nuniform float sqTime,sqPress,sqWave,sqPower,sqFamily;uniform vec3 sqTouch,sqDrag;varying float vSqSignal;");
+ sh.fragmentShader=sh.fragmentShader.replace("#include <common>","#include <common>\nvarying float vSqSignal;");
+ sh.fragmentShader=sh.fragmentShader.replace("#include <emissivemap_fragment>","#include <emissivemap_fragment>\ntotalEmissiveRadiance += diffuseColor.rgb * (.12*vSqSignal);");
+ sh.vertexShader=sh.vertexShader.replace("#include <begin_vertex>","#include <begin_vertex>\nfloat dd=length(position-sqTouch);\nfloat falloff=exp(-(dd*dd)/(.38+sqPress*.19));\nfloat phase=sqTime*(.52+.082*sqFamily);\nfloat r=length(position),ang=atan(position.y,position.x);\nfloat f1=sin(phase*1.24 + position.x*3.9 + position.z*2.1);\nfloat f2=cos(phase*.93 - position.y*3.3 + position.z*4.);\nvec3 surfaceWave=vec3(f1,f2,sin(phase*1.1+position.x*2.4-position.z*3.));\nif(sqFamily<.5){\n transformed.z+=.041*sin(phase*1.3+r*7.2);\n transformed.xy*=1.+.019*sin(phase+r*3.);\n}else if(sqFamily<1.5){\n float sway=.063*sin(phase*.94+position.y*3.2+position.z*1.8);\n transformed.x+=sway;\n transformed.z+=.039*cos(phase*.8+position.y*4.3);\n}else if(sqFamily<2.5){\n transformed.xy+=.024*vec2(sin(phase+position.y*4.),cos(phase+position.y*4.));\n}else if(sqFamily<3.5){\n transformed+=normal*.027*sin(ang*8.+phase*1.5+r*5.);\n}else if(sqFamily<4.5){\n transformed+=normal*.036*sin(phase*1.1 + r*7.);\n}else{\n transformed.xy*=1.+.032*sin(phase+position.z*5.);\n}\ntransformed+=surfaceWave*.009;\nfloat wavefront=sin(dd*17.-sqWave*19.)*exp(-abs(dd-sqWave)*3.1)*sqPower*.08;\ntransformed+=normal*wavefront;\ntransformed-=normalize(position+vec3(.0001))*sqPress*.52*falloff;\ntransformed+=sqDrag*falloff*.85;\nvSqSignal=.28+.72*pow(.5+.5*sin(phase*2.4+position.x*5.2+position.z*4.9),4.);");
+ };
+ mat.userData.baseGlow=glow*.25;materialMap.push(mat);return mat
+}
+let flowPaths=[],flowAnim=[],flowCloud=null;
+function pathTube(points,radius,mat,segments=6,closed=false){
+ let curve=new THREE.CatmullRomCurve3(points,closed,"centripetal");
+ let geom=new THREE.TubeGeometry(curve,Math.max(20,points.length-1),Math.max(.003,radius*.46),Math.max(4,Math.min(6,segments)),closed);
+ let mesh=new THREE.Mesh(geom,mat);body.add(mesh);
+ if(flowPaths.length<650 && points.length>20)flowPaths.push({curve,color:mat.color});
+ return mesh
+}
+function buildFlow(){
+ if(!flowPaths.length)return;
+ let count=Math.min(112,Math.max(62,flowPaths.length)),pos=new Float32Array(count*3),colors=new Float32Array(count*3);
+ let color=new THREE.Color(),g=new THREE.BufferGeometry();
+ flowAnim=[];
+ for(let i=0;i<count;i++){
+  let n=Math.floor(rnd()*flowPaths.length),f=rnd(),speed=.022+rnd()*.09;
+  flowAnim.push({n,f,speed});
+  const point=flowPaths[n].curve.getPoint(f);
+  pos.set([point.x,point.y,point.z],i*3);
+  color.copy(flowPaths[n].color).lerp(new THREE.Color(0xffffff),.45+rnd()*.45);
+  colors.set([color.r,color.g,color.b],i*3);
+ }
+ g.setAttribute("position",new THREE.BufferAttribute(pos,3).setUsage(THREE.DynamicDrawUsage));
+ g.setAttribute("color",new THREE.BufferAttribute(colors,3));
+ flowCloud=new THREE.Points(g,new THREE.PointsMaterial({size:.016,vertexColors:true,transparent:true,opacity:.66,depthWrite:false,blending:THREE.AdditiveBlending}));
+ body.add(flowCloud)
+}
+function animateFlow(dt){
+ if(!flowCloud)return;
+ let a=flowCloud.geometry.attributes.position;
+ for(let i=0;i<flowAnim.length;i++){
+  let f=flowAnim[i];f.f=(f.f+f.speed*dt)%1;
+  const p=flowPaths[f.n].curve.getPoint(f.f);
+  a.setXYZ(i,p.x,p.y,p.z);
+ }
+ a.needsUpdate=true
+}
+function seedColor(hex,light=.0){let c=new THREE.Color(hex);c.offsetHSL((rnd()-.5)*.06,0,light);return c}
+
+// Each family has one coherent topology. No random knot crossing, no enclosing shell.
+function palette(a,b,c){
+ return [makeMaterial(a,1.2),makeMaterial(b,1.45),makeMaterial(c,1.12)]
+}
+function curve(pts,thickness,mat,closed=false){return pathTube(pts,thickness,mat,5,closed)}
+function closedPoints(fn,n=90){
+ let pts=[];for(let i=0;i<=n;i++)pts.push(fn(i/n*TAU,i/n));
+ return pts
+}
+
+function colorPalette(a,b,c) {
+ const shift=(spec.hueShift||0);
+ function tint(hex){let x=new THREE.Color(hex);x.offsetHSL(shift,0,0);return x}
+ return [makeMaterial(tint(a),1.25),makeMaterial(tint(b),1.4),makeMaterial(tint(c),1.0)]
+}
+function line(points,mat,width=.013,closed=false){return pathTube(points,width,mat,5,closed)}
+function onRing(fn,samples=84){let pts=[];for(let i=0;i<=samples;i++)pts.push(fn(i/samples*TAU,i/samples));return pts}
+function makeHexaTunnel(){
+ const m=colorPalette(0xe9ffff,0x72dfee,0x9fa7ff);
+ const side=.19,space=side*1.5,rowH=Math.sqrt(3)*side;
+ let cells=[];
+ for(let a=-5;a<=5;a++)for(let b=-5;b<=5;b++){
+  let x=a*space,y=(b+(a&1)*.5)*rowH;
+  if(Math.hypot(x,y)<.92)cells.push([x,y])
+ }
+ const layers=spec.layers===3?3:4;
+ for(let level=0;level<layers;level++){
+  let z=(level-(layers-1)/2)*.38,scale=1-level*.105;
+  for(let c=0;c<cells.length;c++){
+   let [x,y]=cells[c],pts=[];
+   for(let i=0;i<=6;i++){
+    let angle=i*TAU/6,xx=(x+.81*side*Math.cos(angle))*scale,yy=(y+.81*side*Math.sin(angle))*scale;
+    let depth=z+.085*Math.sin(Math.hypot(xx,yy)*3+spec.mutation*.7);
+    pts.push(v(xx,yy,depth))
+   }
+   line(pts,m[level%3],c%9===0?.018:.012)
+  }
+ }
+ // Only a few depth struts reveal the tunnel, not a mesh of crossings.
+ for(let c=0;c<cells.length;c+=8){let [x,y]=cells[c],pts=[];
+  for(let layer=0;layer<layers;layer++)pts.push(v(x*(1-layer*.105),y*(1-layer*.105),(layer-(layers-1)/2)*.38));
+  line(pts,m[1],.011)
+ }
+}
+function makeMedusaWheel(){
+ const m=colorPalette(0xcfffff,0x74e0fa,0xa8baff);
+ const arms=spec.arms,ringCount=5;
+ for(let arm=0;arm<arms;arm++){
+  let theta=arm*TAU/arms,pts=[];
+  for(let i=0;i<=105;i++){
+   let u=i/105,rr=.12+u*1.08,swirl=.10*Math.sin(u*TAU*spec.twist+spec.mutation*.4)*u;
+   let a=theta+swirl,depth=.11*Math.sin(u*TAU*1.2+theta*2)+.28*Math.cos(u*Math.PI);
+   pts.push(v(rr*Math.cos(a),rr*Math.sin(a),depth))
+  }
+  line(pts,m[arm%6===0?2:1],arm%6===0?.022:.015);
+  // One coherent tendril per spoke, extending in depth.
+  let tendril=[];
+  for(let i=0;i<=65;i++){let u=i/65,ang=theta+.13*u*Math.sin(spec.mutation+u*5),rad=.7+.15*Math.sin(u*Math.PI);
+   tendril.push(v(rad*Math.cos(ang),rad*Math.sin(ang),.04+u*.75))}
+  line(tendril,m[0],.012)
+ }
+ for(let r=0;r<ringCount;r++){
+  let radius=.23+r*.195,depth=.17*Math.cos(r*.62);
+  line(onRing(a=>v(radius*Math.cos(a),radius*Math.sin(a),depth+.038*Math.sin(a*arms*.5+spec.mutation)),100),m[r%3],r===2?.024:.013)
+ }
+}
+function makeNeuroDNA(){
+ const m=colorPalette(0xf2ffff,0x76dcf4,0xcdacfa),turns=spec.twist*1.3+1.55,height=1.24,rad=.55;
+ for(let side=0;side<2;side++){
+  let pts=[];
+  for(let i=0;i<=146;i++){let t=i/146,ang=TAU*turns*t+side*Math.PI+spec.mutation*.08;
+   pts.push(v(rad*Math.cos(ang),-height+2*height*t,rad*Math.sin(ang)))
+  }
+  line(pts,m[side],.027)
+ }
+ for(let j=0;j<=28;j++){
+  let t=j/28,a=TAU*turns*t+spec.mutation*.08;
+  const p=v(rad*Math.cos(a),-height+2*height*t,rad*Math.sin(a));
+  const q=v(-p.x,p.y,-p.z),mid=p.clone().lerp(q,.5);
+  line([p,p.clone().lerp(mid,.5),mid,mid.clone().lerp(q,.5),q],m[j%4===0?2:1],.009)
+ }
+ // Two faint stabilizing axial filaments, like a cyber neural bridge.
+ for(let s of [-1,1]){let pts=[];for(let i=0;i<=80;i++){let t=i/80;pts.push(v(.13*s,-height+2*height*t,.15*Math.sin(t*TAU*turns+spec.mutation)))}line(pts,m[2],.009)}
+}
+function makeFractalHalo(){
+ const m=colorPalette(0xe5eeff,0x91b2fc,0xcbb1ff),arms=spec.arms;
+ function branch(start,theta,length,depth,arm){
+  const end=start.clone().add(v(Math.cos(theta)*length,Math.sin(theta)*length,.07*Math.sin(theta*3+depth)));
+  line([start.clone(),start.clone().lerp(end,.5),end],m[arm%3],depth===3?.026:.012);
+  if(depth<=1)return;
+  const fork=start.clone().lerp(end,.76);
+  branch(fork,theta-.47,length*.5,depth-1,arm);
+  branch(fork,theta+.47,length*.5,depth-1,arm)
+ }
+ for(let a=0;a<arms;a++){let angle=a*TAU/arms;branch(v(0,0,0),angle,.55,3,a)}
+ for(let ring=1;ring<=4;ring++){let rr=.21+ring*.18;
+  line(onRing(a=>v(rr*Math.cos(a),rr*Math.sin(a),.2*Math.cos(ring*.65)+.04*Math.sin(a*arms*.5+spec.mutation)),100),m[ring%3],ring===2?.02:.012)
+ }
+}
+function makeAtomGrid(){
+ const m=colorPalette(0xecffff,0x82cfff,0xd0acff);
+ let eulers=[[0,0,0],[Math.PI/3,.34,0],[-Math.PI/3,.74,1.2],[Math.PI/2,0,.3]];
+ for(let i=0;i<eulers.length;i++){
+  const [x,y,z]=eulers[i],q=new THREE.Quaternion().setFromEuler(new THREE.Euler(x,y,z));
+  line(onRing(a=>v(1.06*Math.cos(a),.65*Math.sin(a),0).applyQuaternion(q),114),m[i%3],i===0?.024:.017)
+ }
+ // An ordered hex lattice at the core.
+ for(let ring=1;ring<=3;ring++){
+  let radius=ring*.115;
+  line(onRing((a,u)=>{let index=Math.floor(u*6),fraction=(u*6-index);
+   let aa=index*TAU/6,ab=(index+1)*TAU/6;
+   return v(radius*((1-fraction)*Math.cos(aa)+fraction*Math.cos(ab)),radius*((1-fraction)*Math.sin(aa)+fraction*Math.sin(ab)),.01*ring)},72),
+   m[ring%3],.015)
+ }
+ for(let j=0;j<6;j++){
+  let a=j*TAU/6;
+  line([v(0,0,.01),v(.17*Math.cos(a),.17*Math.sin(a),.01),v(.35*Math.cos(a),.35*Math.sin(a),.01)],m[2],.008)
+ }
+ const nucleus=new THREE.Mesh(new THREE.IcosahedronGeometry(.08,1),m[2]);body.add(nucleus)
+}
+function makeBridgeBloom(){
+ const m=colorPalette(0xe9fdff,0x82daff,0xc4adfb),rings=10,arms=spec.arms;
+ function radius(z){let t=(z+1.15)/2.3;return .20+.87*Math.pow(Math.max(0,Math.sin(Math.PI*t)),.75)}
+ for(let i=0;i<rings;i++){
+  let z=-1.15+i/(rings-1)*2.3,r=radius(z);
+  line(onRing(a=>v(r*Math.cos(a),r*Math.sin(a),z),84),m[i%3],i%3===0?.023:.014)
+ }
+ for(let j=0;j<arms;j++){
+  let theta=j*TAU/arms,pts=[];
+  for(let k=0;k<=120;k++){let z=-1.15+k/120*2.3,r=radius(z),ang=theta+.10*Math.sin(z*2+spec.mutation);
+   pts.push(v(r*Math.cos(ang),r*Math.sin(ang),z))}
+  line(pts,m[j%3],j%4===0?.022:.012)
+ }
+ // A single radiating bloom at the near portal; no chaotic knots.
+ for(let j=0;j<arms;j++){
+  let a=j*TAU/arms,pts=[];
+  for(let k=0;k<=60;k++){let t=k/60,r=.12+.75*t,angle=a+.17*Math.sin(t*Math.PI)*spec.twist;
+   pts.push(v(r*Math.cos(angle),r*Math.sin(angle),.55+.32*Math.sin(t*Math.PI)))}
+  line(pts,m[j%3===0?2:1],.012)
+ }
+}
+function regenerate(){
+ const sampleSeed=hash(key+"|"+variation),seeded=rng(sampleSeed);
+ const chosen=selectedKind===null?Math.floor(seeded()*kinds.length):selectedKind;
+ rnd=seeded;
+ spec={...kinds[chosen],mutation:rnd()*TAU,layers:3+Math.floor(rnd()*2),arms:8+Math.floor(rnd()*5),twist:.85+rnd()*.5,hueShift:(rnd()-.5)*.07};
+ flowPaths=[];flowAnim=[];flowCloud=null;
+ for(let i=body.children.length-1;i>=0;i--){
+  let mesh=body.children[i];if(mesh===picker)continue;body.remove(mesh);mesh.geometry?.dispose();if(mesh.type==="Points")mesh.material?.dispose()
+ }
+ for(let mat of materialMap)mat.dispose();materialMap=[];
+ baseUniforms.family.value=chosen;
+ if(spec.kind==="hexatunnel")makeHexaTunnel();
+ else if(spec.kind==="medusawheel")makeMedusaWheel();
+ else if(spec.kind==="neurodna")makeNeuroDNA();
+ else if(spec.kind==="fractalhalo")makeFractalHalo();
+ else if(spec.kind==="atomgrid")makeAtomGrid();
+ else makeBridgeBloom();
+ buildFlow();
+ el("name").textContent=spec.name;
+ el("type").textContent=spec.category;
+ el("id").textContent="ВАРИАЦИЯ "+String(variation+1).padStart(2,"0")+" · № "+sampleSeed.toString(16).toUpperCase().padStart(8,"0");
+ baseUniforms.press.value=0;baseUniforms.power.value=0;baseUniforms.wave.value=5;baseUniforms.drag.value.set(0,0,0);baseUniforms.touch.value.set(0,0,1);
+ artifact.rotation.set(-.16,.35,.02);artifact.scale.setScalar(.0001);hanger.position.y=-.62
+}
+regenerate();
+let dustR=rng(172399),dGeo=new THREE.BufferGeometry(),coords=new Float32Array(360*3),rgb=new Float32Array(360*3);
+for(let i=0;i<360;i++){let a=dustR()*TAU,r=1.8+dustR()*6;coords[i*3]=r*Math.cos(a);coords[i*3+1]=r*Math.sin(a);coords[i*3+2]=(dustR()-.5)*13;let co=new THREE.Color(0xffd1a3);co.offsetHSL(dustR()*.06-.03,0,(dustR()-.5)*.3);rgb.set([co.r,co.g,co.b],i*3)}
+dGeo.setAttribute("position",new THREE.BufferAttribute(coords,3));dGeo.setAttribute("color",new THREE.BufferAttribute(rgb,3));
+let stars=new THREE.Points(dGeo,new THREE.PointsMaterial({size:.018,vertexColors:true,transparent:true,opacity:.65,depthWrite:false,blending:THREE.AdditiveBlending}));scene.add(stars);
+let orbital=new THREE.Mesh(new THREE.TorusGeometry(2.15,.006,6,120),new THREE.MeshBasicMaterial({color:0xb94f36,transparent:true,opacity:.07}));orbital.rotation.x=1.24;scene.add(orbital);
+const coronaGeo=new THREE.BufferGeometry(),coronaPos=new Float32Array(250*3),coronaRgb=new Float32Array(250*3),coronaRnd=rng(83828);
+for(let i=0;i<250;i++){let a=coronaRnd()*TAU,b=coronaRnd()*TAU,r=.35+coronaRnd()*1.3;coronaPos.set([r*Math.cos(a),r*Math.sin(a)*Math.cos(b),r*Math.sin(a)*Math.sin(b)],i*3);let cc=new THREE.Color().setHSL(.03+coronaRnd()*.12,1,.66+coronaRnd()*.32);coronaRgb.set([cc.r,cc.g,cc.b],i*3)}
+coronaGeo.setAttribute("position",new THREE.BufferAttribute(coronaPos,3));coronaGeo.setAttribute("color",new THREE.BufferAttribute(coronaRgb,3));
+const corona=new THREE.Points(coronaGeo,new THREE.PointsMaterial({size:.02,vertexColors:true,transparent:true,opacity:.13,depthWrite:false,blending:THREE.AdditiveBlending}));artifact.add(corona);
+let state="box",openStart=0,clock=new THREE.Clock(),lastTime=0,held=null,pressTarget=0,pressValue=0,pressVel=0,dragTarget=v(0,0,0),dragPos=v(0,0,0),dragVel=v(0,0,0),wave=6,spinX=0,spinY=0;
+let heat=0,charge=0,spinZ=0,lastTap=0,charged=false;
+const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();
+function hit(e,target){let b=canvas.getBoundingClientRect();mouse.set(2*(e.clientX-b.left)/b.width-1,1-2*(e.clientY-b.top)/b.height);artifact.updateMatrixWorld(true);ray.setFromCamera(mouse,camera);return ray.intersectObject(target)[0]}
+function shock(power=1){wave=0;baseUniforms.wave.value=0;baseUniforms.power.value=Math.max(baseUniforms.power.value,power)}
+canvas.addEventListener("pointerdown",e=>{
+ if(held)return;
+ held={id:e.pointerId,x:e.clientX,y:e.clientY,x0:e.clientX,y0:e.clientY,start:performance.now(),mode:"rotate",moved:false};
+ try{canvas.setPointerCapture(e.pointerId)}catch(err){}
+ if(state==="artifact"){
+  if(hit(e,gripZone)){held.mode="grip";tip.textContent="За петлю — вращай и раскачивай."}
+  else{let rayHit=hit(e,picker);if(rayHit){held.mode="body";pressTarget=.48;charged=false;baseUniforms.touch.value.copy(body.worldToLocal(rayHit.point.clone()));shock(1);tip.textContent="Мягкая волна · удержание · пульс по структуре"}}
+ }
+ e.preventDefault()
+},{passive:false});
+canvas.addEventListener("pointermove",e=>{
+ if(!held||held.id!==e.pointerId)return;
+ let x=e.clientX-held.x,y=e.clientY-held.y;held.x=e.clientX;held.y=e.clientY;
+ if(Math.abs(held.x0-e.clientX)+Math.abs(held.y0-e.clientY)>9)held.moved=true;
+ if(state==="box"){pack.rotation.y+=x*.008;pack.rotation.x=clamp(pack.rotation.x+y*.006,-.45,.45)}
+ if(state==="artifact"){
+  if(held.mode==="body"){dragTarget.x=clamp((e.clientX-held.x0)/135,-.8,.8);dragTarget.y=clamp((held.y0-e.clientY)/135,-.8,.8);pressTarget=.78;heat=Math.min(2.2,heat+.023);if(Math.abs(x)+Math.abs(y)>12)shock(1.3)}
+  else{artifact.rotation.y+=x*(held.mode==="grip"?.014:.009);artifact.rotation.x=clamp(artifact.rotation.x+y*.007,-1.2,1.2);if(held.mode==="grip"){artifact.rotation.z=clamp(artifact.rotation.z-x*.004,-.5,.5);spinZ=-x*.0014}spinY=x*.0008;spinX=y*.0005}
+ }e.preventDefault()
+},{passive:false});
+function release(e){
+ if(!held||held.id!==e.pointerId)return;
+ if(state==="box"&&!held.moved)openBox();
+ if(state==="artifact"&&held.mode==="body"){
+  pressTarget=0;dragTarget.set(0,0,0);shock(1.7);
+  if(!held.moved&&performance.now()-held.start<340){
+   if(performance.now()-lastTap<350){heat=3;charge=1.6;shock(3.2);tip.textContent="✳ ВОЛНА ПО ГЕОМЕТРИИ"}
+   else{heat=Math.min(2,heat+.4)}
+   lastTap=performance.now()
+  }
+ }
+ held=null;charged=false
+}
+canvas.addEventListener("pointerup",release);canvas.addEventListener("pointercancel",release);canvas.addEventListener("lostpointercapture",release);
+function openBox(){if(state!=="box")return;state="opening";openStart=clock.elapsedTime;btn.hidden=true;tip.textContent="Раскрываем пространство…"}
+function closeBox(){
+ state="box";btn.hidden=false;back.hidden=true;next.hidden=true;mutate.hidden=true;info.classList.remove("show");el("app").classList.remove("artifact-open");tip.textContent="Вращай 3D-коробку и открой сюрприз.";
+ pack.visible=true;lidJoint.rotation.x=0;pack.position.y=0;pack.scale.setScalar(1);
+ artifact.visible=false;pressTarget=0;el("id").textContent=""
+}
+btn.addEventListener("click",openBox);back.addEventListener("click",closeBox);
+function refreshArtifact(){
+ regenerate();state="artifact";artifact.visible=true;artifact.scale.setScalar(1);info.classList.add("show");el("app").classList.add("artifact-open");
+ heat=.45;charge=0;shock(1.1);
+}
+next.addEventListener("click",()=>{if(fixed)return;selectedKind=selectedKind===null?(kinds.indexOf(kinds.find(k=>k.kind===spec.kind))+1)%kinds.length:(selectedKind+1)%kinds.length;variation=0;refreshArtifact()});
+mutate.addEventListener("click",()=>{if(fixed)return;selectedKind=kinds.findIndex(k=>k.kind===spec.kind);variation++;refreshArtifact()});
+function tick(){
+ requestAnimationFrame(tick);
+ let dt=Math.min(clock.getDelta(),.035),t=clock.elapsedTime,s=clamp(dt*60,.1,1.8);
+ baseUniforms.time.value=t;if(state==="artifact"||state==="opening")animateFlow(dt);
+ if(state==="box"){pack.rotation.y+=dt*.15;pack.position.y=Math.sin(t*1.1)*.05;pack.visible=true}
+ if(state==="opening"){
+  let n=clamp((t-openStart)/1.7,0,1),a=n*n*(3-2*n);
+  lidJoint.rotation.x=-2.5*a;pack.position.y=-2.35*a;pack.scale.setScalar(1-.75*a);pack.visible=n<.995;
+  artifact.visible=n>.22;let f=clamp((n-.22)/.78,0,1);artifact.scale.setScalar(Math.max(.001,f*f*(3-2*f)));artifact.rotation.y+=dt*.6;
+  if(n>=1){state="artifact";artifact.scale.setScalar(1);pack.visible=false;info.classList.add("show");el("app").classList.add("artifact-open");back.hidden=false;next.hidden=!!fixed;mutate.hidden=!!fixed;tip.textContent="За петлю — вращай · по структуре — мягкая волна"}
+ }
+ if(state==="artifact"){
+  if(!held||held.mode!=="body"){artifact.rotation.y+=dt*.13+spinY;artifact.rotation.x=clamp(artifact.rotation.x+spinX,-1.15,1.15);artifact.rotation.z=clamp(artifact.rotation.z+spinZ,-.55,.55)}
+  spinX*=.92;spinY*=.92;spinZ*=.92;artifact.rotation.z*=.999;artifact.scale.setScalar(1+.024*Math.sin(t*(1.3+heat)))
+ }
+ if(held&&held.mode==="body"&&!charged&&performance.now()-held.start>560){charged=true;charge=1.65;heat=2.3;shock(2.7);tip.textContent="✳ ПАТТЕРН В РЕЗОНАНСЕ"}
+ if(held&&held.mode==="body"&&charged){charge=Math.min(2.5,charge+dt*.3);heat=Math.min(3.2,heat+dt*.24)}
+ heat*=Math.pow(.99,s);charge*=Math.pow(.988,s);
+ for(let m of materialMap)m.emissiveIntensity=m.userData.baseGlow*(1+Math.min(.19,heat*.035+charge*.05));
+ pressVel=(pressVel+(pressTarget-pressValue)*.16*s)*Math.pow(.76,s);pressValue+=pressVel*s;baseUniforms.press.value=Math.max(0,pressValue);
+ dragVel.add(dragTarget.clone().sub(dragPos).multiplyScalar(.13*s)).multiplyScalar(Math.pow(.75,s));dragPos.addScaledVector(dragVel,s);baseUniforms.drag.value.copy(dragPos);
+ wave+=dt*1.6;baseUniforms.wave.value=wave;baseUniforms.power.value*=Math.pow(.975,s);
+ stars.rotation.y=t*.002;orbital.rotation.z=t*.04;corona.rotation.y=t*(.14+heat*.3);corona.rotation.x=Math.sin(t*.3)*.18;corona.material.opacity=.065+Math.min(.09,heat*.019);
+ if(composer)composer.render();else render.render(scene,camera)
+}
+el("load").classList.add("hide");tick();
+</script></body></html>
