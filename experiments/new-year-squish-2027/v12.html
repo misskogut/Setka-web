@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"><meta name="theme-color" content="#000000"><title>585 × SETKA | Кокон — точная реконструкция</title>
+<style>
+*{box-sizing:border-box}html,body{height:100%;width:100%;margin:0;overflow:hidden;overscroll-behavior:none}body{background:#000;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;user-select:none;-webkit-user-select:none}button{font:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+#app{height:100dvh;position:relative;overflow:hidden;background:#000;isolation:isolate}#gl{display:block;position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}#gl:active{cursor:grabbing}
+header{position:absolute;pointer-events:none;z-index:4;top:calc(19px + env(safe-area-inset-top));left:0;right:0;text-align:center}#brand{font-weight:720;font-size:17px;letter-spacing:.035em;color:#f2deae}#brand em{font-style:normal;color:#ffc85f;font-weight:900;font-size:13px}#strapline{font-size:9px;letter-spacing:.18em;color:#8d9b93;margin-top:8px}#title{font-family:Georgia,serif;font-size:21px;font-weight:400;margin-top:10px;color:#e8dfca}
+footer{position:absolute;pointer-events:none;z-index:5;bottom:calc(22px + env(safe-area-inset-bottom));left:0;right:0;display:flex;align-items:center;flex-direction:column;gap:9px}.hint{font-size:12px;color:#b7b8ad;letter-spacing:.02em;text-align:center;padding:0 16px}.commands{pointer-events:auto;display:flex;gap:9px}.commands button{background:#0c1010bc;border:1px solid #6f6746;color:#e1cba3;padding:10px 17px;border-radius:100px;font-size:12px}.commands button:active{background:#4c3c1d}.commands button[hidden]{display:none}.code{font-size:9px;letter-spacing:.18em;color:#6b736d}
+#unsupported{position:absolute;inset:0;display:none;place-items:center;background:#000;z-index:10;text-align:center;padding:32px;color:#edd6a7;font-size:13px}
+@media(max-height:550px){header{top:8px}#strapline{display:none}#title{font-size:17px;margin-top:4px}footer{bottom:calc(8px + env(safe-area-inset-bottom));gap:4px}.commands button{padding:8px 12px}}
+</style></head><body>
+<main id="app"><canvas id="gl" aria-label="Процедурный интерактивный кокон, вращающиеся орбитальные кольца, световой поток, прозрачные слои"></canvas>
+<header><div id="brand">585 <em>✳</em> SETKA</div><div id="strapline">НОВОГОДНЯЯ СЕРИЯ · ИНТЕРАКТИВНЫЙ ПРОТОТИП</div><div id="title">Живой кокон</div></header>
+<footer><div class="hint" id="hint">Касайся — сжимай · тяни — искажай · за петельку — вращай</div><div class="code" id="code">МАТЕМАТИЧЕСКАЯ 3D-ГЕОМЕТРИЯ</div><div class="commands"><button type="button" id="again">Вариация</button><button type="button" id="reset">Вернуть форму</button></div></footer>
+<div id="unsupported">Для демонстрации требуется браузер с поддержкой WebGL. Открой эту страницу в Safari или Chrome.</div></main>
+<script>
+(()=>{'use strict';
+const cv=document.getElementById('gl'),help=document.getElementById('hint'),stamp=document.getElementById('code');
+const gl=cv.getContext('webgl2',{antialias:true,depth:false,alpha:false,premultipliedAlpha:false,preserveDrawingBuffer:true})||cv.getContext('webgl',{antialias:true,depth:false,alpha:false,premultipliedAlpha:false,preserveDrawingBuffer:true});
+const isWebGL2=!!(typeof WebGL2RenderingContext!=='undefined'&&gl instanceof WebGL2RenderingContext);
+if(!gl){document.getElementById('unsupported').style.display='grid';return}
+const PI=Math.PI,TAU=2*PI,clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const vert=`#version 300 es
+precision highp float;
+layout(location=0) in vec3 aPos;
+layout(location=1) in vec4 aColor;
+layout(location=2) in vec3 aMeta; // group, phase, point size
+uniform vec2 uResolution; uniform float uTime,uYaw,uTilt,uSqueeze,uRipple,uSeed,uCharge,uPointScale; uniform vec2 uDrag;
+out vec4 vCol;
+void main(){
+ vec3 p=aPos;float group=aMeta.x, ph=aMeta.y;
+ float mid=exp(-pow((p.y+.11)*1.56,2.));
+ float inhale=1.0+0.012*sin(uTime*1.0+ph*.15);
+ float compress=1.0-uSqueeze*mid*.39;
+ if(group<.5){
+  float sw=.024*sin(p.y*5.+uTime*.75+ph);p.xz*=inhale*compress*(1.+sw);
+  float a=.035*sin(p.y*2.5+uTime*.29);float ca=cos(a),sa=sin(a);p.xz=vec2(ca*p.x-sa*p.z,sa*p.x+ca*p.z);
+ }else if(group<1.5){
+  float a=uTime*.33+ph*.11;float ca=cos(a),sa=sin(a);p.xz=vec2(ca*p.x-sa*p.z,sa*p.x+ca*p.z);p.xz*=1.-uSqueeze*.24;
+  p.y+=.034*sin(uTime*.62+ph+p.x*3.2);
+ }else if(group<2.5){
+  p.y+=.042*sin(uTime*.8+ph*2.);p.x+=.019*sin(uTime*1.18+p.y*7.+ph);
+ }else if(group<3.5){
+  float a=uTime*.12;float ca=cos(a),sa=sin(a);p.xz=vec2(ca*p.x-sa*p.z,sa*p.x+ca*p.z);
+  p.x+=.025*sin(uTime*.45+p.y*4.5+ph);
+ }else if(group<4.5){
+  float a=uTime*.2;float ca=cos(a),sa=sin(a);p.xz=vec2(ca*p.x-sa*p.z,sa*p.x+ca*p.z);
+ }
+ float touched=exp(-pow((p.y+.12)*1.9,2.))*uSqueeze;
+ p.x+=uDrag.x*(.28+touched*.52);p.y+=uDrag.y*(.14+touched*.6);
+ p.x+=.016*sin(uRipple*15.-length(p.xz)*12.+p.y*2.)*uCharge*mid;
+ float cy=cos(uYaw),sy=sin(uYaw);p.xz=vec2(cy*p.x+sy*p.z,-sy*p.x+cy*p.z);
+ float cx=cos(uTilt),sx=sin(uTilt);p.yz=vec2(cx*p.y-sx*p.z,sx*p.y+cx*p.z);
+ float depth=5.4/(5.4-p.z);float scale=min(uResolution.x*.316,uResolution.y*.26);
+ vec2 uv=(p.xy*depth*scale)/(.5*uResolution);
+ gl_Position=vec4(uv,0.,1.);
+ gl_PointSize=clamp(aMeta.z*depth*uPointScale,1.,60.);
+ vCol=aColor;
+}`;
+const frag=`#version 300 es
+precision highp float;
+in vec4 vCol;out vec4 outColor;
+void main(){outColor=vCol;}`;
+const pfrag=`#version 300 es
+precision highp float;
+in vec4 vCol;out vec4 outColor;uniform float uPointAlpha;
+void main(){float d=length(gl_PointCoord-.5)*2.;float fade=exp(-d*d*5.5);outColor=vec4(vCol.rgb,vCol.a*fade*uPointAlpha);}`;
+function compatibleShader(src,fragment){
+ if(isWebGL2)return src;
+ return src.replace('#version 300 es','').replace(/layout\(location=\d+\) in /g,'attribute ').replace('out vec4 vCol;','varying vec4 vCol;').replace('in vec4 vCol;out vec4 outColor;','varying vec4 vCol;').replace('outColor=vCol;','gl_FragColor=vCol;').replace('outColor=vec4(vCol.rgb,vCol.a*fade);','gl_FragColor=vec4(vCol.rgb,vCol.a*fade);');
+}
+function shader(type,s){s=compatibleShader(s,type===gl.FRAGMENT_SHADER);const o=gl.createShader(type);gl.shaderSource(o,s);gl.compileShader(o);if(!gl.getShaderParameter(o,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(o));return o}
+function program(fs){const p=gl.createProgram();gl.attachShader(p,shader(gl.VERTEX_SHADER,vert));gl.attachShader(p,shader(gl.FRAGMENT_SHADER,fs));if(!isWebGL2){gl.bindAttribLocation(p,0,'aPos');gl.bindAttribLocation(p,1,'aColor');gl.bindAttribLocation(p,2,'aMeta')}gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(p));return p}
+// A procedural volumetric scattering pass: translucent dark glass and warm plasma,
+// calculated per-pixel (no images, textures or copied video frames).
+const bgVertex300=`#version 300 es
+precision highp float;layout(location=0) in vec2 aXY;out vec2 vUv;
+void main(){vUv=aXY*.5+.5;gl_Position=vec4(aXY,0.,1.);}`;
+const bgFragment300=`#version 300 es
+precision highp float;in vec2 vUv;out vec4 outColor;
+uniform vec2 uRes;uniform float uT,uY,uC;
+void main(){
+ float sc=min(uRes.x*.316,uRes.y*.26);
+ vec2 pos=(vUv-.5)*uRes/sc;
+ vec2 q=vec2(pos.x,pos.y);
+ float u=(1.60-q.y)/3.24;
+ float valid=step(.008,u)*step(u,.995);
+ float rad=pow(max(.0001,sin(3.14159265*u)),.63);
+ float orient=.40+.60*abs(cos(uY));
+ float edgeX=abs(q.x)/(rad*orient+.015);
+ float inside=valid*(1.-smoothstep(.84,1.06,edgeX));
+ float rim=valid*exp(-pow((edgeX-1.)*15.,2.));
+ float flicker=.80+.20*sin(q.y*9.+uT*1.2);
+ vec3 color=vec3(0.);
+ color+=inside*vec3(.012,.021,.021);
+ color+=rim*vec3(.054,.045,.018)*flicker;
+ float upper=smoothstep(.10,1.25,q.y);
+ color+=rim*upper*vec3(.068,.052,.015)*(1.+.14*sin(q.y*11.-uT));
+ float mid=exp(-pow((q.y+.25)/.36,2.));
+ float xfall=exp(-pow(q.x/1.06,4.));
+ float field=mid*xfall*(.6+.4*sin(q.x*10.+uT*.6+sin(q.y*7.)));
+ color+=vec3(.15,.035,.007)*field;
+ float rip=exp(-pow((length(vec2(q.x*.94,(q.y+.26)/.22))-1.)*3.9,2.));
+ color+=rip*vec3(.13,.052,.010);
+ float rain=exp(-pow((q.y-.36)/.63,4.));
+ float colA=exp(-pow((q.x-.19)/.14,2.))+exp(-pow((q.x+.19)/.14,2.));
+ color+=vec3(.019,.041,.085)*rain*colA;
+ color+=vec3(.008,.021,.020)*exp(-pow((q.y+1.05)/.48,2.))*exp(-pow(q.x/.74,2.));
+ outColor=vec4(color,1.);
+}`;
+function makeBG(){
+ const vs=isWebGL2?bgVertex300:bgVertex300.replace('#version 300 es','').replace('layout(location=0) in vec2 aXY;out vec2 vUv;','attribute vec2 aXY;varying vec2 vUv;');
+ const fs=isWebGL2?bgFragment300:bgFragment300.replace('#version 300 es','').replace('in vec2 vUv;out vec4 outColor;','varying vec2 vUv;').replace('outColor=vec4(color,1.);','gl_FragColor=vec4(color,1.);');
+ const p=gl.createProgram();gl.attachShader(p,shader(gl.VERTEX_SHADER,vs));gl.attachShader(p,shader(gl.FRAGMENT_SHADER,fs));
+ if(!isWebGL2)gl.bindAttribLocation(p,0,'aXY');gl.linkProgram(p);
+ if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(p));
+ const buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]),gl.STATIC_DRAW);
+ return{p,buffer,res:gl.getUniformLocation(p,'uRes'),time:gl.getUniformLocation(p,'uT'),yaw:gl.getUniformLocation(p,'uY'),compression:gl.getUniformLocation(p,'uC')}
+}
+const bg=makeBG();
+function drawBackground(){gl.useProgram(bg.p);gl.disable(gl.BLEND);gl.bindBuffer(gl.ARRAY_BUFFER,bg.buffer);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,8,0);
+ gl.uniform2f(bg.res,w,h);gl.uniform1f(bg.time,time);gl.uniform1f(bg.yaw,yaw);gl.uniform1f(bg.compression,press);
+ gl.drawArrays(gl.TRIANGLES,0,6);}
+
+let lineProgram,pointProgram;
+try{lineProgram=program(frag);pointProgram=program(pfrag)}catch(e){document.getElementById('unsupported').style.display='grid';document.getElementById('unsupported').textContent=e.message;return}
+const attrs=p=>({res:gl.getUniformLocation(p,'uResolution'),time:gl.getUniformLocation(p,'uTime'),yaw:gl.getUniformLocation(p,'uYaw'),tilt:gl.getUniformLocation(p,'uTilt'),squeeze:gl.getUniformLocation(p,'uSqueeze'),ripple:gl.getUniformLocation(p,'uRipple'),seed:gl.getUniformLocation(p,'uSeed'),charge:gl.getUniformLocation(p,'uCharge'),drag:gl.getUniformLocation(p,'uDrag')});
+const uLine=attrs(lineProgram),uPoint=attrs(pointProgram),pointScaleLoc=gl.getUniformLocation(pointProgram,'uPointScale'),pointAlphaLoc=gl.getUniformLocation(pointProgram,'uPointAlpha');
+const qrValue=new URLSearchParams(location.search).get('gift');
+let seed=131,variation=0;
+if(qrValue){let hash=2166136261;for(let i=0;i<qrValue.length;i++)hash=Math.imul(hash^qrValue.charCodeAt(i),16777619);variation=(hash>>>0)%65536;document.getElementById('again').hidden=true;}
+function rnd(s){let x=Math.sin(s*128.198+seed*2.731)*43758.546;return x-Math.floor(x)}
+const pts=[],lines=[],mesh=[];
+function rgba(r,g,b,a){return[r/255,g/255,b/255,a]}
+const col={copper:rgba(249,151,37,.24),bright:rgba(255,211,95,.67),hot:rgba(255,137,26,.38),red:rgba(242,55,30,.23),teal:rgba(34,150,132,.19),sea:rgba(18,85,87,.12),blue:rgba(69,112,226,.26),violet:rgba(153,73,228,.22),cream:rgba(255,246,177,.91),gold:rgba(225,171,63,.22)};
+const v=(x,y,z,color,group,phase,size=1)=>[x,y,z,...color,group,phase,size];
+const addLine=(fn,n,color,group,phase=0)=>{let prev=fn(0),next;for(let i=1;i<=n;i++){next=fn(i/n);lines.push(...v(...prev,color,group,phase),...v(...next,color,group,phase));prev=next}}
+const addPoint=(x,y,z,color,group,phase,size)=>{pts.push(...v(x,y,z,color,group,phase,size))};
+function shellRadius(u,a){let profile=Math.pow(Math.max(.001,Math.sin(PI*u)),.63);return profile*(.97+.018*Math.cos(a*6+u*15+seed*.13))}
+function shell(u,a){let r=shellRadius(u,a),y=1.60-3.24*u;return[r*Math.cos(a),y,.40*r*Math.sin(a)]}
+function tri(a,b,c,color,group,phase){mesh.push(...v(...a,color,group,phase),...v(...b,color,group,phase),...v(...c,color,group,phase))}
+function ribbon(fn,nu,nv,colfn,group,phase){
+ for(let i=0;i<nu;i++){for(let j=0;j<nv;j++){
+  let a=fn(i/nu,j/nv),b=fn((i+1)/nu,j/nv),c=fn(i/nu,(j+1)/nv),d=fn((i+1)/nu,(j+1)/nv);
+  const color=colfn(i/nu,j/nv);tri(a,b,c,color,group,phase);tri(c,b,d,color,group,phase)
+ }}
+}
+function build(){lines.length=0;pts.length=0;mesh.length=0;seed=131+variation*17;
+ // Almost invisible shell: the contour is the mathematical membrane, not a rubber case.
+ for(let a=0;a<9;a++){let angle=a*TAU/9;let c=a%4===0?col.gold:a%3===0?col.teal:col.sea;
+   addLine(t=>shell(.01+.98*t,angle+.09*Math.sin(t*TAU*2+angle)),140,[c[0],c[1],c[2],c[3]*(a%4===0?.76:.4)],0,angle)}
+ for(let j=1;j<=6;j++){let u=.027+j/7*.95,c=j%3===0?col.gold:j<5?col.copper:col.teal;
+  addLine(t=>shell(u,t*TAU),130,[...c.slice(0,3),c[3]*(j%3===0?.62:.25)],0,j*.21)}
+ // Transparent mathematical membrane, diffuse density only at the turning edges.
+ ribbon((a,b)=>shell(.025+.95*b,a*TAU),78,42,(a,b)=>{
+  const top=1.-b,glass=.013+.017*Math.pow(Math.abs(Math.sin(a*TAU)),12);
+  return top>.75?rgba(174,137,61,glass):b>.60?rgba(12,77,73,glass*.7):rgba(20,64,66,glass*.62)
+ },0,0);
+ // Fire-colored semi-transparent toroidal sheets: volumetric orbit, not wireframe.
+ for(let band=0;band<5;band++){
+  let b=band,base=.44+.1*band;
+  ribbon((a,u)=>{let th=a*TAU+.09*b,rr=base+u*(.11+.045*Math.sin(th*3+b));
+    let yy=-.22+.105*Math.sin(th*2+b*.63)+.06*Math.cos(th*5+b)+.06*u;
+    return[rr*Math.cos(th),yy,rr*Math.sin(th)]},112,3,(a,u)=>{
+      const warm=.075+.12*Math.sin(a*TAU*2+band*.3)**2;
+      return band%3===0?rgba(255,166,35,warm):band%3===1?rgba(231,44,24,warm*.9):rgba(245,124,29,warm)
+    },1,band*.63)
+ }
+ // Ultra-thin inner plasma ribbons that flare near the lower equator.
+ for(let band=0;band<9;band++){
+  let shift=band*TAU/9;
+  ribbon((a,u)=>{let t=a,theta=shift+t*TAU*.48,rr=.2+t*.63+u*.045,y=-.18+.14*Math.sin(t*TAU+shift)+.09*u;
+   return[rr*Math.cos(theta),y,rr*Math.sin(theta)]},44,2,(a,u)=>rgba(242,55+band*7,25,.072+.075*(1-a)),1,shift)
+ }
+ // Golden top crown: thin elliptical helices descending the transparent dome.
+ for(let a=0;a<4;a++){
+  addLine(t=>{let u=.017+t*.29,phi=a*TAU/5 + t*TAU*(1.22+variation*.014),p=shell(u,phi);return p},200,a%2===0?rgba(251,181,58,.38):rgba(84,170,134,.22),0,a*.4);
+ }
+ // Rotating thin gold equator just above the warm midsection.
+ for(let j=0;j<3;j++){let y=.32+j*.105,r=.82-.07*j;
+ addLine(t=>{let a=t*TAU,y1=y+.014*Math.cos(a*3+j);return[r*Math.cos(a),y1,r*Math.sin(a)]},180,j%3===0?rgba(255,174,42,.44):rgba(50,126,122,.18),1,j*.9)}
+ // Warm orbital membrane: several open toroidal sheets, with delicate lit edges.
+ for(let j=0;j<9;j++){
+  let r=.37+j*.074,y0=-.28+(j%3)*.068,aShift=j*.39;
+  addLine(t=>{let a=t*TAU,y=y0+.19*Math.sin(a*2+aShift)+.072*Math.cos(a*5+variation*.06);
+  let rr=r*(1+.04*Math.cos(a*3+j));return[rr*Math.cos(a),y,rr*Math.sin(a)]},200,j%3===0?col.bright:j%3===1?col.copper:col.hot,1,j*.54);
+ }
+ // Floating red / orange membranes generated as narrow folded waves, not thick tubes.
+ for(let j=0;j<12;j++){
+   const a0=j*TAU/12,rad=.42+.044*j;
+   addLine(t=>{let a=t*TAU*.50+a0,r=rad*(1+.025*Math.sin(a*4+variation*.13));
+     return[r*Math.cos(a),-.23+.10*Math.sin(a*2+a0),r*Math.sin(a)]},105,
+     j%3===0?rgba(255,196,75,.51):j%3===1?rgba(245,92,36,.32):rgba(255,145,26,.28),1,a0);
+ }
+ // Central narrow vertical rainbow interference columns.
+ for(let strand=0;strand<26;strand++){
+   let side=strand%2===0?-1:1,ax=side*(.15+.09*rnd(strand)),phase=rnd(strand*13)*TAU;
+   addLine(t=>{let yy=.95-1.22*t;
+    let rr=.013+.016*rnd(strand*.8);return[ax+rr*Math.sin(yy*5+phase),yy,rr*Math.cos(yy*5+phase)]},70,
+    strand%5===0?rgba(185,204,244,.45):strand%3===0?col.violet:strand%3===1?rgba(75,149,244,.41):rgba(53,190,195,.39),2,phase);
+ }
+ for(let j=0;j<4800;j++){
+   let t=rnd(j*1.33),u=.24+.48*t,a=rnd(j*2.21)*TAU,rr=.04+.20*Math.sqrt(rnd(j*3.17));
+   let y=1.18-t*1.63;
+   let x=(j%2===0?-.21:.21)+rr*Math.cos(a),z=rr*Math.sin(a);
+   let c=t<.40?(j%3===0?rgba(83,214,242,.62):rgba(84,119,237,.48)):t<.68?(j%3===0?rgba(209,191,242,.56):rgba(159,83,239,.45)):(j%4===0?rgba(255,237,127,.72):rgba(247,151,53,.53));
+   addPoint(x,y,z,c,2,rnd(j*3.3)*TAU,j%7===0?5:3);
+ }
+ // Golden lower ring with particles rotating on curved flow.
+ for(let j=0;j<1100;j++){
+   let a=rnd(j*8.13)*TAU,rr=.22+rnd(j*5.67)*.58,y=-.33+.08*Math.cos(a*3+j*.31);
+   let c=j%6===0?rgba(255,240,143,.8):j%4===0?rgba(43,203,133,.4):rgba(252,175,46,.24);
+   addPoint(rr*Math.cos(a),y,rr*Math.sin(a),c,1,rnd(j*8.5)*TAU,j%8===0?4:2.3)
+ }
+ for(let j=0;j<2200;j++){
+   let a=rnd(j*1.174)*TAU,rad=.29+rnd(j*1.96)*.54;
+   let y=-.28+.09*Math.sin(a*2+j*.025)+(rnd(j*2.81)-.5)*.25;
+   let c=j%9===0?rgba(255,239,171,.72):j%4===0?rgba(240,77,28,.31):rgba(247,153,35,.22);
+   addPoint(rad*Math.cos(a),y,rad*Math.sin(a),c,1,rnd(j*3.1)*TAU,j%10===0?4:2)
+ }
+ // Lower transparent helix folds, mostly dark emerald.
+ for(let j=0;j<7;j++){
+   let shift=j/7*TAU;
+   addLine(t=>{let y=-.39-1.05*t,a=shift+t*TAU*(.28+.11*Math.sin(shift*3)),r=(.25+.35*Math.sin(t*PI))*(.82+.13*Math.cos(t*TAU*2+shift));return[r*Math.cos(a),y+.07*Math.sin(a*2),r*Math.sin(a)]},124,j%4===0?rgba(248,181,54,.31):j%2===0?rgba(28,165,146,.41):rgba(19,92,80,.20),3,shift);
+ }
+ for(let j=0;j<5;j++){
+  let r=.22+j*.08,y=-1.20+j*.036;
+  addLine(t=>{let a=t*TAU;return[r*Math.cos(a),y+.10*Math.cos(3*a+j*.22),r*Math.sin(a)]},110,j%3===0?rgba(239,183,73,.46):rgba(24,120,110,.12),3,j*.4)
+ }
+ // Optically radiant small core points.
+ for(let i=0;i<120;i++){
+  let x=(rnd(i*1.53)-.5)*.21,y=-.33+(rnd(i*2.34)-.5)*.20,z=(rnd(i*4.36)-.5)*.15;
+  addPoint(x,y,z,i%4===0?rgba(255,252,202,.93):rgba(245,163,41,.62),2,rnd(i*2.7),i%8===0?7:4)
+ }
+ // Very fine procedural hanger, no broad solid cap.
+ addLine(t=>{let a=t*TAU;return[.085*Math.cos(a),1.73+.095*Math.sin(a),.015]},60,rgba(247,193,91,.79),4,0);
+ addLine(t=>{let a=t*TAU;return[.10*Math.cos(a),1.62,.10*Math.sin(a)]},60,rgba(191,124,42,.40),4,0);
+ stamp.textContent='ЭКЗЕМПЛЯР '+String(variation+1).padStart(2,'0')+' · ПРОЦЕДУРНЫЙ WEBGL2';
+ }
+function buffer(data){let buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buf);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(data),gl.STATIC_DRAW);return{buf,count:data.length/10}}
+function useBuffer(item){gl.bindBuffer(gl.ARRAY_BUFFER,item.buf);const stride=40;gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,stride,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,4,gl.FLOAT,false,stride,12);gl.enableVertexAttribArray(2);gl.vertexAttribPointer(2,3,gl.FLOAT,false,stride,28)}
+let lineBuffer,pointBuffer,meshBuffer;
+function rebuild(){build();if(lineBuffer){gl.deleteBuffer(lineBuffer.buf);gl.deleteBuffer(pointBuffer.buf);gl.deleteBuffer(meshBuffer.buf)}lineBuffer=buffer(lines);pointBuffer=buffer(pts);meshBuffer=buffer(mesh)}
+rebuild();
+let w=1,h=1,pxratio=1,time=0,yaw=.25,tilt=-.12,velocity=.019,charge=0,press=0,pressTarget=0,dragX=0,dragY=0,goalX=0,goalY=0,last=0,ripple=0,mouse=null;
+function resize(){const dpr=Math.min(2,devicePixelRatio||1);let box=cv.getBoundingClientRect();let ww=Math.round(box.width*dpr),hh=Math.round(box.height*dpr);if(ww!==w||hh!==h){w=ww;h=hh;cv.width=w;cv.height=h;gl.viewport(0,0,w,h)}pxratio=dpr}
+addEventListener('resize',resize);resize();
+function uniforms(p,u){gl.useProgram(p);gl.uniform2f(u.res,w,h);gl.uniform1f(u.time,time);gl.uniform1f(u.yaw,yaw);gl.uniform1f(u.tilt,tilt);gl.uniform1f(u.squeeze,press);gl.uniform1f(u.ripple,ripple);gl.uniform1f(u.seed,seed);gl.uniform1f(u.charge,charge);gl.uniform2f(u.drag,dragX,dragY)}
+function render(now){resize();let dt=Math.min(.05,(now-last)/1000||0);last=now;time+=dt;
+ if(!mouse){yaw+=velocity*dt*60;velocity*=Math.pow(.94,dt*60)}
+ press+=(pressTarget-press)*Math.min(1,dt*8);dragX+=(goalX-dragX)*Math.min(1,dt*6);dragY+=(goalY-dragY)*Math.min(1,dt*6);
+ charge*=Math.pow(.95,dt*60);ripple+=dt*1.55;
+ gl.clearColor(0,0,0,1);gl.clear(gl.COLOR_BUFFER_BIT);gl.disable(gl.DEPTH_TEST);drawBackground();gl.enable(gl.BLEND);
+ gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
+ uniforms(lineProgram,uLine);useBuffer(meshBuffer);gl.drawArrays(gl.TRIANGLES,0,meshBuffer.count);
+ uniforms(lineProgram,uLine);useBuffer(lineBuffer);gl.drawArrays(gl.LINES,0,lineBuffer.count);
+ gl.blendFunc(gl.SRC_ALPHA,gl.ONE);
+ uniforms(pointProgram,uPoint);useBuffer(pointBuffer);
+ gl.uniform1f(pointScaleLoc,3.8);gl.uniform1f(pointAlphaLoc,.065);gl.drawArrays(gl.POINTS,0,pointBuffer.count);
+ gl.uniform1f(pointScaleLoc,1.);gl.uniform1f(pointAlphaLoc,.58);gl.drawArrays(gl.POINTS,0,pointBuffer.count);requestAnimationFrame(render)
+}
+requestAnimationFrame(render);
+function loc(e){let b=cv.getBoundingClientRect();return{x:e.clientX-b.left,y:e.clientY-b.top};}
+cv.addEventListener('pointerdown',e=>{const p=loc(e),cx=cv.clientWidth*.5,cy=cv.clientHeight*.5,unit=Math.min(cv.clientWidth*.316,cv.clientHeight*.26);
+ const loop=Math.abs(p.x-cx)<unit*.24&&p.y>cy-unit*2.0&&p.y<cy-unit*1.55;
+ const touch=Math.abs(p.x-cx)<unit*1.15&&Math.abs(p.y-cy)<unit*1.58;
+ mouse={id:e.pointerId,x:p.x,y:p.y,originX:p.x,originY:p.y,mode:loop?'loop':touch?'press':'rotate'};
+ if(mouse.mode==='press'){pressTarget=.52;charge=1;ripple=0;help.textContent='Сжимай и тяни — внутренние орбиты отвечают на касание'}
+ else if(mouse.mode==='loop')help.textContent='Вращение за петельку';
+ cv.setPointerCapture(e.pointerId);e.preventDefault();},{passive:false});
+cv.addEventListener('pointermove',e=>{if(!mouse||mouse.id!==e.pointerId)return;let p=loc(e),dx=p.x-mouse.x,dy=p.y-mouse.y;mouse.x=p.x;mouse.y=p.y;
+ if(mouse.mode==='press'){goalX=clamp((p.x-mouse.originX)/220,-.40,.40);goalY=clamp(-(p.y-mouse.originY)/240,-.35,.35);pressTarget=clamp(.46+Math.abs(dy)*.012,0,.8)}else{yaw+=dx*.012;tilt=clamp(tilt+dy*.003,-.6,.6);velocity=dx*.0005}e.preventDefault()},{passive:false});
+const end=e=>{if(mouse&&mouse.id===e.pointerId){mouse=null;pressTarget=0;goalX=goalY=0;charge=.7;ripple=0;help.textContent='Касайся — сжимай · тяни — искажай · за петельку — вращай'}};
+cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end);cv.addEventListener('lostpointercapture',end);
+document.getElementById('again').addEventListener('click',()=>{if(qrValue)return;variation++;rebuild();charge=.9;press=.22;pressTarget=0;yaw=.25+variation*.28;tilt=-.12});
+document.getElementById('reset').addEventListener('click',()=>{yaw=.25;tilt=-.12;pressTarget=0;goalX=goalY=0;velocity=.019;charge=1;ripple=0});
+})();
+</script></body></html>
