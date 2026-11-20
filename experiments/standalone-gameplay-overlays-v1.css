@@ -122,16 +122,21 @@ body.setka-game-sheet-unified #gameScreen #st34KeySheet{
   flex-direction:column!important;
   padding:0!important;
   overflow:hidden!important;
-  border:var(--setka-game-sheet-outline)!important;
   border-radius:var(--setka-game-sheet-radius)!important;
-  background:var(--setka-game-sheet-fill)!important;
-  box-shadow:var(--setka-game-sheet-shadow)!important;
   opacity:0!important;
   visibility:hidden!important;
   pointer-events:none!important;
   transform:translate(-50%,calc(100% + 160px))!important;
   transition:transform .28s cubic-bezier(.4,0,.8,.4),opacity .2s,visibility 0s .28s!important;
 }
+/* The SETKA card skin applies ONLY at rest, never when a native key
+   range is being dragged. Keep placement stable during touch movement. */
+body.setka-game-sheet-unified #gameScreen #st34KeySheet:not(.sk-adjusting){
+  border:var(--setka-game-sheet-outline)!important;
+  background:var(--setka-game-sheet-fill)!important;
+  box-shadow:var(--setka-game-sheet-shadow)!important;
+}
+
 body.setka-game-sheet-unified #gameScreen #st34KeySheet.open{
   opacity:1!important;
   visibility:visible!important;
@@ -228,21 +233,12 @@ body.setka-game-sheet-unified #gameScreen #prevButton,
 body.setka-game-sheet-unified #gameScreen #nextButton{z-index:1200!important}
 body.setka-game-sheet-unified #gameScreen #st34KeySheet,
 body.setka-game-note-mounted #gameScreen #st34Layer{pointer-events:auto}
-/* EXACT original key gesture behavior from standalone-pattern-key-v1.js.
-   The source controller alone assigns sk-adjusting on range pointerdown,
-   then removes it at pointerup/cancel/blur. Do not duplicate its opacity rules:
-   native styles already dim header, actions and other settings to .015,
-   while active .sk-setting is .32. These overrides only cancel the
-   experimental sheet's !important background/border/shadow. */
-body.setka-game-sheet-unified #gameScreen #st34KeySheet.sk-adjusting{
-  background:rgba(16,16,16,.015)!important;
-  border-color:transparent!important;
-  box-shadow:none!important;
-  -webkit-backdrop-filter:none!important;
-  backdrop-filter:none!important;
-}
+/* Original standalone-pattern-key-v1.js is solely responsible for
+   slider pointerdown/input/pointerup, .sk-adjusting and .sk-active fading.
+   Never replace its opacities or the input's touch-action. */
 body.setka-game-sheet-unified #gameScreen #st34KeyBackdrop.sk-adjusting{
-  background:rgba(0,0,0,0)!important;
+  background:transparent!important;
+  transition:none!important;
 }
 /* Pattern navigation arrows do not operate while a gameplay sheet covers
    the pattern. Hide just the two side arrows, never the game control row. */
