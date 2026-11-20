@@ -314,12 +314,69 @@ body.cycle-flip-active #setkaCycleBack{pointer-events:none}
 <script id="setkaCycleSquishTitle">
 (function(){
   "use strict";
-  const title=document.getElementById("libraryTitle");
-  if(!title)return;
-  function refresh(){if(title.textContent.trim()==="Паттерны")title.textContent="Сквиши"}
-  refresh();
-  const observer=new MutationObserver(refresh);
-  observer.observe(title,{childList:true,characterData:true,subtree:true});
+  /* User-facing vocabulary only, in this experimental build. Never
+     rewrite pattern IDs, registry names, stored notes, or user input. */
+  const forms=[
+    ["паттернами","сквишами"],["паттернов","сквишей"],
+    ["паттернам","сквишам"],["паттернах","сквишах"],
+    ["паттерном","сквишем"],["паттерны","сквиши"],
+    ["паттерне","сквише"],["паттерна","сквиша"],
+    ["паттерну","сквишу"],["паттерн","сквиш"]
+  ];
+  const dictionary=new Map(forms);
+  const rx=new RegExp(forms.map(pair=>pair[0]).join("|"),"giu");
+  const exclusions="script,style,noscript,textarea,input,[contenteditable],.st-note,.st34-note-text,.st37-public-card,.st34-note-message,.user-note";
+  function translate(value){
+    if(!value||!/паттерн/iu.test(value))return value;
+    return value.replace(rx,match=>{
+      const replacement=dictionary.get(match.toLowerCase())||match;
+      return match===match.toUpperCase()?replacement.toUpperCase():
+        match[0]===match[0].toUpperCase()?
+          replacement[0].toUpperCase()+replacement.slice(1):replacement;
+    });
+  }
+  function allow(el){
+    if(!el||el.closest(exclusions)){
+      // Standardized UI caption, but not the public user's note body.
+      return !!el?.closest(".st34-note-preview-label");
+    }
+    return true;
+  }
+  function updateText(node){
+    if(!node||!allow(node.parentElement))return;
+    const next=translate(node.nodeValue);
+    if(next!==node.nodeValue)node.nodeValue=next;
+  }
+  function updateAttributes(el){
+    if(!allow(el))return;
+    for(const attr of ["aria-label","title","placeholder"]){
+      if(!el.hasAttribute(attr))continue;
+      const old=el.getAttribute(attr),next=translate(old);
+      if(next!==old)el.setAttribute(attr,next);
+    }
+  }
+  function scan(node){
+    if(node.nodeType===3){updateText(node);return}
+    if(node.nodeType!==1||node.matches("script,style,noscript"))return;
+    if(!allow(node)&&!node.matches(".st37-public-card"))return;
+    updateAttributes(node);
+    const walker=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);
+    let textNode;
+    while((textNode=walker.nextNode()))updateText(textNode);
+    node.querySelectorAll("[aria-label],[title],[placeholder]").forEach(updateAttributes);
+  }
+  const observer=new MutationObserver(records=>{
+    for(const record of records){
+      if(record.type==="characterData")updateText(record.target);
+      else if(record.type==="attributes")updateAttributes(record.target);
+      else for(const added of record.addedNodes)scan(added);
+    }
+  });
+  scan(document.body);
+  observer.observe(document.body,{
+    subtree:true,childList:true,characterData:true,attributes:true,
+    attributeFilter:["aria-label","title","placeholder"]
+  });
 })();
 </script>
 
