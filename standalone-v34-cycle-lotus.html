@@ -274,8 +274,8 @@ body.cycle-flip-active #setkaCycleBack{pointer-events:none}
   const frontFrame=document.getElementById("setkaCycleFrontFrame");
   function outlinePaths(w,h){
     const L=.5,R=w-.5,T=.5,B=h-.5,r=24,cy=h/2;
-    const half=Math.min(75,Math.max(45,h*.13));
-    const hump=12, upper=Math.min(46,half*.66), inner=Math.min(31,half*.43);
+    const half=Math.min(58,Math.max(40,h*.10));
+    const hump=7, upper=Math.min(36,half*.64), inner=Math.min(22,half*.42);
     const d=[
       "M "+(L+r)+" "+T,"L "+(R-r)+" "+T,"Q "+R+" "+T+" "+R+" "+(T+r),
       "L "+R+" "+(cy-half),
@@ -289,8 +289,8 @@ body.cycle-flip-active #setkaCycleBack{pointer-events:none}
       "L "+L+" "+(T+r),"Q "+L+" "+T+" "+(L+r)+" "+T,"Z"
     ].join(" ");
     const arrows=[
-      "M "+(L-3)+" "+(cy-5.5)+" L "+(L-7)+" "+cy+" L "+(L-3)+" "+(cy+5.5),
-      "M "+(R+3)+" "+(cy-5.5)+" L "+(R+7)+" "+cy+" L "+(R+3)+" "+(cy+5.5)
+      "M "+(L-1.2)+" "+(cy-4.4)+" L "+(L-3.5)+" "+cy+" L "+(L-1.2)+" "+(cy+4.4),
+      "M "+(R+1.2)+" "+(cy-4.4)+" L "+(R+3.5)+" "+cy+" L "+(R+1.2)+" "+(cy+4.4)
     ].join(" ");
     return {d,arrows};
   }
