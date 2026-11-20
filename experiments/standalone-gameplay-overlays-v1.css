@@ -229,46 +229,26 @@ body.setka-game-sheet-unified #gameScreen #prevButton,
 body.setka-game-sheet-unified #gameScreen #nextButton{z-index:1200!important}
 body.setka-game-sheet-unified #gameScreen #st34KeySheet,
 body.setka-game-note-mounted #gameScreen #st34Layer{pointer-events:auto}
-/* Restore the ORIGINAL key-slider live-adjust mode from
-   standalone-pattern-key-v1.js:
-   on pointerdown the native handler adds .sk-adjusting, on pointerup
-   it removes it. Only the active range remains, on top of the pattern.
-   DO NOT change size/position during an active pointer drag. */
-body.setka-game-sheet-unified #gameScreen #st34KeySheet.sk-adjusting,
-body.setka-game-sheet-unified #gameScreen #st34KeySheet.open.sk-adjusting{
-  background:transparent!important;
+/* EXACT original key gesture behavior from standalone-pattern-key-v1.js.
+   The source controller alone assigns sk-adjusting on range pointerdown,
+   then removes it at pointerup/cancel/blur. Do not duplicate its opacity rules:
+   native styles already dim header, actions and other settings to .015,
+   while active .sk-setting is .32. These overrides only cancel the
+   experimental sheet's !important background/border/shadow. */
+body.setka-game-sheet-unified #gameScreen #st34KeySheet.sk-adjusting{
+  background:rgba(16,16,16,.015)!important;
   border-color:transparent!important;
   box-shadow:none!important;
   -webkit-backdrop-filter:none!important;
   backdrop-filter:none!important;
 }
-body.setka-game-sheet-unified #gameScreen #st34KeySheet.sk-adjusting .sk-head{
-  opacity:0!important;
-  pointer-events:none!important;
-  border-color:transparent!important;
+body.setka-game-sheet-unified #gameScreen #st34KeyBackdrop.sk-adjusting{
+  background:rgba(0,0,0,0)!important;
 }
-body.setka-game-sheet-unified #gameScreen #st34KeySheet.sk-adjusting .sk-actions,
-body.setka-game-sheet-unified #gameScreen #st34KeySheet.sk-adjusting .sk-section,
-body.setka-game-sheet-unified #gameScreen #st34KeySheet.sk-adjusting .sk-help-disclosure,
-body.setka-game-sheet-unified #gameScreen #st34KeySheet.sk-adjusting .sk-setting:not(.sk-active){
-  opacity:0!important;
-  pointer-events:none!important;
-}
-body.setka-game-sheet-unified #gameScreen #st34KeySheet.sk-adjusting .sk-setting.sk-active{
-  opacity:1!important;
-  border-color:transparent!important;
-  pointer-events:auto!important;
-}
-body.setka-game-sheet-unified #gameScreen #st34KeySheet.sk-adjusting .sk-setting.sk-active .sk-setting-row{
-  opacity:0!important;
-  pointer-events:none!important;
-}
-body.setka-game-sheet-unified #gameScreen #st34KeySheet.sk-adjusting .sk-setting.sk-active .sk-range{
-  opacity:1!important;
-  pointer-events:auto!important;
-}
-body.setka-game-sheet-unified #gameScreen #st34KeyBackdrop.open.sk-adjusting{
-  background:transparent!important;
+/* Avoid native browser scroll gestures stealing horizontal range drags.
+   We leave pointerdown, pointermove and input to the ORIGINAL controller. */
+body.setka-game-sheet-unified #gameScreen #st34KeySheet .sk-range{
+  touch-action:auto;
 }
 /* Pattern navigation arrows do not operate while a gameplay sheet covers
    the pattern. Hide just the two side arrows, never the game control row. */
