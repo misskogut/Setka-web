@@ -69,13 +69,13 @@
    Game-mode rules below override them completely. */
 body.cycle-busy .setka-cycle-edge{pointer-events:none}
 
-/* Swipe zones unchanged; one continuous SVG border with integral, gentle outward ears. */
+/* Gesture zones unchanged; straight rounded frame with tiny arrows OUTSIDE its edges. */
 .setka-cycle-edge:focus-visible{outline:1px solid rgba(190,195,205,.35);outline-offset:-2px}
 #setkaCycleFrontFrame,#setkaCycleBackGuide{--setka-outline-color:rgba(190,195,205,.23)}
 .setka-card-frame-svg{position:absolute;inset:0;width:100%;height:100%;display:block;overflow:visible;pointer-events:none}
 .setka-card-frame-line,.setka-card-frame-arrows{fill:none;stroke:var(--setka-outline-color);stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
 .setka-card-frame-line{stroke-width:1}
-.setka-card-frame-arrows{stroke-width:1.4}
+.setka-card-frame-arrows{stroke-width:1.35;opacity:.82}
 #setkaCycleBackGuide{position:fixed;top:var(--setka-cycle-card-top);bottom:var(--setka-cycle-card-bottom);left:50%;transform:translateX(-50%);width:min(calc(100% - 28px),432px);pointer-events:none;z-index:2;--setka-outline-color:rgba(170,110,210,.32)}
 
 /* UI polish: advance the preview grid 10px without changing tile geometry,
@@ -273,24 +273,24 @@ body.cycle-flip-active #setkaCycleBack{pointer-events:none}
   const backGuide=document.getElementById("setkaCycleBackGuide");
   const frontFrame=document.getElementById("setkaCycleFrontFrame");
   function outlinePaths(w,h){
+    // A normal rounded rectangle again: no protrusions in the card border.
     const L=.5,R=w-.5,T=.5,B=h-.5,r=24,cy=h/2;
-    const half=Math.min(58,Math.max(40,h*.10));
-    const hump=7, upper=Math.min(36,half*.64), inner=Math.min(22,half*.42);
     const d=[
-      "M "+(L+r)+" "+T,"L "+(R-r)+" "+T,"Q "+R+" "+T+" "+R+" "+(T+r),
-      "L "+R+" "+(cy-half),
-      "C "+R+" "+(cy-upper)+" "+(R+hump)+" "+(cy-inner)+" "+(R+hump)+" "+cy,
-      "C "+(R+hump)+" "+(cy+inner)+" "+R+" "+(cy+upper)+" "+R+" "+(cy+half),
-      "L "+R+" "+(B-r),"Q "+R+" "+B+" "+(R-r)+" "+B,
-      "L "+(L+r)+" "+B,"Q "+L+" "+B+" "+L+" "+(B-r),
-      "L "+L+" "+(cy+half),
-      "C "+L+" "+(cy+upper)+" "+(L-hump)+" "+(cy+inner)+" "+(L-hump)+" "+cy,
-      "C "+(L-hump)+" "+(cy-inner)+" "+L+" "+(cy-upper)+" "+L+" "+(cy-half),
-      "L "+L+" "+(T+r),"Q "+L+" "+T+" "+(L+r)+" "+T,"Z"
+      "M "+(L+r)+" "+T,
+      "L "+(R-r)+" "+T,
+      "Q "+R+" "+T+" "+R+" "+(T+r),
+      "L "+R+" "+(B-r),
+      "Q "+R+" "+B+" "+(R-r)+" "+B,
+      "L "+(L+r)+" "+B,
+      "Q "+L+" "+B+" "+L+" "+(B-r),
+      "L "+L+" "+(T+r),
+      "Q "+L+" "+T+" "+(L+r)+" "+T,"Z"
     ].join(" ");
+    // Tiny outward-only chevrons are in the screen margin,
+    // separated from the uninterrupted border by 4px+.
     const arrows=[
-      "M "+(L-1.2)+" "+(cy-4.4)+" L "+(L-3.5)+" "+cy+" L "+(L-1.2)+" "+(cy+4.4),
-      "M "+(R+1.2)+" "+(cy-4.4)+" L "+(R+3.5)+" "+cy+" L "+(R+1.2)+" "+(cy+4.4)
+      "M "+(L-5)+" "+(cy-4.5)+" L "+(L-10)+" "+cy+" L "+(L-5)+" "+(cy+4.5),
+      "M "+(R+5)+" "+(cy-4.5)+" L "+(R+10)+" "+cy+" L "+(R+5)+" "+(cy+4.5)
     ].join(" ");
     return {d,arrows};
   }
