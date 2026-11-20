@@ -64,7 +64,8 @@
 .setka-cycle-overlay iframe{display:block;width:100%;height:100%;height:100dvh;border:0;background:#020105}
 .setka-cycle-edge{position:fixed;z-index:130;top:0;bottom:0;width:24px;touch-action:none;-webkit-tap-highlight-color:transparent;cursor:ew-resize}
 .setka-cycle-edge.right{right:0}.setka-cycle-edge.left{left:0}
-body:not(.cycle-side) .setka-cycle-edge.left,body.cycle-side .setka-cycle-edge.right{display:none}
+/* Both unobtrusive edge gestures remain available on EITHER card face.
+   Game-mode rules below override them completely. */
 body.cycle-busy .setka-cycle-edge{pointer-events:none}
 .setka-cycle-edge-mark{position:absolute;top:50%;width:100%;transform:translateY(-50%);height:92px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px;pointer-events:none;opacity:.5}
 .setka-cycle-edge-mark:before{content:"";position:absolute;left:50%;top:2px;bottom:2px;width:1px;background:linear-gradient(transparent,#9a6bb1,#d6b4ee,#9a6bb1,transparent);box-shadow:0 0 7px #ae72dc77}
@@ -80,11 +81,11 @@ body.cycle-busy .setka-cycle-edge{pointer-events:none}
    touch scrolling, 4-column count or the bottom dock. */
 #libraryScreen #allPatternsPanel,
 #libraryScreen #communityPanel,
-#libraryScreen #favoritesPanel{padding-top:34px!important}
+#libraryScreen #favoritesPanel{padding-top:22px!important}
 @media(max-width:767px){
   #libraryScreen #allPatternsPanel,
   #libraryScreen #communityPanel,
-  #libraryScreen #favoritesPanel{padding-top:30px!important}
+  #libraryScreen #favoritesPanel{padding-top:18px!important}
 }
 
 /* Shared front/back card size; ALMA iframe uses the same 12px/84px geometry.
@@ -247,44 +248,47 @@ body.cycle-flip-active #setkaCycleBack{pointer-events:none}
 </script>
 
 <aside class="setka-cycle-overlay" id="setkaCycleBack" hidden aria-label="Календарь-лотос ALMA">
-  <iframe title="Оригинальный календарь цикла ALMA" src="./experiments/alma-cycle-source/index.html?v=20261120-shared-card-geometry" loading="eager"></iframe>
+  <iframe title="Оригинальный календарь цикла ALMA" src="./experiments/alma-cycle-source/index.html?v=20261120-fixed-scroll-universal-gesture" loading="eager"></iframe>
 </aside>
 <div id="setkaCycleOpen" class="setka-cycle-edge right" role="button" tabindex="0" aria-label="Свайп с правого края влево: открыть календарь"><span class="setka-cycle-edge-mark" aria-hidden="true"><b>‹</b><small>свайп</small></span></div>
 <div id="setkaCycleReturn" class="setka-cycle-edge left" role="button" tabindex="0" aria-label="Свайп с левого края вправо: SETKA"><span class="setka-cycle-edge-mark" aria-hidden="true"><b>›</b><small>свайп</small></span></div>
 <script>
 (function(){
   "use strict";
-  // The actual SETKA DOM stays in its original page. Only the cycle back is an iframe.
-  // Unlike a CSS-transformed parent/iframe, preview scrolling remains native when idle.
+  // The native SETKA remains an untransformed top-level document at rest.
+  // Both edge gestures work on either card face. Gameplay is never captured.
   const app=document.getElementById("app");
   const back=document.getElementById("setkaCycleBack");
   const libraryScreen=document.getElementById("libraryScreen");
   const gameScreen=document.getElementById("gameScreen");
   if(!app||!back||!libraryScreen||!gameScreen)return;
-  // The flip is strictly limited to the squish-selection library.
-  // Do not capture even the outermost 24 px of a playing pattern.
-  const libraryVisible=()=>libraryScreen.classList.contains("active")&&!gameScreen.classList.contains("active");
-  const syncGestureAvailability=()=>{
-    document.body.classList.toggle("setka-cycle-gameplay",!libraryVisible());
-    for(const id of ["setkaCycleOpen","setkaCycleReturn"]){
-      const edge=document.getElementById(id);
-      if(edge){edge.tabIndex=libraryVisible()?0:-1;edge.setAttribute("aria-hidden",String(!libraryVisible()))}
-    }
-  };
 
+  const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
   const ease=t=>1-Math.pow(1-t,3);
-  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+  const libraryVisible=()=>libraryScreen.classList.contains("active")&&!gameScreen.classList.contains("active");
+  const edgeIds=["setkaCycleOpen","setkaCycleReturn"];
   let inCycle=false;
   let progress=0;
-  let active=null;
+  let direction=-1; // -1: leftward rotation; +1: rightward rotation
+  let pointer=null;
   let animationFrame=0;
   let animating=false;
   let animationToken=0;
 
+  function syncAvailability(){
+    const allowed=libraryVisible();
+    document.body.classList.toggle("setka-cycle-gameplay",!allowed);
+    for(const id of edgeIds){
+      const el=document.getElementById(id);
+      if(!el)continue;
+      el.tabIndex=allowed?0:-1;
+      el.setAttribute("aria-hidden",String(!allowed));
+    }
+  }
+
   function setAtRest(cycle){
-    // No persistent transform or 3D parent: restores native preview lift.
     inCycle=!!cycle;
-    progress=cycle?1:0;
+    progress=inCycle?1:0;
     document.body.classList.toggle("cycle-side",inCycle);
     document.body.classList.remove("cycle-flip-active","cycle-busy");
     back.hidden=!inCycle;
@@ -296,36 +300,33 @@ body.cycle-flip-active #setkaCycleBack{pointer-events:none}
     back.style.removeProperty("transform");
     app.style.removeProperty("opacity");
     back.style.removeProperty("opacity");
-    try{
-      history.replaceState(null,"",location.pathname+location.search+(inCycle?"#cycle":""));
-    }catch(_){}
+    try{history.replaceState(null,"",location.pathname+location.search+(inCycle?"#cycle":""))}catch(_){}
   }
 
   function startVisual(){
     back.hidden=false;
     back.inert=true;
-    // Safari may paint an independently rotated backface despite
-    // backface-visibility:hidden. Never expose the opposite face here.
-    const frontVisible=!inCycle;
-    app.style.visibility=frontVisible?"":"hidden";
-    app.style.opacity=frontVisible?"1":"0";
-    back.style.visibility=frontVisible?"hidden":"";
-    back.style.opacity=frontVisible?"0":"1";
     document.body.classList.add("cycle-flip-active");
+    // Never show the reverse text before the card passes its edge.
+    const showFront=!inCycle;
+    app.style.visibility=showFront?"":"hidden";
+    app.style.opacity=showFront?"1":"0";
+    back.style.visibility=showFront?"hidden":"";
+    back.style.opacity=showFront?"0":"1";
   }
 
   function draw(p){
     progress=clamp(p,0,1);
-    // True two-phase physical card flip: front 0 -> -90 degrees,
-    // back +90 -> 0 degrees. The hidden side is explicitly invisible
-    // AND transparent, preventing iOS WebKit's mirrored 180-degree face.
-    const frontVisible=progress<0.5;
+    // Safari-safe: explicitly hide the non-facing surface, preventing
+    // mirrored text even when WebKit fails backface-visibility on an iframe.
+    const frontVisible=progress<.5;
     app.style.visibility=frontVisible?"":"hidden";
     app.style.opacity=frontVisible?"1":"0";
     back.style.visibility=frontVisible?"hidden":"";
     back.style.opacity=frontVisible?"0":"1";
-    app.style.transform="perspective(1450px) rotateY("+(-180*progress)+"deg)";
-    back.style.transform="perspective(1450px) rotateY("+(180*(1-progress))+"deg)";
+    const sign=direction;
+    app.style.transform="perspective(1450px) rotateY("+(sign*180*progress)+"deg)";
+    back.style.transform="perspective(1450px) rotateY("+(-sign*180*(1-progress))+"deg)";
   }
 
   function cancelAnimation(){
@@ -336,46 +337,35 @@ body.cycle-flip-active #setkaCycleBack{pointer-events:none}
   }
 
   function complete(target){
-    if(!libraryVisible()){cancelAnimation();setAtRest(false);syncGestureAvailability();return;}
+    if(!libraryVisible()){cancelAnimation();setAtRest(false);syncAvailability();return;}
     cancelAnimation();
-    const current=progress;
-    const end=target?1:0;
-    const difference=Math.abs(end-current);
-    if(difference<.001){setAtRest(target);return;}
+    const start=progress,end=target?1:0;
+    const dist=Math.abs(end-start);
+    if(dist<.001){setAtRest(target);return;}
     animating=true;
     document.body.classList.add("cycle-busy");
     const token=animationToken;
-    const duration=220+400*difference;
+    const duration=240+420*dist;
     let startTime=null;
-
-    function frame(now){
+    function frame(t){
       if(token!==animationToken)return;
-      if(!libraryVisible()){setAtRest(false);syncGestureAvailability();return;}
-      if(startTime===null)startTime=now;
-      const fraction=clamp((now-startTime)/duration,0,1);
-      draw(current+(end-current)*ease(fraction));
-      if(fraction<1){animationFrame=requestAnimationFrame(frame);}
-      else{
-        animationFrame=0;
-        animating=false;
-        setAtRest(target);
-      }
+      if(!libraryVisible()){cancelAnimation();setAtRest(false);syncAvailability();return;}
+      if(startTime===null)startTime=t;
+      const a=clamp((t-startTime)/duration,0,1);
+      draw(start+(end-start)*ease(a));
+      if(a<1)animationFrame=requestAnimationFrame(frame);
+      else{animationFrame=0;animating=false;setAtRest(target);}
     }
     animationFrame=requestAnimationFrame(frame);
   }
 
-  function onPointerDown(event,side){
-    if(!libraryVisible())return;
+  function pointerDown(event){
+    if(!libraryVisible()||animating||pointer)return;
     if(event.pointerType==="mouse"&&event.button!==0)return;
-    if(animating||active)return;
-    if(side!==inCycle)return;
-    active={
+    pointer={
       id:event.pointerId,
-      el:event.currentTarget,
       startX:event.clientX,
       startY:event.clientY,
-      x:event.clientX,
-      t:event.timeStamp,
       fromCycle:inCycle,
       horizontal:false,
       vertical:false
@@ -383,92 +373,78 @@ body.cycle-flip-active #setkaCycleBack{pointer-events:none}
     try{event.currentTarget.setPointerCapture(event.pointerId)}catch(_){}
   }
 
-  function onPointerMove(event){
-    if(!active||event.pointerId!==active.id)return;
-    if(!libraryVisible()){active=null;cancelAnimation();setAtRest(false);syncGestureAvailability();return;}
-    const a=active;
-    const dx=event.clientX-a.startX;
-    const dy=event.clientY-a.startY;
-    if(!a.horizontal&&!a.vertical){
-      if(Math.abs(dy)>11&&Math.abs(dy)>Math.abs(dx)*1.2){
-        a.vertical=true;return;
-      }
+  function pointerMove(event){
+    if(!pointer||event.pointerId!==pointer.id)return;
+    if(!libraryVisible()){pointer=null;cancelAnimation();setAtRest(false);syncAvailability();return;}
+    const p=pointer,dx=event.clientX-p.startX,dy=event.clientY-p.startY;
+    if(!p.horizontal&&!p.vertical){
+      if(Math.abs(dy)>11&&Math.abs(dy)>Math.abs(dx)*1.2){p.vertical=true;return;}
       if(Math.abs(dx)>12&&Math.abs(dx)>Math.abs(dy)*1.12){
-        a.horizontal=true;
-        cancelAnimation();
-        startVisual();
+        p.horizontal=true;
+        // Decide the rotation direction from the user's first real motion.
+        // Both edges can flip either card face; no fixed right/left dependency.
+        direction=dx>0?1:-1;
+        cancelAnimation();startVisual();
       }
     }
-    if(a.vertical||!a.horizontal)return;
+    if(p.vertical||!p.horizontal)return;
     event.preventDefault();
     const distance=Math.max(280,Math.min(innerWidth*.92,520));
-    // 1px finger movement produces a proportional small angle change.
-    // Slow swipe: each intermediate degree stays visible until the user moves.
-    const next=a.fromCycle?1-dx/distance:-dx/distance;
-    draw(next);
-    a.x=event.clientX;
-    a.t=event.timeStamp;
+    const travel=Math.abs(dx)/distance;
+    draw(p.fromCycle?1-travel:travel);
   }
 
-  function onPointerEnd(event,cancelled){
-    if(!active||event.pointerId!==active.id)return;
-    if(!libraryVisible()){active=null;cancelAnimation();setAtRest(false);syncGestureAvailability();return;}
-    const a=active;
-    active=null;
-    if(!a.horizontal||cancelled){
-      if(a.horizontal)complete(a.fromCycle);
+  function pointerEnd(event,cancelled){
+    if(!pointer||event.pointerId!==pointer.id)return;
+    const p=pointer;
+    pointer=null;
+    if(!libraryVisible()){cancelAnimation();setAtRest(false);syncAvailability();return;}
+    if(!p.horizontal||cancelled){
+      if(p.horizontal)complete(p.fromCycle);
       return;
     }
-    // Where the finger released determines which side will be shown.
-    // Releasing before halfway returns the card to the starting face.
-    const target=progress>=.5;
-    complete(target);
+    complete(progress>=.5);
   }
 
-  function register(id,fromCycle){
+  function bindEdge(id){
     const el=document.getElementById(id);
-    el.addEventListener("pointerdown",e=>onPointerDown(e,fromCycle));
-    el.addEventListener("pointermove",onPointerMove,{passive:false});
-    el.addEventListener("pointerup",e=>onPointerEnd(e,false));
-    el.addEventListener("pointercancel",e=>onPointerEnd(e,true));
-    el.addEventListener("lostpointercapture",e=>onPointerEnd(e,true));
-    // Keyboard fallback does not turn the visual hint into a tap-to-flip button.
+    el.addEventListener("pointerdown",pointerDown);
+    el.addEventListener("pointermove",pointerMove,{passive:false});
+    el.addEventListener("pointerup",e=>pointerEnd(e,false));
+    el.addEventListener("pointercancel",e=>pointerEnd(e,true));
+    el.addEventListener("lostpointercapture",e=>pointerEnd(e,true));
     el.addEventListener("keydown",e=>{
       if((e.key==="Enter"||e.key===" ")&&!animating&&libraryVisible()){
         e.preventDefault();
-        startVisual();
-        draw(fromCycle?1:0);
-        complete(!fromCycle);
+        startVisual();draw(inCycle?1:0);complete(!inCycle);
       }
     });
   }
-  register("setkaCycleOpen",false);
-  register("setkaCycleReturn",true);
+  for(const id of edgeIds)bindEdge(id);
+
+  function viewChanged(){
+    if(!libraryVisible()){
+      pointer=null;cancelAnimation();
+      if(inCycle||progress!==0)setAtRest(false);
+    }
+    syncAvailability();
+  }
+
+  window.addEventListener("setka:view",viewChanged);
+  new MutationObserver(viewChanged).observe(libraryScreen,{attributes:true,attributeFilter:["class"]});
+  new MutationObserver(viewChanged).observe(gameScreen,{attributes:true,attributeFilter:["class"]});
   window.addEventListener("keydown",e=>{
-    if(e.key==="Escape"&&!animating&&inCycle){
+    if(e.key==="Escape"&&!animating&&inCycle&&libraryVisible()){
       startVisual();draw(1);complete(false);
     }
   });
 
-  function onViewChanged(){
-    if(!libraryVisible()){
-      active=null;
-      cancelAnimation();
-      if(inCycle||progress!==0)setAtRest(false);
-    }
-    syncGestureAvailability();
-  }
-  window.addEventListener("setka:view",onViewChanged);
-  new MutationObserver(onViewChanged).observe(libraryScreen,{attributes:true,attributeFilter:["class"]});
-  new MutationObserver(onViewChanged).observe(gameScreen,{attributes:true,attributeFilter:["class"]});
   setAtRest(location.hash==="#cycle"&&libraryVisible());
-  syncGestureAvailability();
+  syncAvailability();
   window.SETKA_CYCLE_LAB={
     flip:toCycle=>{
-      if(!libraryVisible()||animating||active)return;
-      startVisual();
-      draw(inCycle?1:0);
-      complete(!!toCycle);
+      if(!libraryVisible()||animating||pointer||!!toCycle===inCycle)return;
+      startVisual();draw(inCycle?1:0);complete(!!toCycle);
     },
     getSide:()=>inCycle?"cycle":"setka",
     getAngle:()=>Math.round(progress*180),
