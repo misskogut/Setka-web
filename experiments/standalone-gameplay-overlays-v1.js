@@ -19,24 +19,57 @@
   let syncing=false;
   let queued=false;
   let saveReopenScheduled=false;
+  let unmountTimer=0;
+  const SLIDE_MS=325;
+  // The game sheets use the same resize engine as the bottom dock.
+  // We keep the native note sheet mounted for its entire close animation.
+  document.body.classList.add("setka-game-sheet-unified");
 
   // The two ORIGINAL action buttons keep all original click listeners.
   const actions=keySheet.querySelector(".sk-actions");
   const header=keySheet.querySelector(".sk-head .sk-row");
   if(actions&&header&&actions.parentElement!==header)header.appendChild(actions);
 
+  function cancelUnmount(){
+    if(unmountTimer){clearTimeout(unmountTimer);unmountTimer=0}
+  }
+  function moveBackToDock(){
+    cancelUnmount();
+    if(layer.parentElement===ui)originalParent.appendChild(layer);
+    document.body.classList.remove("setka-game-note-mounted");
+  }
+  function keepMounted(){
+    cancelUnmount();
+    document.body.classList.add("setka-game-note-mounted");
+    if(layer.parentElement!==ui)ui.appendChild(layer);
+  }
   function sync(){
     if(syncing)return;
     syncing=true;
     try{
-      const open=gameActive()&&noteComposerOpen();
+      const inGame=gameActive();
+      if(!inGame&&layer.parentElement===ui&&layerOpen()){
+        // Never leave a gameplay note visible when returning to the library.
+        C.hideLayer();
+      }
+      const open=inGame&&noteComposerOpen();
       document.body.classList.toggle("setka-game-note-open",open);
-      document.body.classList.toggle("setka-game-settings-open",gameActive()&&settingsOpen());
+      document.body.classList.toggle("setka-game-settings-open",inGame&&settingsOpen());
       note.setAttribute("aria-expanded",String(open));
-      // Reparent only while the native note composer is open. The sheet
-      // controller's original element, form, save handler and draft all survive.
-      if(open&&layer.parentElement!==ui)ui.appendChild(layer);
-      if(!open&&layer.parentElement===ui)originalParent.appendChild(layer);
+      if(open){
+        keepMounted();
+      }else if(layer.parentElement===ui){
+        if(!inGame){moveBackToDock();} // no animation on game exit
+        else if(!unmountTimer){
+          // Closing: don't reparent immediately, or iOS loses the slide-out.
+          unmountTimer=setTimeout(()=>{
+            unmountTimer=0;
+            if(gameActive()&&noteComposerOpen())return;
+            if(layer.parentElement===ui)originalParent.appendChild(layer);
+            document.body.classList.remove("setka-game-note-mounted");
+          },SLIDE_MS);
+        }
+      }
     }finally{syncing=false}
   }
   function queueSync(){
@@ -46,8 +79,12 @@
   }
   function prepareNote(){
     if(!gameActive())return;
+    keepMounted();
     document.body.classList.add("setka-game-note-open");
-    if(layer.parentElement!==ui)ui.appendChild(layer);
+    // The native composer removes .hidden during this same click.
+    // Commit the collapsed sheet style first, allowing the 300ms
+    // transform to animate instead of immediately popping into place.
+    void getComputedStyle(layer).transform;
   }
 
   // Capture runs before the legacy note's click handler, but NEVER replaces
@@ -109,11 +146,12 @@
   window.addEventListener("setka:view",queueSync);
   window.addEventListener("setka:sheet-presentation",queueSync);
   window.addEventListener("pagehide",()=>{
-    document.body.classList.remove("setka-game-note-open","setka-game-settings-open");
+    cancelUnmount();
+    document.body.classList.remove("setka-game-note-open","setka-game-note-mounted","setka-game-settings-open");
   });
   sync();
   window.SETKA_GAMEPLAY_OVERLAYS_LAB={
-    status:()=>({note:gameActive()&&noteComposerOpen(),settings:gameActive()&&settingsOpen(),game:gameActive(),layerInGame:layer.parentElement===ui}),
+    status:()=>({note:gameActive()&&noteComposerOpen(),settings:gameActive()&&settingsOpen(),game:gameActive(),layerInGame:layer.parentElement===ui,mounted:document.body.classList.contains("setka-game-note-mounted")}),
     closeNote:()=>{if(gameActive()&&noteComposerOpen())C.hideLayer();sync()}
   };
 })();
