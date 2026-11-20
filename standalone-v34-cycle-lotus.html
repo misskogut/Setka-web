@@ -90,72 +90,60 @@ body.cycle-busy .setka-cycle-edge{pointer-events:none}
   #libraryScreen #favoritesPanel{padding-top:18px!important}
 }
 
-/* Community controls sit in the SAME heading band, never on top of tile
-   previews. The panels retain one identical grid/padding baseline.
-   Higher selector specificity is intentional: cloud module injects its CSS
-   later and also uses !important, but must not push filters over previews. */
+/* Community: keep the original centered heading at safe-top + 108px,
+   put the four filter chips on their own line BELOW it, and lower only
+   the community squish thumbnails enough to leave clear breathing room.
+   The all-squishes/favorites baselines and tile dimensions never change. */
 #app #libraryScreen #st34CommunityModes{
-  top:calc(var(--safe-top) + 103px)!important;
-  left:111px!important;
-  right:20px!important;
-  transform:none!important;
-  width:auto!important;
-  max-width:none!important;
-  margin:0!important;
-  padding:0 1px!important;
-  justify-content:flex-start!important;
-  align-items:center!important;
-  gap:3px!important;
+  position:absolute!important;
+  top:calc(var(--safe-top) + 145px)!important;
+  left:50%!important;
+  right:auto!important;
+  transform:translateX(-50%)!important;
+  width:max-content!important;
+  max-width:calc(100% - 28px)!important;
   height:31px!important;
+  margin:0!important;
+  padding:0!important;
+  display:flex!important;
+  justify-content:center!important;
+  align-items:center!important;
+  flex-wrap:nowrap!important;
+  gap:5px!important;
+  z-index:30!important;
   overflow-x:auto!important;
   overflow-y:hidden!important;
   scrollbar-width:none;
   -webkit-overflow-scrolling:touch;
   touch-action:pan-x;
-  flex-wrap:nowrap!important;
-  z-index:30!important;
 }
+#app #libraryScreen #st34CommunityModes.hidden{display:none!important}
 #app #libraryScreen #st34CommunityModes::-webkit-scrollbar{display:none}
-/* Push the four chips right when they fit, yet allow scrolling
-   from the first chip on narrow iPhones when they do not. */
-#app #libraryScreen #st34CommunityModes button:first-child{margin-left:auto!important}
 #app #libraryScreen #st34CommunityModes button{
   flex:0 0 auto!important;
-  height:29px!important;
-  min-height:29px!important;
-  padding:0 7px!important;
+  height:31px!important;
+  min-height:31px!important;
+  padding:0 8px!important;
   font-size:9px!important;
-}
-#app #libraryScreen:has(#st34CommunityModes:not(.hidden)) #libraryTitle{
-  left:24px!important;
-  right:auto!important;
-  top:calc(var(--safe-top) + 112px)!important;
-  width:85px!important;
-  max-width:85px!important;
-  text-align:left!important;
-  font-size:10px!important;
-  letter-spacing:.09em!important;
-  line-height:13px!important;
   white-space:nowrap!important;
+}
+/* library panel begins at safe-top +126px; +72px inset means the first
+   thumbnails start at +198px: 22px below the filter-row bottom (+176px). */
+#app #libraryScreen #communityPanel{padding-top:72px!important}
+#app #libraryScreen #communityPanel:has(> #st40CommunityNotes){
+  padding-top:18px!important;
 }
 @media(max-width:360px){
   #app #libraryScreen #st34CommunityModes{
-    left:88px!important;
-    right:12px!important;
-    gap:2px!important;
+    max-width:calc(100% - 20px)!important;
+    gap:3px!important;
   }
   #app #libraryScreen #st34CommunityModes button{
-    padding:0 5px!important;
-    font-size:8px!important;
-  }
-  #app #libraryScreen:has(#st34CommunityModes:not(.hidden)) #libraryTitle{
-    left:17px!important;
-    width:70px!important;
-    max-width:70px!important;
-    font-size:9px!important;
-    letter-spacing:.04em!important;
+    padding:0 6px!important;
+    font-size:8.5px!important;
   }
 }
+
 /* A network/archival state is not a squish. Suppress the technical warning
    completely so it does not occupy the first cell of the four-column grid.
    Existing published cards and community filtering stay intact. */
