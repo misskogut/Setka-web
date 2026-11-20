@@ -116,6 +116,16 @@ body.cycle-busy .setka-cycle-edge{pointer-events:none}
    paragraph consuming space or cluttering the patterned front card. */
 #setkaCatalogStatus{display:none!important}
 
+/* The game is NOT a face of the card: pattern sessions never show a
+   card frame, edge hint, or edge-swipe capture area. */
+body:has(#gameScreen.active) #setkaCycleFrontFrame,
+body:has(#gameScreen.active) .setka-cycle-edge,
+body.setka-cycle-gameplay #setkaCycleFrontFrame,
+body.setka-cycle-gameplay .setka-cycle-edge{
+  display:none!important;
+  pointer-events:none!important;
+}
+
 /* Finger-controlled 3D card, active ONLY while swiping from a side edge. */
 body.cycle-flip-active #app,
 body.cycle-flip-active #setkaCycleBack {
@@ -133,8 +143,8 @@ body.cycle-flip-active #setkaCycleBack{pointer-events:none}
 </head>
 <body>
 <main id="app">
-  <div id="setkaCycleFrontFrame" aria-hidden="true"></div>
   <section id="libraryScreen" class="screen active" aria-label="Библиотека паттернов">
+    <div id="setkaCycleFrontFrame" aria-hidden="true"></div>
     <div class="library-pager" aria-label="Разделы библиотеки">
       <button id="libraryPagerButton" class="pager-button active" type="button" aria-label="Исходные паттерны"><span class="pager-dot-mark"></span></button>
       <button id="communityPagerButton" class="pager-button" type="button" aria-label="Библиотека сообщества"><span class="community-mark"><span></span><i></i></span></button>
@@ -248,7 +258,19 @@ body.cycle-flip-active #setkaCycleBack{pointer-events:none}
   // Unlike a CSS-transformed parent/iframe, preview scrolling remains native when idle.
   const app=document.getElementById("app");
   const back=document.getElementById("setkaCycleBack");
-  if(!app||!back)return;
+  const libraryScreen=document.getElementById("libraryScreen");
+  const gameScreen=document.getElementById("gameScreen");
+  if(!app||!back||!libraryScreen||!gameScreen)return;
+  // The flip is strictly limited to the squish-selection library.
+  // Do not capture even the outermost 24 px of a playing pattern.
+  const libraryVisible=()=>libraryScreen.classList.contains("active")&&!gameScreen.classList.contains("active");
+  const syncGestureAvailability=()=>{
+    document.body.classList.toggle("setka-cycle-gameplay",!libraryVisible());
+    for(const id of ["setkaCycleOpen","setkaCycleReturn"]){
+      const edge=document.getElementById(id);
+      if(edge){edge.tabIndex=libraryVisible()?0:-1;edge.setAttribute("aria-hidden",String(!libraryVisible()))}
+    }
+  };
 
   const ease=t=>1-Math.pow(1-t,3);
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -314,6 +336,7 @@ body.cycle-flip-active #setkaCycleBack{pointer-events:none}
   }
 
   function complete(target){
+    if(!libraryVisible()){cancelAnimation();setAtRest(false);syncGestureAvailability();return;}
     cancelAnimation();
     const current=progress;
     const end=target?1:0;
@@ -327,6 +350,7 @@ body.cycle-flip-active #setkaCycleBack{pointer-events:none}
 
     function frame(now){
       if(token!==animationToken)return;
+      if(!libraryVisible()){setAtRest(false);syncGestureAvailability();return;}
       if(startTime===null)startTime=now;
       const fraction=clamp((now-startTime)/duration,0,1);
       draw(current+(end-current)*ease(fraction));
@@ -341,6 +365,7 @@ body.cycle-flip-active #setkaCycleBack{pointer-events:none}
   }
 
   function onPointerDown(event,side){
+    if(!libraryVisible())return;
     if(event.pointerType==="mouse"&&event.button!==0)return;
     if(animating||active)return;
     if(side!==inCycle)return;
@@ -360,6 +385,7 @@ body.cycle-flip-active #setkaCycleBack{pointer-events:none}
 
   function onPointerMove(event){
     if(!active||event.pointerId!==active.id)return;
+    if(!libraryVisible()){active=null;cancelAnimation();setAtRest(false);syncGestureAvailability();return;}
     const a=active;
     const dx=event.clientX-a.startX;
     const dy=event.clientY-a.startY;
@@ -386,6 +412,7 @@ body.cycle-flip-active #setkaCycleBack{pointer-events:none}
 
   function onPointerEnd(event,cancelled){
     if(!active||event.pointerId!==active.id)return;
+    if(!libraryVisible()){active=null;cancelAnimation();setAtRest(false);syncGestureAvailability();return;}
     const a=active;
     active=null;
     if(!a.horizontal||cancelled){
@@ -407,7 +434,7 @@ body.cycle-flip-active #setkaCycleBack{pointer-events:none}
     el.addEventListener("lostpointercapture",e=>onPointerEnd(e,true));
     // Keyboard fallback does not turn the visual hint into a tap-to-flip button.
     el.addEventListener("keydown",e=>{
-      if((e.key==="Enter"||e.key===" ")&&!animating){
+      if((e.key==="Enter"||e.key===" ")&&!animating&&libraryVisible()){
         e.preventDefault();
         startVisual();
         draw(fromCycle?1:0);
@@ -423,16 +450,29 @@ body.cycle-flip-active #setkaCycleBack{pointer-events:none}
     }
   });
 
-  setAtRest(location.hash==="#cycle");
+  function onViewChanged(){
+    if(!libraryVisible()){
+      active=null;
+      cancelAnimation();
+      if(inCycle||progress!==0)setAtRest(false);
+    }
+    syncGestureAvailability();
+  }
+  window.addEventListener("setka:view",onViewChanged);
+  new MutationObserver(onViewChanged).observe(libraryScreen,{attributes:true,attributeFilter:["class"]});
+  new MutationObserver(onViewChanged).observe(gameScreen,{attributes:true,attributeFilter:["class"]});
+  setAtRest(location.hash==="#cycle"&&libraryVisible());
+  syncGestureAvailability();
   window.SETKA_CYCLE_LAB={
     flip:toCycle=>{
-      if(animating||active)return;
+      if(!libraryVisible()||animating||active)return;
       startVisual();
       draw(inCycle?1:0);
       complete(!!toCycle);
     },
     getSide:()=>inCycle?"cycle":"setka",
-    getAngle:()=>Math.round(progress*180)
+    getAngle:()=>Math.round(progress*180),
+    isAvailable:libraryVisible
   };
 })();
 </script>
