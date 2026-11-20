@@ -41,6 +41,56 @@ body.setka-game-music-open #gameScreen #setkaGameMusicButton{
 #gameScreen #libraryButton svg rect{
   fill:currentColor!important;
 }
+
+/* Native microphone-reactive note belongs inside the music sheet, not atop
+   the quick-music note. Its original DOM and click listeners are retained. */
+#gameScreen .sg-music-reactive-slot{
+  display:flex!important;align-items:center!important;justify-content:flex-end!important;
+  flex:0 0 auto!important;gap:9px;min-width:0;margin-left:auto;
+}
+#gameScreen .sg-music-reactive-label{
+  color:rgba(255,255,255,.48);
+  font:400 10px/1.2 system-ui,sans-serif;
+  letter-spacing:.02em;
+}
+#gameScreen #setkaGameMusicSheet #st34AudioButton{
+  position:relative!important;
+  left:auto!important;right:auto!important;top:auto!important;bottom:auto!important;
+  z-index:auto!important;
+  display:grid!important;place-items:center!important;flex:0 0 38px!important;
+  width:38px!important;height:38px!important;margin:0!important;padding:0!important;
+  opacity:.65!important;color:rgba(255,255,255,.7)!important;
+  border:1px solid rgba(255,255,255,.26)!important;border-radius:50%!important;
+  border-style:solid!important;background:transparent!important;
+  box-shadow:none!important;filter:none!important;text-shadow:none!important;
+  backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+}
+#gameScreen #setkaGameMusicSheet #st34AudioButton[hidden]{display:none!important}
+#gameScreen #setkaGameMusicSheet #st34AudioButton svg{
+  width:20px!important;height:20px!important;
+  fill:none!important;stroke:currentColor!important;stroke-width:1.6!important;
+}
+#gameScreen #setkaGameMusicSheet #st34AudioButton svg rect{
+  fill:none!important;stroke:currentColor!important;
+}
+#gameScreen #setkaGameMusicSheet #st34AudioModeDots{
+  inset:-5px!important;pointer-events:none;
+}
+#gameScreen #setkaGameMusicSheet #st34AudioModeDots .st34-audio-dot{
+  width:3px!important;height:3px!important;margin:-1.5px!important;
+  box-shadow:none!important;
+}
+#gameScreen #setkaGameMusicSheet #st34AudioButton[aria-pressed="true"]{
+  border-color:rgba(255,255,255,.44)!important;opacity:.93!important;
+}
+#gameScreen #setkaGameMusicSheet #st34AudioButton[data-error]:not([data-error=""]){
+  border-style:solid!important;
+}
+@media(max-width:360px){
+  #gameScreen .sg-music-reactive-label{font-size:9px}
+  #gameScreen .sg-music-reactive-slot{gap:5px}
+}
+
 #gameScreen #setkaGameMusicSheet{
   box-sizing:border-box;
   position:absolute!important;
