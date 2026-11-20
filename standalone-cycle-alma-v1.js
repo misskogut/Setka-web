@@ -52,8 +52,8 @@ function profileDay(s){
   for(const period of stored.periods){if(period.start<=s)anchor=period;else break}
   const elapsed=between(anchor.start,s);
   const cycleDay=((elapsed%len)+len)%len+1;
-  const ovulation=Math.max(Math.min(12,len-14),len-14); // ALMA-style estimate, not a confirmed event
   const periodLength=anchor.end?Math.min(10,between(anchor.start,anchor.end)+1):5;
+  const ovulation=Math.max(periodLength+5,len-14); // same baseline phase calculation as ALMA
   const marker=stored.periods.find(p=>p.start<=s&&p.end&&p.end>=s);
   let phase="luteal";
   if(marker||cycleDay<=periodLength)phase="menstruation";
@@ -99,6 +99,7 @@ function makePollen(id,n,front){
     $(id).appendChild(c);
   }
 }
+const shine=svg("path",{class:"lotus-drop-shine",d:"M171 76 C159 101 155 127 160 151"});$("lotusBloom").appendChild(shine);
 makePollen("pollenBack",34,false);
 makePollen("pollenFront",18,true);
 for(let i=0;i<42;i++)$("cosmicDust").appendChild(document.createElement("i"));
@@ -237,6 +238,7 @@ function openSheet(p){
 function closeSheet(){overlay.classList.remove("open");message.textContent=""}
 $("lotusOpen").addEventListener("click",()=>openSheet(null));
 $("record").addEventListener("click",()=>openSheet(null));
+$("recordBottom").addEventListener("click",()=>openSheet(null));
 $("closeSheet").addEventListener("click",closeSheet);
 overlay.addEventListener("pointerdown",e=>{if(e.target===overlay)closeSheet()});
 start.addEventListener("change",()=>{end.min=start.value;if(end.value&&end.value<start.value)end.value=""});
