@@ -42,22 +42,21 @@ html,body{
 #alma-cycle-root .cycle-hero{
   overflow:hidden!important;
 }
-/* SETKA card-compatible ALMA sheets.
-   React renders the original sheet as a fixed viewport overlay. Restrict the
-   overlay to the SAME card rectangle instead of letting it cover the border,
-   nav bar and the side-swipe arrows. The sheet itself remains scrollable. */
+/* ALMA's original entry sheet is inset INSIDE the single SETKA card,
+   not edge-to-edge with its outline. Preserve touch, internal scrolling,
+   button behavior, and the original bottom-sheet entrance animation. */
 .sheet-layer{
   box-sizing:border-box!important;
   position:fixed!important;
-  top:var(--setka-card-top)!important;
-  bottom:var(--setka-card-bottom)!important;
+  top:calc(var(--setka-card-top) + 10px)!important;
+  bottom:calc(var(--setka-card-bottom) + 10px)!important;
   left:50%!important;
   right:auto!important;
-  width:min(calc(100% - 28px),432px)!important;
+  width:min(calc(100% - 48px),412px)!important;
   height:auto!important;
-  max-height:calc(100dvh - 96px - env(safe-area-inset-bottom, 0px))!important;
+  max-height:calc(100dvh - 116px - env(safe-area-inset-bottom, 0px))!important;
   transform:translateX(-50%)!important;
-  border-radius:24px!important;
+  border-radius:22px!important;
   overflow:hidden!important;
   align-items:flex-end!important;
 }
