@@ -35,6 +35,8 @@
 @media(max-height:755px){.content{padding-top:calc(env(safe-area-inset-top) + 10px)}.flower{height:216px}.flower svg{height:214px}.dial-wrap,.dial{height:119px}.gem{margin:9px 0 2px}.heading{margin-top:6px;font-size:23px}.foot{padding-top:10px}}
 @media(max-width:350px){.content{padding-left:22px;padding-right:22px}.heading{font-size:22px}}
 @media(prefers-reduced-motion:reduce){.card{transition-duration:.12s}.petal{transition-duration:.1s}.pollen{animation:none;opacity:.4}}
+
+.back .alma-cycle-original-frame{display:block;width:100%;height:100%;height:100dvh;border:0;background:#020105}
 </style>
 <style>
 .cycle-hero { min-height: 610px; position: relative; overflow: hidden; border-top: 1px solid rgba(255, 255, 255, .018); border-bottom: 1px solid color-mix(in srgb, var(--cycle-color) 13%, transparent); background: radial-gradient(ellipse at 50% 42%, color-mix(in srgb, var(--cycle-color) 17%, transparent), transparent 45%), radial-gradient(ellipse at 50% 2%, rgba(133, 67, 214, .1), transparent 40%), #030107; transition: background .45s ease, border-color .45s ease; }
@@ -162,58 +164,12 @@
 <body>
 <div class="scene" id="scene"><div class="card" id="card">
 <section class="face front" id="front" aria-label="Основная SETKA"><iframe title="Действующий интерфейс SETKA Web" src="./standalone-v34.html" allow="autoplay; microphone" loading="eager"></iframe></section>
-<section class="face back" id="back" aria-label="Женский календарь, оригинальная графика ALMA">
-<div class="cycle-hero lotus-stage-low" id="alHero" style="--cycle-color:#4fd39a" aria-label="Мой цикл">
-  <div class="cosmic-dust" id="cosmicDust" aria-hidden="true"></div>
-  <header class="cycle-section-header"><h2>Мой цикл</h2><span class="label">SETKA · ОБОРОТ</span></header>
-  <svg class="cycle-dial" id="cycleDial" viewBox="0 0 380 142" tabindex="0" role="group" aria-label="Дни цикла. Прокрутите дугу влево или вправо; стрелки клавиатуры также меняют дату.">
-    <defs><filter id="dial-glow" x="-150%" y="-150%" width="400%" height="400%"><feGaussianBlur stdDeviation="4" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
-    <g id="dateNodes"></g>
-    <g class="dial-selector" transform="translate(190 29)">
-      <circle class="dial-selector-aura" r="26" filter="url(#dial-glow)"/>
-      <circle class="dial-selector-core" r="22"/>
-    </g>
-  </svg>
-  <button type="button" class="cycle-jump previous" id="prevCycle" aria-label="Предыдущий цикл">‹</button>
-  <button type="button" class="cycle-jump next" id="nextCycle" aria-label="Следующий цикл">›</button>
-  <div class="phase-badge" aria-live="polite"><span id="cycleStage">Укажи начало менструации</span><strong id="cyclePhase">Мой цикл</strong></div>
-  <button type="button" class="cycle-settings-button" id="record" aria-label="Отметить месячные"><i>✦</i> отметить</button>
-  <button class="cycle-lotus-button" type="button" id="lotusOpen" aria-label="Нажми на лотос, чтобы открыть календарь и отметить менструацию">
-    <svg class="cycle-lotus" viewBox="0 0 380 230" role="img" aria-label="Раскрывающийся лотос с фазой цикла">
-      <defs>
-        <radialGradient id="lotus-fill"><stop offset="0" style="stop-color:var(--cycle-color)" stop-opacity=".38"/><stop offset=".62" style="stop-color:var(--cycle-color)" stop-opacity=".12"/><stop offset="1" stop-color="#030107" stop-opacity="0"/></radialGradient>
-        <filter id="lotus-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-        <filter id="pollen-glow" x="-300%" y="-300%" width="700%" height="700%"><feGaussianBlur stdDeviation="2.8" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-      </defs>
-      <g class="lotus-pollen-field" id="pollenBack" filter="url(#pollen-glow)" aria-hidden="true"></g>
-      <ellipse class="lotus-aura" cx="190" cy="135" rx="150" ry="108"/>
-      <g class="lotus-bloom bloom-7" id="lotusBloom" filter="url(#lotus-glow)" aria-hidden="true"></g>
-      <g class="lotus-pollen-field is-foreground" id="pollenFront" filter="url(#pollen-glow)" aria-hidden="true"></g>
-      <text class="lotus-day" id="lotusDay" x="190" y="130" text-anchor="middle">—</text>
-      <text class="lotus-day-label" x="190" y="149" text-anchor="middle">день цикла</text>
-    </svg>
-    <div class="lotus-tap-hint"><i></i> коснись цветка, чтобы отметить</div>
-  </button>
-  <div class="cycle-copy">
-    <p class="cycle-stage-count" id="petalCount">3 лепестка</p>
-    <p class="cycle-timing" id="selectedDate">Дата</p>
-    <h1 id="cycleTitle">Лотос твоего цикла</h1>
-    <p id="cycleDescription">Укажи начало менструации</p>
-    <button class="return-today" id="returnToday" type="button" hidden>вернуться к сегодня</button>
-  </div>
-  <div class="cycle-quick-access"><button id="recordBottom" type="button"><i>✦</i><span>Отметить месячные</span></button></div>
-  <div class="cycle-lab-note">Календарный расчёт ориентировочный · данные хранятся только в этом браузере.<br><a href="./standalone-v34.html">Обычная SETKA без календаря</a></div>
-</div>
+<section class="face back" id="back" aria-label="Оригинальный ALMA цикл на обороте">
+<iframe class="alma-cycle-original-frame" src="./experiments/alma-cycle-source/index.html" loading="eager" title="Оригинальный календарь ALMA: лотос, дуга дат, быстрые отметки, календарь менструации"></iframe>
 </section></div>
 <button class="grip front-grip" id="open" aria-label="Свайп влево или нажатие — перевернуть к календарю"><b>‹</b><small>ЦИКЛ</small></button>
 <button class="grip back-grip" id="close" aria-label="Свайп вправо или нажатие — вернуть SETKA"><b>›</b><small>SETKA</small></button>
 </div>
-<div class="overlay" id="overlay"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
-<div class="sheet-head"><h2 id="sheetTitle">Мой цикл</h2><button id="closeSheet" class="x" aria-label="Закрыть">×</button></div>
-<form id="form"><div class="fields"><label class="field">Начало менструации<input type="date" id="start" required></label><label class="field">Окончание (необязательно)<input type="date" id="end"></label><label class="field wide">Обычная длина цикла, дней<input id="length" type="number" min="15" max="60" value="28" required></label></div>
-<p class="hint">Отметь фактические даты. Если менструация ещё продолжается, окончание можно записать позже. Длина цикла используется для ориентировочного расчёта.</p>
-<button class="submit" id="save">Сохранить запись</button><p class="notice" id="notice" aria-live="polite"></p></form>
-<h3>История отметок</h3><div class="history" id="history"></div></div></div>
 <script>
 (function(){
 'use strict';
@@ -235,9 +191,9 @@ function grip(id,fromBack){
  el.addEventListener("lostpointercapture",()=>{if(gesture){gesture=null;turn(fromBack)}});
 }
 grip("open",false);grip("close",true);
-window.addEventListener("keydown",e=>{if(e.key==="Escape"&&isBack&&!document.getElementById("overlay").classList.contains("open"))turn(false)});
+window.addEventListener("keydown",e=>{if(e.key==="Escape"&&isBack)turn(false)});
 turn(location.hash==="#cycle");
 window.SETKA_CYCLE_LAB={flip:turn};
 })();
 </script>
-<script src="./standalone-cycle-alma-v1.js?v=1"></script></body></html>
+</body></html>
