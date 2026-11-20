@@ -212,7 +212,6 @@ body.setka-game-sheet-unified #gameScreen #st34KeySheet .sk-scroll{
   overscroll-behavior:contain;
   -webkit-overflow-scrolling:touch;
   padding:10px 18px 20px!important;
-  touch-action:pan-y;
 }
 /* Keep native key backdrop's outside-to-close behavior, but never
    place it over controls. Existing key toggler still handles close. */
@@ -244,11 +243,6 @@ body.setka-game-sheet-unified #gameScreen #st34KeySheet.sk-adjusting{
 }
 body.setka-game-sheet-unified #gameScreen #st34KeyBackdrop.sk-adjusting{
   background:rgba(0,0,0,0)!important;
-}
-/* Avoid native browser scroll gestures stealing horizontal range drags.
-   We leave pointerdown, pointermove and input to the ORIGINAL controller. */
-body.setka-game-sheet-unified #gameScreen #st34KeySheet .sk-range{
-  touch-action:auto;
 }
 /* Pattern navigation arrows do not operate while a gameplay sheet covers
    the pattern. Hide just the two side arrows, never the game control row. */
