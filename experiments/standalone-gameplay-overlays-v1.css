@@ -240,6 +240,49 @@ body.setka-game-sheet-unified #gameScreen #st34KeyBackdrop.sk-adjusting{
   background:transparent!important;
   transition:none!important;
 }
+/* While a range is dragged, the pattern is the backdrop and ONLY that
+   range is visible. The native controller owns pointer state. In particular
+   the .sk-setting border-bottom must not remain as a horizontal divider. */
+body.setka-game-sheet-unified #gameScreen #st34KeySheet.sk-adjusting .sk-setting{
+  opacity:0!important;
+  border-bottom-color:transparent!important;
+  box-shadow:none!important;
+  pointer-events:none!important;
+}
+body.setka-game-sheet-unified #gameScreen #st34KeySheet.sk-adjusting .sk-setting.sk-active{
+  opacity:1!important;
+  border-bottom-color:transparent!important;
+  box-shadow:none!important;
+  pointer-events:auto!important;
+}
+body.setka-game-sheet-unified #gameScreen #st34KeySheet.sk-adjusting .sk-setting.sk-active .sk-setting-row{
+  opacity:0!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+body.setka-game-sheet-unified #gameScreen #st34KeySheet.sk-adjusting .sk-setting.sk-active .sk-range{
+  opacity:1!important;
+  visibility:visible!important;
+  pointer-events:auto!important;
+}
+body.setka-game-sheet-unified #gameScreen #st34KeySheet.sk-adjusting .sk-head{
+  opacity:0!important;
+  border-bottom-color:transparent!important;
+}
+body.setka-game-sheet-unified #gameScreen #st34KeySheet.sk-adjusting .sk-actions,
+body.setka-game-sheet-unified #gameScreen #st34KeySheet.sk-adjusting .sk-section,
+body.setka-game-sheet-unified #gameScreen #st34KeySheet.sk-adjusting .sk-gesture-info,
+body.setka-game-sheet-unified #gameScreen #st34KeySheet.sk-adjusting .sk-help-disclosure,
+body.setka-game-sheet-unified #gameScreen #st34KeySheet.sk-adjusting .sk-tap-add{
+  opacity:0!important;
+  border-color:transparent!important;
+  pointer-events:none!important;
+}
+/* A few registry-specific hint rows use inline border-bottom declarations. */
+body.setka-game-sheet-unified #gameScreen #st34KeySheet.sk-adjusting .sk-gesture-info{
+  border-bottom-color:transparent!important;
+}
+
 /* Pattern navigation arrows do not operate while a gameplay sheet covers
    the pattern. Hide just the two side arrows, never the game control row. */
 body.setka-game-note-open #gameScreen #prevButton,
