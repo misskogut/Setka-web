@@ -68,13 +68,63 @@
 /* Both unobtrusive edge gestures remain available on EITHER card face.
    Game-mode rules below override them completely. */
 body.cycle-busy .setka-cycle-edge{pointer-events:none}
-.setka-cycle-edge-mark{position:absolute;top:50%;width:100%;transform:translateY(-50%);height:92px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px;pointer-events:none;opacity:.5}
-.setka-cycle-edge-mark:before{content:"";position:absolute;left:50%;top:2px;bottom:2px;width:1px;background:linear-gradient(transparent,#9a6bb1,#d6b4ee,#9a6bb1,transparent);box-shadow:0 0 7px #ae72dc77}
-.setka-cycle-edge-mark b,.setka-cycle-edge-mark small{position:relative;background:#09050e;color:#c2a5d6;padding:2px 0}
-.setka-cycle-edge-mark b{font:300 15px/1 sans-serif}
-.setka-cycle-edge-mark small{writing-mode:vertical-rl;font:normal 7px/1 sans-serif;letter-spacing:.13em;text-transform:uppercase}
-.setka-cycle-edge:focus-visible{outline:1px solid #bca0d2;outline-offset:-2px}
-@media(prefers-reduced-motion:reduce){.setka-cycle-edge-mark{opacity:.4}}
+
+/* The edge touch zones remain unchanged; only visual labels are removed.
+   The ears are a continuation of the existing card frame, not buttons. */
+.setka-cycle-edge:focus-visible{outline:1px solid rgba(190,195,205,.35);outline-offset:-2px}
+/* Small, tall, smooth OUTWARD arc: just 8 px beyond the card edge.
+   Same stroke as front frame, outward chevrons, NO dots or purple glow. */
+#setkaCycleFrontFrame, #setkaCycleBackGuide{
+  --setka-ear-line:rgba(190,195,205,.23);
+  --setka-ear-fill:#000;
+}
+.setka-card-ear{
+  position:absolute;
+  top:50%;
+  width:18px;
+  height:132px;
+  margin-top:-66px;
+  pointer-events:none;
+  overflow:visible;
+  z-index:5;
+}
+.setka-card-ear.left{left:-10px}
+.setka-card-ear.right{right:-10px;transform:scaleX(-1)}
+.setka-card-ear svg{width:18px;height:132px;display:block;overflow:visible}
+.setka-card-ear .ear-fill{fill:var(--setka-ear-fill)}
+.setka-card-ear .ear-outline{
+  fill:none;
+  stroke:var(--setka-ear-line);
+  stroke-width:1;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.setka-card-ear .ear-chevron{
+  fill:none;
+  stroke:var(--setka-ear-line);
+  stroke-width:1.5;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+/* The back has the SAME frame geometry and ears rotate together with ALMA;
+   border color is read from the original phase-colored ALMA .cycle-hero. */
+#setkaCycleBackGuide{
+  position:fixed;
+  top:var(--setka-cycle-card-top);
+  bottom:var(--setka-cycle-card-bottom);
+  left:50%;
+  transform:translateX(-50%);
+  width:min(calc(100% - 28px),432px);
+  pointer-events:none;
+  z-index:2;
+  --setka-ear-fill:#020105;
+  --setka-ear-line:rgba(170,110,210,.32);
+}
+@media(max-width:350px){
+  .setka-card-ear{height:120px;margin-top:-60px}
+  .setka-card-ear svg{height:120px}
+}
+
 
 
 
@@ -112,7 +162,8 @@ body.cycle-busy .setka-cycle-edge{pointer-events:none}
     inset 0 1px 0 rgba(240,242,247,.035),
     0 0 16px rgba(178,188,207,.025);
   transition:border-color .22s ease;
-  contain:paint;
+  /* paint containment would clip the ears outside the card */
+  overflow:visible;
 }
 /* The catalog fallback can remain operational without its status
    paragraph consuming space or cluttering the patterned front card. */
@@ -146,7 +197,7 @@ body.cycle-flip-active #setkaCycleBack{pointer-events:none}
 <body>
 <main id="app">
   <section id="libraryScreen" class="screen active" aria-label="Библиотека паттернов">
-    <div id="setkaCycleFrontFrame" aria-hidden="true"></div>
+    <div id="setkaCycleFrontFrame" aria-hidden="true"><span class="setka-card-ear left" aria-hidden="true"><svg viewBox="0 0 18 132" focusable="false" aria-hidden="true"><path class="ear-fill" d="M10 0 C10 34 10 39 6 52 C2 61 2 71 6 80 C10 93 10 98 10 132 L19 132 L19 0 Z"/><path class="ear-outline" d="M10 0 C10 34 10 39 6 52 C2 61 2 71 6 80 C10 93 10 98 10 132"/><path class="ear-chevron" d="M7.6 60.2 L3.5 66 L7.6 71.8"/></svg></span><span class="setka-card-ear right" aria-hidden="true"><svg viewBox="0 0 18 132" focusable="false" aria-hidden="true"><path class="ear-fill" d="M10 0 C10 34 10 39 6 52 C2 61 2 71 6 80 C10 93 10 98 10 132 L19 132 L19 0 Z"/><path class="ear-outline" d="M10 0 C10 34 10 39 6 52 C2 61 2 71 6 80 C10 93 10 98 10 132"/><path class="ear-chevron" d="M7.6 60.2 L3.5 66 L7.6 71.8"/></svg></span></div>
     <div class="library-pager" aria-label="Разделы библиотеки">
       <button id="libraryPagerButton" class="pager-button active" type="button" aria-label="Исходные паттерны"><span class="pager-dot-mark"></span></button>
       <button id="communityPagerButton" class="pager-button" type="button" aria-label="Библиотека сообщества"><span class="community-mark"><span></span><i></i></span></button>
@@ -252,9 +303,10 @@ body.cycle-flip-active #setkaCycleBack{pointer-events:none}
 
 <aside class="setka-cycle-overlay" id="setkaCycleBack" hidden aria-label="Календарь-лотос ALMA">
   <iframe title="Оригинальный календарь цикла ALMA" src="./experiments/alma-cycle-source/index.html?v=20261120-fixed-scroll-universal-gesture" loading="eager"></iframe>
+  <div id="setkaCycleBackGuide" aria-hidden="true"><span class="setka-card-ear left" aria-hidden="true"><svg viewBox="0 0 18 132" focusable="false" aria-hidden="true"><path class="ear-fill" d="M10 0 C10 34 10 39 6 52 C2 61 2 71 6 80 C10 93 10 98 10 132 L19 132 L19 0 Z"/><path class="ear-outline" d="M10 0 C10 34 10 39 6 52 C2 61 2 71 6 80 C10 93 10 98 10 132"/><path class="ear-chevron" d="M7.6 60.2 L3.5 66 L7.6 71.8"/></svg></span><span class="setka-card-ear right" aria-hidden="true"><svg viewBox="0 0 18 132" focusable="false" aria-hidden="true"><path class="ear-fill" d="M10 0 C10 34 10 39 6 52 C2 61 2 71 6 80 C10 93 10 98 10 132 L19 132 L19 0 Z"/><path class="ear-outline" d="M10 0 C10 34 10 39 6 52 C2 61 2 71 6 80 C10 93 10 98 10 132"/><path class="ear-chevron" d="M7.6 60.2 L3.5 66 L7.6 71.8"/></svg></span></div>
 </aside>
-<div id="setkaCycleOpen" class="setka-cycle-edge right" role="button" tabindex="0" aria-label="Свайп с правого края влево: открыть календарь"><span class="setka-cycle-edge-mark" aria-hidden="true"><b>‹</b><small>свайп</small></span></div>
-<div id="setkaCycleReturn" class="setka-cycle-edge left" role="button" tabindex="0" aria-label="Свайп с левого края вправо: SETKA"><span class="setka-cycle-edge-mark" aria-hidden="true"><b>›</b><small>свайп</small></span></div>
+<div id="setkaCycleOpen" class="setka-cycle-edge right" role="button" tabindex="0" aria-label="Повернуть карту с правого края"></div>
+<div id="setkaCycleReturn" class="setka-cycle-edge left" role="button" tabindex="0" aria-label="Повернуть карту с левого края"></div>
 <script>
 (function(){
   "use strict";
@@ -270,6 +322,31 @@ body.cycle-flip-active #setkaCycleBack{pointer-events:none}
   const ease=t=>1-Math.pow(1-t,3);
   const libraryVisible=()=>libraryScreen.classList.contains("active")&&!gameScreen.classList.contains("active");
   const edgeIds=["setkaCycleOpen","setkaCycleReturn"];
+  const almaIframe=back.querySelector("iframe");
+  const backGuide=document.getElementById("setkaCycleBackGuide");
+  // The ALMA source owns the cycle phase. Match its existing border color
+  // without changing ALMA content, dates or prediction logic.
+  function syncBackEarColor(){
+    try{
+      const iframeDoc=almaIframe?.contentDocument;
+      const hero=iframeDoc?.querySelector(".cycle-hero");
+      if(!hero||!backGuide)return;
+      const stroke=almaIframe.contentWindow.getComputedStyle(hero).borderLeftColor;
+      if(stroke)backGuide.style.setProperty("--setka-ear-line",stroke);
+    }catch(_){} // The card remains usable even before ALMA has loaded.
+  }
+  if(almaIframe){
+    almaIframe.addEventListener("load",()=>{
+      syncBackEarColor();
+      try{
+        const doc=almaIframe.contentDocument;
+        const root=doc.getElementById("alma-cycle-root");
+        if(root)new MutationObserver(syncBackEarColor).observe(root,{attributes:true,subtree:true,attributeFilter:["style","class"]});
+        doc.addEventListener("pointerup",syncBackEarColor,true);
+      }catch(_){}
+    });
+  }
+
   let inCycle=false;
   let progress=0;
   let direction=-1; // -1: leftward rotation; +1: rightward rotation
@@ -296,6 +373,7 @@ body.cycle-flip-active #setkaCycleBack{pointer-events:none}
     document.body.classList.remove("cycle-flip-active","cycle-busy");
     back.hidden=!inCycle;
     back.inert=!inCycle;
+    if(inCycle)syncBackEarColor();
     app.inert=inCycle;
     app.style.visibility=inCycle?"hidden":"";
     back.style.visibility="";
