@@ -8,6 +8,30 @@ const sheet=document.getElementById("setkaGameMusicSheet");
 const grip=document.getElementById("setkaGameMusicGrip");
 const content=document.getElementById("setkaGameMusicContent");
 const loading=document.getElementById("setkaGameMusicLoading");
+/* The existing audio-reactive module creates a second musical note
+   (#st34AudioButton) in the same top-left corner. Keep its native
+   microphone/audio-reactivity callbacks intact, but move that one
+   button INTO the music sheet header. Only the quick-music note
+   remains at the top left of the gameplay. */
+const reactiveButton=document.getElementById("st34AudioButton");
+const sheetHeader=sheet?.querySelector(".sg-music-header");
+if(reactiveButton&&sheetHeader){
+ const reactiveSlot=document.createElement("div");
+ reactiveSlot.className="sg-music-reactive-slot";
+ const help=document.createElement("span");
+ help.textContent="Аудиореакция";
+ help.className="sg-music-reactive-label";
+ reactiveSlot.append(help);
+ reactiveSlot.append(reactiveButton);
+ sheetHeader.append(reactiveSlot);
+ // The relocated original control uses a microphone pictogram, instead of a
+ // second note, while the original click handlers and live mode dots persist.
+ const svg=reactiveButton.querySelector("svg");
+ if(svg){
+   svg.setAttribute("viewBox","0 0 24 24");
+   svg.innerHTML='<rect x="9" y="2.8" width="6" height="12.2" rx="3"/><path d="M5.8 10.6v1.3a6.2 6.2 0 0 0 12.4 0v-1.3M12 18.3v3.1M8.4 21.4h7.2"/>';
+ }
+}
 const note=document.getElementById("st34Note");
 const key=document.getElementById("instructionsButton");
 const keySheet=document.getElementById("st34KeySheet");
