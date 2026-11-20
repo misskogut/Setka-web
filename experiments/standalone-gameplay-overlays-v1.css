@@ -1,137 +1,249 @@
-/* Gameplay-only UX overlay for the experimental SETKA + ALMA card.
-   Never changes native pattern logic, catalog, sessions or regular SETKA. */
-body.setka-game-note-open #st34Nav{display:none!important}
-body.setka-game-note-open #st34SheetBackdrop{display:none!important;pointer-events:none!important}
-body.setka-game-note-open #gameScreen #st34Layer{
+/* SETKA experimental gameplay cards v2.
+   The original five-tab bottom sheet is the visual source of truth:
+   same side margins, 30px radius, #0a0a0a fill, subtle border,
+   300ms bottom slide, shared resize handle and scroll behavior.
+   No changes to native SETKA or pattern state/saving. */
+body.setka-game-sheet-unified{
+  --setka-game-sheet-bottom:calc(114px + env(safe-area-inset-bottom,0px) + var(--setka-keyboard-inset,0px));
+  --setka-game-sheet-width:min(calc(100% - 22px),520px);
+  --setka-game-sheet-radius:30px;
+  --setka-game-sheet-fill:#0a0a0a;
+  --setka-game-sheet-outline:1px solid rgba(255,255,255,.21);
+  --setka-game-sheet-shadow:0 -12px 50px rgba(0,0,0,.38),0 12px 40px rgba(0,0,0,.6);
+  --setka-game-sheet-ease:cubic-bezier(.22,.8,.25,1);
+}
+/* The navigation dock is not part of gameplay; it does not appear
+   even when an in-pattern note temporarily opens the native sheet. */
+body.setka-game-sheet-unified:has(#gameScreen.active) #st34Nav{
+  display:none!important;
+}
+body.setka-game-note-mounted #st34SheetBackdrop{
+  visibility:hidden!important;
+  display:none!important;
+  pointer-events:none!important;
+}
+
+/* Original note DOM/form/snapshot stays untouched; only move the sheet
+   inside the game viewport when a note is opened. */
+body.setka-game-note-mounted #gameScreen #st34Layer{
   position:absolute!important;
-  z-index:990!important;
+  z-index:995!important;
   inset:auto!important;
+  top:auto!important;
   left:50%!important;
   right:auto!important;
-  top:auto!important;
-  bottom:calc(116px + env(safe-area-inset-bottom,0px) + var(--setka-keyboard-inset,0px))!important;
-  width:min(calc(100% - 30px),460px)!important;
-  height:auto!important;
-  max-height:min(380px,calc(var(--setka-visible-height,100dvh) - 155px))!important;
-  min-height:0!important;
-  padding:0!important;
+  bottom:var(--setka-game-sheet-bottom)!important;
+  width:var(--setka-game-sheet-width)!important;
+  height:min(415px,45dvh);
+  max-height:calc(var(--setka-visible-height,100dvh) - 150px)!important;
+  min-height:160px;
   display:flex!important;
   flex-direction:column!important;
   overflow:hidden!important;
-  transform:translateX(-50%)!important;
-  border:1px solid rgba(225,225,235,.33)!important;
-  border-radius:24px!important;
-  background:rgba(11,11,12,.97)!important;
-  box-shadow:0 12px 44px rgba(0,0,0,.75)!important;
+  padding:0!important;
+  border:var(--setka-game-sheet-outline)!important;
+  border-radius:var(--setka-game-sheet-radius)!important;
+  background:var(--setka-game-sheet-fill)!important;
+  box-shadow:var(--setka-game-sheet-shadow)!important;
   opacity:1!important;
   visibility:visible!important;
+  transform:translate(-50%,0)!important;
   pointer-events:auto!important;
-  transition:opacity .18s,visibility .18s,transform .24s!important;
+  transition:transform .3s var(--setka-game-sheet-ease),opacity .2s,visibility 0s!important;
 }
-body.setka-game-note-open #gameScreen #st34Layer.hidden{
+body.setka-game-note-mounted #gameScreen #st34Layer.hidden{
   opacity:0!important;
   visibility:hidden!important;
   pointer-events:none!important;
-  transform:translate(-50%,18px)!important;
+  transform:translate(-50%,calc(100% + 160px))!important;
+  transition:transform .28s cubic-bezier(.4,0,.8,.4),opacity .2s,visibility 0s .28s!important;
 }
-body.setka-game-note-open #gameScreen #st34Layer>.st-wrap{
-  flex:0 1 auto!important;
-  max-height:min(345px,calc(var(--setka-visible-height,100dvh) - 180px))!important;
+body.setka-game-note-mounted #gameScreen #st34Layer>.st-wrap{
+  flex:1 1 0!important;
+  width:100%!important;
+  max-width:none!important;
+  max-height:none!important;
+  min-height:0!important;
   overflow-y:auto!important;
-  padding:5px 17px 17px!important;
   overscroll-behavior:contain;
   -webkit-overflow-scrolling:touch;
+  padding:6px 18px 22px!important;
   touch-action:pan-y;
 }
-body.setka-game-note-open #gameScreen #st34SheetGrip{
-  flex:0 0 25px!important;
-  height:25px!important;
+body.setka-game-note-mounted #gameScreen #st34SheetGrip{
+  flex:0 0 34px!important;
+  height:34px!important;
+  width:100%!important;
+  display:grid!important;
+  place-items:center!important;
+  padding:0!important;
+  touch-action:none!important;
+  pointer-events:auto!important;
 }
-body.setka-game-note-open #gameScreen .st-top{margin:0 0 6px!important}
-body.setka-game-note-open #gameScreen .st-back{display:none!important}
-body.setka-game-note-open #gameScreen .st-kicker{font-size:8px}
-body.setka-game-note-open #gameScreen .st-title{
-  font-size:20px!important;
-  line-height:1.2!important;
-  margin-top:2px!important;
+body.setka-game-note-mounted #gameScreen .st-top{
+  margin-bottom:14px!important;
+  gap:9px!important;
 }
-body.setka-game-note-open #gameScreen .st-copy{
-  font-size:11px!important;
-  margin:5px 0 10px!important;
-  line-height:1.35!important;
+body.setka-game-note-mounted #gameScreen .st-top .st-back{display:none!important}
+body.setka-game-note-mounted #gameScreen .st-title{
+  font-size:23px!important;
+  line-height:1.15!important;
 }
-body.setka-game-note-open #gameScreen .st-textarea{
-  min-height:100px!important;
-  max-height:175px!important;
-  resize:vertical;
+body.setka-game-note-mounted #gameScreen .st-copy{
+  font-size:12px!important;
+  margin-bottom:16px!important;
+}
+body.setka-game-note-mounted #gameScreen .st-textarea{
+  min-height:125px!important;
   font-size:16px!important;
   line-height:1.4;
-  padding:11px!important;
+  resize:vertical;
 }
-body.setka-game-note-open #gameScreen .st-primary{
-  min-height:43px!important;
-  height:43px!important;
-  margin-top:9px!important;
+body.setka-game-note-mounted #gameScreen .st-primary{
+  min-height:48px!important;
+  margin-top:10px!important;
 }
-/* Real settings, original controls. Keep a 22px gap above the button row. */
-#gameScreen #st34KeySheet{
-  bottom:calc(112px + env(safe-area-inset-bottom,0px))!important;
-  height:min(63dvh,620px); /* preserves grip-driven inline resizing */
-  max-height:calc(100dvh - 175px)!important;
-  border-bottom:1px solid rgba(255,255,255,.23)!important;
-  border-radius:24px!important;
-  box-shadow:0 -10px 36px rgba(0,0,0,.75)!important;
-}
-#gameScreen #st34KeySheet .sk-head{padding:10px 15px 11px!important}
-#gameScreen #st34KeySheet .sk-grip{margin-bottom:12px!important}
-#gameScreen #st34KeySheet .sk-row{gap:6px!important;align-items:center}
-#gameScreen #st34KeySheet .sk-title{font-size:19px!important;letter-spacing:-.02em;white-space:nowrap}
-#gameScreen #st34KeySheet .sk-close{display:none!important}
-#gameScreen #st34KeySheet .sk-actions{
+
+/* Key settings use the SAME panel surface and height mechanics.
+   We keep it in its game-ui parent, but turn display:none into
+   visibility+translate so it can actually slide, rather than pop in. */
+body.setka-game-sheet-unified #gameScreen #st34KeySheet{
+  position:absolute!important;
+  z-index:996!important;
+  top:auto!important;
+  left:50%!important;
+  right:auto!important;
+  bottom:var(--setka-game-sheet-bottom)!important;
+  width:var(--setka-game-sheet-width)!important;
+  height:min(560px,62dvh);
+  max-height:calc(var(--setka-visible-height,100dvh) - 150px)!important;
+  min-height:180px;
+  display:flex!important;
+  flex-direction:column!important;
   padding:0!important;
+  overflow:hidden!important;
+  border:var(--setka-game-sheet-outline)!important;
+  border-radius:var(--setka-game-sheet-radius)!important;
+  background:var(--setka-game-sheet-fill)!important;
+  box-shadow:var(--setka-game-sheet-shadow)!important;
+  opacity:0!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+  transform:translate(-50%,calc(100% + 160px))!important;
+  transition:transform .28s cubic-bezier(.4,0,.8,.4),opacity .2s,visibility 0s .28s!important;
+}
+body.setka-game-sheet-unified #gameScreen #st34KeySheet.open{
+  opacity:1!important;
+  visibility:visible!important;
+  pointer-events:auto!important;
+  transform:translate(-50%,0)!important;
+  transition:transform .3s var(--setka-game-sheet-ease),opacity .2s,visibility 0s!important;
+}
+body.setka-game-sheet-unified #gameScreen #st34KeySheet .sk-head{
+  padding:0 18px 13px!important;
+  border-bottom:1px solid rgba(255,255,255,.12)!important;
+}
+body.setka-game-sheet-unified #gameScreen #st34KeySheet .sk-grip{
+  width:100%!important;
+  height:34px!important;
+  min-height:34px!important;
+  display:grid!important;
+  place-items:center!important;
+  padding:0!important;
+  margin:0 0 7px!important;
+  background:transparent!important;
   border:0!important;
+  touch-action:none!important;
+}
+body.setka-game-sheet-unified #gameScreen #st34KeySheet .sk-grip::after{
+  width:36px!important;
+  height:4px!important;
+  background:rgba(255,255,255,.28)!important;
+}
+body.setka-game-sheet-unified #gameScreen #st34KeySheet .sk-row{
+  display:flex!important;
+  gap:8px!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+}
+body.setka-game-sheet-unified #gameScreen #st34KeySheet .sk-title{
+  font-size:23px!important;
+  font-weight:650!important;
+  line-height:1.15!important;
+  white-space:nowrap;
+  letter-spacing:0!important;
+}
+body.setka-game-sheet-unified #gameScreen #st34KeySheet .sk-close{
+  display:none!important;
+}
+body.setka-game-sheet-unified #gameScreen #st34KeySheet .sk-actions{
+  display:flex!important;
   gap:6px!important;
   width:auto!important;
   flex:0 0 auto!important;
+  border:0!important;
+  padding:0!important;
   margin-left:auto!important;
   align-items:center!important;
 }
-#gameScreen #st34KeySheet .sk-action{
+body.setka-game-sheet-unified #gameScreen #st34KeySheet .sk-action{
   flex:0 0 auto!important;
   width:auto!important;
-  min-height:32px!important;
-  height:32px!important;
+  min-height:34px!important;
+  height:34px!important;
   padding:0 10px!important;
-  border-radius:11px!important;
+  border-radius:12px!important;
   font-size:11px!important;
-  font-weight:500!important;
+  font-weight:600!important;
   line-height:1!important;
+  border:1px solid rgba(255,255,255,.23)!important;
+  background:transparent!important;
+  color:#fff!important;
 }
-#gameScreen #st34KeySheet .sk-action.primary{
-  background:rgba(255,255,255,.95)!important;
-  color:#0a0a0a!important;
+body.setka-game-sheet-unified #gameScreen #st34KeySheet .sk-action.primary{
+  background:rgba(255,255,255,.96)!important;
+  border-color:rgba(255,255,255,.96)!important;
+  color:#080808!important;
 }
-/* This row remains clickable even with key backdrop open or a note above it. */
-#gameScreen .bottom-controls{
+body.setka-game-sheet-unified #gameScreen #st34KeySheet .sk-scroll{
+  flex:1 1 0!important;
+  min-height:0!important;
+  overflow-y:auto!important;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+  padding:10px 18px 20px!important;
+  touch-action:pan-y;
+}
+/* Keep native key backdrop's outside-to-close behavior, but never
+   place it over controls. Existing key toggler still handles close. */
+body.setka-game-sheet-unified #gameScreen #st34KeyBackdrop.open:not(.sk-adjusting){
+  background:rgba(0,0,0,.1)!important;
+}
+body.setka-game-sheet-unified #gameScreen .bottom-controls{
   z-index:1300!important;
-  bottom:calc(28px + env(safe-area-inset-bottom,0px) + var(--setka-keyboard-inset,0px))!important;
+  bottom:calc(24px + env(safe-area-inset-bottom,0px) + var(--setka-keyboard-inset,0px))!important;
 }
-#gameScreen #favoriteButton,#gameScreen #libraryButton,
-#gameScreen #prevButton,#gameScreen #nextButton{z-index:1200!important}
-body.setka-game-note-open #gameScreen #st34Layer,
-body.setka-game-note-open #gameScreen #st34Layer *,
-body.setka-game-settings-open #gameScreen #st34KeySheet,
-body.setka-game-settings-open #gameScreen #st34KeySheet *{pointer-events:auto}
-body.setka-game-note-open #st34SheetBackdrop{visibility:hidden!important}
+body.setka-game-sheet-unified #gameScreen #favoriteButton,
+body.setka-game-sheet-unified #gameScreen #libraryButton,
+body.setka-game-sheet-unified #gameScreen #prevButton,
+body.setka-game-sheet-unified #gameScreen #nextButton{z-index:1200!important}
+body.setka-game-sheet-unified #gameScreen #st34KeySheet,
+body.setka-game-note-mounted #gameScreen #st34Layer{pointer-events:auto}
 body.setka-game-note-open #st34Note,
 body.setka-game-settings-open #instructionsButton{
   border-color:rgba(255,255,255,.93)!important;
-  background:rgba(255,255,255,.10)!important;
+  background:rgba(255,255,255,.1)!important;
 }
-@media(max-width:365px){
-  #gameScreen #st34KeySheet .sk-title{font-size:17px!important}
-  #gameScreen #st34KeySheet .sk-action{font-size:10px!important;padding:0 8px!important}
+@media(max-width:360px){
+  body.setka-game-sheet-unified #gameScreen #st34KeySheet .sk-title{font-size:19px!important}
+  body.setka-game-sheet-unified #gameScreen #st34KeySheet .sk-action{
+    height:32px!important;
+    min-height:32px!important;
+    font-size:10px!important;
+    padding:0 8px!important;
+  }
 }
 @media(prefers-reduced-motion:reduce){
-  body.setka-game-note-open #gameScreen #st34Layer{transition:none!important}
+  body.setka-game-note-mounted #gameScreen #st34Layer,
+  body.setka-game-sheet-unified #gameScreen #st34KeySheet{transition:none!important}
 }
