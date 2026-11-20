@@ -75,6 +75,18 @@ body.cycle-busy .setka-cycle-edge{pointer-events:none}
 @media(prefers-reduced-motion:reduce){.setka-cycle-edge-mark{opacity:.4}}
 
 
+
+/* UI polish: advance the preview grid 10px without changing tile geometry,
+   touch scrolling, 4-column count or the bottom dock. */
+#libraryScreen #allPatternsPanel,
+#libraryScreen #communityPanel,
+#libraryScreen #favoritesPanel{padding-top:34px!important}
+@media(max-width:767px){
+  #libraryScreen #allPatternsPanel,
+  #libraryScreen #communityPanel,
+  #libraryScreen #favoritesPanel{padding-top:30px!important}
+}
+
 /* Shared front/back card size; ALMA iframe uses the same 12px/84px geometry.
    Draw the frame INSIDE native SETKA #app (never iframe the preview lifter).
    The original dock #st34Nav is outside this frame and stays untouched. */
@@ -131,7 +143,7 @@ body.cycle-flip-active #setkaCycleBack{pointer-events:none}
         <svg viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 17.8V5.4L20.5 3v12.5M9 7.3l11.5-2.4"/><ellipse cx="6.1" cy="18.2" rx="3.1" ry="2.1"/><ellipse cx="17.6" cy="16" rx="3.1" ry="2.1"/></svg>
       </button>
     </div>
-    <div id="libraryTitle" class="library-title">Паттерны</div>
+    <div id="libraryTitle" class="library-title">Сквиши</div>
     <div id="librarySwipeArea" class="panel-wrap">
       <div id="allPatternsPanel" class="pattern-panel" aria-label="Исходные паттерны"></div>
       <div id="communityPanel" class="pattern-panel hidden-right" aria-label="Конфигурации сообщества"></div>
@@ -211,6 +223,18 @@ body.cycle-flip-active #setkaCycleBack{pointer-events:none}
 <script src="standalone-pattern-key-v1.js?v=1.1.2-paired-20261105"></script>
 <script src="standalone-live-previews-v1.js?v=1.2.0-shared-performance-20261021"></script>
 <script type="module" src="standalone-music-v1.mjs?v=47-public-snapshot-20261115"></script>
+
+<script id="setkaCycleSquishTitle">
+(function(){
+  "use strict";
+  const title=document.getElementById("libraryTitle");
+  if(!title)return;
+  function refresh(){if(title.textContent.trim()==="Паттерны")title.textContent="Сквиши"}
+  refresh();
+  const observer=new MutationObserver(refresh);
+  observer.observe(title,{childList:true,characterData:true,subtree:true});
+})();
+</script>
 
 <aside class="setka-cycle-overlay" id="setkaCycleBack" hidden aria-label="Календарь-лотос ALMA">
   <iframe title="Оригинальный календарь цикла ALMA" src="./experiments/alma-cycle-source/index.html?v=20261120-shared-card-geometry" loading="eager"></iframe>
