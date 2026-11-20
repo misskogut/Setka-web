@@ -1,20 +1,45 @@
 /* SETKA × ALMA experiment — gameplay music card, using the same original
    music DOM/mixer and the existing gameplay sheet geometry. */
+/* The two upper corner controls share one subdued, glow-free appearance.
+   This also applies while the gameplay music sheet is open. */
 #gameScreen #setkaGameMusicButton{
   top:calc(var(--safe-top) + 30px);
   left:25px;
   z-index:1301!important;
-  border:1px solid rgba(255,255,255,.72)!important;
-  border-radius:50%!important;
-  background:rgba(0,0,0,.42);
-  color:#fff;
-  padding:0;
-  opacity:1;
 }
-#gameScreen #setkaGameMusicButton svg{width:28px;height:28px;display:block}
+#gameScreen #setkaGameMusicButton,
+#gameScreen #libraryButton,
 body.setka-game-music-open #gameScreen #setkaGameMusicButton{
-  border-color:rgba(255,255,255,.95)!important;
-  background:rgba(255,255,255,.10)!important;
+  box-sizing:border-box!important;
+  width:58px!important;
+  height:58px!important;
+  min-width:58px!important;
+  min-height:58px!important;
+  border:1px solid rgba(255,255,255,.26)!important;
+  border-radius:50%!important;
+  background:rgba(0,0,0,.32)!important;
+  color:rgba(255,255,255,.40)!important;
+  opacity:1!important;
+  padding:0!important;
+  box-shadow:none!important;
+  filter:none!important;
+  text-shadow:none!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+}
+#gameScreen #setkaGameMusicButton svg,
+#gameScreen #libraryButton svg{
+  width:28px!important;
+  height:28px!important;
+  display:block;
+  opacity:1!important;
+  filter:none!important;
+  box-shadow:none!important;
+  color:inherit!important;
+}
+#gameScreen #libraryButton svg g,
+#gameScreen #libraryButton svg rect{
+  fill:currentColor!important;
 }
 #gameScreen #setkaGameMusicSheet{
   box-sizing:border-box;
