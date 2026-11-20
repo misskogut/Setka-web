@@ -1,0 +1,209 @@
+/* SETKA × ALMA experiment — gameplay music card, using the same original
+   music DOM/mixer and the existing gameplay sheet geometry. */
+#gameScreen #setkaGameMusicButton{
+  top:calc(var(--safe-top) + 30px);
+  left:25px;
+  z-index:1301!important;
+  border:1px solid rgba(255,255,255,.72)!important;
+  border-radius:50%!important;
+  background:rgba(0,0,0,.42);
+  color:#fff;
+  padding:0;
+  opacity:1;
+}
+#gameScreen #setkaGameMusicButton svg{width:28px;height:28px;display:block}
+body.setka-game-music-open #gameScreen #setkaGameMusicButton{
+  border-color:rgba(255,255,255,.95)!important;
+  background:rgba(255,255,255,.10)!important;
+}
+#gameScreen #setkaGameMusicSheet{
+  box-sizing:border-box;
+  position:absolute!important;
+  z-index:997!important;
+  left:50%!important;
+  right:auto!important;
+  top:auto!important;
+  bottom:var(--setka-game-sheet-bottom,calc(114px + env(safe-area-inset-bottom,0px)))!important;
+  width:var(--setka-game-sheet-width,min(calc(100% - 22px),520px))!important;
+  height:var(--setka-music-sheet-height,min(510px,56dvh))!important;
+  max-height:calc(var(--setka-visible-height,100dvh) - 160px)!important;
+  min-height:210px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  overflow:hidden!important;
+  border:var(--setka-game-sheet-outline,1px solid rgba(255,255,255,.21))!important;
+  border-radius:var(--setka-game-sheet-radius,30px)!important;
+  background:var(--setka-game-sheet-fill,#0a0a0a)!important;
+  box-shadow:var(--setka-game-sheet-shadow,0 12px 40px rgba(0,0,0,.6))!important;
+  color:#fff;
+  opacity:0;
+  visibility:hidden;
+  transform:translate(-50%,calc(100% + 160px))!important;
+  pointer-events:none!important;
+  transition:transform .28s cubic-bezier(.4,0,.8,.4),opacity .2s,visibility 0s .28s!important;
+}
+#gameScreen #setkaGameMusicSheet.open{
+  opacity:1;
+  visibility:visible;
+  transform:translate(-50%,0)!important;
+  pointer-events:auto!important;
+  transition:transform .3s var(--setka-game-sheet-ease,cubic-bezier(.22,.8,.25,1)),opacity .2s,visibility 0s!important;
+}
+#gameScreen .sg-music-grip{
+  box-sizing:border-box;
+  flex:0 0 34px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:100%;
+  padding:0;
+  border:0;
+  background:none;
+  touch-action:none!important;
+  cursor:ns-resize;
+  pointer-events:auto;
+}
+#gameScreen .sg-music-grip::before{
+  content:"";
+  display:block;
+  width:36px;
+  height:4px;
+  background:rgba(255,255,255,.28);
+  border-radius:99px;
+}
+#gameScreen .sg-music-header{
+  display:flex;
+  align-items:center;
+  flex:0 0 auto;
+  padding:0 18px 12px;
+  border-bottom:1px solid rgba(255,255,255,.12);
+}
+#gameScreen .sg-music-header h2{
+  margin:0;
+  font-size:23px;
+  line-height:1.15;
+  font-weight:650;
+  letter-spacing:-.02em;
+}
+#gameScreen .sg-music-content{
+  flex:1 1 0;
+  min-height:0;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  position:relative;
+  padding:6px 12px 12px;
+  touch-action:pan-x pan-y!important;
+  pointer-events:auto;
+}
+#gameScreen .sg-music-loading{
+  font-size:12px;
+  color:#b5adb9;
+  margin:auto;
+  line-height:1.5;
+  text-align:center;
+  padding:14px;
+}
+#gameScreen .sg-music-loading[hidden]{display:none!important}
+/* The ONE library music root is reparented into this content node while open.
+   Override only positioning: categories, tracks, orbits and mixer are original. */
+#gameScreen #setkaGameMusicSheet #setkaMusicPage{
+  position:relative!important;
+  top:auto!important;
+  right:auto!important;
+  bottom:auto!important;
+  left:auto!important;
+  width:100%!important;
+  height:100%!important;
+  min-height:0!important;
+  flex:1 1 0!important;
+  overflow:hidden!important;
+  display:flex!important;
+  background:transparent!important;
+  z-index:auto!important;
+  touch-action:pan-x pan-y!important;
+}
+#gameScreen #setkaGameMusicSheet #setkaMusicPage[hidden]{display:none!important}
+#gameScreen #setkaGameMusicSheet .sm-categories{
+  flex:0 0 70px!important;
+  padding:0 4px 2px!important;
+  gap:3px!important;
+}
+#gameScreen #setkaGameMusicSheet .sm-category{
+  flex:0 0 70px!important;
+  min-width:70px!important;
+  width:70px!important;
+  height:67px!important;
+  padding:3px!important;
+}
+#gameScreen #setkaGameMusicSheet .sm-category svg,
+#gameScreen #setkaGameMusicSheet .sm-category img,
+#gameScreen #setkaGameMusicSheet .sm-category .sm-asset-icon{
+  width:60px!important;
+  height:60px!important;
+}
+#gameScreen #setkaGameMusicSheet .sm-catalog{
+  flex:1 1 0;
+  min-height:0;
+  padding:9px 0 6px;
+  touch-action:pan-y!important;
+}
+#gameScreen #setkaGameMusicSheet .sm-grid{gap:10px 4px}
+#gameScreen #setkaGameMusicSheet .sm-track{min-height:69px;padding:8px 1px 3px}
+#gameScreen #setkaGameMusicSheet .sm-track-icon,
+#gameScreen #setkaGameMusicSheet .sm-track-icon svg,
+#gameScreen #setkaGameMusicSheet .sm-track-icon img,
+#gameScreen #setkaGameMusicSheet .sm-track-icon .sm-asset-icon{
+  width:47px;height:47px;
+}
+#gameScreen #setkaGameMusicSheet .sm-power{
+  flex:0 0 39px;
+  height:39px;
+  margin-top:1px;
+}
+#gameScreen #setkaGameMusicSheet .sm-orbits{
+  flex:1 1 0;
+  min-height:0;
+  justify-content:flex-start;
+  overflow-x:hidden;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+  padding:5px 0 0;
+}
+#gameScreen #setkaGameMusicSheet .sm-stage{
+  flex:0 0 auto!important;
+  width:min(76vw,31dvh,270px)!important;
+  height:min(76vw,31dvh,270px)!important;
+  aspect-ratio:1/1!important;
+  max-width:100%;
+  align-self:center;
+}
+#gameScreen #setkaGameMusicSheet .sm-motion-row{
+  flex:0 0 auto;
+  margin-top:6px;
+  gap:0;
+}
+#gameScreen #setkaGameMusicSheet .sm-speed{
+  flex:0 0 34px;
+  min-height:34px;
+  margin-top:5px;
+}
+body.setka-game-music-open #gameScreen #prevButton,
+body.setka-game-music-open #gameScreen #nextButton{
+  opacity:0!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+@media(max-width:360px){
+  #gameScreen .sg-music-header h2{font-size:20px}
+  #gameScreen .sg-music-content{padding-right:8px;padding-left:8px}
+  #gameScreen #setkaGameMusicSheet .sm-categories{flex-basis:62px!important}
+  #gameScreen #setkaGameMusicSheet .sm-category{flex-basis:62px!important;min-width:62px!important;width:62px!important;height:59px!important}
+  #gameScreen #setkaGameMusicSheet .sm-category svg,
+  #gameScreen #setkaGameMusicSheet .sm-category .sm-asset-icon{width:54px!important;height:54px!important}
+}
+@media(prefers-reduced-motion:reduce){
+  #gameScreen #setkaGameMusicSheet{transition:none!important}
+}
