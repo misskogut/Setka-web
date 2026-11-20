@@ -24,6 +24,30 @@ html,body{margin:0;min-height:100%;background:#020105}
 /* Defensive hide for an outdated, browser-cached bundle: remove only host chrome, not ALMA. */
 #alma-cycle-root .app-header,#alma-cycle-root .setka-demo-note{display:none!important}
 #alma-cycle-root .phone-scene{border:none!important;border-radius:0!important;box-shadow:none!important}
+/*
+ * SETKA two-sided card geometry — experimental host only.
+ * The ORIGINAL ALMA component and its dynamic --cycle-color border are intact.
+ * Match the native SETKA front outline: top 12px, side 14px, bottom 84px
+ * (64px dock + 8px dock offset + 12px visual gap).
+ */
+:root{
+  --setka-card-top:12px;
+  --setka-card-bottom:calc(84px + env(safe-area-inset-bottom, 0px));
+}
+#alma-cycle-root .phone-scene{
+  width:min(100%, 460px)!important;
+  max-width:460px!important;
+  overflow:visible!important;
+}
+#alma-cycle-root .cycle-hero{
+  box-sizing:border-box!important;
+  margin:var(--setka-card-top) 14px 0!important;
+  height:calc(100dvh - 96px - env(safe-area-inset-bottom, 0px))!important;
+  min-height:0!important;
+  border-radius:24px!important;
+  /* Original border color, aura and ALMA content remain untouched. */
+}
+
 
 
 </style>
