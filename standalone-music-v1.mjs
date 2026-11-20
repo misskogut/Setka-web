@@ -24,6 +24,7 @@ const uiIcons=Object.create(null);
 let categories=BASE_CATEGORIES,tracks=[],globalOrder={track_ids:[]},selected=null,visible=false,loading=false,status="";
 let catalogRetryCount=0,catalogRetryTimer=null;
 let root=null,categoriesRow=null,grid=null,catalog=null,orbit=null,note=null,title=null,patternPanels=null,powerButton=null;
+let gameHost=null; // Only the experimental cycle game uses this optional shared-player mount.
 function trackHTML(track){
  const custom=assetIconMask(track.icon_path);
  return custom||iconSvg(track.icon_key||"music");
@@ -149,7 +150,35 @@ async function reload(){
  }
  loading=false;redraw();
 }
+// Move the SINGLE, live music UI (and its one mixer) into the game sheet.
+// No duplicated tracks, no second audio engine and no library navigation.
+function openInGame(host){
+ if(!root||!host||!host.isConnected)return false;
+ const library=$("libraryScreen");
+ if(root.parentElement===library&&visible){
+  library.classList.remove("setka-music-open");
+  patternPanels.hidden=false;patternPanels.style.display="";
+  note?.classList.remove("active");
+  if(title?.textContent==="Музыка")title.textContent="Сквиши";
+ }
+ gameHost=host;
+ if(root.parentElement!==host)host.appendChild(root);
+ root.hidden=false;visible=true;
+ redraw();
+ if(!tracks.length&&!loading)void reload();
+ return true;
+}
+function closeInGame(){
+ if(!gameHost||!root)return false;
+ root.hidden=true;
+ const library=$("libraryScreen");
+ if(library&&root.parentElement!==library)library.appendChild(root);
+ gameHost=null;visible=false;
+ clearTimeout(catalogRetryTimer);catalogRetryTimer=null;
+ return true; // Audio already playing intentionally continues uninterrupted.
+}
 function openMusic(){
+ if(gameHost)closeInGame();
  visible=true;root.parentElement?.classList.add("setka-music-open");patternPanels.hidden=true;patternPanels.style.display="none";root.hidden=false;
  title.textContent="Музыка";
  for(const b of document.querySelectorAll(".library-pager .pager-button"))b.classList.toggle("active",b===note);
@@ -157,7 +186,8 @@ function openMusic(){
  redraw();reload();
 }
 function hideMusic(){
- if(!visible)return;visible=false;clearTimeout(catalogRetryTimer);catalogRetryTimer=null;root.parentElement?.classList.remove("setka-music-open");root.hidden=true;patternPanels.hidden=false;patternPanels.style.display="";
+ if(gameHost||!visible)return;
+ visible=false;clearTimeout(catalogRetryTimer);catalogRetryTimer=null;root.parentElement?.classList.remove("setka-music-open");root.hidden=true;patternPanels.hidden=false;patternPanels.style.display="";
  note.classList.remove("active");
 }
 function install(){
@@ -194,8 +224,10 @@ function install(){
  power.onclick=()=>{mixer.stopAll();redraw()};root.append(power);library.append(root);
  mixer.changed=message=>{if(message)status=message;if(visible)redraw()};
  mixer.moved=()=>{if(visible&&selected==="orbits")orbit.updatePositions()};
- window.SetkaMusicV1={state:()=>({visible,filter:selected,mode:mixer.mode,speed:mixer.speed,offlineSnapshot:musicSnapshotActive,tracks:tracks.length,active:[...mixer.items.values()].map(s=>({id:s.id,level:s.level,angle:s.angle,radius:s.radius,earlyReflections:s.nativeOnly?0:s.reflections?.length||0,spatialized:!s.nativeOnly}))}),
-  diagnostics:()=>mixer.diagnostics(),reload,stopAll:()=>mixer.stopAll()};
+ window.SetkaMusicV1={state:()=>({visible,gameOpen:!!gameHost,filter:selected,mode:mixer.mode,speed:mixer.speed,offlineSnapshot:musicSnapshotActive,tracks:tracks.length,active:[...mixer.items.values()].map(s=>({id:s.id,level:s.level,angle:s.angle,radius:s.radius,earlyReflections:s.nativeOnly?0:s.reflections?.length||0,spatialized:!s.nativeOnly}))}),
+  diagnostics:()=>mixer.diagnostics(),reload,stopAll:()=>mixer.stopAll(),
+  openInGame,closeInGame};
+ window.dispatchEvent(new Event("setka:music-ready"));
  window.addEventListener("pageshow",()=>{if(visible)reload()});
  redraw();
 }
