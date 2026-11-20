@@ -90,6 +90,76 @@ body.cycle-busy .setka-cycle-edge{pointer-events:none}
   #libraryScreen #favoritesPanel{padding-top:18px!important}
 }
 
+/* Community controls sit in the SAME heading band, never on top of tile
+   previews. The panels retain one identical grid/padding baseline.
+   Higher selector specificity is intentional: cloud module injects its CSS
+   later and also uses !important, but must not push filters over previews. */
+#app #libraryScreen #st34CommunityModes{
+  top:calc(var(--safe-top) + 103px)!important;
+  left:111px!important;
+  right:20px!important;
+  transform:none!important;
+  width:auto!important;
+  max-width:none!important;
+  margin:0!important;
+  padding:0 1px!important;
+  justify-content:flex-end!important;
+  align-items:center!important;
+  gap:3px!important;
+  height:31px!important;
+  overflow-x:auto!important;
+  overflow-y:hidden!important;
+  scrollbar-width:none;
+  -webkit-overflow-scrolling:touch;
+  touch-action:pan-x;
+  flex-wrap:nowrap!important;
+  z-index:30!important;
+}
+#app #libraryScreen #st34CommunityModes::-webkit-scrollbar{display:none}
+#app #libraryScreen #st34CommunityModes button{
+  flex:0 0 auto!important;
+  height:29px!important;
+  min-height:29px!important;
+  padding:0 7px!important;
+  font-size:9px!important;
+}
+#app #libraryScreen:has(#st34CommunityModes:not(.hidden)) #libraryTitle{
+  left:24px!important;
+  right:auto!important;
+  top:calc(var(--safe-top) + 112px)!important;
+  width:85px!important;
+  max-width:85px!important;
+  text-align:left!important;
+  font-size:10px!important;
+  letter-spacing:.09em!important;
+  line-height:13px!important;
+  white-space:nowrap!important;
+}
+@media(max-width:360px){
+  #app #libraryScreen #st34CommunityModes{
+    left:88px!important;
+    right:12px!important;
+    gap:2px!important;
+  }
+  #app #libraryScreen #st34CommunityModes button{
+    padding:0 5px!important;
+    font-size:8px!important;
+  }
+  #app #libraryScreen:has(#st34CommunityModes:not(.hidden)) #libraryTitle{
+    left:17px!important;
+    width:70px!important;
+    max-width:70px!important;
+    font-size:9px!important;
+    letter-spacing:.04em!important;
+  }
+}
+/* A network/archival state is not a squish. Suppress the technical warning
+   completely so it does not occupy the first cell of the four-column grid.
+   Existing published cards and community filtering stay intact. */
+#app #libraryScreen #communityPanel #st40CommunityLoadError{
+  display:none!important;
+}
+
 /* Shared front/back card size; ALMA iframe uses the same 12px/84px geometry.
    Draw the frame INSIDE native SETKA #app (never iframe the preview lifter).
    The original dock #st34Nav is outside this frame and stays untouched. */
