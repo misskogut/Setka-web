@@ -35,25 +35,176 @@
 @media(max-height:755px){.content{padding-top:calc(env(safe-area-inset-top) + 10px)}.flower{height:216px}.flower svg{height:214px}.dial-wrap,.dial{height:119px}.gem{margin:9px 0 2px}.heading{margin-top:6px;font-size:23px}.foot{padding-top:10px}}
 @media(max-width:350px){.content{padding-left:22px;padding-right:22px}.heading{font-size:22px}}
 @media(prefers-reduced-motion:reduce){.card{transition-duration:.12s}.petal{transition-duration:.1s}.pollen{animation:none;opacity:.4}}
+</style>
+<style>
+.cycle-hero { min-height: 610px; position: relative; overflow: hidden; border-top: 1px solid rgba(255, 255, 255, .018); border-bottom: 1px solid color-mix(in srgb, var(--cycle-color) 13%, transparent); background: radial-gradient(ellipse at 50% 42%, color-mix(in srgb, var(--cycle-color) 17%, transparent), transparent 45%), radial-gradient(ellipse at 50% 2%, rgba(133, 67, 214, .1), transparent 40%), #030107; transition: background .45s ease, border-color .45s ease; }
+.cycle-hero::after { content: ""; position: absolute; inset: auto 0 0; height: 125px; pointer-events: none; background: linear-gradient(180deg, transparent, #040207); }
+.cosmic-dust { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(7, 1fr); grid-template-rows: repeat(6, 1fr); padding: 34px 18px 67px; opacity: .7; pointer-events: none; }
+.cosmic-dust i { width: 2px; height: 2px; align-self: center; justify-self: center; border-radius: 50%; background: var(--cycle-color); box-shadow: 0 0 8px var(--cycle-color); animation: star-breathe 4s ease-in-out infinite; }
+.cosmic-dust i:nth-child(3n) { width: 1px; height: 1px; opacity: .38; transform: translate(19px, -14px); animation-delay: -1.4s; }
+.cosmic-dust i:nth-child(4n) { width: 3px; height: 3px; opacity: .65; transform: translate(-11px, 17px); animation-delay: -2.2s; }
+.cosmic-dust i:nth-child(5n) { transform: translate(7px, 29px); animation-delay: -.8s; }
+.cycle-dial { width: 100%; height: 154px; position: absolute; z-index: 8; top: 0; left: 0; overflow: visible; touch-action: none; overscroll-behavior: contain; user-select: none; cursor: grab; }
+.cycle-dial:focus { outline: none; }
+.cycle-dial:focus-visible { outline: none; }
+.cycle-dial:focus-visible .dial-selector-core { stroke-width: 1.8; }
+.cycle-dial.is-dragging { cursor: grabbing; }
+.dial-date { cursor: pointer; will-change: transform; }
+.dial-date-dot { fill: var(--dot-color); opacity: .82; filter: drop-shadow(0 0 5px var(--dot-color)); }
+.dial-date-number { fill: #6e6475; font-size: 7px; font-weight: 500; }
+.dial-date-month { fill: #493f4e; font-size: 5.5px; letter-spacing: .06em; text-transform: uppercase; }
+.dial-date.is-today .dial-date-dot { stroke: #f4eafa; stroke-width: 1; }
+.dial-date.is-selected .dial-date-dot { fill: #fff; stroke: var(--dot-color); stroke-width: 1.4; opacity: 1; filter: drop-shadow(0 0 5px #fff) drop-shadow(0 0 11px var(--dot-color)); }
+.dial-date.is-selected .dial-date-number { fill: #fff; font-size: 8px; font-weight: 600; }
+.dial-selector { pointer-events: none; --selector-color: var(--cycle-color); }
+.dial-selector-aura { fill: transparent; stroke: color-mix(in srgb, var(--selector-color) 42%, transparent); stroke-width: .8; }
+.dial-selector-core { fill: transparent; stroke: color-mix(in srgb, var(--selector-color) 82%, white 18%); stroke-width: 1.25; transition: stroke .18s ease, fill .18s ease; }
+.dial-selector-date { fill: #8f8396; font-size: 5px; font-weight: 500; }
+.dial-selector-phase { fill: #fff; font-size: 7.2px; font-weight: 560; letter-spacing: -.02em; }
+.dial-selector-cycle { fill: color-mix(in srgb, var(--selector-color) 70%, #a49aa8 30%); font-size: 4.5px; letter-spacing: .01em; }
+.cycle-jump { width: 31px; height: 31px; position: absolute; z-index: 12; top: 69px; display: grid; place-items: center; border: 1px solid rgba(255, 255, 255, .065); border-radius: 50%; background: rgba(5, 3, 9, .66); color: #807487; font-size: 20px; line-height: 1; cursor: pointer; backdrop-filter: blur(10px); }
+.cycle-jump.previous { left: 13px; }.cycle-jump.next { right: 13px; }
+.phase-badge { min-width: 132px; position: absolute; z-index: 11; top: 65px; left: 50%; transform: translateX(-50%); padding: 8px 14px 9px; border: 1px solid color-mix(in srgb, var(--cycle-color) 68%, white 11%); border-radius: 999px; background: rgba(7, 3, 11, .82); text-align: center; box-shadow: 0 0 27px color-mix(in srgb, var(--cycle-color) 22%, transparent), inset 0 0 15px color-mix(in srgb, var(--cycle-color) 7%, transparent); backdrop-filter: blur(12px); }
+.phase-badge span, .phase-badge strong { display: block; }
+.phase-badge span { color: #8a7c91; font-size: 7px; }
+.phase-badge strong { margin-top: 3px; color: #eee7f0; font-size: 9px; font-weight: 500; }
+.cycle-settings-button { position: absolute; z-index: 13; top: 108px; right: 14px; min-height: 27px; display: flex; align-items: center; gap: 6px; border: 1px solid rgba(255, 255, 255, .06); border-radius: 999px; padding: 0 8px 0 10px; background: rgba(5, 3, 8, .62); color: #625a67; font-size: 7px; cursor: pointer; backdrop-filter: blur(10px); }
+.cycle-settings-button i { color: var(--cycle-color); font-size: 12px; font-style: normal; }
+.cycle-lotus-button { width: 100%; height: 278px; position: absolute; z-index: 7; top: 126px; left: 0; display: block; border: 0; padding: 0; background: transparent; color: inherit; cursor: pointer; }
+.cycle-lotus-button:active .cycle-lotus { transform: scale(.985); }
+.cycle-lotus { width: 100%; height: 250px; display: block; overflow: visible; transition: transform .22s ease; }
+.lotus-aura { fill: url(#lotus-fill); opacity: .46; }
+.lotus-pollen-field { pointer-events: none; }
+.lotus-pollen { fill: color-mix(in srgb, var(--cycle-color) 88%, white 12%); opacity: .58; transform-box: fill-box; transform-origin: center; animation: pollen-float var(--pollen-duration) ease-in-out var(--pollen-delay) infinite alternate; transition: fill .28s ease; }
+.lotus-pollen.pollen-1 { opacity: .34; animation-direction: alternate-reverse; }
+.lotus-pollen.pollen-2 { opacity: .76; }
+.lotus-pollen-field.is-foreground { opacity: .78; }
+.is-cycle-scrubbing .lotus-pollen { animation-duration: calc(var(--pollen-duration) * .58); opacity: .88; }
+.lotus-bloom { isolation: isolate; transform-origin: 190px 200px; }
+.lotus-petal { fill: #030107; stroke: color-mix(in srgb, var(--cycle-color) 86%, white 14%); stroke-width: 1.65; stroke-linecap: round; stroke-linejoin: round; opacity: 1; transform: rotate(var(--petal-angle)); transform-box: view-box; transform-origin: 190px 200px; will-change: transform; transition-property: transform, stroke; transition-duration: .44s, .22s; transition-timing-function: cubic-bezier(.2, .82, .24, 1), ease; }
+.lotus-petal.inner { filter: brightness(.94) saturate(1.05); }
+.lotus-petal.middle { filter: brightness(.82) saturate(.98); }
+.lotus-petal.outer { filter: brightness(.7) saturate(.92); }
+.lotus-petal.lotus-drop { stroke-width: 1.9; }
+.lotus-drop-shine { fill: none; stroke: rgba(255, 255, 255, .48); stroke-width: 1.1; stroke-linecap: round; opacity: .2; filter: drop-shadow(0 0 4px rgba(255, 255, 255, .28)); transition: opacity .45s ease; }
+.lotus-stage-menstruation .lotus-drop-shine { opacity: .46; animation: drop-shimmer 3.2s ease-in-out infinite; }
+.lotus-day { fill: #f8f1fa; font-size: 37px; font-weight: 360; letter-spacing: -.05em; filter: drop-shadow(0 0 10px rgba(255, 255, 255, .18)); }
+.lotus-day-label { fill: color-mix(in srgb, var(--cycle-color) 42%, #777 58%); font-size: 7px; letter-spacing: .11em; text-transform: uppercase; }
+.lotus-tap-hint { position: absolute; z-index: 2; left: 50%; bottom: 1px; transform: translateX(-50%); display: flex; align-items: center; gap: 5px; color: #514a56; font-size: 7px; white-space: nowrap; }
+.lotus-tap-hint i { width: 5px; height: 5px; display: block; border: 1px solid var(--cycle-color); border-radius: 50%; box-shadow: 0 0 7px color-mix(in srgb, var(--cycle-color) 55%, transparent); }
+.cycle-copy { width: 100%; position: absolute; z-index: 9; top: 414px; left: 0; padding: 0 28px; text-align: center; }
+.cycle-stage-count { margin: 0 0 7px !important; color: color-mix(in srgb, var(--cycle-color) 55%, #62596a 45%) !important; font-size: 7px !important; letter-spacing: .13em; text-transform: uppercase; }
+.cycle-timing { margin: 0 0 5px !important; color: color-mix(in srgb, var(--cycle-color) 56%, #83778a 44%) !important; font-size: 9px !important; font-weight: 500; letter-spacing: -.01em; }
+.cycle-copy h1 { max-width: 390px; margin: 0 auto; color: #f0e9f2; font-size: 19px; font-weight: 470; line-height: 1.15; letter-spacing: -.035em; }
+.cycle-copy > p:not(.cycle-stage-count) { max-width: 336px; margin: 9px auto 0; color: #68606d; font-size: 8px; line-height: 1.5; }
+.return-today { min-height: 27px; margin-top: 10px; border: 1px solid color-mix(in srgb, var(--cycle-color) 18%, transparent); border-radius: 999px; padding: 0 11px; background: color-mix(in srgb, var(--cycle-color) 5%, transparent); color: color-mix(in srgb, var(--cycle-color) 55%, #807585 45%); font-size: 7px; cursor: pointer; }
+@keyframes sync-pulse { 50% { opacity: .25; } }
+@keyframes star-breathe { 50% { opacity: .25; transform: scale(.55); } }
+@keyframes ring-spin { to { transform: rotate(360deg); } }
+@keyframes loading-breathe { 50% { opacity: .18; } }
+@keyframes veil-in { from { opacity: 0; } }
+@keyframes sheet-up { from { opacity: .5; transform: translateY(34px); } }
+@keyframes drop-shimmer { 50% { opacity: .22; } }
+@keyframes pollen-float {
+  0% { transform: translate(0, 5px) scale(.72); opacity: .18; }
+  38% { opacity: .82; }
+  100% { transform: translate(var(--pollen-x), var(--pollen-y)) scale(1.18); opacity: .5; }
+}
+.cycle-hero { min-height: 684px; }
+.cycle-section-header { position: absolute; z-index: 18; top: 14px; left: 15px; right: 15px; display: flex; align-items: center; justify-content: space-between; pointer-events: none; }
+.cycle-section-header .eyebrow { margin: 0 0 2px; color: color-mix(in srgb, var(--cycle-color) 72%, #d7c9dc); font-size: 7px; letter-spacing: .15em; text-transform: uppercase; }
+.cycle-section-header h2 { margin: 0; color: #eee7f1; font-size: 17px; font-weight: 520; letter-spacing: -.025em; }
+.cycle-info-button, .section-info-button, .activity-info-button { width: 27px; height: 27px; display: grid; place-items: center; flex: 0 0 auto; border: 1px solid rgba(233, 218, 243, .28); border-radius: 50%; padding: 0; background: rgba(11, 5, 17, .7); color: #f0e6f5; font: 600 14px/1 Georgia, serif; cursor: pointer; box-shadow: 0 0 13px rgba(190, 119, 255, .16); backdrop-filter: blur(10px); pointer-events: auto; }
+.cycle-info-button { border-color: color-mix(in srgb, var(--cycle-color) 50%, rgba(238,224,247,.26)); color: color-mix(in srgb, var(--cycle-color) 66%, #fff); }
+.cycle-info-popover { position: absolute; z-index: 42; top: 50px; left: 14px; right: 14px; border: 1px solid color-mix(in srgb, var(--cycle-color) 34%, rgba(255,255,255,.1)); border-radius: 17px; padding: 14px 35px 13px 14px; background: rgba(12, 6, 18, .96); box-shadow: 0 18px 42px rgba(0,0,0,.5), 0 0 25px color-mix(in srgb, var(--cycle-color) 12%, transparent); color: #bcb1c1; font-size: 9px; line-height: 1.45; backdrop-filter: blur(18px); }
+.cycle-info-popover > button, .activity-info-popover > button { width: 25px; height: 25px; position: absolute; top: 9px; right: 9px; border: 1px solid rgba(255,255,255,.1); border-radius: 50%; background: transparent; color: #a99daa; font-size: 15px; cursor: pointer; }
+.cycle-info-popover strong, .activity-info-popover strong { display: block; margin-bottom: 7px; color: #f0e8f2; font-size: 11px; font-weight: 550; }
+.cycle-info-popover p, .activity-info-popover p { margin: 6px 0; }
+.cycle-info-popover small { display: block; margin-top: 8px; color: #817585; font-size: 8px; line-height: 1.42; }
+.cycle-dial { top: 48px; }
+.cycle-jump { top: 117px; }
+.phase-badge { top: 113px; }
+.cycle-settings-button { top: 156px; }
+.cycle-lotus-button { top: 163px; }
+.cycle-copy { top: 451px; }
+.cycle-quick-access { bottom: 17px; }
+
+.cycle-section-header, .activity-heading, .state-section-header { min-height: 43px; align-items: center; padding-bottom: 10px; border-bottom: 1px solid rgba(237, 222, 244, .12); }
+.cycle-section-header { top: 14px; }.cycle-section-header h2, .activity-heading h2, .state-section-header h2 { margin: 0; color: #f0e9f3; font-family: inherit; font-size: 17px; font-weight: 520; letter-spacing: -.025em; line-height: 1; }
+.cycle-info-button, .section-info-button, .activity-info-button, .activity-heading > .activity-info-button { width: 27px; min-width: 27px; height: 27px; min-height: 27px; display: grid; place-items: center; border: 1px solid rgba(233, 218, 243, .32); border-radius: 50%; padding: 0; background: rgba(11, 5, 17, .70); color: #f0e6f5; font: 600 14px/1 Georgia, serif; box-shadow: 0 0 13px rgba(190, 119, 255, .16); }
+.cycle-dial { top: 59px; }.cycle-jump { top: 128px; }.phase-badge { top: 124px; }.cycle-settings-button { top: 167px; }.cycle-lotus-button { top: 174px; }
+.cycle-quick-access { bottom: 29px; min-height: 64px; max-width: 322px; gap: 7px 7px; }.cycle-quick-access button { max-width: 100px; min-height: 30px; padding: 0 10px; }.cycle-quick-access button span { font-size: 8px; }.cycle-quick-access .cycle-quick-access-add { width: 30px; max-width: 30px; min-height: 30px; }
+
+/* Only the card shell is new; ALMA component geometry and styles above are original. */
+.back .cycle-hero{min-height:max(684px,100dvh);margin:0;border-radius:0;border:0}
+.back .cycle-section-header{position:absolute;z-index:18;top:14px;left:15px;right:15px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(237,222,244,.12);min-height:43px;padding-bottom:10px;pointer-events:none}
+.back .cycle-section-header h2{margin:0;color:#f0e9f3;font-size:17px;font-weight:520;letter-spacing:-.025em;line-height:1}
+.back .cycle-section-header .label{font-size:8px;color:#65576d;letter-spacing:.09em;pointer-events:none}
+.back .cycle-dial{top:59px}
+.back .cycle-jump{top:128px}
+.back .phase-badge{top:124px}
+.back .cycle-settings-button{top:167px}
+.back .cycle-lotus-button{top:174px}
+.back .cycle-copy{top:451px}
+.back .cycle-copy .cycle-timing{margin:0 0 7px!important}
+.back .cycle-copy .cycle-stage-count{margin:0 0 5px!important}
+.back .cycle-quick-access{position:absolute;z-index:10;bottom:calc(env(safe-area-inset-bottom) + 58px);min-height:35px;left:14px;right:14px;display:flex;justify-content:center}
+.back .cycle-quick-access button{min-height:34px;max-width:none;display:flex;align-items:center;gap:6px;padding:0 13px;border:1px solid color-mix(in srgb,var(--cycle-color) 40%,transparent);border-radius:999px;background:rgba(12,6,18,.7);color:#ddd0e8;font-size:9px;cursor:pointer}
+.back .cycle-quick-access button i{color:var(--cycle-color);font-style:normal}
+.back .cycle-lab-note{position:absolute;bottom:calc(env(safe-area-inset-bottom) + 18px);z-index:11;width:100%;padding:0 24px;text-align:center;color:#685f6d;font-size:9px;line-height:1.55}
+.back .cycle-lab-note a{color:#9a85a7}
+.back .cycle-section-header,.back .cycle-copy,.back .cycle-quick-access{pointer-events:auto}
+.back .cycle-hero:after{pointer-events:none}
+@media(max-width:359px){.back .cycle-copy{padding:0 15px}.back .cycle-lab-note{font-size:8px}}
+@media(max-height:695px){.back .cycle-hero{min-height:684px}}
+
 </style></head>
 <body>
 <div class="scene" id="scene"><div class="card" id="card">
 <section class="face front" id="front" aria-label="Основная SETKA"><iframe title="Действующий интерфейс SETKA Web" src="./standalone-v34.html" allow="autoplay; microphone" loading="eager"></iframe></section>
-<section class="face back" id="back" aria-label="Календарь">
-<div class="corner">S</div><div class="corner other">S</div>
-<div class="content">
-<div class="kicker">SETKA · ДРУГАЯ СТОРОНА</div><h1 class="heading">Ц И К Л</h1><div class="subhead">ТВОЙ ВНУТРЕННИЙ РИТМ</div><div class="gem"></div>
-<div class="dial-wrap">
-<svg class="dial" id="dial" viewBox="0 0 380 150" tabindex="0" aria-label="Прокручиваемая дуга дат"><path class="arc" d="M20 92 Q190 -36 360 92"></path><g id="dots"></g><circle class="selector" cx="190" cy="27" r="22"></circle><text id="dialDay" class="select-day" x="190" y="26">—</text><text id="dialMonth" class="select-month" x="190" y="38">дата</text></svg>
-<button class="jumper left" id="prevCycle" aria-label="Предыдущий цикл">‹</button><button class="jumper right" id="nextCycle" aria-label="Следующий цикл">›</button>
+<section class="face back" id="back" aria-label="Женский календарь, оригинальная графика ALMA">
+<div class="cycle-hero lotus-stage-low" id="alHero" style="--cycle-color:#4fd39a" aria-label="Мой цикл">
+  <div class="cosmic-dust" id="cosmicDust" aria-hidden="true"></div>
+  <header class="cycle-section-header"><h2>Мой цикл</h2><span class="label">SETKA · ОБОРОТ</span></header>
+  <svg class="cycle-dial" id="cycleDial" viewBox="0 0 380 142" tabindex="0" role="group" aria-label="Дни цикла. Прокрутите дугу влево или вправо; стрелки клавиатуры также меняют дату.">
+    <defs><filter id="dial-glow" x="-150%" y="-150%" width="400%" height="400%"><feGaussianBlur stdDeviation="4" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+    <g id="dateNodes"></g>
+    <g class="dial-selector" transform="translate(190 29)">
+      <circle class="dial-selector-aura" r="26" filter="url(#dial-glow)"/>
+      <circle class="dial-selector-core" r="22"/>
+    </g>
+  </svg>
+  <button type="button" class="cycle-jump previous" id="prevCycle" aria-label="Предыдущий цикл">‹</button>
+  <button type="button" class="cycle-jump next" id="nextCycle" aria-label="Следующий цикл">›</button>
+  <div class="phase-badge" aria-live="polite"><span id="cycleStage">Укажи начало менструации</span><strong id="cyclePhase">Мой цикл</strong></div>
+  <button type="button" class="cycle-settings-button" id="record" aria-label="Отметить месячные"><i>✦</i> отметить</button>
+  <button class="cycle-lotus-button" type="button" id="lotusOpen" aria-label="Нажми на лотос, чтобы открыть календарь и отметить менструацию">
+    <svg class="cycle-lotus" viewBox="0 0 380 230" role="img" aria-label="Раскрывающийся лотос с фазой цикла">
+      <defs>
+        <radialGradient id="lotus-fill"><stop offset="0" style="stop-color:var(--cycle-color)" stop-opacity=".38"/><stop offset=".62" style="stop-color:var(--cycle-color)" stop-opacity=".12"/><stop offset="1" stop-color="#030107" stop-opacity="0"/></radialGradient>
+        <filter id="lotus-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        <filter id="pollen-glow" x="-300%" y="-300%" width="700%" height="700%"><feGaussianBlur stdDeviation="2.8" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      </defs>
+      <g class="lotus-pollen-field" id="pollenBack" filter="url(#pollen-glow)" aria-hidden="true"></g>
+      <ellipse class="lotus-aura" cx="190" cy="135" rx="150" ry="108"/>
+      <g class="lotus-bloom bloom-7" id="lotusBloom" filter="url(#lotus-glow)" aria-hidden="true"></g>
+      <g class="lotus-pollen-field is-foreground" id="pollenFront" filter="url(#pollen-glow)" aria-hidden="true"></g>
+      <text class="lotus-day" id="lotusDay" x="190" y="130" text-anchor="middle">—</text>
+      <text class="lotus-day-label" x="190" y="149" text-anchor="middle">день цикла</text>
+    </svg>
+    <div class="lotus-tap-hint"><i></i> коснись цветка, чтобы отметить</div>
+  </button>
+  <div class="cycle-copy">
+    <p class="cycle-stage-count" id="petalCount">3 лепестка</p>
+    <p class="cycle-timing" id="selectedDate">Дата</p>
+    <h1 id="cycleTitle">Лотос твоего цикла</h1>
+    <p id="cycleDescription">Укажи начало менструации</p>
+    <button class="return-today" id="returnToday" type="button" hidden>вернуться к сегодня</button>
+  </div>
+  <div class="cycle-quick-access"><button id="recordBottom" type="button"><i>✦</i><span>Отметить месячные</span></button></div>
+  <div class="cycle-lab-note">Календарный расчёт ориентировочный · данные хранятся только в этом браузере.<br><a href="./standalone-v34.html">Обычная SETKA без календаря</a></div>
 </div>
-<div class="phase-pill" id="pill">Календарь ещё не настроен</div>
-<div class="flower"><svg viewBox="0 0 380 230" role="img" aria-label="Живой лотос — фазы цикла">
-<g id="pollenBack"></g><g id="petals"></g><g id="pollenFront"></g><text id="lotusDay" x="190" y="130" class="flower-day">—</text><text x="190" y="149" class="flower-label">ДЕНЬ ЦИКЛА</text></svg></div>
-<h2 id="phaseName" class="phase-name">Лотос твоего цикла</h2><p id="dateName" class="date-name">Добавь начало последней менструации</p><p id="forecast" class="forecast">После первой записи появится календарный прогноз.</p>
-<div class="controls"><button id="record" class="control">✦ &nbsp; Отметить месячные</button><button id="today" class="control secondary">Сегодня</button></div>
-<p class="foot">Это приблизительный календарный прогноз, не определяющий безопасные дни.<br>Записи пока хранятся только в данном браузере.<br><a href="./standalone-v34.html">Открыть обычную SETKA без календаря</a></p>
-</div></section></div>
+</section></div>
 <button class="grip front-grip" id="open" aria-label="Свайп влево или нажатие — перевернуть к календарю"><b>‹</b><small>ЦИКЛ</small></button>
 <button class="grip back-grip" id="close" aria-label="Свайп вправо или нажатие — вернуть SETKA"><b>›</b><small>SETKA</small></button>
 </div>
@@ -66,43 +217,27 @@
 <script>
 (function(){
 'use strict';
-var $=function(id){return document.getElementById(id)},scene=$('scene'),card=$('card'),front=$('front'),back=$('back'),isBack=false,flip=null;
-function turn(on){isBack=!!on;scene.classList.toggle('is-back',isBack);card.classList.remove('dragging');card.style.transform='rotateY('+(isBack?-180:0)+'deg)';front.inert=isBack;back.inert=!isBack;front.setAttribute('aria-hidden',String(isBack));back.setAttribute('aria-hidden',String(!isBack));try{history.replaceState(null,'',location.pathname+location.search+(isBack?'#cycle':''))}catch(e){}}
-function grip(id,closing){var el=$(id);el.addEventListener('pointerdown',function(e){if(e.button!==0&&e.pointerType==='mouse')return;flip={id:e.pointerId,x:e.clientX,moved:false};el.setPointerCapture(e.pointerId);card.classList.add('dragging')});
-el.addEventListener('pointermove',function(e){if(!flip||e.pointerId!==flip.id)return;var dx=e.clientX-flip.x;if(Math.abs(dx)>5)flip.moved=true;var travel=Math.max(0,Math.min(1,(closing?dx:-dx)/Math.max(145,innerWidth*.42)));card.style.transform='rotateY('+(-180*(closing?1-travel:travel))+'deg)'});
-el.addEventListener('pointerup',function(e){if(!flip||e.pointerId!==flip.id)return;var dx=e.clientX-flip.x,move=(closing?dx:-dx),moved=flip.moved;flip=null;turn(!closing&&(!moved||move>Math.max(60,innerWidth*.16))||closing&&moved&&move<=Math.max(60,innerWidth*.16))});
-el.addEventListener('pointercancel',function(){flip=null;turn(closing)});el.addEventListener('lostpointercapture',function(){if(flip){flip=null;turn(closing)}})}
-grip('open',false);grip('close',true);
-function date(s){return new Date(s+'T12:00:00Z')}function iso(d){return d.toISOString().slice(0,10)}function add(s,n){var d=date(s);d.setUTCDate(d.getUTCDate()+n);return iso(d)}function days(a,b){return Math.round((date(b)-date(a))/86400000)}function localToday(){var x=new Date();return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')}function good(s){return typeof s==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(s)&&!isNaN(date(s).getTime())&&iso(date(s))===s}function formatted(s,opts){return new Intl.DateTimeFormat('ru-RU',Object.assign({timeZone:'UTC'},opts||{day:'numeric',month:'long'})).format(date(s))}
-var today=localToday(),selected=today,key='setka-cycle-lotus-lab-v1',data={length:28,records:[]};
-try{var raw=JSON.parse(localStorage.getItem(key)||'null');if(raw&&Array.isArray(raw.records)){data.length=Math.max(15,Math.min(60,Number(raw.length)||28));data.records=raw.records.filter(function(r){return good(r.start)&&r.start<=today&&(!r.end||good(r.end)&&r.end>=r.start)}).map(function(r){return{id:String(r.id||r.start),start:r.start,end:r.end||''}}).sort(function(a,b){return a.start.localeCompare(b.start)})}}catch(e){}
-function save(){try{localStorage.setItem(key,JSON.stringify(data));return true}catch(e){return false}}
-var stages={none:{color:'#ac8dbd',petals:7,title:'Лотос твоего цикла'},menstruation:{color:'#ff435f',petals:1,title:'Менструация'},low:{color:'#4fd39a',petals:3,title:'Вне расчётного фертильного окна'},follicular:{color:'#48a8ff',petals:5,title:'Фолликулярная фаза'},ovulation:{color:'#c45cff',petals:7,title:'Расчётная овуляция'}};
-function model(s){var r=null;data.records.forEach(function(x){if(x.start<=s)r=x});if(!r)return null;var len=data.length,d=days(r.start,s)%len+1,ov=Math.max(6,len-14),periodDays=r.end?Math.min(10,days(r.start,r.end)+1):5,phase='Лютеиновая фаза',stage='low';if(d<=periodDays){stage='menstruation';phase='Менструация'}else if(d===ov){stage='ovulation';phase='Расчётная овуляция'}else if(d>=ov-4&&d<ov){stage='follicular';phase='Фолликулярная фаза'}else if(d<ov){phase='Фолликулярная фаза'}else if(d<=ov+2){stage='follicular'}var next=add(r.start,(Math.floor(days(r.start,s)/len)+1)*len);data.records.forEach(function(x){if(x.start>s&&x.start<next)next=x.start});return{d:d,phase:phase,stage:stage,next:next,predicted:s>today||days(r.start,s)>=len}};
-var specs=[['outer',-1,76],['outer',1,76],['middle',-1,52],['middle',1,52],['inner',-1,27],['inner',1,27],['center',0,0]],petalNodes=[];
-specs.forEach(function(p){var el=document.createElementNS('http://www.w3.org/2000/svg','path');el.setAttribute('d','M190 27 C159 64 141 103 142 138 C143 172 166 200 190 200 C214 200 237 172 238 138 C239 103 221 64 190 27Z');el.setAttribute('class','petal '+p[0]);$('petals').appendChild(el);petalNodes.push(el)});
-function pollen(id,n,backLayer){var parent=$(id);for(var i=0;i<n;i++){var e=document.createElementNS('http://www.w3.org/2000/svg','circle');e.setAttribute('cx',String(backLayer?42+(i*79)%296:126+(i*67)%132));e.setAttribute('cy',String(backLayer?34+(i*53)%172:55+(i*47)%132));e.setAttribute('r',String(.65+(i%5)*.28));e.setAttribute('class','pollen');e.style.setProperty('--delay',String(-(i%11)*.7)+'s');e.style.setProperty('--dur',String(5+(i%7)*.8)+'s');e.style.setProperty('--dx',String((i*13)%27-12)+'px');parent.appendChild(e)}}
-pollen('pollenBack',34,true);pollen('pollenFront',18,false);
-function arc(i){var angle=Math.max(-1.08,Math.min(1.08,i/6.4))*1.14;return{x:190+Math.sin(angle)*187,y:27+(1-Math.cos(angle))*104}}
-function draw(){var group=$('dots'),f=document.createDocumentFragment();for(var i=-6;i<=6;i++){var d=add(selected,i),p=arc(i),g=document.createElementNS('http://www.w3.org/2000/svg','g');g.setAttribute('class','day-node'+(i===0?' active':''));g.setAttribute('data-offset',i);var hit=document.createElementNS('http://www.w3.org/2000/svg','circle');hit.setAttribute('cx',p.x);hit.setAttribute('cy',p.y+9);hit.setAttribute('r','14');hit.setAttribute('fill','transparent');var dot=document.createElementNS('http://www.w3.org/2000/svg','circle');dot.setAttribute('cx',p.x);dot.setAttribute('cy',p.y);dot.setAttribute('r',i===0?'3.5':'2.3');dot.setAttribute('class','dot');var num=document.createElementNS('http://www.w3.org/2000/svg','text');num.setAttribute('x',p.x);num.setAttribute('y',p.y+16);num.setAttribute('class','day-num');num.textContent=String(date(d).getUTCDate());var week=document.createElementNS('http://www.w3.org/2000/svg','text');week.setAttribute('x',p.x);week.setAttribute('y',p.y+25);week.setAttribute('class','weekday');week.textContent=formatted(d,{weekday:'short'}).replace('.','');g.append(hit,dot,num,week);f.appendChild(g)}group.replaceChildren(f);$('dialDay').textContent=date(selected).getUTCDate();$('dialMonth').textContent=formatted(selected,{month:'short'}).replace('.','')}
-function redraw(){var m=model(selected),stage=stages[m?m.stage:'none'];back.style.setProperty('--cycle',stage.color);specs.forEach(function(p,i){var show=p[0]==='center'||p[0]==='inner'&&stage.petals>=3||p[0]==='middle'&&stage.petals>=5||p[0]==='outer'&&stage.petals>=7;petalNodes[i].style.transform='rotate('+(show?p[1]*p[2]:p[1]*4)+'deg)';petalNodes[i].style.opacity=show?'1':'0'});$('lotusDay').textContent=m?m.d:'—';$('pill').textContent=m?(m.predicted?'Прогноз · ':'')+m.phase:'Календарь ещё не настроен';$('phaseName').textContent=stage.title;$('dateName').textContent=m?formatted(selected,{weekday:'long',day:'numeric',month:'long'}):'Добавь начало последней менструации';$('forecast').textContent=m?'Следующая предполагаемая менструация · '+formatted(m.next,{day:'numeric',month:'long',year:'numeric'}):'После первой записи появится календарный прогноз.';draw()}
-function select(s){if(good(s)){selected=s;redraw()}}
-$('today').addEventListener('click',function(){select(today)});$('prevCycle').addEventListener('click',function(){select(add(selected,-data.length))});$('nextCycle').addEventListener('click',function(){select(add(selected,data.length))});
-var dial=$('dial'),gesture=null;
-dial.addEventListener('pointerdown',function(e){if(e.button!==0&&e.pointerType==='mouse')return;gesture={id:e.pointerId,x:e.clientX,base:selected,lastX:e.clientX,lastT:performance.now(),v:0,moved:false};dial.setPointerCapture(e.pointerId)});
-dial.addEventListener('pointermove',function(e){if(!gesture||e.pointerId!==gesture.id)return;var delta=e.clientX-gesture.x,now=performance.now();gesture.v=(e.clientX-gesture.lastX)/Math.max(1,now-gesture.lastT);gesture.lastX=e.clientX;gesture.lastT=now;if(Math.abs(delta)>6)gesture.moved=true;var offset=Math.round(-delta/34);if(offset)select(add(gesture.base,offset))});
-dial.addEventListener('pointerup',function(e){if(!gesture||e.pointerId!==gesture.id)return;var g=gesture;gesture=null;if(g.moved){var throwDays=Math.max(-7,Math.min(7,Math.round(-g.v*110)));if(Math.abs(g.v)>.15&&throwDays)select(add(selected,throwDays))}else{var target=e.target.closest&&e.target.closest('.day-node');if(target)select(add(selected,Number(target.getAttribute('data-offset'))||0))}});
-dial.addEventListener('pointercancel',function(){gesture=null});
-dial.addEventListener('wheel',function(e){e.preventDefault();select(add(selected,(e.deltaY||e.deltaX)>0?1:-1))},{passive:false});
-dial.addEventListener('keydown',function(e){if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();select(add(selected,e.key==='ArrowRight'?1:-1))}});
-var editing=null,overlay=$('overlay'),start=$('start'),end=$('end'),length=$('length');
-function closeSheet(){overlay.classList.remove('open');$('notice').textContent=''}
-function openSheet(r){editing=r?r.id:null;start.value=r?r.start:(selected<=today?selected:today);end.value=r?r.end:'';start.max=today;end.max=today;end.min=start.value;length.value=data.length;$('save').textContent=r?'Сохранить изменения':'Сохранить запись';$('notice').textContent='';overlay.classList.add('open');historyList()}
-$('record').addEventListener('click',function(){openSheet(null)});$('closeSheet').addEventListener('click',closeSheet);overlay.addEventListener('pointerdown',function(e){if(e.target===overlay)closeSheet()});start.addEventListener('change',function(){end.min=start.value;if(end.value&&end.value<start.value)end.value=''});
-$('form').addEventListener('submit',function(e){e.preventDefault();var s=start.value,t=end.value,n=Number(length.value);if(!good(s)||s>today||t&&(!good(t)||t<s||t>today)||!Number.isInteger(n)||n<15||n>60){$('notice').textContent='Проверь даты и длину цикла.';return}if(data.records.some(function(x){return x.start===s&&x.id!==editing})){$('notice').textContent='Эта дата начала уже есть в истории.';return}var next=data.records.filter(function(x){return x.id!==editing});next.push({id:editing||String(Date.now())+'-'+s,start:s,end:t});next.sort(function(a,b){return a.start.localeCompare(b.start)});data.records=next;data.length=n;var stored=save();select(s);openSheet(null);$('notice').textContent=stored?'Запись сохранена в этом браузере.':'Браузер запретил сохранение записи.'});
-function historyList(){var el=$('history');el.replaceChildren();if(!data.records.length){var empty=document.createElement('div');empty.className='empty';empty.textContent='Отметок пока нет';el.appendChild(empty);return}data.records.slice().reverse().forEach(function(r){var row=document.createElement('div');row.className='history-row',label=document.createElement('span');label.textContent=formatted(r.start)+(r.end?' — '+formatted(r.end):' · окончание не отмечено');var actions=document.createElement('span'),edit=document.createElement('button'),del=document.createElement('button');edit.type='button';edit.textContent='Изменить';edit.addEventListener('click',function(){openSheet(r)});del.type='button';del.textContent='×';del.setAttribute('aria-label','Удалить запись '+r.start);del.addEventListener('click',function(){if(confirm('Удалить запись?')){data.records=data.records.filter(function(x){return x.id!==r.id});save();historyList();redraw()}});actions.append(edit,del);row.append(label,actions);el.appendChild(row)})}
-window.addEventListener('keydown',function(e){if(e.key==='Escape'){if(overlay.classList.contains('open'))closeSheet();else if(isBack)turn(false)}});
-turn(location.hash==='#cycle');redraw();
-window.SETKA_CYCLE_LAB={flip:turn,select:select,model:model,getDate:function(){return selected},getRecords:function(){return data.records.slice()}};
+const scene=document.getElementById("scene"),card=document.getElementById("card"),front=document.getElementById("front"),back=document.getElementById("back");
+let isBack=false,gesture=null;
+function turn(on){
+ isBack=!!on;scene.classList.toggle("is-back",isBack);
+ card.classList.remove("dragging");card.style.transform="rotateY("+(isBack?-180:0)+"deg)";
+ front.inert=isBack;back.inert=!isBack;
+ front.setAttribute("aria-hidden",String(isBack));back.setAttribute("aria-hidden",String(!isBack));
+ try{history.replaceState(null,"",location.pathname+location.search+(isBack?"#cycle":""))}catch(_){}
+}
+function grip(id,fromBack){
+ const el=document.getElementById(id);
+ el.addEventListener("pointerdown",e=>{if(e.pointerType==="mouse"&&e.button!==0)return;gesture={id:e.pointerId,x:e.clientX,moved:false};try{el.setPointerCapture(e.pointerId)}catch(_){}card.classList.add("dragging")});
+ el.addEventListener("pointermove",e=>{if(!gesture||e.pointerId!==gesture.id)return;const dx=e.clientX-gesture.x;if(Math.abs(dx)>5)gesture.moved=true;const t=Math.max(0,Math.min(1,(fromBack?dx:-dx)/Math.max(150,innerWidth*.42)));card.style.transform="rotateY("+(-180*(fromBack?1-t:t))+"deg)"});
+ el.addEventListener("pointerup",e=>{if(!gesture||e.pointerId!==gesture.id)return;const dx=e.clientX-gesture.x,move=fromBack?dx:-dx,changed=!gesture.moved||move>Math.max(55,innerWidth*.15);gesture=null;turn(changed?!fromBack:fromBack)});
+ el.addEventListener("pointercancel",()=>{gesture=null;turn(fromBack)});
+ el.addEventListener("lostpointercapture",()=>{if(gesture){gesture=null;turn(fromBack)}});
+}
+grip("open",false);grip("close",true);
+window.addEventListener("keydown",e=>{if(e.key==="Escape"&&isBack&&!document.getElementById("overlay").classList.contains("open"))turn(false)});
+turn(location.hash==="#cycle");
+window.SETKA_CYCLE_LAB={flip:turn};
 })();
-</script></body></html>
+</script>
+<script src="./standalone-cycle-alma-v1.js?v=1"></script></body></html>
