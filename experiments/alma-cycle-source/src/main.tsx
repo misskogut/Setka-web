@@ -113,15 +113,6 @@ function CycleOnly() {
   return <main className="app-stage">
     <div className="ambient-background" aria-hidden="true" />
     <div className="phone-scene">
-      <header className="app-header">
-        <div className="brand"><span className="brand-mark">S</span><div><strong>SETKA</strong><small>цикл · исходный модуль ALMA</small></div></div>
-        <span className="sync-status status-local"><i />на устройстве</span>
-      </header>
-
-      {!configured && <div className="setka-demo-note">
-        Демонстрационные даты ALMA. Отметь свою менструацию для личного расчёта.
-      </div>}
-
       <CycleHero
         profile={profile}
         days={days}
