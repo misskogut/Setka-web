@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>SETKA · BODY SNAPSHOT · RECOVERED</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#030814;color:#edf6ff;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+canvas{display:block;width:100%;height:100%;touch-action:none}
+.bar{position:fixed;z-index:5;left:8px;right:8px;top:max(8px,env(safe-area-inset-top));display:flex;gap:6px}
+.pill,.btn{color:#edf6ff;background:#061326ed;border:1px solid #304965;border-radius:10px}
+.pill{flex:1;min-width:0;padding:8px 9px;overflow:hidden}
+.pill b{display:block;font-size:11px;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+.pill small{display:block;padding-top:3px;color:#9bb0c8;font-size:9px}
+.btn{padding:8px;font:10px ui-monospace,monospace;cursor:pointer}
+.btn.active{background:#233b56;border-color:#86a9ce}
+#status{position:fixed;z-index:6;left:50%;bottom:max(9px,env(safe-area-inset-bottom));transform:translateX(-50%);padding:7px 10px;border:1px solid #304965;border-radius:10px;max-width:94vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:#061326ed;color:#bbd0e6;font-size:10px}
+#detail{display:none;position:fixed;z-index:7;right:8px;bottom:49px;width:min(360px,calc(100vw - 16px));max-height:56vh;overflow:auto;padding:15px;border:1px solid #426080;border-radius:13px;background:#061326f2;font-size:11px}
+#detail.open{display:block}
+#detail h3{margin:0 20px 12px 0;font-size:14px}
+#detail .r{padding:6px 0;border-bottom:1px solid #233e56}
+#detail .k{color:#91adc5}
+#close{position:absolute;right:8px;top:6px;color:#fff;font-size:24px;background:transparent;border:0}
+#hint{position:fixed;top:55px;left:10px;z-index:3;color:#6682a0;font-size:9px}
+@media(max-width:700px){.pill small{display:none}.btn{font-size:9px;padding:7px 5px}.pill b{font-size:10px}#hint{top:47px}}
+</style></head><body>
+<canvas id="c"></canvas>
+<div class="bar"><div class="pill"><b>SETKA · FROZEN BODY SNAPSHOT</b><small>927501A0353C4CE6 · RECOVERED / STATIC</small></div>
+<button class="btn active" id="growth">GROWTH</button><button class="btn" id="graph">GRAPH</button><button class="btn active" id="auto">AUTO</button><button class="btn" id="reset">RESET</button></div>
+<div id="hint">Вращение: палец · Масштаб: два пальца · Сущность: касание</div>
+<div id="detail"><button id="close">×</button><h3 id="detail-title"></h3><div id="detail-body"></div></div>
+<div id="status">Загрузка сохранённого слепка тела…</div>
+<script>
+"use strict";
+(async function(){
+const status=document.getElementById("status");
+const expectedRef="BODY-GROWN-SNAPSHOT-927501A0353C4CE6";
+try{
+const names=Array.from({length:15},(_,i)=>"./body-snapshot-rescue/data-"+String(i).padStart(2,"0")+".txt");
+const chunks=new Array(names.length);
+for(let start=0;start<names.length;start+=5){
+await Promise.all(names.slice(start,start+5).map(async(url,j)=>{
+const r=await fetch(url,{cache:"force-cache"});if(!r.ok)throw Error("Не загружен фрагмент "+url+" (HTTP "+r.status+")");
+chunks[start+j]=await r.text();
+}));
+status.textContent="Сохранённый слепок: "+Math.min(start+5,names.length)+"/15 частей";
+}
+const raw=chunks.join("");if(raw.length!==5701849)throw Error("Размер копии не совпадает: "+raw.length);
+const DATA=JSON.parse(raw);if(DATA.snapshotRef!==expectedRef||DATA.nodes.length!==14778||DATA.edges.length!==43840||DATA.ok!==true)throw Error("Проверка целостности слепка не пройдена");
+const nodes=DATA.nodes,edges=DATA.edges,canvas=document.getElementById("c");
+const gl=canvas.getContext("webgl",{antialias:true,alpha:false,powerPreference:"high-performance"});
+if(!gl)throw Error("WebGL не доступен в этом браузере");
+const vertex=`attribute vec3 aP;attribute float aG;uniform vec3 uC;uniform float uY,uX,uD,uAspect,uDpr;varying float vG;
+void main(){vec3 p=aP-uC;float c=cos(uY),s=sin(uY),cp=cos(uX),sp=sin(uX);
+vec3 q=vec3(c*p.x+s*p.z,p.y,-s*p.x+c*p.z);vec3 r=vec3(q.x,cp*q.y-sp*q.z,sp*q.y+cp*q.z);
+float d=max(.12,uD-r.z);gl_Position=vec4(r.x*2.4/uAspect,r.y*2.4,.5,d);
+gl_PointSize=clamp(5.0*uD/d,1.0,8.0)*uDpr;vG=aG;}`;
+const fragment=`precision mediump float;varying float vG;uniform float uAlpha,uIsPoint;
+void main(){vec3 color=mix(vec3(.28,.64,.96),vec3(.83,.38,.92),clamp(vG/7.0,0.,1.));
+float opacity=uAlpha;if(uIsPoint>.5){float d=length(gl_PointCoord-vec2(.5));if(d>.49)discard;opacity*=1.-smoothstep(.15,.49,d);}
+gl_FragColor=vec4(color,opacity);}`;
+function shader(type,source){const s=gl.createShader(type);gl.shaderSource(s,source);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(s));return s;}
+const program=gl.createProgram();gl.attachShader(program,shader(gl.VERTEX_SHADER,vertex));gl.attachShader(program,shader(gl.FRAGMENT_SHADER,fragment));gl.linkProgram(program);
+if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(program));
+gl.useProgram(program);
+const attrs=[gl.getAttribLocation(program,"aP"),gl.getAttribLocation(program,"aG")];
+const uniforms=Object.fromEntries(["uC","uY","uX","uD","uAspect","uDpr","uAlpha","uIsPoint"].map(x=>[x,gl.getUniformLocation(program,x)]));
+const n=nodes.length,byId=new Map(),pos=new Float32Array(n*3),gen=new Float32Array(n),mn=[Infinity,Infinity,Infinity],mx=[-Infinity,-Infinity,-Infinity];
+for(let i=0;i<n;i++){const v=nodes[i];byId.set(v[0],i);gen[i]=+v[3]||0;for(let k=0;k<3;k++){const z=+v[k+9]||0;pos[i*3+k]=z;mn[k]=Math.min(mn[k],z);mx[k]=Math.max(mx[k],z);}}
+const center=mn.map((v,i)=>(v+mx[i])/2),span=Math.max(1,...mn.map((v,i)=>mx[i]-v));
+function buffer(a){const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,a,gl.STATIC_DRAW);return b;}
+function geometry(a,b){return{p:buffer(a),g:buffer(b),count:b.length};}
+const dots=geometry(pos,gen);
+function segments(list){let a=new Float32Array(list.length*6),g=new Float32Array(list.length*2),w=0;
+for(const e of list){const i=byId.get(e[0]),j=byId.get(e[1]);if(i===undefined||j===undefined)continue;
+a.set(pos.subarray(3*i,3*i+3),6*w);a.set(pos.subarray(3*j,3*j+3),6*w+3);g[w*2]=gen[i];g[w*2+1]=gen[j];w++;}
+return geometry(a.subarray(0,w*6),g.subarray(0,w*2));}
+const grow=segments(nodes.filter(v=>v[1]&&byId.has(v[1])).map(v=>[v[1],v[0]]));
+const graph=segments(edges);
+let yaw=.42,pitch=.25,distance=span*1.5,showGrowth=true,showGraph=false,auto=true;
+function draw(obj,mode,alpha,isPoint){gl.bindBuffer(gl.ARRAY_BUFFER,obj.p);gl.enableVertexAttribArray(attrs[0]);gl.vertexAttribPointer(attrs[0],3,gl.FLOAT,false,0,0);
+gl.bindBuffer(gl.ARRAY_BUFFER,obj.g);gl.enableVertexAttribArray(attrs[1]);gl.vertexAttribPointer(attrs[1],1,gl.FLOAT,false,0,0);
+gl.uniform1f(uniforms.uAlpha,alpha);gl.uniform1f(uniforms.uIsPoint,isPoint?1:0);gl.drawArrays(mode,0,obj.count);}
+let last=performance.now();
+function frame(t){let dt=Math.min(.05,(t-last)/1000);last=t;if(auto)yaw+=dt*.06;
+const dpr=Math.min(devicePixelRatio||1,1.5),w=Math.round(innerWidth*dpr),h=Math.round(innerHeight*dpr);
+if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;gl.viewport(0,0,w,h);}
+gl.clearColor(.012,.031,.078,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.useProgram(program);
+gl.uniform3fv(uniforms.uC,center);gl.uniform1f(uniforms.uY,yaw);gl.uniform1f(uniforms.uX,pitch);gl.uniform1f(uniforms.uD,distance);gl.uniform1f(uniforms.uAspect,w/h);gl.uniform1f(uniforms.uDpr,dpr);
+gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
+if(showGraph)draw(graph,gl.LINES,.075,false);if(showGrowth)draw(grow,gl.LINES,.30,false);draw(dots,gl.POINTS,.94,true);
+requestAnimationFrame(frame);}
+requestAnimationFrame(frame);
+const touches=new Map();let pinch=0,moved=false,downAt=0;
+function separation(){const v=[...touches.values()];return Math.hypot(v[0].x-v[1].x,v[0].y-v[1].y);}
+canvas.addEventListener("pointerdown",e=>{canvas.setPointerCapture(e.pointerId);touches.set(e.pointerId,{x:e.clientX,y:e.clientY,sx:e.clientX,sy:e.clientY});if(touches.size===2)pinch=separation();moved=false;downAt=performance.now();});
+canvas.addEventListener("pointermove",e=>{const p=touches.get(e.pointerId);if(!p)return;let dx=e.clientX-p.x,dy=e.clientY-p.y;p.x=e.clientX;p.y=e.clientY;if(Math.hypot(p.x-p.sx,p.y-p.sy)>6)moved=true;
+if(touches.size===1){yaw+=dx*.006;pitch=Math.max(-1.45,Math.min(1.45,pitch+dy*.006));}
+else if(touches.size===2){const q=separation();if(pinch>0)distance=Math.max(span*.18,Math.min(span*20,distance*pinch/q));pinch=q;}});
+canvas.addEventListener("pointerup",e=>{if(!moved&&touches.size===1&&performance.now()-downAt<500)pick(e.clientX,e.clientY);touches.delete(e.pointerId);pinch=0;});
+canvas.addEventListener("pointercancel",e=>{touches.delete(e.pointerId);pinch=0;});
+canvas.addEventListener("wheel",e=>{e.preventDefault();distance=Math.max(span*.18,Math.min(span*20,distance*Math.exp(e.deltaY*.001)));},{passive:false});
+function pick(cx,cy){const aspect=canvas.width/canvas.height,W=innerWidth,H=innerHeight,c=Math.cos(yaw),s=Math.sin(yaw),cp=Math.cos(pitch),sp=Math.sin(pitch);
+let best=-1,threshold=150;
+for(let i=0;i<n;i++){let x=pos[i*3]-center[0],y=pos[i*3+1]-center[1],z=pos[i*3+2]-center[2],qx=c*x+s*z,qz=-s*x+c*z,ry=cp*y-sp*qz,rz=sp*y+cp*qz,depth=Math.max(.12,distance-rz);
+const px=W*(.5+qx*1.2/(aspect*depth)),py=H*(.5-ry*1.2/depth),dist=(cx-px)**2+(cy-py)**2;if(dist<threshold){threshold=dist;best=i;}}
+if(best<0)return;const v=nodes[best];const esc=z=>String(z??"—").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
+const row=(key,val)=>'<div class="r"><span class="k">'+esc(key)+': </span>'+esc(val)+'</div>';
+document.getElementById("detail-title").textContent=v[6]||v[0];document.getElementById("detail-body").innerHTML=row("id",v[0])+row("тип",v[2])+row("семейство",v[7])+row("поколение",v[3])+row("degree",v[5])+row("родитель",v[1]||"—");document.getElementById("detail").classList.add("open");}
+document.getElementById("close").onclick=()=>document.getElementById("detail").classList.remove("open");
+document.getElementById("growth").onclick=e=>{showGrowth=!showGrowth;e.currentTarget.classList.toggle("active",showGrowth);};
+document.getElementById("graph").onclick=e=>{showGraph=!showGraph;e.currentTarget.classList.toggle("active",showGraph);};
+document.getElementById("auto").onclick=e=>{auto=!auto;e.currentTarget.classList.toggle("active",auto);};
+document.getElementById("reset").onclick=()=>{yaw=.42;pitch=.25;distance=span*1.5;};
+status.textContent="СЛЕПОК ВОССТАНОВЛЕН · "+n.toLocaleString("ru-RU")+" узлов · "+edges.length.toLocaleString("ru-RU")+" связей · без Supabase и CDN";
+}catch(error){console.error(error);status.textContent="Ошибка: "+error.message;}
+})();
+</script></body></html>
