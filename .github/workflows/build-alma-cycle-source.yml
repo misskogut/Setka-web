@@ -1,0 +1,82 @@
+name: Build exact ALMA cycle for isolated SETKA experiment
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "experiments/alma-cycle-source/src/**"
+      - "experiments/alma-cycle-source/index.html"
+      - ".github/workflows/build-alma-cycle-source.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: setka-alma-source-build
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout SETKA, keep current standalone-v34 intact
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 1
+
+      - name: Checkout pinned original ALMA source, no modifications
+        uses: actions/checkout@v4
+        with:
+          repository: misskogut/Alma
+          ref: 694b83c46c7ffb7e52bbfa48e7888ab7fdf7e8e8
+          path: .alma-upstream
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Verify exact ALMA upstream components
+        shell: bash
+        run: |
+          test "$(git -C .alma-upstream rev-parse HEAD)" = "694b83c46c7ffb7e52bbfa48e7888ab7fdf7e8e8"
+          test -s .alma-upstream/components/cycle-hero.tsx
+          test -s .alma-upstream/components/sheets.tsx
+          test -s .alma-upstream/app/globals.css
+          test -s .alma-upstream/lib/alma.ts
+          grep -q "const LOTUS_PETAL_PATH" .alma-upstream/components/cycle-hero.tsx
+          grep -q "export function CycleSettingsSheet" .alma-upstream/components/sheets.tsx
+
+      - name: Install build-only libraries
+        run: npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund react@19.2.0 react-dom@19.2.0 esbuild@0.25.12
+
+      - name: Compile original React component without rewriting its JSX or CSS
+        shell: bash
+        run: |
+          mkdir -p experiments/alma-cycle-source/dist
+          cp .alma-upstream/app/globals.css experiments/alma-cycle-source/dist/alma.css
+          ./node_modules/.bin/esbuild experiments/alma-cycle-source/src/main.tsx \
+            --bundle --platform=browser --format=iife --target=es2020 \
+            --jsx=automatic --minify \
+            --outfile=experiments/alma-cycle-source/dist/cycle.js
+          cmp .alma-upstream/app/globals.css experiments/alma-cycle-source/dist/alma.css
+          grep -q "cycle-hero" experiments/alma-cycle-source/dist/alma.css
+          grep -q "cycle-settings-title" experiments/alma-cycle-source/dist/cycle.js
+          test -s experiments/alma-cycle-source/dist/cycle.js
+          test -s experiments/alma-cycle-source/dist/alma.css
+
+      - name: Commit ONLY generated experiment assets for GitHub Pages
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f experiments/alma-cycle-source/dist/cycle.js experiments/alma-cycle-source/dist/alma.css
+          if git diff --cached --quiet; then
+            echo "No changes to generated ALMA source bundle"
+          else
+            git commit -m "build(experiment): publish pinned ALMA CycleHero + original stylesheet"
+            git push origin HEAD:main
+          fi
