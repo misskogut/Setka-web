@@ -73,6 +73,20 @@ body.cycle-busy .setka-cycle-edge{pointer-events:none}
 .setka-cycle-edge-mark small{writing-mode:vertical-rl;font:normal 7px/1 sans-serif;letter-spacing:.13em;text-transform:uppercase}
 .setka-cycle-edge:focus-visible{outline:1px solid #bca0d2;outline-offset:-2px}
 @media(prefers-reduced-motion:reduce){.setka-cycle-edge-mark{opacity:.4}}
+
+/* Finger-controlled 3D card, active ONLY while swiping from a side edge. */
+body.cycle-flip-active #app,
+body.cycle-flip-active #setkaCycleBack {
+  -webkit-backface-visibility:hidden;
+  backface-visibility:hidden;
+  -webkit-transform-style:preserve-3d;
+  transform-style:preserve-3d;
+  transform-origin:center center;
+  will-change:transform;
+  pointer-events:none;
+}
+body.cycle-flip-active #setkaCycleBack[hidden]{display:block!important}
+body.cycle-flip-active #setkaCycleBack{pointer-events:none}
 </style>
 </head>
 <body>
@@ -174,72 +188,185 @@ body.cycle-busy .setka-cycle-edge{pointer-events:none}
 <div id="setkaCycleReturn" class="setka-cycle-edge left" role="button" tabindex="0" aria-label="Свайп с левого края вправо: SETKA"><span class="setka-cycle-edge-mark" aria-hidden="true"><b>›</b><small>свайп</small></span></div>
 <script>
 (function(){
-"use strict";
-const app=document.getElementById("app"),back=document.getElementById("setkaCycleBack");
-if(!app||!back)return;
-let inCycle=false,busy=false;
-const reduced=window.matchMedia&&window.matchMedia("(prefers-reduced-motion:reduce)");
-function setSide(value){
-  inCycle=!!value;
-  back.hidden=!inCycle;
-  back.inert=!inCycle;
-  app.inert=inCycle;
-  app.style.visibility=inCycle?"hidden":"";
-  back.style.visibility="";
-  document.body.classList.toggle("cycle-side",inCycle);
-  try{history.replaceState(null,"",location.pathname+location.search+(inCycle?"#cycle":""))}catch(_){}
-}
-async function animateElement(el,steps){
-  if(!el.animate||reduced?.matches)return;
-  const animation=el.animate(steps,{duration:240,easing:"cubic-bezier(.21,.82,.22,1)",fill:"none"});
-  try{await animation.finished}catch(_){}
-  try{animation.cancel()}catch(_){}
-}
-async function flip(toCycle){
-  if(busy||toCycle===inCycle)return;
-  busy=true;document.body.classList.add("cycle-busy");
-  try{
-    if(toCycle){
-      back.hidden=false;back.inert=true;back.style.visibility="hidden";
-      await animateElement(app,[{transform:"perspective(1500px) rotateY(0deg)",opacity:1},{transform:"perspective(1500px) rotateY(-89deg)",opacity:.65}]);
-      app.style.visibility="hidden";back.style.visibility="";
-      await animateElement(back,[{transform:"perspective(1500px) rotateY(89deg)",opacity:.65},{transform:"perspective(1500px) rotateY(0deg)",opacity:1}]);
-    }else{
-      await animateElement(back,[{transform:"perspective(1500px) rotateY(0deg)",opacity:1},{transform:"perspective(1500px) rotateY(89deg)",opacity:.65}]);
-      back.style.visibility="hidden";app.style.visibility="";
-      await animateElement(app,[{transform:"perspective(1500px) rotateY(-89deg)",opacity:.65},{transform:"perspective(1500px) rotateY(0deg)",opacity:1}]);
-    }
-    setSide(toCycle);
-  }finally{
-    busy=false;document.body.classList.remove("cycle-busy");
-    app.style.removeProperty("transform");
-    app.style.removeProperty("transform-origin");
-    app.style.removeProperty("opacity");
+  "use strict";
+  // The actual SETKA DOM stays in its original page. Only the cycle back is an iframe.
+  // Unlike a CSS-transformed parent/iframe, preview scrolling remains native when idle.
+  const app=document.getElementById("app");
+  const back=document.getElementById("setkaCycleBack");
+  if(!app||!back)return;
+
+  const ease=t=>1-Math.pow(1-t,3);
+  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+  let inCycle=false;
+  let progress=0;
+  let active=null;
+  let animationFrame=0;
+  let animating=false;
+  let animationToken=0;
+
+  function setAtRest(cycle){
+    // No persistent transform or 3D parent: restores native preview lift.
+    inCycle=!!cycle;
+    progress=cycle?1:0;
+    document.body.classList.toggle("cycle-side",inCycle);
+    document.body.classList.remove("cycle-flip-active","cycle-busy");
+    back.hidden=!inCycle;
+    back.inert=!inCycle;
+    app.inert=inCycle;
+    app.style.visibility=inCycle?"hidden":"";
     back.style.visibility="";
+    app.style.removeProperty("transform");
+    back.style.removeProperty("transform");
+    app.style.removeProperty("opacity");
+    back.style.removeProperty("opacity");
+    try{
+      history.replaceState(null,"",location.pathname+location.search+(inCycle?"#cycle":""));
+    }catch(_){}
   }
-}
-function sensor(id,toCycle){
-  const el=document.getElementById(id);
-  let start=null;
-  el.addEventListener("pointerdown",e=>{
-    if(e.pointerType==="mouse"&&e.button!==0)return;
-    start={id:e.pointerId,x:e.clientX,y:e.clientY,t:e.timeStamp};
-    try{el.setPointerCapture(e.pointerId)}catch(_){}
+
+  function startVisual(){
+    back.hidden=false;
+    back.inert=true;
+    // Keep both sides mounted throughout the drag; backfaces are hidden via CSS.
+    app.style.visibility="";
+    back.style.visibility="";
+    document.body.classList.add("cycle-flip-active");
+  }
+
+  function draw(p){
+    progress=clamp(p,0,1);
+    app.style.transform="perspective(1450px) rotateY("+(-180*progress)+"deg)";
+    back.style.transform="perspective(1450px) rotateY("+(180*(1-progress))+"deg)";
+  }
+
+  function cancelAnimation(){
+    animationToken++;
+    if(animationFrame)cancelAnimationFrame(animationFrame);
+    animationFrame=0;
+    animating=false;
+  }
+
+  function complete(target){
+    cancelAnimation();
+    const current=progress;
+    const end=target?1:0;
+    const difference=Math.abs(end-current);
+    if(difference<.001){setAtRest(target);return;}
+    animating=true;
+    document.body.classList.add("cycle-busy");
+    const token=animationToken;
+    const duration=220+400*difference;
+    let startTime=null;
+
+    function frame(now){
+      if(token!==animationToken)return;
+      if(startTime===null)startTime=now;
+      const fraction=clamp((now-startTime)/duration,0,1);
+      draw(current+(end-current)*ease(fraction));
+      if(fraction<1){animationFrame=requestAnimationFrame(frame);}
+      else{
+        animationFrame=0;
+        animating=false;
+        setAtRest(target);
+      }
+    }
+    animationFrame=requestAnimationFrame(frame);
+  }
+
+  function onPointerDown(event,side){
+    if(event.pointerType==="mouse"&&event.button!==0)return;
+    if(animating||active)return;
+    if(side!==inCycle)return;
+    active={
+      id:event.pointerId,
+      el:event.currentTarget,
+      startX:event.clientX,
+      startY:event.clientY,
+      x:event.clientX,
+      t:event.timeStamp,
+      fromCycle:inCycle,
+      horizontal:false,
+      vertical:false
+    };
+    try{event.currentTarget.setPointerCapture(event.pointerId)}catch(_){}
+  }
+
+  function onPointerMove(event){
+    if(!active||event.pointerId!==active.id)return;
+    const a=active;
+    const dx=event.clientX-a.startX;
+    const dy=event.clientY-a.startY;
+    if(!a.horizontal&&!a.vertical){
+      if(Math.abs(dy)>11&&Math.abs(dy)>Math.abs(dx)*1.2){
+        a.vertical=true;return;
+      }
+      if(Math.abs(dx)>5&&Math.abs(dx)>Math.abs(dy)*1.05){
+        a.horizontal=true;
+        cancelAnimation();
+        startVisual();
+      }
+    }
+    if(a.vertical||!a.horizontal)return;
+    event.preventDefault();
+    const distance=Math.max(280,Math.min(innerWidth*.92,520));
+    // 1px finger movement produces a proportional small angle change.
+    // Slow swipe: each intermediate degree stays visible until the user moves.
+    const next=a.fromCycle?1-dx/distance:-dx/distance;
+    draw(next);
+    a.x=event.clientX;
+    a.t=event.timeStamp;
+  }
+
+  function onPointerEnd(event,cancelled){
+    if(!active||event.pointerId!==active.id)return;
+    const a=active;
+    active=null;
+    if(!a.horizontal||cancelled){
+      if(a.horizontal)complete(a.fromCycle);
+      return;
+    }
+    // Where the finger released determines which side will be shown.
+    // Releasing before halfway returns the card to the starting face.
+    const target=progress>=.5;
+    complete(target);
+  }
+
+  function register(id,fromCycle){
+    const el=document.getElementById(id);
+    el.addEventListener("pointerdown",e=>onPointerDown(e,fromCycle));
+    el.addEventListener("pointermove",onPointerMove,{passive:false});
+    el.addEventListener("pointerup",e=>onPointerEnd(e,false));
+    el.addEventListener("pointercancel",e=>onPointerEnd(e,true));
+    el.addEventListener("lostpointercapture",e=>onPointerEnd(e,true));
+    // Keyboard fallback does not turn the visual hint into a tap-to-flip button.
+    el.addEventListener("keydown",e=>{
+      if((e.key==="Enter"||e.key===" ")&&!animating){
+        e.preventDefault();
+        startVisual();
+        draw(fromCycle?1:0);
+        complete(!fromCycle);
+      }
+    });
+  }
+  register("setkaCycleOpen",false);
+  register("setkaCycleReturn",true);
+  window.addEventListener("keydown",e=>{
+    if(e.key==="Escape"&&!animating&&inCycle){
+      startVisual();draw(1);complete(false);
+    }
   });
-  el.addEventListener("pointerup",e=>{
-    if(!start||e.pointerId!==start.id)return;
-    const dx=e.clientX-start.x,dy=e.clientY-start.y,dt=Math.max(1,e.timeStamp-start.t);
-    const moved=toCycle?-dx:dx;start=null;
-    if(Math.abs(dx)>Math.abs(dy)*1.16&&(moved>47||(moved>29&&moved/dt>.35)))void flip(toCycle);
-  });
-  el.addEventListener("pointercancel",()=>{start=null});
-  el.addEventListener("lostpointercapture",()=>{start=null});
-  el.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();void flip(toCycle)}});
-}
-sensor("setkaCycleOpen",true);sensor("setkaCycleReturn",false);
-window.addEventListener("keydown",e=>{if(e.key==="Escape"&&inCycle)void flip(false)});
-setSide(location.hash==="#cycle");
-window.SETKA_CYCLE_LAB={flip,getSide:()=>inCycle?"cycle":"setka"};
+
+  setAtRest(location.hash==="#cycle");
+  window.SETKA_CYCLE_LAB={
+    flip:toCycle=>{
+      if(animating||active)return;
+      startVisual();
+      draw(inCycle?1:0);
+      complete(!!toCycle);
+    },
+    getSide:()=>inCycle?"cycle":"setka",
+    getAngle:()=>Math.round(progress*180)
+  };
 })();
 </script>
 
