@@ -227,14 +227,26 @@ body.cycle-flip-active #setkaCycleBack{pointer-events:none}
   function startVisual(){
     back.hidden=false;
     back.inert=true;
-    // Keep both sides mounted throughout the drag; backfaces are hidden via CSS.
-    app.style.visibility="";
-    back.style.visibility="";
+    // Safari may paint an independently rotated backface despite
+    // backface-visibility:hidden. Never expose the opposite face here.
+    const frontVisible=!inCycle;
+    app.style.visibility=frontVisible?"":"hidden";
+    app.style.opacity=frontVisible?"1":"0";
+    back.style.visibility=frontVisible?"hidden":"";
+    back.style.opacity=frontVisible?"0":"1";
     document.body.classList.add("cycle-flip-active");
   }
 
   function draw(p){
     progress=clamp(p,0,1);
+    // True two-phase physical card flip: front 0 -> -90 degrees,
+    // back +90 -> 0 degrees. The hidden side is explicitly invisible
+    // AND transparent, preventing iOS WebKit's mirrored 180-degree face.
+    const frontVisible=progress<0.5;
+    app.style.visibility=frontVisible?"":"hidden";
+    app.style.opacity=frontVisible?"1":"0";
+    back.style.visibility=frontVisible?"hidden":"";
+    back.style.opacity=frontVisible?"0":"1";
     app.style.transform="perspective(1450px) rotateY("+(-180*progress)+"deg)";
     back.style.transform="perspective(1450px) rotateY("+(180*(1-progress))+"deg)";
   }
@@ -300,7 +312,7 @@ body.cycle-flip-active #setkaCycleBack{pointer-events:none}
       if(Math.abs(dy)>11&&Math.abs(dy)>Math.abs(dx)*1.2){
         a.vertical=true;return;
       }
-      if(Math.abs(dx)>5&&Math.abs(dx)>Math.abs(dy)*1.05){
+      if(Math.abs(dx)>12&&Math.abs(dx)>Math.abs(dy)*1.12){
         a.horizontal=true;
         cancelAnimation();
         startVisual();
