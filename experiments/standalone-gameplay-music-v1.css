@@ -3,18 +3,22 @@
 /* The two upper corner controls share one subdued, glow-free appearance.
    This also applies while the gameplay music sheet is open. */
 #gameScreen #setkaGameMusicButton{
-  top:calc(var(--safe-top) + 30px);
-  left:25px;
+  top:calc(var(--safe-top) + 36px);
+  left:31px;
   z-index:1301!important;
+}
+#gameScreen #libraryButton{
+  top:calc(var(--safe-top) + 36px);
+  right:31px;
 }
 #gameScreen #setkaGameMusicButton,
 #gameScreen #libraryButton,
 body.setka-game-music-open #gameScreen #setkaGameMusicButton{
   box-sizing:border-box!important;
-  width:58px!important;
-  height:58px!important;
-  min-width:58px!important;
-  min-height:58px!important;
+  width:46px!important;
+  height:46px!important;
+  min-width:46px!important;
+  min-height:46px!important;
   border:1px solid rgba(255,255,255,.26)!important;
   border-radius:50%!important;
   background:rgba(0,0,0,.32)!important;
@@ -29,8 +33,8 @@ body.setka-game-music-open #gameScreen #setkaGameMusicButton{
 }
 #gameScreen #setkaGameMusicButton svg,
 #gameScreen #libraryButton svg{
-  width:28px!important;
-  height:28px!important;
+  width:23px!important;
+  height:23px!important;
   display:block;
   opacity:1!important;
   filter:none!important;
