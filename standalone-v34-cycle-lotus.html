@@ -103,7 +103,7 @@ body.cycle-busy .setka-cycle-edge{pointer-events:none}
   max-width:none!important;
   margin:0!important;
   padding:0 1px!important;
-  justify-content:flex-end!important;
+  justify-content:flex-start!important;
   align-items:center!important;
   gap:3px!important;
   height:31px!important;
@@ -116,6 +116,9 @@ body.cycle-busy .setka-cycle-edge{pointer-events:none}
   z-index:30!important;
 }
 #app #libraryScreen #st34CommunityModes::-webkit-scrollbar{display:none}
+/* Push the four chips right when they fit, yet allow scrolling
+   from the first chip on narrow iPhones when they do not. */
+#app #libraryScreen #st34CommunityModes button:first-child{margin-left:auto!important}
 #app #libraryScreen #st34CommunityModes button{
   flex:0 0 auto!important;
   height:29px!important;
