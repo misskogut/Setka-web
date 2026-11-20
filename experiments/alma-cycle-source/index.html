@@ -9,8 +9,19 @@
 <style>
 /* Only host layout. Everything inside CycleHero/Sheet is original ALMA CSS. */
 html,body{margin:0;min-height:100%;background:#020105}
-.phone-scene{min-height:100dvh}
-.setka-demo-note{margin:0 14px 3px;padding:6px 9px;border:1px solid rgba(255,197,126,.17);border-radius:9px;color:#a691a7;background:rgba(25,12,29,.38);font-size:9px;line-height:1.45;text-align:center}
+/* Remove outer device/card framing; retain the untouched ALMA cycle-hero border. */
+.app-stage{min-height:100dvh;background:#020105}
+.ambient-background{opacity:.35}
+.phone-scene{
+  min-height:100dvh!important;
+  margin:0 auto!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  background:#020105!important;
+}
+.cycle-hero{margin-top:12px!important}
+
 </style>
 <script defer src="./dist/cycle.js"></script>
 </head>
