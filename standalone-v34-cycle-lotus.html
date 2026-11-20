@@ -1,118 +1,247 @@
 <!doctype html>
 <html lang="ru">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#020105">
-<title>SETKA · Двусторонний интерфейс</title>
-<style>
-:root{color-scheme:dark;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-*{box-sizing:border-box}
-html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#020105}
-.scene{position:fixed;inset:0;overflow:hidden;perspective:1650px;background:#020105}
-.card{position:absolute;inset:0;transform:rotateY(0deg);transform-style:preserve-3d;transition:transform .8s cubic-bezier(.2,.83,.17,1);will-change:transform}
-.card.dragging{transition:none}
-.face{position:absolute;inset:0;background:#020105;overflow:hidden;backface-visibility:hidden;-webkit-backface-visibility:hidden}
-.front{transform:translateZ(.2px)}
-.back{transform:rotateY(180deg) translateZ(.2px)}
-.face iframe{display:block;width:100%;height:100%;height:100dvh;border:0;background:#020105}
-.scene:not(.is-back) .back,.scene.is-back .front{pointer-events:none}
-/* Discreet cue only. The sensor is transparent, full-height and wide enough
-   to catch a real edge swipe, even when the content is inside an iframe. */
-.edge-sensor{position:absolute;z-index:20;top:0;bottom:0;width:27px;border:0;background:none;box-shadow:none;outline:none;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;cursor:ew-resize}
-.edge-sensor.from-right{right:0}
-.edge-sensor.from-left{left:0}
-.scene:not(.is-back) .edge-sensor.from-left,.scene.is-back .edge-sensor.from-right{visibility:hidden;pointer-events:none}
-.edge-cue{position:absolute;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:7px;align-items:center;justify-content:center;min-height:108px;width:100%;opacity:.56;transition:opacity .3s ease;pointer-events:none}
-.edge-cue::before{content:"";width:1px;height:44px;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:linear-gradient(180deg,transparent,#a179c4,#d5b2ed,#a179c4,transparent);box-shadow:0 0 5px #a26bce83}
-.edge-cue span{font:300 15px/1 sans-serif;position:relative;color:#d6b3f0;background:#08050e;padding:3px 0;text-shadow:0 0 8px #af7de0}
-.edge-cue small{position:relative;writing-mode:vertical-rl;font-size:7px;line-height:1;color:#ae96be;letter-spacing:.13em;padding:3px 0;background:#08050e;text-transform:uppercase}
-.from-right .edge-cue{right:0}.from-left .edge-cue{left:0}
-.scene.swiped-once .edge-cue{opacity:.33}
-.edge-sensor:focus-visible .edge-cue{opacity:1;outline:1px solid #b99bc9;border-radius:5px}
-@media(prefers-reduced-motion:reduce){.card{transition-duration:.13s}}
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#000000" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <!-- GitHub Pages deploy replaces this marker and publishes matching JSON.
+       The public SETKA link remains /Setka-web/standalone-v34.html forever. -->
+  <meta name="setka-release-build" content="development" />
+  <script>
+  (function(){
+    "use strict";
+    // A GitHub Pages edge or iPhone Safari may have cached an older HTML file.
+    // After load, check a cache-busted release manifest and refresh ONCE to
+    // the same path when it is stale, without interrupting a user interaction.
+    const revisionParam="__setka_refresh";
+    const canonical=new URL(location.href);
+    if(canonical.searchParams.has(revisionParam)){
+      // Keep shared links stable: remove ONLY our internal cache-buster.
+      canonical.searchParams.delete(revisionParam);
+      try{history.replaceState(history.state,"",canonical.pathname+canonical.search+canonical.hash)}catch(_){}
+      return;
+    }
+    let userInteracted=false;
+    for(const type of ["pointerdown","touchstart","keydown"]){
+      document.addEventListener(type,()=>{userInteracted=true},{capture:true,once:true,passive:true});
+    }
+    async function checkRelease(){
+      if(userInteracted||document.visibilityState!=="visible")return;
+      const build=document.querySelector('meta[name="setka-release-build"]')?.content||"";
+      if(!/^[0-9a-f]{40}$/.test(build))return;
+      try{
+        const endpoint=new URL("./standalone-release.json",location.href);
+        endpoint.searchParams.set("cb",String(Date.now()));
+        const response=await fetch(endpoint.toString(),{cache:"no-store",credentials:"same-origin"});
+        if(!response.ok)return;
+        const release=await response.json();
+        if(!/^[0-9a-f]{40}$/.test(release.build)||release.build===build
+          ||release.entry!=="standalone-v34.html")return;
+        // Never drop a note, a live pattern, microphone capture or a session.
+        if(userInteracted||document.visibilityState!=="visible"
+          ||document.querySelector("#gameScreen.active")
+          ||window.SetkaStandaloneV34?.getActiveSession?.())return;
+        const next=new URL(location.href);
+        next.searchParams.set(revisionParam,release.build.slice(0,12));
+        location.replace(next.toString());
+      }catch(_){/* Offline or an unavailable release manifest: keep this UI. */}
+    }
+    window.addEventListener("load",()=>setTimeout(checkRelease,250),{once:true});
+  })();
+  </script>
+  <title>SETKA · Цикл на обороте · эксперимент</title>
+  <link rel="stylesheet" href="styles.css?v=41-grid-first-bw-color-dots-20261020" />
+  <link rel="stylesheet" href="experience-v2.css?v=44-align-saved-grid-20261106" />
+<link rel="stylesheet" href="standalone-sheets-v1.css?v=1.4.8">
+<link rel="stylesheet" href="standalone-desktop-v1.css?v=1">
+<link rel="stylesheet" href="standalone-music-v1.css?v=15-ios-orbit-artifacts-fixed-20261107" />
+<link rel="stylesheet" href="standalone-music-lotus-reference-20261106.css?v=9-approved-original-rainbow" />
+<style id="setkaCycleExperimentCSS">
+/* The real SETKA #app stays in this top-level document, no 3D parent or iframe. */
+.setka-cycle-overlay{position:fixed;inset:0;z-index:120;background:#020105}
+.setka-cycle-overlay[hidden]{display:none!important}
+.setka-cycle-overlay iframe{display:block;width:100%;height:100%;height:100dvh;border:0;background:#020105}
+.setka-cycle-edge{position:fixed;z-index:130;top:0;bottom:0;width:24px;touch-action:none;-webkit-tap-highlight-color:transparent;cursor:ew-resize}
+.setka-cycle-edge.right{right:0}.setka-cycle-edge.left{left:0}
+body:not(.cycle-side) .setka-cycle-edge.left,body.cycle-side .setka-cycle-edge.right{display:none}
+body.cycle-busy .setka-cycle-edge{pointer-events:none}
+.setka-cycle-edge-mark{position:absolute;top:50%;width:100%;transform:translateY(-50%);height:92px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px;pointer-events:none;opacity:.5}
+.setka-cycle-edge-mark:before{content:"";position:absolute;left:50%;top:2px;bottom:2px;width:1px;background:linear-gradient(transparent,#9a6bb1,#d6b4ee,#9a6bb1,transparent);box-shadow:0 0 7px #ae72dc77}
+.setka-cycle-edge-mark b,.setka-cycle-edge-mark small{position:relative;background:#09050e;color:#c2a5d6;padding:2px 0}
+.setka-cycle-edge-mark b{font:300 15px/1 sans-serif}
+.setka-cycle-edge-mark small{writing-mode:vertical-rl;font:normal 7px/1 sans-serif;letter-spacing:.13em;text-transform:uppercase}
+.setka-cycle-edge:focus-visible{outline:1px solid #bca0d2;outline-offset:-2px}
+@media(prefers-reduced-motion:reduce){.setka-cycle-edge-mark{opacity:.4}}
 </style>
 </head>
 <body>
-<div class="scene" id="scene">
-  <div class="card" id="card">
-    <section class="face front" id="front" aria-label="SETKA Web">
-      <iframe title="Основная SETKA Web без изменений" id="setkaFront" src="./standalone-v34.html" loading="eager" allow="autoplay; microphone"></iframe>
-    </section>
-    <section class="face back" id="back" aria-label="Цикл ALMA">
-      <iframe title="Оригинальный календарь-лотос ALMA" id="almaBack" src="./experiments/alma-cycle-source/index.html?v=alma-no-header-20261120-3" loading="eager"></iframe>
-    </section>
-  </div>
-  <div class="edge-sensor from-right" role="button" tabindex="0" id="turnToCycle" aria-label="Потяните от правого края влево, чтобы перевернуть экран к календарю">
-    <div class="edge-cue" aria-hidden="true"><span>‹</span><small>свайп</small></div>
-  </div>
-  <div class="edge-sensor from-left" role="button" tabindex="0" id="turnToSetka" aria-label="Потяните от левого края вправо, чтобы вернуться к SETKA">
-    <div class="edge-cue" aria-hidden="true"><span>›</span><small>свайп</small></div>
-  </div>
-</div>
+<main id="app">
+  <section id="libraryScreen" class="screen active" aria-label="Библиотека паттернов">
+    <div class="library-pager" aria-label="Разделы библиотеки">
+      <button id="libraryPagerButton" class="pager-button active" type="button" aria-label="Исходные паттерны"><span class="pager-dot-mark"></span></button>
+      <button id="communityPagerButton" class="pager-button" type="button" aria-label="Библиотека сообщества"><span class="community-mark"><span></span><i></i></span></button>
+      <button id="favoritesPagerButton" class="pager-button" type="button" aria-label="Мои сохраненные конфигурации"><span class="pager-heart">♥</span></button>
+      <button id="setkaMusicPagerButton" class="pager-button" type="button" aria-label="Музыка">
+        <svg viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 17.8V5.4L20.5 3v12.5M9 7.3l11.5-2.4"/><ellipse cx="6.1" cy="18.2" rx="3.1" ry="2.1"/><ellipse cx="17.6" cy="16" rx="3.1" ry="2.1"/></svg>
+      </button>
+    </div>
+    <div id="libraryTitle" class="library-title">Паттерны</div>
+    <div id="librarySwipeArea" class="panel-wrap">
+      <div id="allPatternsPanel" class="pattern-panel" aria-label="Исходные паттерны"></div>
+      <div id="communityPanel" class="pattern-panel hidden-right" aria-label="Конфигурации сообщества"></div>
+      <div id="favoritesPanel" class="pattern-panel hidden-right" aria-label="Мои сохраненные конфигурации"></div>
+    </div>
+  </section>
+
+  <section id="gameScreen" class="screen" aria-label="Паттерн">
+    <canvas id="patternCanvas"></canvas>
+    <div class="game-ui">
+      <button id="favoriteButton" class="game-button" type="button" aria-label="Сохранить текущую конфигурацию">♡</button>
+      <button id="libraryButton" class="game-button" type="button" aria-label="Вернуться назад"><svg viewBox="0 0 30 30" aria-hidden="true"><g fill="#fff"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="12" y="3" width="6" height="6" rx="1"/><rect x="21" y="3" width="6" height="6" rx="1"/><rect x="3" y="12" width="6" height="6" rx="1"/><rect x="12" y="12" width="6" height="6" rx="1"/><rect x="21" y="12" width="6" height="6" rx="1"/><rect x="3" y="21" width="6" height="6" rx="1"/><rect x="12" y="21" width="6" height="6" rx="1"/><rect x="21" y="21" width="6" height="6" rx="1"/></g></svg></button>
+      <button id="prevButton" class="side-arrow" type="button" aria-label="Предыдущий паттерн"><svg viewBox="0 0 30 60" aria-hidden="true"><path d="M23 6 L8 30 L23 54" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button id="nextButton" class="side-arrow" type="button" aria-label="Следующий паттерн"><svg viewBox="0 0 30 60" aria-hidden="true"><path d="M7 6 L22 30 L7 54" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <div id="modeLabel" class="mode-label"></div>
+      <div class="bottom-controls">
+        <button id="colorButton" class="round-control" type="button" aria-label="Следующий цветовой режим"><div id="colorDots" aria-hidden="true"></div><span class="droplet" aria-hidden="true"></span></button>
+        <button id="instructionsButton" class="round-control" type="button" aria-label="Инструкция по свайпам"><svg class="key-icon" viewBox="0 0 36 36" aria-hidden="true"><circle cx="12" cy="13" r="7" fill="none" stroke="#fff" stroke-width="2.5"/><path d="M17 18 L31 32 M25 26 L29 22 M21 22 L25 18" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      </div>
+      <div id="instructionsModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="instructionsTitle"><div class="instructions"><h2 id="instructionsTitle">Управление паттерном</h2><div class="gesture-group"><strong>1 палец</strong><div class="gesture-row"><span>Слева ↑↓</span><span>Количество щупалец: вверх больше, вниз меньше</span></div><div class="gesture-row"><span>Справа ↑↓</span><span>Размер кругов: вверх больше, вниз меньше</span></div><div class="gesture-row"><span>Сверху ←→</span><span>Толщина линий</span></div><div class="gesture-row"><span>Снизу ←→</span><span>Скорость движения</span></div></div><div class="gesture-group"><strong>2 пальца</strong><div class="gesture-row"><span>Слева ↑↓</span><span>Длина щупалец: вверх длиннее, вниз короче</span></div><div class="gesture-row"><span>Справа ↑↓</span><span>Плотность кругов: вверх плотнее, вниз реже</span></div><div class="gesture-row"><span>Снизу ←→</span><span>Скорость перелива цвета</span></div></div><button id="closeInstructionsButton" class="close-modal" type="button">Понятно</button></div></div>
+      <div id="toast" class="toast" aria-live="polite"></div>
+    </div>
+  </section>
+</main>
+<script src="standalone-pattern-registry-v1.js?v=1.2.1-transient-20261105"></script>
+<script>window.SetkaPatternRegistryV1.usePublicCatalog();</script>
+<script src="standalone-pattern-renderers-v1.js?v=3-grid-preview-aspect-20261021"></script>
+<script src="standalone-data-scope-v1.js?v=1"></script>
+<script src="standalone-auto-optimizer-v1.js?v=1.0.0-20261021"></script>
+<script src="standalone-panel-resize-v1.js?v=1"></script>
+<script src="app-v7-multipattern.js?v=1.7.2-bottom-sheet-live-previews-20261106"></script>
+<script src="standalone-pattern-plugins-v1.js?v=1.0.0-auto-renderers-20261020"></script>
+<script src="standalone-storage-v1.js?v=1.4.8"></script>
+<script src="standalone-core-v34.js?v=1.4.8-durable-storage"></script>
+<script src="standalone-inline-actions-v1.js?v=1.4.8"></script>
+<script src="standalone-runtime-v34.js?v=1.4.0-context"></script>
+<script src="standalone-favorites-repair-v34.js?v=46-unified-front-admin-1"></script>
+<script src="standalone-favorite-native-guard-v34.js?v=46-unified-front-admin-1"></script>
+<script src="standalone-multipattern-bridge-v34.js?v=1.4.0-catalog"></script>
+<!-- Legacy all-pattern info overlay removed: it always used tentacle-orbit. -->
+<script src="standalone-advanced-v34.js?v=1.3.0-no-demo"></script>
+<script src="standalone-analysis-v34.js?v=47-custom-config-personalization"></script>
+<script src="standalone-user-ui-v34.js?v=1.4.10-account-loading-20261020"></script>
+<script src="standalone-session-patterns-v34.js?v=46-unified-front-admin-1"></script>
+<script src="standalone-states-v34.js?v=1.4.9-account-loading-20261020"></script>
+<script src="standalone-state-timeline-v34.js?v=46-unified-front-admin-1"></script>
+<script src="standalone-session-states-v34.js?v=46-unified-front-admin-1"></script>
+<script src="standalone-explore-v34.js?v=46-unified-front-admin-1"></script>
+<script src="standalone-bootstrap-v34.js?v=46-unified-front-admin-1"></script>
+<script src="standalone-config-links-v34.js?v=46-unified-front-admin-1"></script>
+<script src="standalone-controls-v34.js?v=1.2.0-idempotent"></script>
+<script src="standalone-visual-cache-v40.js?v=50-dynamic-patterns-20261020"></script>
+<script src="standalone-privacy-egress-v40.js?v=46-unified-front-admin-1"></script>
+<script src="standalone-sync-v34.js?v=56-bot-data-isolation-20261112"></script>
+<script src="standalone-navigation-v34.js?v=1.2.0-sheet-scroll"></script>
+<script src="standalone-note-snapshot-fix-v34.js?v=registry-notes-legacy-safe-20261020"></script>
+<script src="standalone-public-visual-capsules-v40.js?v=1.4.8-text-notes"></script>
+<script src="standalone-tester-community-v34.js?v=live-and-inline-moderation-20261020"></script>
+<script src="standalone-privacy-contract-v40.js?v=46-unified-front-admin-1"></script>
+<script src="standalone-tester-cabinet-v40.js?v=1.5.5-server-acknowledged-status-20261021"></script>
+<script src="standalone-private-corpus-v40.js?v=1.5.3-account-ready-20261020"></script>
+<script src="standalone-personal-backup-v1.js?v=1-encrypted-user-owned-20261116"></script>
+<script src="standalone-guest-archive-v1.js?v=1.0.0"></script>
+<script src="standalone-guest-telemetry-v2.js?v=3-ignore-bot-20261112"></script>
+<script src="standalone-guest-journey-v3.js?v=5-ignore-bot-20261112"></script>
+<script src="standalone-account-journey-v1.js?v=3-ignore-bot-20261112"></script>
+<script src="standalone-account-exposure-v2.js?v=2-ignore-bot-20261112"></script>
+<script src="standalone-research-bridge-v40.js?v=1.4.0-exact-pulse"></script>
+<script src="standalone-community-cloud-v38.js?v=1.4.14-public-snapshot-20261115"></script>
+<script src="standalone-replay-capture-v1.js?v=1.3.0-research"></script>
+<script src="standalone-sheets-v1.js?v=1.4.8-note-drafts"></script>
+<script type="module" src="standalone-pulse-v1.mjs?v=1.4.0"></script>
+<script src="standalone-catalog-fallback-v1.js?v=20261114-only-on-error"></script>
+<script src="standalone-catalog-v1.js?v=1.4.2-only-on-error"></script>
+<script src="standalone-activity-v1.js?v=1.4.0"></script>
+<script src="standalone-audio-reactive-v4.js?v=4.3-generic-no-zoom-pumping-20261021"></script>
+<script src="standalone-pattern-key-v1.js?v=1.1.2-paired-20261105"></script>
+<script src="standalone-live-previews-v1.js?v=1.2.0-shared-performance-20261021"></script>
+<script type="module" src="standalone-music-v1.mjs?v=47-public-snapshot-20261115"></script>
+
+<aside class="setka-cycle-overlay" id="setkaCycleBack" hidden aria-label="Календарь-лотос ALMA">
+  <iframe title="Оригинальный календарь цикла ALMA" src="./experiments/alma-cycle-source/index.html?v=20261120-cache-clear-5" loading="eager"></iframe>
+</aside>
+<div id="setkaCycleOpen" class="setka-cycle-edge right" role="button" tabindex="0" aria-label="Свайп с правого края влево: открыть календарь"><span class="setka-cycle-edge-mark" aria-hidden="true"><b>‹</b><small>свайп</small></span></div>
+<div id="setkaCycleReturn" class="setka-cycle-edge left" role="button" tabindex="0" aria-label="Свайп с левого края вправо: SETKA"><span class="setka-cycle-edge-mark" aria-hidden="true"><b>›</b><small>свайп</small></span></div>
 <script>
 (function(){
 "use strict";
-const scene=document.getElementById("scene");
-const card=document.getElementById("card");
-const front=document.getElementById("front");
-const back=document.getElementById("back");
-let isCycle=false;
-function turn(value){
-  isCycle=!!value;
-  scene.classList.toggle("is-back",isCycle);
-  card.classList.remove("dragging");
-  card.style.transform="rotateY("+(isCycle?-180:0)+"deg)";
-  front.setAttribute("aria-hidden",String(isCycle));
-  back.setAttribute("aria-hidden",String(!isCycle));
-  scene.classList.add("swiped-once");
-  try{history.replaceState(null,"",location.pathname+location.search+(isCycle?"#cycle":""))}catch(_){}
+const app=document.getElementById("app"),back=document.getElementById("setkaCycleBack");
+if(!app||!back)return;
+let inCycle=false,busy=false;
+const reduced=window.matchMedia&&window.matchMedia("(prefers-reduced-motion:reduce)");
+function setSide(value){
+  inCycle=!!value;
+  back.hidden=!inCycle;
+  back.inert=!inCycle;
+  app.inert=inCycle;
+  app.style.visibility=inCycle?"hidden":"";
+  back.style.visibility="";
+  document.body.classList.toggle("cycle-side",inCycle);
+  try{history.replaceState(null,"",location.pathname+location.search+(inCycle?"#cycle":""))}catch(_){}
 }
-function gesture(elementId,toCycle){
-  const el=document.getElementById(elementId);
-  let active=null;
-  function cancel(){
-    if(!active)return;
-    active=null;
-    turn(!toCycle);
+async function animateElement(el,steps){
+  if(!el.animate||reduced?.matches)return;
+  const animation=el.animate(steps,{duration:240,easing:"cubic-bezier(.21,.82,.22,1)",fill:"none"});
+  try{await animation.finished}catch(_){}
+  try{animation.cancel()}catch(_){}
+}
+async function flip(toCycle){
+  if(busy||toCycle===inCycle)return;
+  busy=true;document.body.classList.add("cycle-busy");
+  try{
+    if(toCycle){
+      back.hidden=false;back.inert=true;back.style.visibility="hidden";
+      await animateElement(app,[{transform:"perspective(1500px) rotateY(0deg)",opacity:1},{transform:"perspective(1500px) rotateY(-89deg)",opacity:.65}]);
+      app.style.visibility="hidden";back.style.visibility="";
+      await animateElement(back,[{transform:"perspective(1500px) rotateY(89deg)",opacity:.65},{transform:"perspective(1500px) rotateY(0deg)",opacity:1}]);
+    }else{
+      await animateElement(back,[{transform:"perspective(1500px) rotateY(0deg)",opacity:1},{transform:"perspective(1500px) rotateY(89deg)",opacity:.65}]);
+      back.style.visibility="hidden";app.style.visibility="";
+      await animateElement(app,[{transform:"perspective(1500px) rotateY(-89deg)",opacity:.65},{transform:"perspective(1500px) rotateY(0deg)",opacity:1}]);
+    }
+    setSide(toCycle);
+  }finally{
+    busy=false;document.body.classList.remove("cycle-busy");
+    app.style.removeProperty("transform");
+    app.style.removeProperty("transform-origin");
+    app.style.removeProperty("opacity");
+    back.style.visibility="";
   }
-  el.addEventListener("pointerdown",event=>{
-    if(event.pointerType==="mouse"&&event.button!==0)return;
-    active={id:event.pointerId,startX:event.clientX,startY:event.clientY,x:event.clientX,y:event.clientY,time:event.timeStamp};
-    try{el.setPointerCapture(event.pointerId)}catch(_){}
-  });
-  el.addEventListener("pointermove",event=>{
-    if(!active||event.pointerId!==active.id)return;
-    active.x=event.clientX;active.y=event.clientY;
-    const dx=event.clientX-active.startX,dy=event.clientY-active.startY;
-    if(Math.abs(dy)>Math.abs(dx)*1.2&&Math.abs(dy)>25)return;
-    const travel=(toCycle?-dx:dx);
-    if(Math.abs(dx)>5)card.classList.add("dragging");
-    const progress=Math.max(0,Math.min(1,travel/Math.max(130,innerWidth*.42)));
-    card.style.transform="rotateY("+(-180*(toCycle?progress:1-progress))+"deg)";
-  });
-  el.addEventListener("pointerup",event=>{
-    if(!active||event.pointerId!==active.id)return;
-    const dx=event.clientX-active.startX,dy=event.clientY-active.startY;
-    const travel=(toCycle?-dx:dx);
-    const duration=Math.max(1,event.timeStamp-active.time);
-    active=null;
-    const horizontal=Math.abs(dx)>Math.abs(dy)*1.15;
-    const completed=horizontal&&(travel>Math.max(48,innerWidth*.13)||(travel>30&&travel/duration>.4));
-    turn(completed?toCycle:!toCycle);
-  });
-  el.addEventListener("pointercancel",cancel);
-  el.addEventListener("lostpointercapture",cancel);
-  el.addEventListener("keydown",event=>{
-    if(event.key==="Enter"||event.key===" "){event.preventDefault();turn(toCycle);}
-  });
 }
-gesture("turnToCycle",true);
-gesture("turnToSetka",false);
-window.addEventListener("keydown",e=>{if(e.key==="Escape"&&isCycle)turn(false)});
-turn(location.hash==="#cycle");
-window.SETKA_CYCLE_LAB={flip:turn};
+function sensor(id,toCycle){
+  const el=document.getElementById(id);
+  let start=null;
+  el.addEventListener("pointerdown",e=>{
+    if(e.pointerType==="mouse"&&e.button!==0)return;
+    start={id:e.pointerId,x:e.clientX,y:e.clientY,t:e.timeStamp};
+    try{el.setPointerCapture(e.pointerId)}catch(_){}
+  });
+  el.addEventListener("pointerup",e=>{
+    if(!start||e.pointerId!==start.id)return;
+    const dx=e.clientX-start.x,dy=e.clientY-start.y,dt=Math.max(1,e.timeStamp-start.t);
+    const moved=toCycle?-dx:dx;start=null;
+    if(Math.abs(dx)>Math.abs(dy)*1.16&&(moved>47||(moved>29&&moved/dt>.35)))void flip(toCycle);
+  });
+  el.addEventListener("pointercancel",()=>{start=null});
+  el.addEventListener("lostpointercapture",()=>{start=null});
+  el.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();void flip(toCycle)}});
+}
+sensor("setkaCycleOpen",true);sensor("setkaCycleReturn",false);
+window.addEventListener("keydown",e=>{if(e.key==="Escape"&&inCycle)void flip(false)});
+setSide(location.hash==="#cycle");
+window.SETKA_CYCLE_LAB={flip,getSide:()=>inCycle?"cycle":"setka"};
 })();
 </script>
+
 </body>
 </html>
