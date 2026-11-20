@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>SETKA · СОХРАНИТЬ СЛЕПОК ТЕЛА</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{min-height:100dvh;margin:0;display:grid;place-items:center;background:radial-gradient(circle at 50% 0%,#122849 0%,#050a16 55%,#02050b 100%);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#e6f1ff;padding:22px}
+main{max-width:480px;width:100%;border:1px solid #315171;background:rgba(6,17,34,.94);border-radius:23px;padding:26px;box-shadow:0 24px 70px #0007}small{color:#88abce;letter-spacing:.15em;font-size:11px}h1{font-size:25px;margin:12px 0;letter-spacing:-.03em}p{font-size:14px;line-height:1.65;color:#a8bfda}strong{color:#e8f2ff}.metrics{display:flex;gap:10px;margin:22px 0}.metrics div{flex:1;background:#0a1b32;border:1px solid #28415e;border-radius:14px;padding:12px}.metrics b{font-size:21px;display:block}.metrics span{font-size:10px;color:#8dabc9}button,a.action{appearance:none;display:block;width:100%;border:1px solid #6789af;border-radius:13px;background:#a6d4ff;color:#061425;font-weight:700;text-align:center;padding:15px;font-size:15px;text-decoration:none;cursor:pointer;margin-top:10px}button:disabled{opacity:.5}a.action{color:#d9eaff;background:#10233d;border-color:#3f638a}#status{font-size:12px;color:#a0d2f5;white-space:pre-wrap;margin-top:18px;min-height:24px}.fine{font-size:11px;color:#6f8cac;margin-top:20px}
+</style></head><body><main>
+<small>SETKA · BODY AS GROWN · FROZEN SNAPSHOT</small>
+<h1>Слепок тела восстановлен</h1>
+<p>Сохраните <strong>полную автономную копию</strong> 3D-слепка SETKA в одном HTML-файле. После сохранения ей не нужны Supabase, GitHub или интернет.</p>
+<div class="metrics"><div><b>14 778</b><span>СУЩНОСТЕЙ</span></div><div><b>43 840</b><span>СВЯЗЕЙ</span></div></div>
+<button id="save">Скачать автономный HTML</button>
+<a class="action" href="./body-as-grown-snapshot-recovered.html">Открыть интерактивный 3D-слепок</a>
+<div id="status">ID · BODY-GROWN-SNAPSHOT-927501A0353C4CE6</div>
+<p class="fine">Все 15 фрагментов сверяются с исходным ID и количеством узлов и связей перед сборкой. Объём готового файла около 6 МБ. На iPhone сохраняйте через Safari в «Файлы».</p>
+</main>
+<script>
+"use strict";
+const save=document.getElementById("save"),status=document.getElementById("status");
+const id="BODY-GROWN-SNAPSHOT-927501A0353C4CE6";
+save.onclick=async()=>{
+ save.disabled=true;save.textContent="Собираю слепок…";
+ try{
+  const names=Array.from({length:15},(_,i)=>"./body-snapshot-rescue/data-"+String(i).padStart(2,"0")+".txt");
+  const chunks=Array(names.length);
+  for(let start=0;start<names.length;start+=3){
+    await Promise.all(names.slice(start,start+3).map(async(url,j)=>{
+      const r=await fetch(url,{cache:"force-cache"});
+      if(!r.ok)throw Error("Фрагмент "+url+" — HTTP "+r.status);
+      chunks[start+j]=await r.text();
+    }));
+    status.textContent="Загружено "+Math.min(start+3,names.length)+" из 15 частей";
+  }
+  const raw=chunks.join("");
+  if(raw.length!==5701849)throw Error("Ошибка размера слепка: "+raw.length);
+  const data=JSON.parse(raw);
+  if(data.ok!==true||data.snapshotRef!==id||data.nodes.length!==14778||data.edges.length!==43840)throw Error("Проверка исходного слепка не пройдена");
+  status.textContent="Целостность подтверждена. Формирую автономный HTML…";
+  const r=await fetch("./body-as-grown-snapshot-recovered.html",{cache:"no-store"});
+  if(!r.ok)throw Error("Нет шаблона визуализатора (HTTP "+r.status+")");
+  const source=await r.text();
+  const start=source.indexOf("const names=Array.from("),end=source.indexOf("const nodes=DATA.nodes");
+  if(start<0||end<=start)throw Error("Шаблон визуализатора изменён");
+  const replacement='const DATA=JSON.parse(document.getElementById("snapshot-data").textContent);'+
+  'if(DATA.ok!==true||DATA.snapshotRef!==expectedRef||DATA.nodes.length!==14778||DATA.edges.length!==43840)throw Error("Проверка слепка не пройдена");\n';
+  let out=source.slice(0,start)+replacement+source.slice(end);
+  const insert='<script type="application/json" id="snapshot-data">'+raw.replace(/</g,"\\u003c")+'<\/script>\n';
+  out=out.replace('<script>\n"use strict";',insert+'<script>\n"use strict";');
+  out=out.replace("RECOVERED / STATIC","OFFLINE / SELF-CONTAINED");
+  if(!out.includes('id="snapshot-data"')||out.includes("body-snapshot-rescue/data-"))throw Error("Не удалось встроить данные");
+  const blob=new Blob([out],{type:"text/html;charset=utf-8"});
+  const link=document.createElement("a");
+  link.href=URL.createObjectURL(blob);
+  link.download="SETKA_BODY_GROWN_SNAPSHOT_927501A0353C4CE6_OFFLINE.html";
+  document.body.appendChild(link);link.click();link.remove();
+  setTimeout(()=>URL.revokeObjectURL(link.href),30000);
+  status.textContent="Готово · "+data.nodes.length.toLocaleString("ru-RU")+" сущностей · "+data.edges.length.toLocaleString("ru-RU")+" связей. Файл отправлен в загрузки браузера.";
+ }catch(err){status.textContent="Ошибка: "+err.message;console.error(err)}
+ finally{save.disabled=false;save.textContent="Скачать автономный HTML";}
+};
+</script></body></html>
