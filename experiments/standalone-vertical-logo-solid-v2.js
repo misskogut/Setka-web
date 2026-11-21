@@ -41,7 +41,7 @@ const frag=[
 "vec3 fill=normalize(vec3(0.85,-0.36,0.48));",
 "float k=max(dot(n,key),0.0),f=max(dot(n,fill),0.0);",
 "float front=step(0.5,vMaterial);",
-"float back=step(-vMaterial,-0.5);",
+"float back=step(0.5,-vMaterial);",
 "vec3 faceBase=mix(vec3(.39,.20,.54),vec3(.92,.73,.96),",
 "clamp(.54+.35*sin(vPosition.x*.029+vPosition.y*.016),0.0,1.0));",
 "vec3 sideBase=mix(vec3(.085,.025,.13),vec3(.56,.25,.68),",
