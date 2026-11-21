@@ -79,7 +79,6 @@
   transform:rotateX(var(--vlogo-tilt-x,-14deg)) rotateY(var(--vlogo-tilt-y,-20deg)) rotateZ(-2.5deg);
   transition:transform .35s cubic-bezier(.18,.7,.3,1);
   will-change:transform;
-  filter:drop-shadow(9px 21px 18px rgba(0,0,0,.52));
 }
 .setka-vlogo-line{
   position:relative;
@@ -90,7 +89,6 @@
   flex:0 0 auto;
   -webkit-transform-style:preserve-3d;
   transform-style:preserve-3d;
-  isolation:isolate;
 }
 .setka-vlogo-line.primary{height:clamp(66px,15vw,86px)}
 .setka-vlogo-line.secondary{height:clamp(42px,9vw,58px)}
