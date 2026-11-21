@@ -1,0 +1,236 @@
+/* SETKA experimental third face: physical 3D lettering, not a picture.
+   Only the catalog/card can rotate; #gameScreen and its gestures are untouched. */
+.setka-vlogo[hidden],.setka-vlogo-hotspot[hidden]{display:none!important}
+.setka-vlogo{
+  position:fixed;
+  inset:0;
+  z-index:141;
+  background:transparent;
+  pointer-events:none;
+  transform-origin:center center;
+  -webkit-transform-style:preserve-3d;
+  transform-style:preserve-3d;
+}
+.setka-vlogo-card{
+  position:absolute;
+  top:var(--setka-cycle-card-top,12px);
+  bottom:var(--setka-cycle-card-bottom,84px);
+  left:50%;
+  transform:translateX(-50%);
+  width:min(calc(100% - 28px),432px);
+  overflow:hidden;
+  border:1px solid rgba(190,195,205,.25);
+  border-radius:24px;
+  background:
+    radial-gradient(ellipse 72% 33% at 50% 53%,rgba(135,51,153,.145),transparent 85%),
+    radial-gradient(ellipse 110% 45% at 50% 77%,rgba(47,22,71,.17),transparent 78%),
+    linear-gradient(160deg,#06040a 0%,#030306 58%,#06030a 100%);
+  box-sizing:border-box;
+  pointer-events:auto;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  isolation:isolate;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:none;
+}
+.setka-vlogo-card::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:inherit;
+  box-shadow:inset 0 0 70px rgba(0,0,0,.38),inset 0 0 20px rgba(184,102,238,.04);
+  pointer-events:none;
+  z-index:4;
+}
+.setka-vlogo-card::after{
+  content:"";
+  position:absolute;
+  left:8%;
+  right:8%;
+  top:20%;
+  bottom:17%;
+  background:radial-gradient(ellipse at center,rgba(177,75,203,.07),transparent 67%);
+  filter:blur(25px);
+  pointer-events:none;
+}
+.setka-vlogo-space{
+  position:absolute;
+  inset:0;
+  overflow:hidden;
+  perspective:900px;
+  display:grid;
+  place-items:center;
+  pointer-events:none;
+}
+.setka-vlogo-3d{
+  position:relative;
+  width:min(90%,388px);
+  height:46%;
+  min-height:210px;
+  max-height:390px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:17px;
+  -webkit-transform-style:preserve-3d;
+  transform-style:preserve-3d;
+  transform:rotateX(var(--vlogo-tilt-x,-14deg)) rotateY(var(--vlogo-tilt-y,-20deg)) rotateZ(-2.5deg);
+  transition:transform .35s cubic-bezier(.18,.7,.3,1);
+  will-change:transform;
+  filter:drop-shadow(9px 21px 18px rgba(0,0,0,.52));
+}
+.setka-vlogo-line{
+  position:relative;
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+  -webkit-transform-style:preserve-3d;
+  transform-style:preserve-3d;
+  isolation:isolate;
+}
+.setka-vlogo-line.primary{height:clamp(66px,15vw,86px)}
+.setka-vlogo-line.secondary{height:clamp(42px,9vw,58px)}
+.setka-vlogo-slice{
+  display:block;
+  position:absolute;
+  inset:auto;
+  left:0;
+  right:0;
+  top:50%;
+  white-space:nowrap;
+  width:100%;
+  text-align:center;
+  line-height:1;
+  margin:0;
+  font-family:-apple-system,BlinkMacSystemFont,"Arial Black",system-ui,sans-serif;
+  font-weight:900;
+  font-stretch:condensed;
+  letter-spacing:-.06em;
+  text-rendering:optimizeLegibility;
+  -webkit-font-smoothing:antialiased;
+  backface-visibility:hidden;
+  -webkit-backface-visibility:hidden;
+  -webkit-transform-style:preserve-3d;
+  transform-style:preserve-3d;
+  user-select:none;
+  -webkit-user-select:none;
+  pointer-events:none;
+}
+.setka-vlogo-line.primary .setka-vlogo-slice{font-size:clamp(49px,13vw,77px)}
+.setka-vlogo-line.secondary .setka-vlogo-slice{font-size:clamp(28px,7.5vw,43px);letter-spacing:.008em}
+.setka-vlogo-slice.wall{
+  color:#26102f;
+  -webkit-text-stroke:.5px rgba(206,119,246,.13);
+  text-shadow:0 0 1px rgba(232,172,252,.16);
+  transform:translate3d(calc(var(--layer)*.28px),calc(var(--layer)*.4px),calc(var(--layer)*-1.15px)) translateY(-50%);
+}
+.setka-vlogo-slice.wall:nth-child(4n){
+  color:#583260;
+  -webkit-text-stroke:.65px rgba(238,176,255,.21);
+}
+.setka-vlogo-slice.wall:nth-child(9n){
+  color:#140d1a;
+  -webkit-text-stroke:.6px rgba(248,214,255,.11);
+}
+.setka-vlogo-slice.surface{
+  z-index:2;
+  color:transparent;
+  -webkit-text-fill-color:transparent;
+  -webkit-background-clip:text;
+  background-clip:text;
+  background-image:linear-gradient(142deg,#fff5ff 0%,#ebc8f5 13%,#74577c 28%,#e4c5f7 42%,#643b73 56%,#d8a3ef 74%,#f8defe 88%,#8d648f 100%);
+  -webkit-text-stroke:.5px rgba(255,224,255,.64);
+  text-shadow:1px 2px 0 rgba(44,18,60,.08),0 0 9px rgba(181,84,225,.20);
+  transform:translateZ(1.5px) translateY(-50%);
+}
+.setka-vlogo-line.secondary .setka-vlogo-slice.surface{
+  background-image:linear-gradient(160deg,#f5e6fc 0%,#c399e5 34%,#6a4c8f 58%,#f0cdf9 91%);
+  -webkit-text-stroke:.45px rgba(239,205,255,.55);
+}
+.setka-vlogo-crest{
+  position:absolute;
+  height:1px;
+  width:min(46%,175px);
+  left:50%;
+  top:calc(50% - 90px);
+  transform:translateX(-50%);
+  background:linear-gradient(90deg,transparent,rgba(225,185,248,.62),transparent);
+  box-shadow:0 0 11px rgba(190,117,230,.3);
+  opacity:.72;
+}
+.setka-vlogo-shadow{
+  position:absolute;
+  width:56%;
+  height:17px;
+  left:22%;
+  top:calc(50% + clamp(105px,19vh,175px));
+  border-radius:50%;
+  background:radial-gradient(ellipse,rgba(169,77,200,.28),rgba(102,32,143,.10) 42%,transparent 72%);
+  filter:blur(17px);
+  transform:perspective(390px) rotateX(66deg);
+  pointer-events:none;
+}
+.setka-vlogo-microcopy{
+  position:absolute;
+  bottom:12%;
+  font:400 10px/1.3 -apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+  letter-spacing:.45em;
+  color:rgba(211,188,223,.31);
+  text-transform:uppercase;
+  text-align:center;
+  pointer-events:none;
+}
+.setka-vlogo-hotspot{
+  position:fixed;
+  left:50%;
+  transform:translateX(-50%);
+  width:min(calc(100% - 48px),416px);
+  height:35px;
+  z-index:146;
+  border:0;
+  padding:0;
+  background:transparent;
+  color:rgba(185,190,201,.50);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  touch-action:none!important;
+  cursor:ns-resize;
+  -webkit-tap-highlight-color:transparent;
+}
+.setka-vlogo-hotspot.top{top:var(--setka-cycle-card-top,12px)}
+.setka-vlogo-hotspot.bottom{bottom:var(--setka-cycle-card-bottom,84px)}
+.setka-vlogo-hotspot svg{width:15px;height:9px;stroke:currentColor;stroke-width:1.35;fill:none;stroke-linecap:round;stroke-linejoin:round;opacity:.64}
+.setka-vlogo-hotspot.top svg{transform:rotate(180deg)}
+.setka-vlogo-hotspot:focus-visible{outline:1px solid rgba(184,137,208,.58);outline-offset:-3px;border-radius:10px}
+body.setka-vlogo-gameplay .setka-vlogo-hotspot{display:none!important;pointer-events:none!important}
+body.setka-vlogo-side .setka-cycle-edge,
+body.setka-vlogo-flip-active .setka-cycle-edge{pointer-events:none!important}
+body.setka-vlogo-side .setka-vlogo-hotspot svg{opacity:.95;stroke:rgba(213,177,232,.62)}
+body.setka-vlogo-flip-active #libraryScreen,
+body.setka-vlogo-flip-active #setkaCycleBack,
+body.setka-vlogo-flip-active #setkaVerticalLogo{
+  will-change:transform;
+  transform-origin:center center;
+  backface-visibility:hidden;
+  -webkit-backface-visibility:hidden;
+  -webkit-transform-style:preserve-3d;
+  transform-style:preserve-3d;
+  pointer-events:none!important;
+}
+body.setka-vlogo-flip-active #setkaVerticalLogo[hidden]{display:block!important}
+body.setka-vlogo-busy .setka-vlogo-hotspot{pointer-events:none!important}
+body.setka-vlogo-side #libraryScreen{pointer-events:none!important}
+@media(max-width:360px){
+  .setka-vlogo-3d{width:92%;gap:11px}
+  .setka-vlogo-line.primary .setka-vlogo-slice{font-size:clamp(42px,12vw,55px)}
+  .setka-vlogo-line.secondary .setka-vlogo-slice{font-size:clamp(27px,7.25vw,34px)}
+  .setka-vlogo-microcopy{font-size:9px}
+}
+@media(prefers-reduced-motion:reduce){
+  .setka-vlogo-3d{transition:none!important}
+}
