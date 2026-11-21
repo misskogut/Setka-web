@@ -110,7 +110,11 @@ function colorSync(){
  if(color&&color!==lastHeroColor){holder.style.setProperty("--cycle-insights-color",color);lastHeroColor=color}
 }
 function lineDots(r,expanded=false){
- const count=expanded?Math.min(60,r.length||Math.max(r.daysSoFar,28)):Math.min(42,r.length||Math.max(r.daysSoFar,28));
+ // Completed cycles show observed length. The current cycle shows only
+ // days already elapsed; missing historical boundaries are not invented.
+ const known=r.length!==null?r.length:r.current?r.daysSoFar:r.periodLength;
+ if(!known)return '<div class="ach-empty">Нет данных о длительности</div>';
+ const count=Math.min(expanded?60:42,known);
  const ov=Math.max((r.periodLength||5)+5,(r.length||28)-14);
  const dots=[];
  for(let i=1;i<=count;i++){
@@ -118,7 +122,7 @@ function lineDots(r,expanded=false){
    if(r.periodLength&&i<=r.periodLength)cls+=" is-period";
    else if(r.length!==null&&i===ov)cls+=" is-ovulation";
    else if(r.length!==null&&i>=ov-4&&i<ov)cls+=" is-fertile";
-   else if(r.current&&i>r.daysSoFar)cls+=" is-future";
+
    if(r.current&&i===r.daysSoFar)cls+=" is-today";
    dots.push('<i class="'+cls+'"></i>');
  }
