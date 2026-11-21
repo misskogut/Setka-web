@@ -37,6 +37,10 @@ function makeType(){
       slice.className="setka-vlogo-slice wall";
       slice.textContent=value;
       slice.style.setProperty("--layer",String(depth));
+      // Use concrete 3D coordinates, not advanced CSS calc multiplication:
+      // the latter is still inconsistent on some iPhone Safari builds.
+      slice.style.transform="translate3d("+(depth*.28).toFixed(2)+"px,"+
+        (depth*.4).toFixed(2)+"px,"+(-depth*1.15).toFixed(2)+"px) translateY(-50%)";
       slice.setAttribute("aria-hidden","true");
       f.appendChild(slice);
     }
