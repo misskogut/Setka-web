@@ -21,7 +21,7 @@ if(!gl){canvas.remove();return}
 const vert=[
 "precision highp float;",
 "attribute vec3 aPosition; attribute vec3 aNormal;",
-"uniform mat4 uProjection; uniform float uRx; uniform float uRy;",
+"uniform mat4 uProjection; uniform float uRx; uniform float uRy; uniform float uDistance;",
 "varying vec3 vNormal; varying vec3 vPosition; varying float vMaterial;",
 "vec3 rotate3(vec3 q){",
 "float sx=sin(uRx),cx=cos(uRx),sy=sin(uRy),cy=cos(uRy);",
@@ -29,7 +29,7 @@ const vert=[
 "return vec3(r.x*cy+r.z*sy,r.y,-r.x*sy+r.z*cy);}",
 "void main(){vec3 p=rotate3(aPosition);vPosition=p;",
 "vNormal=normalize(rotate3(aNormal));vMaterial=aNormal.z;",
-"gl_Position=uProjection*vec4(p.x,p.y,p.z-940.0,1.0);}"
+"gl_Position=uProjection*vec4(p.x,p.y,p.z-uDistance,1.0);}"
 ].join("\n");
 const frag=[
 "precision highp float;",
@@ -81,7 +81,8 @@ const attributes={
 const uniforms={
  projection:gl.getUniformLocation(program,"uProjection"),
  rx:gl.getUniformLocation(program,"uRx"),
- ry:gl.getUniformLocation(program,"uRy")
+ ry:gl.getUniformLocation(program,"uRy"),
+ distance:gl.getUniformLocation(program,"uDistance")
 };
 function createMesh(){
  const vertices=[];
@@ -158,7 +159,11 @@ function draw(){
  canvas.style.display="block";
  gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
  gl.useProgram(program);
- gl.uniformMatrix4fv(uniforms.projection,false,projection(resize()));
+ const aspect=resize();
+ gl.uniformMatrix4fv(uniforms.projection,false,projection(aspect));
+ // Fit the entire glyph solid inside the card on narrow and wide phones.
+ const f=1/Math.tan(38*Math.PI/360);
+ gl.uniform1f(uniforms.distance,Math.max(980,190*f/(aspect*.86)));
  gl.uniform1f(uniforms.rx,(lastAngle+lastX)*Math.PI/180);
  gl.uniform1f(uniforms.ry,lastY*Math.PI/180);
  gl.drawArrays(gl.TRIANGLES,0,count);
