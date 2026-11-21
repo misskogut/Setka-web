@@ -84,7 +84,7 @@ function getEntries(orig,store){
    const completed=!!next&&elapsed>=14&&elapsed<=90;
    const daysSoFar=diff(item.start,today())+1;
    return {...item,length:completed?elapsed:null,nextStart:next?.start||null,
-      current:!next,daysSoFar:Math.max(1,daysSoFar),periodLength:item.periodLength};
+      current:!next&&item.source==="current",daysSoFar:Math.max(1,daysSoFar),periodLength:item.periodLength};
  });
 }
 function model(){
@@ -130,7 +130,7 @@ function metric(name,value,detail){
 function entryRow(r){
  const title=r.current?"Текущий цикл: "+daysLabel(r.daysSoFar):
       r.length!==null?daysLabel(r.length):"Цикл — без точной длительности";
- const dates=fmt(r.start)+" — "+(r.nextStart?fmt(add(r.nextStart,-1)): "сегодня");
+ const dates=fmt(r.start)+" — "+(r.length!==null?fmt(add(r.nextStart,-1)):r.current?"сегодня":"дата окончания неизвестна");
  return '<button class="ach-cycle-row" type="button" data-action="detail" data-start="'+esc(r.start)+'">'+
    '<span class="ach-row-main"><strong>'+esc(title)+'</strong><span class="ach-dates">'+
    esc(dates)+'</span>'+lineDots(r)+'</span><span class="ach-chevron" aria-hidden="true">›</span></button>';
@@ -183,7 +183,7 @@ function overview(m){
 }
 function detail(m,r){
  const periodEnd=r.periodLength?add(r.start,r.periodLength-1):null;
- const shownEnd=r.nextStart?add(r.nextStart,-1):null;
+ const shownEnd=r.length!==null&&r.nextStart?add(r.nextStart,-1):null;
  const ov=r.length!==null?Math.max((r.periodLength||5)+5,r.length-14):null;
  const windowStart=ov!==null?add(r.start,ov-5):null;
  const windowEnd=ov!==null?add(r.start,ov-1):null;
@@ -193,7 +193,7 @@ function detail(m,r){
    '<button type="button" class="ach-back" data-action="back"><span aria-hidden="true">‹</span> История циклов</button>'+
    '<p class="ach-detail-kicker">СВЕДЕНИЯ О ЦИКЛЕ</p>'+
    '<h2 class="ach-detail-title">'+esc(r.current?"Текущий цикл":r.length!==null?daysLabel(r.length):"Запись о цикле")+'</h2>'+
-   '<p class="ach-detail-caption">Начало: '+esc(fmt(r.start,true))+(shownEnd?" · До "+esc(fmt(shownEnd,true)):" · Продолжается")+'</p>'+
+   '<p class="ach-detail-caption">Начало: '+esc(fmt(r.start,true))+(shownEnd?" · До "+esc(fmt(shownEnd,true)):r.current?" · Продолжается":" · Конец не отмечен")+'</p>'+
    '<section class="ach-card"><div class="ach-card-top"><h3>Дни цикла</h3></div>'+lineDots(r,true)+
    '<div class="ach-detail-legend"><span><i class="period"></i>Месячные</span><span><i class="fertile"></i>Расчётное окно</span><span><i></i>Расчётная овуляция</span></div></section>'+
    '<section class="ach-card">'+
