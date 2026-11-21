@@ -169,8 +169,7 @@ function overview(m){
  const latest=m.entries.slice().reverse();
  const rows=showAll?latest:latest.slice(0,4);
  return '<div class="ach-overview">'+
-   '<div class="ach-intro"><p class="ach-overline">МОЙ ЦИКЛ · ИСТОРИЯ</p><h2 class="ach-section-heading">Мои циклы</h2>'+
-   '<p>История отмеченных дат и статистика. Лотос остаётся наверху — листай вниз для подробностей.</p></div>'+
+   '<div class="ach-intro"><h2 class="ach-section-heading">История и статистика</h2></div>'+
    '<section class="ach-card" aria-label="Статистика циклов"><div class="ach-card-top"><h3>Общая статистика</h3></div>'+
    '<div class="ach-metrics">'+cards+'</div>'+
    '<p class="ach-text-note">Длина цикла считается от первого дня одних месячных до первого дня следующих. Неизвестные периоды не подставляются в расчёты.</p></section>'+
@@ -194,7 +193,7 @@ function detail(m,r){
  const ovDate=ov!==null?add(r.start,ov-1):null;
  const isManual=m.store.records.some(x=>x.start===r.start&&!r.current);
  return '<div class="ach-detail">'+
-   '<button type="button" class="ach-back" data-action="back"><span aria-hidden="true">‹</span> История циклов</button>'+
+   '<button type="button" class="ach-back" data-action="back"><span aria-hidden="true">‹</span> История</button>'+
    '<p class="ach-detail-kicker">СВЕДЕНИЯ О ЦИКЛЕ</p>'+
    '<h2 class="ach-detail-title">'+esc(r.current?"Текущий цикл":r.length!==null?daysLabel(r.length):"Запись о цикле")+'</h2>'+
    '<p class="ach-detail-caption">Начало: '+esc(fmt(r.start,true))+(shownEnd?" · До "+esc(fmt(shownEnd,true)):r.current?" · Продолжается":" · Конец не отмечен")+'</p>'+
@@ -221,7 +220,7 @@ function editor(m){
  const current=editStart&&m.store.records.find(x=>x.start===editStart);
  const max=today();
  return '<div class="ach-edit">'+
-   '<button type="button" class="ach-back" data-action="back"><span aria-hidden="true">‹</span> Мои циклы</button>'+
+   '<button type="button" class="ach-back" data-action="back"><span aria-hidden="true">‹</span> История</button>'+
    '<p class="ach-overline">ЗАПИСЬ ЦИКЛА</p><h2 class="ach-section-heading">'+(current?"Изменить запись":"Добавить прошлый цикл")+'</h2>'+
    '<form id="achHistoryForm" class="ach-card">'+
    '<label>Первый день месячных<input name="start" type="date" required max="'+esc(max)+'" value="'+esc(current?.start||"")+'"></label>'+
