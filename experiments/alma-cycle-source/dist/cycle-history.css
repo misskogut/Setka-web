@@ -2,15 +2,17 @@
    New sections are deliberately scoped; neither React's flower nor its sheet
    is restyled. All data remains local to this browser. */
 #alma-cycle-root .phone-scene.alma-history-scroll{
+  /* The phone scene now fills a card-sized iframe, not the full viewport.
+     Scroll must never push its children outside the external card border. */
+  box-sizing:border-box!important;
   overflow-x:hidden!important;
   overflow-y:auto!important;
-  overscroll-behavior-x:none;
-  overscroll-behavior-y:contain;
+  overscroll-behavior:contain!important;
   -webkit-overflow-scrolling:touch;
   touch-action:pan-y;
   scrollbar-width:none;
-  scroll-padding-top:20px;
-  padding-bottom:18px;
+  scroll-padding-top:16px;
+  padding-bottom:26px!important;
 }
 #alma-cycle-root .phone-scene.alma-history-scroll::-webkit-scrollbar{display:none}
 #alma-cycle-root .alma-cycle-insights{
@@ -18,10 +20,12 @@
   --cycle-insights-line:color-mix(in srgb,var(--cycle-insights-color) 27%,rgba(255,255,255,.10));
   position:relative;
   z-index:1;
-  width:calc(100% - 28px);
-  max-width:432px;
-  margin:16px auto 58px;
-  padding:0 0 24px;
+  box-sizing:border-box;
+  width:calc(100% - 36px);
+  max-width:396px;
+  min-width:0;
+  margin:22px auto 30px;
+  padding:0 0 20px;
   color:#eae4ee;
   font-family:Inter,-apple-system,BlinkMacSystemFont,"SF Pro Display",Arial,sans-serif;
   font-size:13px;
@@ -39,12 +43,19 @@
 .alma-cycle-insights .ach-intro{padding:4px 3px 8px;margin-bottom:16px}
 .alma-cycle-insights .ach-intro p:last-child{margin:0;color:#857b90;font-size:12px;line-height:1.5}
 .alma-cycle-insights .ach-card{
-  margin:0 0 12px;
-  padding:17px 16px;
-  border:1px solid rgba(195,158,211,.17);
-  border-radius:19px;
-  background:linear-gradient(140deg,rgba(32,21,43,.80),rgba(9,6,15,.89) 75%);
-  box-shadow:0 10px 40px rgba(4,0,8,.14);
+  box-sizing:border-box;
+  display:block;
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  margin:0 0 14px;
+  padding:17px 14px;
+  border:1px solid rgba(195,158,211,.16);
+  border-radius:18px;
+  background:linear-gradient(140deg,rgba(32,21,43,.78),rgba(9,6,15,.87) 75%);
+  box-shadow:none;
+  overflow-x:hidden;
+  overflow-wrap:anywhere;
 }
 .alma-cycle-insights .ach-card-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
 .alma-cycle-insights .ach-card-top h3{margin:0;font-size:16px;font-weight:560;letter-spacing:-.01em}
@@ -79,7 +90,13 @@
 .alma-cycle-insights .ach-dot.is-today{outline:1px solid #e6d6f2;outline-offset:2px}
 .alma-cycle-insights .ach-empty{padding:13px 2px 8px;font-size:12px;color:#988a9f;line-height:1.55}
 .alma-cycle-insights .ach-text-note{font-size:11px;color:#86778d;line-height:1.5;margin:10px 2px 0}
-.alma-cycle-insights .ach-footer-actions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 0}
+.alma-cycle-insights .ach-footer-actions{
+  display:flex;gap:8px;flex-wrap:wrap;min-width:0;margin:12px 0 0;
+  padding:0 0 2px;
+}
+.alma-cycle-insights .ach-footer-actions > button{
+  max-width:100%;white-space:normal;overflow-wrap:anywhere;
+}
 .alma-cycle-insights .ach-small-button,.alma-cycle-insights .ach-text-button{
   padding:9px 13px;border:1px solid var(--cycle-insights-line);
   background:rgba(16,9,23,.87);border-radius:99px;color:#cda8ed;
@@ -120,7 +137,8 @@
 .alma-cycle-insights .ach-detail-point-icon{height:24px;width:24px;border-radius:50%;display:grid;place-items:center;color:#ff6a8b;border:1px solid rgba(255,106,139,.33);font-size:13px}
 .alma-cycle-insights .ach-edit label{display:grid;gap:6px;margin-bottom:12px;color:#b9a9c4;font-size:12px}
 .alma-cycle-insights .ach-edit input{
-  display:block;width:100%;height:42px;border:1px solid rgba(195,158,211,.28);
+  box-sizing:border-box;display:block;width:100%;max-width:100%;min-width:0;
+  height:42px;border:1px solid rgba(195,158,211,.28);
   border-radius:11px;background:rgba(8,4,13,.85);color:#fff;
   color-scheme:dark;padding:0 11px;font-size:14px;
 }
@@ -129,7 +147,7 @@
 .alma-cycle-insights .ach-delete{display:block;margin:18px auto 0;color:#cf7891;background:none;border:0;font-size:12px}
 .alma-cycle-insights button:focus-visible,.alma-cycle-insights input:focus-visible{outline:2px solid #c386ea;outline-offset:2px}
 @media(max-width:360px){
-  #alma-cycle-root .alma-cycle-insights{width:calc(100% - 22px)}
+  #alma-cycle-root .alma-cycle-insights{width:calc(100% - 28px)}
   .alma-cycle-insights .ach-card{padding:14px 12px}
   .alma-cycle-insights .ach-metrics{gap:7px}
   .alma-cycle-insights .ach-dot{flex-basis:4px;width:4px;height:4px;gap:2px}
