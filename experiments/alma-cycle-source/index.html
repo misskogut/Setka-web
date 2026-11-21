@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#020105">
 <title>SETKA — исходный календарь ALMA</title>
 <link rel="stylesheet" href="./dist/alma.css?v=20261120-no-header-2">
-<link rel="stylesheet" href="./dist/cycle-history.css?v=2726df45-cycle-history">
+<link rel="stylesheet" href="./dist/cycle-history.css?v=c9d418-inset">
 <style>
 /* Only host layout. Everything inside CycleHero/Sheet is original ALMA CSS. */
 html,body{margin:0;min-height:100%;background:#020105}
@@ -22,14 +22,14 @@ html,body{margin:0;min-height:100%;background:#020105}
   background:#020105!important;
 }
 .cycle-hero{margin-top:12px!important}
-/* Keep the outer SETKA card exactly one viewport tall. The ALMA lotus
-   stays one card tall, while only the INNER phone-scene scrolls vertically
-   down to observed cycle statistics and history. */
-
+/* This file now runs INSIDE the clipped card-sized iframe.
+   Its viewport is the full card, not the phone screen. The hero takes
+   the first viewport; the same phone-scene scrolls to history beneath it. */
 html,body{
   width:100%;
   height:100%;
   height:100dvh;
+  min-width:0!important;
   min-height:0!important;
   overflow:hidden!important;
   overscroll-behavior:none;
@@ -51,13 +51,15 @@ html,body{
 .sheet-layer{
   box-sizing:border-box!important;
   position:fixed!important;
-  top:calc(var(--setka-card-top) + 10px)!important;
-  bottom:calc(var(--setka-card-bottom) + 10px)!important;
+  /* Ten-pixel breathing room from the card edge on ALL four sides. */
+  top:10px!important;
+  bottom:10px!important;
   left:50%!important;
   right:auto!important;
-  width:min(calc(100% - 48px),412px)!important;
+  width:calc(100% - 20px)!important;
+  max-width:408px!important;
   height:auto!important;
-  max-height:calc(100dvh - 116px - env(safe-area-inset-bottom, 0px))!important;
+  max-height:calc(100dvh - 20px)!important;
   transform:translateX(-50%)!important;
   border-radius:22px!important;
   overflow:hidden!important;
@@ -95,32 +97,43 @@ html::-webkit-scrollbar,body::-webkit-scrollbar,
  * (64px dock + 8px dock offset + 12px visual gap).
  */
 :root{
-  --setka-card-top:12px;
-  --setka-card-bottom:calc(84px + env(safe-area-inset-bottom, 0px));
+  /* The enclosing iframe is already inset to match the SETKA card. */
+  --setka-card-top:0px;
+  --setka-card-bottom:0px;
 }
 #alma-cycle-root .phone-scene{
-  width:min(100%, 460px)!important;
-  max-width:460px!important;
+  box-sizing:border-box!important;
+  width:100%!important;
+  max-width:none!important;
+  height:100dvh!important;
+  max-height:100dvh!important;
+  min-width:0!important;
+  margin:0!important;
+  padding:0 0 20px!important;
+  border-radius:24px!important;
   overflow-x:hidden!important;
   overflow-y:auto!important;
-  overscroll-behavior-y:contain!important;
+  overscroll-behavior:contain!important;
   -webkit-overflow-scrolling:touch;
   touch-action:pan-y;
+  scrollbar-width:none;
 }
 #alma-cycle-root .cycle-hero{
   box-sizing:border-box!important;
-  margin:var(--setka-card-top) 14px 0!important;
-  height:calc(100dvh - 96px - env(safe-area-inset-bottom, 0px))!important;
+  width:100%!important;
+  max-width:none!important;
+  margin:0!important;
+  height:100dvh!important;
   min-height:0!important;
-  border-radius:24px!important;
-  /* Original border color, aura and ALMA content remain untouched. */
+  border-radius:24px 24px 0 0!important;
+  /* Lotus layout, color and animation remain native to ALMA. */
 }
 
 
 
 </style>
 <script defer src="./dist/cycle.js?v=20261120-no-header-2"></script>
-<script defer src="./dist/cycle-history.js?v=a06e1f16-cycle-history"></script>
+<script defer src="./dist/cycle-history.js?v=c9d418-inset"></script>
 </head>
 <body><div id="alma-cycle-root" aria-label="Оригинальный календарь-лотос ALMA"></div></body>
 </html>
