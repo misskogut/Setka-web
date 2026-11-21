@@ -79,6 +79,7 @@ function setDocumentHash(value){
 function clear3D(){
   for(const el of [lib,cycle,logo]){
     el.style.removeProperty("transform");
+    el.style.removeProperty("transform-origin");
     el.style.removeProperty("opacity");
     el.style.removeProperty("will-change");
     el.style.removeProperty("pointer-events");
@@ -117,6 +118,16 @@ function startVisual(){
   logo.inert=true;
   document.body.classList.add("setka-vlogo-flip-active");
   const source=currentSource();
+  // The full-screen DOM planes must turn around the CENTER OF THE CARD,
+  // not the middle of the phone viewport. The WebGL wordmark uses that
+  // same card-centered origin, with all of its Z above the card surface.
+  const plate=card.getBoundingClientRect();
+  const pivotX=(plate.left+plate.right)/2,pivotY=(plate.top+plate.bottom)/2;
+  for(const face of [source,logo]){
+    const bounds=face.getBoundingClientRect();
+    face.style.transformOrigin=(pivotX-bounds.left).toFixed(2)+"px "+
+      (pivotY-bounds.top).toFixed(2)+"px";
+  }
   source.style.visibility=logoVisible?"hidden":"visible";
   source.style.opacity=logoVisible?"0":"1";
   logo.style.visibility=logoVisible?"visible":"hidden";
