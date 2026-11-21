@@ -54,6 +54,11 @@ function makeType(){
 }
 makeType();
 
+/* Separate solid geometry: the card may rotate edge-on, but its lettering
+   retains real Z depth outside the flattening DOM card/layer hierarchy. */
+function renderSolid({angle=0,visible=logoVisible,tiltX=-12,tiltY=-18}={}){
+  window.SETKA_SOLID_WORDMARK?.render({angle,visible,tiltX,tiltY});
+}
 function applyTilt(dx,dy){
   const object=$("setkaVerticalTitleObject");
   if(!object)return;
@@ -61,6 +66,7 @@ function applyTilt(dx,dy){
   const y=clamp(-20+dx*18,-42,12);
   object.style.setProperty("--vlogo-tilt-x",x.toFixed(1)+"deg");
   object.style.setProperty("--vlogo-tilt-y",y.toFixed(1)+"deg");
+  if(logoVisible&&!animating)renderSolid({angle:0,visible:true,tiltX:x,tiltY:y});
 }
 function resetTilt(){applyTilt(0,0)}
 
@@ -98,6 +104,7 @@ function rest(showLogo,{restoreHash=true}={}){
     cycle.style.removeProperty("visibility");
     logo.style.removeProperty("visibility");
   }
+  renderSolid({angle:0,visible:logoVisible});
   if(restoreHash)setDocumentHash(logoVisible?"logo":origin);
 }
 function cancel(){
@@ -114,6 +121,7 @@ function startVisual(){
   source.style.opacity=logoVisible?"0":"1";
   logo.style.visibility=logoVisible?"visible":"hidden";
   logo.style.opacity=logoVisible?"1":"0";
+  renderSolid({visible:false});
 }
 function draw(v){
   const p=progress=clamp(v,0,1);
@@ -124,6 +132,9 @@ function draw(v){
   logo.style.opacity=front?"0":"1";
   source.style.transform="perspective(1450px) rotateX("+(-direction*180*p).toFixed(3)+"deg)";
   logo.style.transform="perspective(1450px) rotateX("+(direction*180*(1-p)).toFixed(3)+"deg)";
+  // The front/back pages are CSS planes. The title is a real independent
+  // 3D solid: at the 90-degree midpoint its SIDE faces remain visible.
+  renderSolid({angle:direction*180*(1-p),visible:p>=.5,tiltX:-12,tiltY:-18});
 }
 function settle(toLogo){
   const end=toLogo?1:0;
@@ -265,7 +276,7 @@ syncAvailability();
 window.SETKA_VERTICAL_LOGO_LAB={
   flip,getSide:()=>logoVisible?"logo":window.SETKA_CYCLE_LAB?.getSide?.()||"setka",
   getAngle:()=>Math.round(180*progress),
-  getState:()=>({logoVisible,origin,progress,animating,gameplayBlocked:!usable()}),
+  getState:()=>({logoVisible,origin,progress,animating,gameplayBlocked:!usable(),solid3D:!!window.SETKA_SOLID_WORDMARK}),
   reset:()=>rest(false)
 };
 })();
