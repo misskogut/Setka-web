@@ -221,6 +221,17 @@ body.setka-vlogo-flip-active #setkaVerticalLogo{
   pointer-events:none!important;
 }
 body.setka-vlogo-flip-active #setkaVerticalLogo[hidden]{display:block!important}
+/* When WebGL is available, letters are actual extruded solids on an
+   independent 3D layer; the original CSS typography is only a fallback.
+   Do not show two copies of the title on top of one another. */
+body.setka-vlogo-webgl .setka-vlogo-3d{visibility:hidden!important}
+body.setka-vlogo-webgl .setka-vlogo-shadow{opacity:.55}
+body.setka-vlogo-webgl #setkaVerticalSolidText{
+  pointer-events:none!important;
+  -webkit-user-select:none;
+  user-select:none;
+}
+
 body.setka-vlogo-busy .setka-vlogo-hotspot{pointer-events:none!important}
 body.setka-vlogo-side #libraryScreen{pointer-events:none!important}
 @media(max-width:360px){
