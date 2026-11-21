@@ -1,9 +1,7 @@
 (()=>{
 "use strict";
-/* SETKA: true 3D Cyrillic glyph solids. Glyph masks become FRONT/BACK
-   triangles and real contour side walls, shaded by WebGL lighting. The
-   rotating card remains flat; this mesh is rendered independently above it.
-   CSS letter layers remain fallback for unavailable WebGL. No remote assets. */
+/* SETKA raised 3D logo, hovering over the card's Z=0 plane.
+   All glyph faces rotate around the card plane as a rigid assembly. */
 const card=document.getElementById("setkaVerticalLogoCard");
 const object=document.getElementById("setkaVerticalTitleObject");
 if(!card||!object||window.SETKA_SOLID_WORDMARK)return;
@@ -21,13 +19,12 @@ if(!gl){canvas.remove();return}
 const vert=[
 "precision highp float;",
 "attribute vec3 aPosition; attribute vec3 aNormal;",
-"uniform mat4 uProjection; uniform float uRx; uniform float uRy; uniform float uDistance;",
+"uniform mat4 uProjection; uniform float uFlip; uniform float uTiltX; uniform float uTiltY; uniform float uDistance; uniform float uScale;",
 "varying vec3 vNormal; varying vec3 vPosition; varying float vMaterial;",
-"vec3 rotate3(vec3 q){",
-"float sx=sin(uRx),cx=cos(uRx),sy=sin(uRy),cy=cos(uRy);",
-"vec3 r=vec3(q.x,q.y*cx-q.z*sx,q.y*sx+q.z*cx);",
-"return vec3(r.x*cy+r.z*sy,r.y,-r.x*sy+r.z*cy);}",
-"void main(){vec3 p=rotate3(aPosition);vPosition=p;",
+"vec3 turnX(vec3 v,float a){float c=cos(a),s=sin(a);return vec3(v.x,v.y*c-v.z*s,v.y*s+v.z*c);}",
+"vec3 turnY(vec3 v,float a){float c=cos(a),s=sin(a);return vec3(v.x*c+v.z*s,v.y,-v.x*s+v.z*c);}",
+"vec3 rotate3(vec3 q){return turnX(turnY(turnX(q,uTiltX),uTiltY),uFlip);}",
+"void main(){vec3 p=rotate3(aPosition*uScale);vPosition=p;",
 "vNormal=normalize(rotate3(aNormal));vMaterial=aNormal.z;",
 "gl_Position=uProjection*vec4(p.x,p.y,p.z-uDistance,1.0);}"
 ].join("\n");
@@ -80,16 +77,18 @@ const attributes={
 };
 const uniforms={
  projection:gl.getUniformLocation(program,"uProjection"),
- rx:gl.getUniformLocation(program,"uRx"),
- ry:gl.getUniformLocation(program,"uRy"),
- distance:gl.getUniformLocation(program,"uDistance")
+ flip:gl.getUniformLocation(program,"uFlip"),
+ tiltX:gl.getUniformLocation(program,"uTiltX"),
+ tiltY:gl.getUniformLocation(program,"uTiltY"),
+ distance:gl.getUniformLocation(program,"uDistance"),
+ scale:gl.getUniformLocation(program,"uScale")
 };
 function createMesh(){
  const vertices=[];
  const push=(v,n)=>{vertices.push(v[0],v[1],v[2],n[0],n[1],n[2])};
  const triangle=(a,b,c,n)=>{push(a,n);push(b,n);push(c,n)};
  const quad=(a,b,c,d,n)=>{triangle(a,b,c,n);triangle(a,c,d,n)};
- const step=1.8,depth=38;
+ const step=1.8,hoverGap=34,depth=60;
  const shapes=[
   {text:"СКВИШ",font:86,w:364,h:115,dy:58},
   {text:"ДЛЯ МОЗГА",font:49,w:364,h:78,dy:-57}
@@ -118,7 +117,7 @@ function createMesh(){
    if(!on(x,y))continue;
    const x1=x*step-cols*step/2,x2=x1+step;
    const y1=shape.dy+rows*step/2-y*step,y2=y1-step;
-   const F=depth/2,B=-depth/2;
+   const B=hoverGap,F=hoverGap+depth;
    quad([x1,y2,F],[x2,y2,F],[x2,y1,F],[x1,y1,F],[0,0,1]);
    quad([x2,y2,B],[x1,y2,B],[x1,y1,B],[x2,y1,B],[0,0,-1]);
    if(!on(x-1,y))quad([x1,y2,B],[x1,y2,F],[x1,y1,F],[x1,y1,B],[-1,0,0]);
@@ -144,28 +143,30 @@ gl.enableVertexAttribArray(attributes.pos);
 gl.vertexAttribPointer(attributes.normal,3,gl.FLOAT,false,24,12);
 gl.enableVertexAttribArray(attributes.normal);
 let active=false,lost=false,stopped=false,lastAngle=0,lastX=-12,lastY=-18;
-function projection(aspect){
- const n=.5,far=3000,f=1/Math.tan(38*Math.PI/360),nf=1/(n-far);
+function projection(aspect,viewportHeight){
+ // Pixel-accurate CSS perspective(1450px), Z=0 is the card surface.
+ const n=.5,far=4000,f=2*1450/Math.max(1,viewportHeight),nf=1/(n-far);
  return new Float32Array([f/aspect,0,0,0,0,f,0,0,0,0,(far+n)*nf,-1,0,0,2*far*n*nf,0]);
 }
 function resize(){
  const rect=card.getBoundingClientRect(),dpr=Math.min(window.devicePixelRatio||1,2);
  const w=Math.round(Math.max(1,rect.width)*dpr),h=Math.round(Math.max(1,rect.height)*dpr);
  if(w!==canvas.width||h!==canvas.height){canvas.width=w;canvas.height=h;gl.viewport(0,0,w,h)}
- return Math.max(.25,rect.width/Math.max(1,rect.height));
+ return {width:rect.width,height:Math.max(1,rect.height),aspect:Math.max(.25,rect.width/Math.max(1,rect.height))};
 }
 function draw(){
  if(!active||lost||stopped)return;
  canvas.style.display="block";
  gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
  gl.useProgram(program);
- const aspect=resize();
- gl.uniformMatrix4fv(uniforms.projection,false,projection(aspect));
- // Fit the entire glyph solid inside the card on narrow and wide phones.
- const f=1/Math.tan(38*Math.PI/360);
- gl.uniform1f(uniforms.distance,Math.max(980,190*f/(aspect*.86)));
- gl.uniform1f(uniforms.rx,(lastAngle+lastX)*Math.PI/180);
- gl.uniform1f(uniforms.ry,lastY*Math.PI/180);
+ const frame=resize();
+ gl.uniformMatrix4fv(uniforms.projection,false,projection(frame.aspect,frame.height));
+ gl.uniform1f(uniforms.distance,1450);
+ gl.uniform1f(uniforms.scale,Math.min(1,Math.max(.6,(frame.width-28)/405)));
+ // WebGL uses Y-up, while CSS uses Y-down: negate CSS flip angle.
+ gl.uniform1f(uniforms.flip,-lastAngle*Math.PI/180);
+ gl.uniform1f(uniforms.tiltX,lastX*Math.PI/180);
+ gl.uniform1f(uniforms.tiltY,lastY*Math.PI/180);
  gl.drawArrays(gl.TRIANGLES,0,count);
 }
 function render({angle=0,visible=true,tiltX=-12,tiltY=-18}={}){
@@ -182,7 +183,7 @@ canvas.addEventListener("webglcontextrestored",()=>{location.reload()});
 window.addEventListener("resize",()=>{if(active)draw()},{passive:true});
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&active)draw()});
 window.SETKA_SOLID_WORDMARK={
- render,getInfo:()=>({real3D:true,renderer:"WebGL",vertices:count,depth:38,active}),
+ render,getInfo:()=>({real3D:true,renderer:"WebGL",vertices:count,depth:60,hoverGap:34,cardPlaneZ:0,active}),
  dispose(){stopped=true;document.body.classList.remove("setka-vlogo-webgl");
   canvas.remove();gl.deleteBuffer(buffer);gl.deleteProgram(program)}
 };
