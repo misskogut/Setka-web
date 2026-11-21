@@ -1,0 +1,139 @@
+/* ALMA × SETKA: history and cycle statistics BELOW the original lotus.
+   New sections are deliberately scoped; neither React's flower nor its sheet
+   is restyled. All data remains local to this browser. */
+#alma-cycle-root .phone-scene.alma-history-scroll{
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  overscroll-behavior-x:none;
+  overscroll-behavior-y:contain;
+  -webkit-overflow-scrolling:touch;
+  touch-action:pan-y;
+  scrollbar-width:none;
+  scroll-padding-top:20px;
+  padding-bottom:18px;
+}
+#alma-cycle-root .phone-scene.alma-history-scroll::-webkit-scrollbar{display:none}
+#alma-cycle-root .alma-cycle-insights{
+  --cycle-insights-color:#bd7cf3;
+  --cycle-insights-line:color-mix(in srgb,var(--cycle-insights-color) 27%,rgba(255,255,255,.10));
+  position:relative;
+  z-index:1;
+  width:calc(100% - 28px);
+  max-width:432px;
+  margin:16px auto 58px;
+  padding:0 0 24px;
+  color:#eae4ee;
+  font-family:Inter,-apple-system,BlinkMacSystemFont,"SF Pro Display",Arial,sans-serif;
+  font-size:13px;
+  line-height:1.5;
+  -webkit-user-select:text;
+  user-select:text;
+  touch-action:pan-y;
+}
+.alma-cycle-insights *{box-sizing:border-box}
+.alma-cycle-insights button,.alma-cycle-insights input{font:inherit}
+.alma-cycle-insights button{cursor:pointer;-webkit-tap-highlight-color:transparent}
+.alma-cycle-insights .ach-section-heading{font-size:20px;font-weight:620;letter-spacing:-.03em;line-height:1.2;margin:0 0 14px;color:#f3edf6}
+.alma-cycle-insights .ach-subhead{font-size:17px;font-weight:590;letter-spacing:-.02em;margin:0;color:#f3edf6}
+.alma-cycle-insights .ach-overline{font-size:10px;letter-spacing:.17em;text-transform:uppercase;color:rgba(219,204,227,.48);margin:0 0 8px}
+.alma-cycle-insights .ach-intro{padding:4px 3px 8px;margin-bottom:16px}
+.alma-cycle-insights .ach-intro p:last-child{margin:0;color:#857b90;font-size:12px;line-height:1.5}
+.alma-cycle-insights .ach-card{
+  margin:0 0 12px;
+  padding:17px 16px;
+  border:1px solid rgba(195,158,211,.17);
+  border-radius:19px;
+  background:linear-gradient(140deg,rgba(32,21,43,.80),rgba(9,6,15,.89) 75%);
+  box-shadow:0 10px 40px rgba(4,0,8,.14);
+}
+.alma-cycle-insights .ach-card-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.alma-cycle-insights .ach-card-top h3{margin:0;font-size:16px;font-weight:560;letter-spacing:-.01em}
+.alma-cycle-insights .ach-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.alma-cycle-insights .ach-metric{
+  min-width:0;padding:13px 12px;border-radius:14px;background:rgba(9,5,14,.68);
+  border:1px solid rgba(186,151,202,.12);
+}
+.alma-cycle-insights .ach-metric:last-child:nth-child(odd){grid-column:1/-1}
+.alma-cycle-insights .ach-metric-name{color:#9c8ca8;font-size:11px;line-height:1.3;min-height:28px}
+.alma-cycle-insights .ach-metric-value{font-size:24px;font-weight:540;line-height:1.2;color:#f6eefa;margin:7px 0 3px;font-variant-numeric:tabular-nums}
+.alma-cycle-insights .ach-metric-value.is-empty{font-size:17px;color:#98889f}
+.alma-cycle-insights .ach-metric-detail{font-size:10px;color:#776c80;line-height:1.35}
+.alma-cycle-insights .ach-cycle-list{display:grid;gap:0}
+.alma-cycle-insights .ach-cycle-row{
+  background:transparent;border:0;border-bottom:1px solid rgba(195,158,211,.13);
+  color:inherit;display:flex;align-items:center;justify-content:space-between;
+  padding:13px 1px;width:100%;text-align:left;gap:8px;
+}
+.alma-cycle-insights .ach-cycle-row:last-child{border-bottom:0}
+.alma-cycle-insights .ach-cycle-row:active{opacity:.77}
+.alma-cycle-insights .ach-cycle-row .ach-row-main{min-width:0;flex:1}
+.alma-cycle-insights .ach-cycle-row strong{font-size:15px;font-weight:580;color:#efe8f2;display:block}
+.alma-cycle-insights .ach-cycle-row .ach-dates{font-size:11px;color:#95899c;margin:3px 0 7px}
+.alma-cycle-insights .ach-cycle-row .ach-chevron{font-size:25px;font-weight:250;color:rgba(199,158,226,.54)}
+.alma-cycle-insights .ach-dots{display:flex;align-items:center;gap:3px;min-width:0;max-width:100%;overflow:hidden}
+.alma-cycle-insights .ach-dot{flex:0 0 5px;width:5px;height:5px;border-radius:50%;background:rgba(220,209,226,.18)}
+.alma-cycle-insights .ach-dot.is-period{background:#ff567c}
+.alma-cycle-insights .ach-dot.is-fertile{background:#67bfc7}
+.alma-cycle-insights .ach-dot.is-ovulation{background:#b975ec}
+.alma-cycle-insights .ach-dot.is-future{background:rgba(220,209,226,.12)}
+.alma-cycle-insights .ach-dot.is-today{outline:1px solid #e6d6f2;outline-offset:2px}
+.alma-cycle-insights .ach-empty{padding:13px 2px 8px;font-size:12px;color:#988a9f;line-height:1.55}
+.alma-cycle-insights .ach-text-note{font-size:11px;color:#86778d;line-height:1.5;margin:10px 2px 0}
+.alma-cycle-insights .ach-footer-actions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 0}
+.alma-cycle-insights .ach-small-button,.alma-cycle-insights .ach-text-button{
+  padding:9px 13px;border:1px solid var(--cycle-insights-line);
+  background:rgba(16,9,23,.87);border-radius:99px;color:#cda8ed;
+  font-size:12px;min-height:36px;
+}
+.alma-cycle-insights .ach-small-button:hover{border-color:rgba(210,167,239,.5)}
+.alma-cycle-insights .ach-text-button{background:none;border:0;color:#b895d1;padding:7px 3px;min-height:auto}
+.alma-cycle-insights .ach-chart-shell{width:100%;overflow:hidden}
+.alma-cycle-insights .ach-chart-svg{width:100%;height:auto;display:block}
+.alma-cycle-insights .ach-chart-grid{stroke:rgba(230,214,238,.085);stroke-width:1}
+.alma-cycle-insights .ach-chart-area{fill:rgba(132,98,171,.1)}
+.alma-cycle-insights .ach-chart-path{stroke:#ae88d2;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.alma-cycle-insights .ach-chart-point{fill:#c99be9;stroke:#1a0d24;stroke-width:2}
+.alma-cycle-insights .ach-chart-guide{fill:#81718e;font-size:9px}
+.alma-cycle-insights .ach-tiny-rule{margin-top:10px;border-top:1px solid rgba(195,158,211,.12);padding-top:10px;color:#807489;font-size:11px}
+.alma-cycle-insights .ach-detail[hidden],.alma-cycle-insights .ach-overview[hidden],
+.alma-cycle-insights .ach-edit[hidden],.alma-cycle-insights [hidden]{display:none!important}
+.alma-cycle-insights .ach-back{
+  display:inline-flex;align-items:center;gap:8px;margin:0 0 12px;padding:6px 0;
+  color:#bba7cd;background:none;border:0;font-size:13px;
+}
+.alma-cycle-insights .ach-back span:first-child{font-size:23px;line-height:1}
+.alma-cycle-insights .ach-detail-kicker{color:#a18da9;font-size:11px;letter-spacing:.14em;text-transform:uppercase;margin:0 0 6px}
+.alma-cycle-insights .ach-detail-title{font-size:21px;font-weight:600;margin:0 0 7px;letter-spacing:-.03em}
+.alma-cycle-insights .ach-detail-caption{color:#9c8faa;font-size:12px;margin:0 0 14px}
+.alma-cycle-insights .ach-detail-metric{border-bottom:1px solid rgba(195,158,211,.12);padding-bottom:10px;margin-bottom:11px}
+.alma-cycle-insights .ach-detail-metric:last-child{border-bottom:0;margin-bottom:0;padding-bottom:0}
+.alma-cycle-insights .ach-detail-metric h4{font-size:12px;font-weight:540;color:#b7a4c4;margin:0 0 4px}
+.alma-cycle-insights .ach-detail-metric .ach-big{font-size:28px;font-weight:580;color:#f3eafa;line-height:1.3}
+.alma-cycle-insights .ach-detail-metric p{font-size:11px;line-height:1.5;color:#95859d;margin:5px 0 0}
+.alma-cycle-insights .ach-detail-legend{display:flex;gap:10px;flex-wrap:wrap;margin:13px 0 0;color:#94869a;font-size:10px}
+.alma-cycle-insights .ach-detail-legend span{display:inline-flex;align-items:center;gap:5px}
+.alma-cycle-insights .ach-detail-legend i{width:6px;height:6px;border-radius:50%;display:inline-block;background:#b975ec}
+.alma-cycle-insights .ach-detail-legend i.period{background:#ff567c}
+.alma-cycle-insights .ach-detail-legend i.fertile{background:#67bfc7}
+.alma-cycle-insights .ach-detail-points{display:grid;gap:13px;padding:4px 0}
+.alma-cycle-insights .ach-detail-point{display:grid;grid-template-columns:24px minmax(0,1fr);gap:10px;align-items:start;font-size:12px;color:#b9a9c5}
+.alma-cycle-insights .ach-detail-point-icon{height:24px;width:24px;border-radius:50%;display:grid;place-items:center;color:#ff6a8b;border:1px solid rgba(255,106,139,.33);font-size:13px}
+.alma-cycle-insights .ach-edit label{display:grid;gap:6px;margin-bottom:12px;color:#b9a9c4;font-size:12px}
+.alma-cycle-insights .ach-edit input{
+  display:block;width:100%;height:42px;border:1px solid rgba(195,158,211,.28);
+  border-radius:11px;background:rgba(8,4,13,.85);color:#fff;
+  color-scheme:dark;padding:0 11px;font-size:14px;
+}
+.alma-cycle-insights .ach-form-error{font-size:11px;color:#ff8dad;min-height:16px}
+.alma-cycle-insights .ach-save{width:100%;height:44px;background:rgba(120,52,160,.27);color:#ebc9ff;border:1px solid rgba(190,103,234,.45);border-radius:12px;font-weight:600}
+.alma-cycle-insights .ach-delete{display:block;margin:18px auto 0;color:#cf7891;background:none;border:0;font-size:12px}
+.alma-cycle-insights button:focus-visible,.alma-cycle-insights input:focus-visible{outline:2px solid #c386ea;outline-offset:2px}
+@media(max-width:360px){
+  #alma-cycle-root .alma-cycle-insights{width:calc(100% - 22px)}
+  .alma-cycle-insights .ach-card{padding:14px 12px}
+  .alma-cycle-insights .ach-metrics{gap:7px}
+  .alma-cycle-insights .ach-dot{flex-basis:4px;width:4px;height:4px;gap:2px}
+}
+@media(prefers-reduced-motion:reduce){
+  #alma-cycle-root .phone-scene.alma-history-scroll{scroll-behavior:auto}
+}
