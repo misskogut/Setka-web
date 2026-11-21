@@ -188,7 +188,7 @@
   position:fixed;
   left:50%;
   transform:translateX(-50%);
-  width:min(calc(100% - 48px),416px);
+  width:min(122px,calc(100% - 50px));
   height:35px;
   z-index:146;
   border:0;
