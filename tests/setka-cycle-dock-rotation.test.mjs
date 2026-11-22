@@ -159,7 +159,7 @@ test('experiment only: fixed dock shell, readable reverse, and original vertical
   assert.doesNotMatch(css,/setka-cycle-icon-depth/);
   assert.match(rotor,/graphic\.cloneNode\(true\)/);
   assert.match(html,/standalone-cycle-dock-objects-v2\.js\?v=/);
-  assert.match(html,/standalone-cycle-dock-rotation-v1\.css\?v=20261122-volumetric-webgl-v2/);
+  assert.match(html,/standalone-cycle-dock-rotation-v1\.css\?v=20261122-original-white-line/);
   assert.doesNotMatch(css,/#st34Nav\s*\{[^}]*transform/);
   assert.match(html,/standalone-vertical-logo-v1\.js\?v=/);
 });
