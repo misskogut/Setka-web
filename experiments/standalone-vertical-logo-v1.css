@@ -212,6 +212,9 @@ body.setka-vlogo-side .setka-vlogo-hotspot svg{opacity:.95;stroke:rgba(213,177,2
 /* The dock is the lower half of the SETKA front, never an element on the
    logo reverse. It is moved into the rotating source only for the gesture. */
 body.setka-vlogo-side:not(.setka-vlogo-flip-active) #st34Nav{display:none!important}
+/* A transformed #app becomes the dock's containing block in Safari.
+   Do not clip its lower edge while the front face is rotating. */
+body.setka-vlogo-flip-active #app{overflow:visible!important}
 body.setka-vlogo-flip-active #app,
 body.setka-vlogo-flip-active #libraryScreen,
 body.setka-vlogo-flip-active #setkaCycleBack,
