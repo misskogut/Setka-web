@@ -56,11 +56,14 @@ try{
        let solid=0;
        for(let i=3;i<rgba.length;i+=4)if(rgba[i]>0)solid++;
        return{angle:window.SETKA_CYCLE_DOCK_ROTATION.getAngle(),
-         solid,error:gl.getError(),opacitySvg,opacity3D};
+         solid,error:gl.getError(),opacitySvg,opacity3D,
+         lineVertices:window.SETKA_CYCLE_3D_MODELS.getInfo().lastLineVertices};
      },angle);
      assert.equal(result.angle,angle);
      assert.equal(result.error,0,"WebGL error");
      assert.ok(result.solid>20,"invisible 3D wire contour at "+angle);
+     assert.ok(result.lineVertices.every(n=>n>0&&n<=120),
+       "messy wireframe regression: "+result.lineVertices.join(",")+" at "+angle);
      if(Math.abs(angle)%180===0){
        assert.ok(result.opacitySvg>.99,"rest must preserve original SVG at "+angle);
        assert.ok(result.opacity3D<.01,"rest must not show a new 3D icon at "+angle);
@@ -71,7 +74,10 @@ try{
      }
    }
    mkdirSync("tests/visual-smoke",{recursive:true});
-   await page.screenshot({path:"tests/visual-smoke/setka-3d-dock-"+(process.env.SETKA_BROWSER||"chromium")+".png"});
+   for(const angle of [0,45,90]){
+     await page.evaluate(a=>window.SETKA_CYCLE_DOCK_ROTATION.render(a),angle);
+     await page.screenshot({path:"tests/visual-smoke/setka-3d-dock-"+angle+"-"+(process.env.SETKA_BROWSER||"chromium")+".png"});
+   }
  }else{
    console.log("SETKA WebGL unavailable in this headless browser; SVG fallback retained");
    assert.equal(await page.locator("#st34Nav .setka-cycle-icon-front").count(),5);
