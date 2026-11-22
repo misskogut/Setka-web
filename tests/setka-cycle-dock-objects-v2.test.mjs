@@ -152,6 +152,38 @@ test("render uses the exact signed card angle for five separate solids; dock nev
  rotor.rest(false);
  assert.equal(x.ctx.window.SETKA_CYCLE_3D_MODELS.getAngle(),0);
 });
+test("white minimalist sketch: unchanged 22px native SVG at rest, thin true-3D contour during flip",()=>{
+ const x=fixture(),eng=x.ctx.window.SETKA_CYCLE_3D_MODELS;
+ const meta=eng.getInfo();
+ assert.equal(meta.lineOnly,true);
+ assert.equal(meta.strokeColor,"white");
+ assert.equal(meta.nativeSizePx,22);
+ assert.ok(x.icons.every(icon=>icon.children.length===1&&icon.children[0].tagName==="svg"));
+ const raw=x.calls.buffers[0];
+ for(let i=0;i<raw.length;i+=9){
+   assert.equal(raw[i+6],1,"vertex red channel must be pure white");
+   assert.equal(raw[i+7],1,"vertex green channel must be pure white");
+   assert.equal(raw[i+8],1,"vertex blue channel must be pure white");
+ }
+ const rotor=x.ctx.window.SETKA_CYCLE_DOCK_ROTATION;
+ rotor.rest(false);
+ assert.equal(x.dock.style["--setka-dock-3d-blend"],"0.0000","initial native icons full strength");
+ rotor.render(90);
+ assert.equal(x.dock.style["--setka-dock-3d-blend"],"1.0000","only white 3D contours at 90 degrees");
+ rotor.render(-45);
+ assert.ok(Math.abs(Number(x.dock.style["--setka-dock-3d-blend"])-Math.SQRT1_2)<0.002);
+ rotor.rest(true);
+ assert.equal(x.dock.style["--setka-dock-3d-blend"],"0.0000","same original sketch after 180");
+ assert.ok(x.calls.viewports.some(v=>v.length===4&&v[2]===44&&v[3]===44),
+   "at DPR=2, icon viewport must be exactly native 22 CSS pixels");
+ assert.match(source,/gl_FragColor=vec4\(vec3\(1\.0\),ink\)/);
+ assert.match(source,/float ink=1\.0-smoothstep\(/);
+ assert.doesNotMatch(source,/vec3 col=clamp\(vColor/);
+ assert.match(css,/opacity:calc\(1 - var\(--setka-dock-3d-blend,0\)\)/);
+ assert.match(css,/opacity:var\(--setka-dock-3d-blend,0\)/);
+ assert.doesNotMatch(css,/visibility:hidden!important/);
+ assert.match(html,/20261122-white-line-silhouettes/);
+});
 test("webgl fallback retains the native SVGs and does not crash the card swipe",()=>{
  const x=fixture({webgl:false}),r=x.ctx.window.SETKA_CYCLE_DOCK_ROTATION;
  assert.equal(x.ctx.window.SETKA_CYCLE_3D_MODELS.isLive(),false);
