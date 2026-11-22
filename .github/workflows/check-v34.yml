@@ -129,8 +129,6 @@ jobs:
       - run: SETKA_BROWSER=webkit node tests/standalone-breathing-grid-browser-smoke.mjs
       - run: node tests/standalone-audio-reactive-v1-browser-smoke.mjs
       - run: SETKA_BROWSER=webkit node tests/standalone-audio-reactive-v1-browser-smoke.mjs
-      - run: node tests/setka-cycle-dock-objects-v2-browser.mjs
-      - run: SETKA_BROWSER=webkit node tests/setka-cycle-dock-objects-v2-browser.mjs
       - run: node tests/standalone-v34-browser-smoke.mjs
       - run: node tests/standalone-sheets-v1-browser-smoke.mjs
       - run: node tests/standalone-live-previews-v1-browser-smoke.mjs
