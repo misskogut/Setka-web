@@ -57,6 +57,7 @@
 <link rel="stylesheet" href="./experiments/standalone-gameplay-overlays-v1.css?v=5a7c024c-original-fade-single-divider">
 <link rel="stylesheet" href="./experiments/standalone-gameplay-music-v1.css?v=ab51c417-small-top-controls">
 <link rel="stylesheet" href="./experiments/standalone-vertical-logo-v1.css?v=20261122-full-dock-flip">
+<link rel="stylesheet" href="./experiments/standalone-cycle-dock-rotation-v1.css?v=20261122-y180">
 <link rel="stylesheet" href="./experiments/standalone-vertical-logo-globe-v3.css?v=20261122-full-card">
 <link rel="stylesheet" href="standalone-desktop-v1.css?v=1">
 <link rel="stylesheet" href="standalone-music-v1.css?v=15-ios-orbit-artifacts-fixed-20261107" />
@@ -397,6 +398,7 @@ body.cycle-flip-active #setkaCycleBack{pointer-events:none}
 <script src="./experiments/standalone-gameplay-music-v1.js?v=ed4b1e65-one-note"></script>
 <script src="./experiments/standalone-today-return-v1.js?v=51d5b8af-step-back"></script>
 
+<script src="./experiments/standalone-cycle-dock-rotation-v1.js?v=20261122-y180"></script>
 <aside class="setka-cycle-overlay" id="setkaCycleBack" hidden aria-label="Календарь-лотос ALMA">
   <iframe title="Оригинальный календарь цикла ALMA" src="./experiments/alma-cycle-source/index.html?v=20261121-inset-insights-c9d418" loading="eager"></iframe>
   <div id="setkaCycleBackGuide" aria-hidden="true"><svg class="setka-card-frame-svg" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" preserveAspectRatio="none"><path class="setka-card-frame-line"/><path class="setka-card-frame-arrows"/></svg></div>
@@ -519,6 +521,7 @@ body.cycle-flip-active #setkaCycleBack{pointer-events:none}
     progress=inCycle?1:0;
     document.body.classList.toggle("cycle-side",inCycle);
     document.body.classList.remove("cycle-flip-active","cycle-busy");
+    window.SETKA_CYCLE_DOCK_ROTATION?.rest(inCycle);
     back.hidden=!inCycle;
     back.inert=!inCycle;
     if(inCycle)syncBackEarColor();
@@ -537,6 +540,9 @@ body.cycle-flip-active #setkaCycleBack{pointer-events:none}
     renderOutlines();
     back.inert=true;
     document.body.classList.add("cycle-flip-active");
+    // The dock never moves: only its five glyphs inherit the card's Y angle.
+    // Ensure both icon faces exist before the first swipe frame.
+    window.SETKA_CYCLE_DOCK_ROTATION?.render(direction*180*progress);
     // Never show the reverse text before the card passes its edge.
     const showFront=!inCycle;
     app.style.visibility=showFront?"":"hidden";
@@ -555,8 +561,10 @@ body.cycle-flip-active #setkaCycleBack{pointer-events:none}
     back.style.visibility=frontVisible?"hidden":"";
     back.style.opacity=frontVisible?"0":"1";
     const sign=direction;
-    app.style.transform="perspective(1450px) rotateY("+(sign*180*progress)+"deg)";
+    const angle=sign*180*progress;
+    app.style.transform="perspective(1450px) rotateY("+angle+"deg)";
     back.style.transform="perspective(1450px) rotateY("+(-sign*180*(1-progress))+"deg)";
+    window.SETKA_CYCLE_DOCK_ROTATION?.render(angle);
   }
 
   function cancelAnimation(){
