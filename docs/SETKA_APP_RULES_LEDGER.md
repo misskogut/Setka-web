@@ -4,6 +4,10 @@
 
 Read with [SETKA_APP_CANONICAL_CONTRACT.md](../SETKA_APP_CANONICAL_CONTRACT.md), [PATTERN_PLATFORM_V2.md](PATTERN_PLATFORM_V2.md), [SETKA_DATA_MODEL_V1.md](../SETKA_DATA_MODEL_V1.md) and root [AGENTS.md](../AGENTS.md). If implementation conflicts with a rule, fix the implementation *and* add executable proof — don't change the rule to disguise the regression.
 
+## APP-3D-FLIP-20261122 · Единая лицевая сторона и длинный оборот с логотипом
+
+**Статус: реализовано в экспериментальном UI, CI-тест добавлен; фактический iPhone/WebKit визуальный приёмочный тест не подтверждён.** В `standalone-v34-cycle-logo3d.html` SETKA + нижний док поворачиваются как одна лицевая сторона: док временно переносится к поворачиваемому источнику с фиксацией экранных координат, затем возвращается на исходное DOM-место и восстанавливает штатные стили. Оборот — одна карточка без дока, высота до нижнего края навигации, тот же центр 3D-поворота. Логотип и сфера продолжают отрисовываться сквозь все углы, с depth-only окклюзией. На ALMA/SETKA и при выходе в игровой экран не менять сохранения, каталог, маршруты вкладок или работу горизонтального переворота. Проверки: `tests/setka-vertical-logo-dock.test.mjs`, GitHub Pages release gate. Статус релиза и устройство проверяются отдельно.
+
 ## Обязательный автоматический аудит интеграции нового паттерна (2026-11-11)
 
 **Никакого ручного добавления ID в отдельные списки.** Новый паттерн определяется по `standalone-pattern-<id>.js`, дескриптору и общей генерации каталога.
