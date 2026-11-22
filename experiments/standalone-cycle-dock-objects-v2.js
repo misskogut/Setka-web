@@ -149,23 +149,25 @@ function builder(){
    for(let k=0;k<3;k++)box(.58,-.39+k*.21,-.005,.11,.11,.26,C.silver);
  }
  function diamond(){
-   // Multilayered faceted gem, not a planar rhombus with thickened stroke.
-   const n=8,ring=[];
+   // A faceted double-crown jewel with true beveled side surfaces.
+   // Two inner girdles and two apexes: the lateral facets remain visible
+   // throughout a Y rotation, not just a thick silhouette line.
+   const n=16,outer=[],front=[],rear=[];
    for(let i=0;i<n;i++){
      const a=TAU*i/n+Math.PI/8;
-     ring.push([Math.cos(a)*.83,Math.sin(a)*.92,0]);
+     const x=Math.cos(a),y=Math.sin(a);
+     outer.push([x*.83,y*.92,0]);
+     front.push([x*.49,y*.60,.40]);
+     rear.push([x*.49,y*.60,-.40]);
    }
-   const front=[0,0,.65],back=[0,0,-.65];
+   const nose=[0,0,.76],tail=[0,0,-.76];
    for(let i=0;i<n;i++){
-     const a=ring[i],b=ring[(i+1)%n];
-     tri(front,a,b,i%2?C.silver:C.crystal);
-     tri(back,b,a,i%2?C.rim:C.purple);
-   }
-   const tipTop=[0,1.02,0],tipBottom=[0,-1.02,0];
-   for(let i=0;i<n;i++){
-     const a=ring[i],b=ring[(i+1)%n];
-     if(a[1]>=0&&b[1]>=0)tri(tipTop,b,a,C.steel);
-     if(a[1]<=0&&b[1]<=0)tri(tipBottom,a,b,C.rim);
+     const j=(i+1)%n;
+     const shade=i%4===0?C.silver:i%2?C.crystal:C.steel;
+     quad(outer[i],outer[j],front[j],front[i],shade);
+     quad(outer[j],outer[i],rear[i],rear[j],i%2?C.rim:C.purple);
+     tri(nose,front[i],front[j],i%2?C.paper:C.crystal);
+     tri(tail,rear[j],rear[i],i%2?C.steel:C.rim);
    }
  }
  function bust(){
