@@ -106,7 +106,7 @@ function buildMesh(){
  const data=[];
  const push=(p,n,m)=>data.push(p[0],p[1],p[2],n[0],n[1],n[2],m);
  const tri=(a,b,c,na,nb,nc,m)=>{
-  push(a,na);push(b,nb);push(c,nc);
+  push(a,na,m);push(b,nb,m);push(c,nc,m);
  };
  const flat=(a,b,c,n,m)=>tri(a,b,c,n,n,n,m);
  const quad=(a,b,c,d,n,m)=>{flat(a,b,c,n,m);flat(a,c,d,n,m)};
