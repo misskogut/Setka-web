@@ -148,7 +148,7 @@ test('the dock joins the SETKA face and returns home after both flip directions'
   assert.equal(m.body.classList.contains('setka-vlogo-side'), false);
   assert.equal(m.app.style.visibility, undefined);
   assert.equal(m.nav.nextSibling, m.sentinel);
-  assert.ok(m.calls.some(c => c.visible === true && c.angle > 50 && c.angle < 130),
+  assert.ok(m.calls.some(c => c.visible === true && Math.abs(c.angle) > 50 && Math.abs(c.angle) < 130),
     '3D globe must remain drawn through mid-flip');
 });
 
