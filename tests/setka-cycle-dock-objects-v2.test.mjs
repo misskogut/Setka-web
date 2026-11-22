@@ -175,7 +175,15 @@ test("white minimalist sketch: unchanged 22px native SVG at rest, thin true-3D c
  rotor.render(90);
  assert.equal(x.dock.style["--setka-dock-3d-blend"],"1.0000","only white 3D contours at 90 degrees");
  rotor.render(-45);
- assert.ok(Math.abs(Number(x.dock.style["--setka-dock-3d-blend"])-Math.SQRT1_2)<0.002);
+ assert.ok(Number(x.dock.style["--setka-dock-3d-blend"])>.7,"3D contour visible by 45 degrees");
+ rotor.render(-12);
+ assert.equal(x.dock.style["--setka-dock-3d-blend"],"0.0000","small tilts must NOT draw ghost lines on SVG");
+ rotor.render(68);
+ const sparse=eng.getInfo().lastLineVertices.map(v=>v/2);
+ assert.ok(sparse.every(v=>v>0&&v<=60),"each icon has a bounded sparse contour, not tangled mesh edges: "+sparse.join(","));
+ assert.ok(sparse[1]<=4,"plus remains just two rods and at most two end caps");
+ assert.ok(sparse[2]<=48,"heart must be one 3D perimeter, never repeated internal rings");
+ assert.ok(sparse[4]<=60,"profile remains one head and one shoulder arch");
  rotor.rest(true);
  assert.equal(x.dock.style["--setka-dock-3d-blend"],"0.0000","same original sketch after 180");
  assert.ok(x.calls.viewports.some(v=>v.length===4&&v[2]===44&&v[3]===44),
@@ -183,6 +191,9 @@ test("white minimalist sketch: unchanged 22px native SVG at rest, thin true-3D c
  assert.match(source,/gl_FragColor=vec4\(1\.0,1\.0,1\.0,1\.0\)/);
  assert.match(source,/gl\.drawArrays\(gl\.LINES,0,lines\.length\/3\)/);
  assert.match(source,/function outlineFor\(model,radians\)/);
+ assert.match(source,/function outlineHull\(points,c,s,steps=HULL_STEPS\)/);
+ assert.doesNotMatch(source,/model\.surfaceEdges/);
+ assert.match(source,/const ink=t\*t\*\(3-2\*t\)/);
  assert.doesNotMatch(source,/gl\.drawArrays\(gl\.TRIANGLES/);
  assert.doesNotMatch(source,/vec3 col=clamp\(vColor/);
  assert.match(css,/opacity:calc\(1 - var\(--setka-dock-3d-blend,0\)\)/);
