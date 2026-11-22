@@ -11,7 +11,7 @@ function fakeGL(){
  const calls={draws:[],angles:[],buffers:[],viewports:[],clear:[]};
  const gl={
    VERTEX_SHADER:35633,FRAGMENT_SHADER:35632,COMPILE_STATUS:35713,LINK_STATUS:35714,
-   ARRAY_BUFFER:34962,STATIC_DRAW:35044,FLOAT:5126,TRIANGLES:4,
+   ARRAY_BUFFER:34962,STATIC_DRAW:35044,DYNAMIC_DRAW:35048,FLOAT:5126,TRIANGLES:4,LINES:1,
    DEPTH_TEST:2929,LEQUAL:515,SCISSOR_TEST:3089,CULL_FACE:2884,
    COLOR_BUFFER_BIT:16384,DEPTH_BUFFER_BIT:256,
    createShader:()=>({}),shaderSource(){},compileShader(){},
@@ -143,6 +143,10 @@ test("render uses the exact signed card angle for five separate solids; dock nev
  assert.equal(x.ctx.window.SETKA_CYCLE_3D_MODELS.getAngle(),-68.25);
  assert.equal(rotor.getAngle(),-68.25);
  assert.equal(x.calls.draws.length-initial,5);
+ assert.ok(x.calls.draws.every(call=>call[0]===1),
+   "only GL_LINES are permitted — no filled white/colored facets");
+ assert.ok(x.ctx.window.SETKA_CYCLE_3D_MODELS.getInfo().lastLineVertices.every(v=>v>0),
+   "each 3D sketch must have visible silhouette edges");
  assert.ok(Math.abs(x.calls.angles.at(-1)-(-68.25*Math.PI/180))<1e-8);
  assert.equal(x.dock.style.transform,undefined);
  assert.equal(x.dock.parentNode,x.body);
@@ -176,8 +180,10 @@ test("white minimalist sketch: unchanged 22px native SVG at rest, thin true-3D c
  assert.equal(x.dock.style["--setka-dock-3d-blend"],"0.0000","same original sketch after 180");
  assert.ok(x.calls.viewports.some(v=>v.length===4&&v[2]===44&&v[3]===44),
    "at DPR=2, icon viewport must be exactly native 22 CSS pixels");
- assert.match(source,/gl_FragColor=vec4\(vec3\(1\.0\),ink\)/);
- assert.match(source,/float ink=1\.0-smoothstep\(/);
+ assert.match(source,/gl_FragColor=vec4\(1\.0,1\.0,1\.0,1\.0\)/);
+ assert.match(source,/gl\.drawArrays\(gl\.LINES,0,lines\.length\/3\)/);
+ assert.match(source,/function outlineFor\(model,radians\)/);
+ assert.doesNotMatch(source,/gl\.drawArrays\(gl\.TRIANGLES/);
  assert.doesNotMatch(source,/vec3 col=clamp\(vColor/);
  assert.match(css,/opacity:calc\(1 - var\(--setka-dock-3d-blend,0\)\)/);
  assert.match(css,/opacity:var\(--setka-dock-3d-blend,0\)/);
