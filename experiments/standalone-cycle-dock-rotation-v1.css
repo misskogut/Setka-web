@@ -1,75 +1,43 @@
 /*
- * SETKA / ALMA experimental horizontal flip.
- * The original navigation capsule, hit targets and labels stay fixed.
- * Only the five 22px icon objects inherit the exact card Y angle.
- * Real Z-spaced SVG strokes show the glyph's thickness when edge-on;
- * separately oriented rear geometry remains legible at +/-180 degrees.
+ * Horizontal SETKA <-> ALMA.
+ * Native capsule stays fixed; the shared WebGL canvas paints five volumetric
+ * meshes over the original SVG locations. Native labels and hit areas remain.
+ * The SVG fallback uses simple two-sided glyphs on unsupported browsers.
  */
-#st34Nav .st-dock-icon:has(> .setka-cycle-icon-front){
+#st34Nav.setka-cycle-webgl-objects{isolation:isolate}
+#st34Nav.setka-cycle-webgl-objects .st-dock-icon>svg{
+  visibility:hidden!important;
+}
+#st34Nav #setkaCycle3DObjects{
+  display:block;
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  pointer-events:none!important;
+  z-index:5;
+  background:transparent;
+  border-radius:inherit;
+}
+#st34Nav .st-dock-icon:has(> .setka-cycle-icon-face){
   position:relative;
   display:block;
-  width:22px;
-  height:22px;
-  -webkit-transform-origin:50% 50%;
-  transform-origin:50% 50%;
+  width:22px;height:22px;
   -webkit-transform-style:preserve-3d;
   transform-style:preserve-3d;
   -webkit-transform:perspective(1450px) rotateY(var(--setka-cycle-dock-angle,0deg));
   transform:perspective(1450px) rotateY(var(--setka-cycle-dock-angle,0deg));
   pointer-events:none;
 }
-#st34Nav .setka-cycle-icon-face,
-#st34Nav .setka-cycle-icon-depth{
-  position:absolute;
-  inset:0;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  -webkit-transform-style:preserve-3d;
-  transform-style:preserve-3d;
-  pointer-events:none;
-  -webkit-user-select:none;
-  user-select:none;
-}
 #st34Nav .setka-cycle-icon-face{
+  position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:center;
   -webkit-backface-visibility:hidden;
   backface-visibility:hidden;
-}
-#st34Nav .setka-cycle-icon-front{
-  -webkit-transform:translateZ(var(--setka-cycle-icon-half-depth,4.5px));
-  transform:translateZ(var(--setka-cycle-icon-half-depth,4.5px));
-}
-#st34Nav .setka-cycle-icon-rear{
-  -webkit-transform:rotateY(180deg) translateZ(var(--setka-cycle-icon-half-depth,4.5px));
-  transform:rotateY(180deg) translateZ(var(--setka-cycle-icon-half-depth,4.5px));
-}
-#st34Nav .setka-cycle-icon-depth{
-  -webkit-backface-visibility:visible;
-  backface-visibility:visible;
-  -webkit-transform:translateZ(var(--setka-cycle-slice-z,0px));
-  transform:translateZ(var(--setka-cycle-slice-z,0px));
-}
-#st34Nav .setka-cycle-icon-face > svg,
-#st34Nav .setka-cycle-icon-depth > svg{
-  display:block;
-  width:22px;
-  height:22px;
-  flex:0 0 22px;
-  overflow:visible;
   pointer-events:none;
 }
-#st34Nav .setka-cycle-icon-depth > svg{
-  /* Dark violet-silver sides against the original neutral front glyph.
-     Broader side strokes fill the spaces between the separated Z slices. */
-  color:rgba(139,115,157,.93);
-  stroke-width:2.25;
-}
-#st34Nav .setka-cycle-icon-front > svg,
-#st34Nav .setka-cycle-icon-rear > svg{
-  /* Native icon stroke/color remain unchanged at rest. */
-  color:inherit;
-}
-/* Do not touch the existing .st-dock-label layout, positions or tab handlers.
-   A horizontal turn temporarily blocks clicks, as before. */
+#st34Nav .setka-cycle-icon-front{transform:rotateY(0deg);-webkit-transform:rotateY(0deg)}
+#st34Nav .setka-cycle-icon-rear{transform:rotateY(180deg);-webkit-transform:rotateY(180deg)}
+#st34Nav .setka-cycle-icon-face>svg{width:22px;height:22px;flex:0 0 22px}
 body.cycle-flip-active #st34Nav button,
 body.cycle-busy #st34Nav button{pointer-events:none!important}
