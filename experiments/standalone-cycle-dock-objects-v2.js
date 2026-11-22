@@ -189,7 +189,7 @@ function project(p,c,s){
   const k=3.65/(3.65-z);
   return[(c*p[0]+s*p[2])*k,p[1]*k];
 }
-function outlineHull(points,c,s,steps=HULL_STEPS){
+function outlineHull(points,c,s,steps=HULL_STEPS,heart=false){
   const projected=points.map(p=>project(p,c,s));
   const selected=[];
   for(let i=0;i<steps;i++){
@@ -207,6 +207,17 @@ function outlineHull(points,c,s,steps=HULL_STEPS){
   for(let i=0;i<selected.length;i++){
     const pa=points[selected[i]],pb=points[selected[(i+1)%selected.length]];
     if(Math.hypot(...sub(pa,pb))<.015)continue;
+    if(heart&&Math.abs(c)>.22){
+      const a=project(pa,c,s),b=project(pb,c,s);
+      // A physically recessed top cleft is what distinguishes a rounded
+      // heart from a plain ellipsoid. Insert ONE notch, never a mesh grid.
+      if(a[0]*b[0]<0&&Math.min(a[1],b[1])>.36){
+        const t=Math.max(0,Math.min(1,(Math.abs(c)-.22)/.48));
+        const notch=[0,(a[1]+b[1])*.5*(1-t)+.295*t,0];
+        out.push(...pa,...notch,...notch,...pb);
+        continue;
+      }
+    }
     out.push(...pa,...pb);
   }
   return out;
@@ -270,7 +281,7 @@ function outlineFor(model,radians){
   }
   // Heart is the inflated 3D heart solid; the diamond is its actual
   // faceted volume. One smooth changing silhouette each (no mesh grid).
-  return new Float32Array(outlineHull(model.silhouetteSamples,c,s));
+  return new Float32Array(outlineHull(model.silhouetteSamples,c,s,HULL_STEPS,model.key==="pulse"));
 }
 const info=models.map(m=>({key:m.key,vertexCount:m.vertices.length/9,
   object3D:true,solidMesh:true,surfaceEdges:m.silhouetteSamples.length,
