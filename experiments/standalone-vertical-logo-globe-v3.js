@@ -267,7 +267,8 @@ function paint(){
  gl.uniformMatrix4fv(U.projection,false,projection(f));
  // All elements move as one solid frame. No extra tilt, no perspective
  // changes, no rotating of individual components relative to the globe.
- gl.uniform1f(U.flip,angle*Math.PI/180);
+ // Match CSS screen-down rotation to WebGL's Y-up coordinate system.
+ gl.uniform1f(U.flip,-angle*Math.PI/180);
  gl.uniform1f(U.scale,scale);
  gl.drawArrays(gl.TRIANGLES,0,total);
 }
