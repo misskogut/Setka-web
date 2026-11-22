@@ -191,7 +191,7 @@ test("white minimalist sketch: unchanged 22px native SVG at rest, thin true-3D c
  assert.match(source,/gl_FragColor=vec4\(1\.0,1\.0,1\.0,1\.0\)/);
  assert.match(source,/gl\.drawArrays\(gl\.LINES,0,lines\.length\/3\)/);
  assert.match(source,/function outlineFor\(model,radians\)/);
- assert.match(source,/function outlineHull\(points,c,s,steps=HULL_STEPS\)/);
+ assert.match(source,/function outlineHull\(points,c,s,steps=HULL_STEPS,heart=false\)/);
  assert.doesNotMatch(source,/model\.surfaceEdges/);
  assert.match(source,/const ink=t\*t\*\(3-2\*t\)/);
  assert.doesNotMatch(source,/gl\.drawArrays\(gl\.TRIANGLES/);
