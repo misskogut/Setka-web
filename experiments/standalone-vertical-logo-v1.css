@@ -14,7 +14,7 @@
 .setka-vlogo-card{
   position:absolute;
   top:var(--setka-cycle-card-top,12px);
-  bottom:var(--setka-cycle-card-bottom,84px);
+  bottom:var(--setka-vlogo-card-bottom,calc(8px + env(safe-area-inset-bottom,0px)));
   left:50%;
   transform:translateX(-50%);
   width:min(calc(100% - 28px),432px);
@@ -201,7 +201,7 @@
   -webkit-tap-highlight-color:transparent;
 }
 .setka-vlogo-hotspot.top{top:var(--setka-cycle-card-top,12px)}
-.setka-vlogo-hotspot.bottom{bottom:var(--setka-cycle-card-bottom,84px)}
+.setka-vlogo-hotspot.bottom{bottom:var(--setka-vlogo-card-bottom,calc(8px + env(safe-area-inset-bottom,0px)))}
 .setka-vlogo-hotspot svg{width:15px;height:9px;stroke:currentColor;stroke-width:1.35;fill:none;stroke-linecap:round;stroke-linejoin:round;opacity:.64}
 .setka-vlogo-hotspot.top svg{transform:rotate(180deg)}
 .setka-vlogo-hotspot:focus-visible{outline:1px solid rgba(184,137,208,.58);outline-offset:-3px;border-radius:10px}
@@ -209,6 +209,10 @@ body.setka-vlogo-gameplay .setka-vlogo-hotspot{display:none!important;pointer-ev
 body.setka-vlogo-side .setka-cycle-edge,
 body.setka-vlogo-flip-active .setka-cycle-edge{pointer-events:none!important}
 body.setka-vlogo-side .setka-vlogo-hotspot svg{opacity:.95;stroke:rgba(213,177,232,.62)}
+/* The dock is the lower half of the SETKA front, never an element on the
+   logo reverse. It is moved into the rotating source only for the gesture. */
+body.setka-vlogo-side:not(.setka-vlogo-flip-active) #st34Nav{display:none!important}
+body.setka-vlogo-flip-active #app,
 body.setka-vlogo-flip-active #libraryScreen,
 body.setka-vlogo-flip-active #setkaCycleBack,
 body.setka-vlogo-flip-active #setkaVerticalLogo{
