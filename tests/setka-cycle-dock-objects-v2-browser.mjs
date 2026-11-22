@@ -36,6 +36,9 @@ try{
  await page.addScriptTag({content:readFileSync("experiments/standalone-cycle-dock-rotation-v1.js","utf8")});
  const info=await page.evaluate(()=>window.SETKA_CYCLE_3D_MODELS?.getInfo());
  assert.ok(info&&info.models.length===5);
+ assert.equal(info.lineOnly,true);
+ assert.equal(info.nativeSizePx,22);
+ assert.equal(info.strokeColor,"white");
  const original=await page.locator("#st34Nav").boundingBox();
  assert.ok(original?.height>=60);
  assert.deepEqual(await page.locator(".st-dock-label").allTextContents(),names);
@@ -43,17 +46,29 @@ try{
    for(const angle of [0,-45,-90,-135,-180,0]){
      const result=await page.evaluate(angle=>{
        window.SETKA_CYCLE_DOCK_ROTATION.render(angle);
+       const svg=document.querySelector("#st34Nav .st-dock-icon>svg");
        const canvas=document.getElementById("setkaCycle3DObjects");
+       const opacitySvg=Number(getComputedStyle(svg).opacity);
+       const opacity3D=Number(getComputedStyle(canvas).opacity);
        const gl=canvas?.getContext("webgl");
        const rgba=new Uint8Array(canvas.width*canvas.height*4);
        gl.readPixels(0,0,canvas.width,canvas.height,gl.RGBA,gl.UNSIGNED_BYTE,rgba);
        let solid=0;
        for(let i=3;i<rgba.length;i+=4)if(rgba[i]>0)solid++;
-       return{angle:window.SETKA_CYCLE_DOCK_ROTATION.getAngle(),solid,error:gl.getError()};
+       return{angle:window.SETKA_CYCLE_DOCK_ROTATION.getAngle(),
+         solid,error:gl.getError(),opacitySvg,opacity3D};
      },angle);
      assert.equal(result.angle,angle);
      assert.equal(result.error,0,"WebGL error");
-     assert.ok(result.solid>90,"invisible 3D mesh at "+angle);
+     assert.ok(result.solid>20,"invisible 3D wire contour at "+angle);
+     if(Math.abs(angle)%180===0){
+       assert.ok(result.opacitySvg>.99,"rest must preserve original SVG at "+angle);
+       assert.ok(result.opacity3D<.01,"rest must not show a new 3D icon at "+angle);
+     }
+     if(Math.abs(angle)===90){
+       assert.ok(result.opacitySvg<.01,"middle of turn hides original SVG");
+       assert.ok(result.opacity3D>.99,"middle of turn shows only white 3D contour");
+     }
    }
    mkdirSync("tests/visual-smoke",{recursive:true});
    await page.screenshot({path:"tests/visual-smoke/setka-3d-dock-"+(process.env.SETKA_BROWSER||"chromium")+".png"});
