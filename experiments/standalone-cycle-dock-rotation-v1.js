@@ -40,6 +40,7 @@ function prepare(){
     }
     const svg=icon.querySelector("svg");
     if(!svg)continue;
+    icon.style.setProperty("--setka-cycle-icon-half-depth",(DEPTH_PX/2).toFixed(2)+"px");
     const front=face("front",svg);
     const rear=face("rear",cloneGraphic(svg));
     icon.appendChild(front);
