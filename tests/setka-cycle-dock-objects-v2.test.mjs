@@ -188,7 +188,7 @@ test("white minimalist sketch: unchanged 22px native SVG at rest, thin true-3D c
  assert.match(css,/opacity:calc\(1 - var\(--setka-dock-3d-blend,0\)\)/);
  assert.match(css,/opacity:var\(--setka-dock-3d-blend,0\)/);
  assert.doesNotMatch(css,/visibility:hidden!important/);
- assert.match(html,/20261122-white-line-silhouettes/);
+ assert.match(html,/20261122-true-wire-silhouettes/);
 });
 test("webgl fallback retains the native SVGs and does not crash the card swipe",()=>{
  const x=fixture({webgl:false}),r=x.ctx.window.SETKA_CYCLE_DOCK_ROTATION;
