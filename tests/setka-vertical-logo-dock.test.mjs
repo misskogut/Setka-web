@@ -134,7 +134,7 @@ test('the dock joins the SETKA face and returns home after both flip directions'
   assert.equal(m.nav.parentNode, m.app);
   assert.equal(m.nav.style.top, '680.00px');
   assert.equal(m.nav.style.bottom, 'auto');
-  m.advance(0); m.advance(380); m.advance(1000);
+  m.advance(0); m.advance(170); m.advance(1000);
   assert.equal(m.nav.parentNode, m.body);
   assert.equal(m.nav.nextSibling, m.sentinel);
   assert.equal(m.nav.style.top, undefined);
