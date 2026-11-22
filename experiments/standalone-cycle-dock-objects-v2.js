@@ -261,7 +261,9 @@ function outlineFor(model,radians){
     contour(0,-.48,.81,.46,.43,0,Math.PI,24);
     // The shoulder curve connects to the short straight sides of original
     // SVG profile, but does not draw an enclosing bottom ellipse.
-    const left=[-.81*c,-.48,.43*-s],right=[.81*c,-.48,.43*s];
+    const shoulderR=Math.max(.0001,Math.hypot(.81*c,.43*s));
+    const left=[-.81*.81*c/shoulderR,-.48,-.43*.43*s/shoulderR],
+          right=[.81*.81*c/shoulderR,-.48,.43*.43*s/shoulderR];
     strokedLine(out,left,[left[0],-.78,left[2]]);
     strokedLine(out,right,[right[0],-.78,right[2]]);
     return new Float32Array(out);
@@ -408,7 +410,11 @@ function render(degrees){
  lastAngle=Number.isFinite(degrees)?degrees:0;
  // Native SVG is exact at rest (0/180). As the real card turns, crossfade
  // into the view-dependent white wire silhouette. No size / color jump.
- const ink=Math.abs(Math.sin(lastAngle*Math.PI/180));
+ // Don't ghost the 3D edge over the original sketch as soon as the card
+ // moves a few degrees: early frames must remain visually identical.
+ const depth=Math.abs(Math.sin(lastAngle*Math.PI/180));
+ const t=Math.max(0,Math.min(1,(depth-.26)/.62));
+ const ink=t*t*(3-2*t);
  dock.style.setProperty("--setka-dock-3d-blend",ink.toFixed(4));
  draw(lastAngle);
 }
