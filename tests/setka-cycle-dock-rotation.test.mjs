@@ -83,8 +83,15 @@ test('all five icons have real front/reverse glyphs, labels and stationary dock 
   const x=fixture('');
   assert.equal(x.nav.parentNode,x.body);
   for(let i=0;i<5;i++){
-    assert.equal(x.icons[i].children.length,2);
+    assert.equal(x.icons[i].children.length,13,'2 faces + 11 physical depth slices');
     const faces=x.faceOf(x.icons[i]);assert.equal(faces.length,2);
+    const sides=x.icons[i].children.filter(el=>el.className==='setka-cycle-icon-depth');
+    assert.equal(sides.length,11);
+    const positions=sides.map(el=>Number.parseFloat(el.style['--setka-cycle-slice-z']));
+    assert.ok(positions.every(Number.isFinite),'every 3D slice must have a Z coordinate');
+    assert.ok(positions[0]>0 && positions.at(-1)<0,'Z slices must span both sides of icon center');
+    assert.ok(positions.every((z,j)=>j===0||z<positions[j-1]),'slices progress monotonically through depth');
+    assert.equal(x.icons[i].style['--setka-cycle-icon-half-depth'],'4.50px');
     assert.equal(faces[0].children[0].tagName,'svg');
     assert.equal(faces[1].children[0].tagName,'svg');
     assert.equal(faces[1].children[0].attrs['aria-hidden'],'true');
@@ -94,7 +101,12 @@ test('all five icons have real front/reverse glyphs, labels and stationary dock 
   assert.equal(x.angle(),57.25);
   x.window.SETKA_CYCLE_DOCK_ROTATION.render(-57.25);
   assert.equal(x.angle(),-57.25);
-  for(const icon of x.icons)assert.equal(x.faceOf(icon).length,2,'no duplicate faces');
+  assert.equal(x.window.SETKA_CYCLE_DOCK_ROTATION.getGeometry().depthPx,9);
+  assert.equal(x.window.SETKA_CYCLE_DOCK_ROTATION.getGeometry().slices,11);
+  for(const icon of x.icons){
+    assert.equal(x.faceOf(icon).length,2,'no duplicate faces');
+    assert.equal(icon.children.length,13,'re-render must not duplicate Z geometry');
+  }
 });
 
 test('horizontal SETKA to cycle uses EXACT same live Y angle for every glyph',()=>{
@@ -150,6 +162,12 @@ test('experiment only: fixed dock shell, readable reverse, and original vertical
   assert.match(html,/SETKA_CYCLE_DOCK_ROTATION\?\.rest\(inCycle\)/);
   assert.match(css,/#st34Nav \.setka-cycle-icon-rear/);
   assert.match(css,/-webkit-backface-visibility:hidden/);
+  assert.match(css,/#st34Nav \.setka-cycle-icon-depth/);
+  assert.match(css,/translateZ\(var\(--setka-cycle-slice-z/);
+  assert.match(css,/rotateY\(180deg\) translateZ\(var\(--setka-cycle-icon-half-depth/);
+  assert.match(rotor,/svg\.cloneNode\(true\)/);
+  assert.match(rotor,/DEPTH_PX=9/);
+  assert.match(html,/standalone-cycle-dock-rotation-v1\.css\?v=20261122-depth9-11/);
   assert.doesNotMatch(css,/#st34Nav\s*\{[^}]*transform/);
   assert.match(html,/standalone-vertical-logo-v1\.js\?v=/);
 });
