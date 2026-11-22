@@ -232,16 +232,34 @@ gl.enable(gl.DEPTH_TEST);
 gl.depthFunc(gl.LEQUAL);
 gl.disable(gl.CULL_FACE);
 gl.clearColor(0,0,0,0);
-gl.bindBuffer(gl.ARRAY_BUFFER,buf);
-gl.vertexAttribPointer(A.pos,3,gl.FLOAT,false,28,0);
-gl.enableVertexAttribArray(A.pos);
-gl.vertexAttribPointer(A.normal,3,gl.FLOAT,false,28,12);
-gl.enableVertexAttribArray(A.normal);
-gl.vertexAttribPointer(A.material,1,gl.FLOAT,false,28,24);
-gl.enableVertexAttribArray(A.material);
+// This invisible 3D plane is the CARD ITSELF. It writes only depth,
+ // so the raised globe is hidden ONLY when geometrically behind the card.
+ // The WebGL canvas is above the page in compositing order, therefore CSS
+ // backface-visibility cannot substitute for this depth occlusion.
+const plateBuffer=gl.createBuffer();
+function bindMesh(buffer){
+ gl.bindBuffer(gl.ARRAY_BUFFER,buffer);
+ gl.vertexAttribPointer(A.pos,3,gl.FLOAT,false,28,0);
+ gl.enableVertexAttribArray(A.pos);
+ gl.vertexAttribPointer(A.normal,3,gl.FLOAT,false,28,12);
+ gl.enableVertexAttribArray(A.normal);
+ gl.vertexAttribPointer(A.material,1,gl.FLOAT,false,28,24);
+ gl.enableVertexAttribArray(A.material);
+}
+bindMesh(buf);
+function cardPlane(w,h,scale){
+ const x=w/(2*scale),y=h/(2*scale),z=0;
+ const v=[-x,-y,z,x,-y,z,x,y,z,-x,y,z];
+ const vertices=[];
+ for(const i of [0,1,2,0,2,3]){
+   const k=i*3;vertices.push(v[k],v[k+1],v[k+2],0,0,1,5);
+ }
+ gl.bindBuffer(gl.ARRAY_BUFFER,plateBuffer);
+ gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(vertices),gl.DYNAMIC_DRAW);
+}
 let active=false,lost=false,disposed=false,angle=0;
 function projection(frame){
- const D=1450,near=.5,far=3800,f=2*D/frame.h,nf=1/(near-far);
+ const D=1450,near=.5,far=3800,f=2*D/frame.renderH,nf=1/(near-far);
  return new Float32Array([
     f/frame.aspect,0,0,0, 0,f,0,0,
     0,0,(far+near)*nf,-1, 0,0,2*far*near*nf,0
@@ -252,12 +270,18 @@ function resize(){
  // box. Otherwise the globe would stretch grotesquely at the 90° midpoint.
  const w=card.offsetWidth||Math.min(window.innerWidth-28,432);
  const h=card.offsetHeight||Math.max(400,window.innerHeight-110);
+ // Add transparent overscan around the flat card so the planet can extend
+ // past its edge while the user holds it at an intermediate rotation.
+ const padX=72,padY=60,renderW=w+2*padX,renderH=h+2*padY;
  const dpr=Math.min(1.8,window.devicePixelRatio||1);
- const pw=Math.max(2,Math.round(w*dpr)),ph=Math.max(2,Math.round(h*dpr));
+ const pw=Math.max(2,Math.round(renderW*dpr)),ph=Math.max(2,Math.round(renderH*dpr));
  if(canvas.width!==pw||canvas.height!==ph){
+   canvas.style.width=renderW+"px";
+   canvas.style.height=renderH+"px";
+   canvas.style.top="calc(var(--setka-cycle-card-top,12px) - "+padY+"px)";
    canvas.width=pw;canvas.height=ph;gl.viewport(0,0,pw,ph);
  }
- return{w,h,aspect:w/h};
+ return{w,h,renderW,renderH,aspect:renderW/renderH};
 }
 function paint(){
  if(!active||lost||disposed)return;
@@ -270,6 +294,17 @@ function paint(){
  // Match CSS screen-down rotation to WebGL's Y-up coordinate system.
  gl.uniform1f(U.flip,-angle*Math.PI/180);
  gl.uniform1f(U.scale,scale);
+ // First draw an invisible, infinitely thin card to the DEPTH BUFFER.
+ // The sphere is rendered on every frame, including angle=180° and 90°;
+ // only the parts naturally behind the card are occluded. No 50% toggle.
+ cardPlane(f.w,f.h,scale);
+ gl.bindBuffer(gl.ARRAY_BUFFER,plateBuffer);
+ bindMesh(plateBuffer);
+ gl.colorMask(false,false,false,false);
+ gl.depthMask(true);
+ gl.drawArrays(gl.TRIANGLES,0,6);
+ gl.colorMask(true,true,true,true);
+ bindMesh(buf);
  gl.drawArrays(gl.TRIANGLES,0,total);
 }
 function render(opts={}){
@@ -288,10 +323,10 @@ window.addEventListener("resize",()=>{if(active)paint()},{passive:true});
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&active)paint()});
 window.SETKA_SOLID_WORDMARK={
  render,
- getInfo:()=>({...stats,real3D:true,renderer:"WebGL globe v3",angle,active,rigid:true}),
+ getInfo:()=>({...stats,real3D:true,renderer:"WebGL globe v3",angle,active,rigid:true,continuous:true,depthOcclusion:true}),
  dispose(){
   disposed=true;active=false;canvas.remove();
-  gl.deleteBuffer(buf);gl.deleteProgram(prog);
+  gl.deleteBuffer(buf);gl.deleteBuffer(plateBuffer);gl.deleteProgram(prog);
   document.body.classList.remove("setka-vlogo-webgl");
  }
 };
