@@ -342,6 +342,7 @@ function draw(angle){
    gl.scissor(r.x,r.y,r.size,r.size);
    gl.clear(gl.DEPTH_BUFFER_BIT);
    const lines=outlineFor(m,angle*Math.PI/180);
+   m.lineVertices=lines.length/3;
    if(lines.length<6)continue;
    gl.bindBuffer(gl.ARRAY_BUFFER,outlineBuffer);
    gl.bufferData(gl.ARRAY_BUFFER,lines,gl.DYNAMIC_DRAW);
@@ -367,6 +368,7 @@ window.SETKA_CYCLE_3D_MODELS={
  render,rest,isLive:()=>live,
  getAngle:()=>lastAngle,
  getInfo:()=>({live,renderCount,drawCalls:models.length,models:info,
+   lastLineVertices:models.map(m=>m.lineVertices||0),
    oneWebGLContext:true,staticDock:true,trueVolume:true,
    lineOnly:true,silhouetteOnly:true,strokeColor:"white",nativeSizePx:22,
    vertexCount:info.reduce((s,x)=>s+x.vertexCount,0)})
