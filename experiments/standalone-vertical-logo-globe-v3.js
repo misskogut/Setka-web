@@ -15,7 +15,7 @@ canvas.setAttribute("aria-hidden","true");
 canvas.style.cssText=[
  "position:fixed","left:50%","top:var(--setka-cycle-card-top,12px)",
  "width:min(calc(100% - 28px),432px)",
- "height:calc(100dvh - var(--setka-cycle-card-top,12px) - var(--setka-cycle-card-bottom,84px))",
+ "height:calc(100dvh - var(--setka-cycle-card-top,12px) - var(--setka-vlogo-card-bottom,calc(8px + env(safe-area-inset-bottom,0px))))",
  "transform:translateX(-50%)","pointer-events:none","z-index:144",
  "background:transparent","display:none","contain:layout style"
 ].join(";")+";";
