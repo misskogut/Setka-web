@@ -123,9 +123,10 @@ function draw(v){
   logo.style.opacity=front?"0":"1";
   source.style.transform="perspective(1450px) rotateX("+(-direction*180*p).toFixed(3)+"deg)";
   logo.style.transform="perspective(1450px) rotateX("+(direction*180*(1-p)).toFixed(3)+"deg)";
-  // The front/back pages are CSS planes. The title is a real independent
-  // 3D solid: at the 90-degree midpoint its SIDE faces remain visible.
-  renderSolid({angle:direction*180*(1-p),visible:p>=.5});
+  // Keep the rigid globe + raised title rendered for the ENTIRE gesture.
+  // WebGL's depth-only card plane hides only geometry physically BEHIND it.
+  // Never switch the model off at 50%: that used to make the planet pop out.
+  renderSolid({angle:direction*180*(1-p),visible:true});
 }
 function settle(toLogo){
   const end=toLogo?1:0;
