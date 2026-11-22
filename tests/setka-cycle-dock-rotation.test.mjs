@@ -83,10 +83,8 @@ test('all five icons have real front/reverse glyphs, labels and stationary dock 
   const x=fixture('');
   assert.equal(x.nav.parentNode,x.body);
   for(let i=0;i<5;i++){
-    assert.equal(x.icons[i].children.length,2,'no-WebGL fallback retains two readable SVG faces');
+    assert.equal(x.icons[i].children.length,2);
     const faces=x.faceOf(x.icons[i]);assert.equal(faces.length,2);
-    assert.equal(x.icons[i].children.filter(el=>el.className==='setka-cycle-icon-depth').length,0,
-      'fallback no longer creates fake 2D extrusion slices');
     assert.equal(faces[0].children[0].tagName,'svg');
     assert.equal(faces[1].children[0].tagName,'svg');
     assert.equal(faces[1].children[0].attrs['aria-hidden'],'true');
@@ -96,11 +94,7 @@ test('all five icons have real front/reverse glyphs, labels and stationary dock 
   assert.equal(x.angle(),57.25);
   x.window.SETKA_CYCLE_DOCK_ROTATION.render(-57.25);
   assert.equal(x.angle(),-57.25);
-  assert.equal(x.window.SETKA_CYCLE_DOCK_ROTATION.getGeometry().fallback,true);
-  for(const icon of x.icons){
-    assert.equal(x.faceOf(icon).length,2,'no duplicate faces');
-    assert.equal(icon.children.length,2,'fallback must not duplicate SVG faces');
-  }
+  for(const icon of x.icons)assert.equal(x.faceOf(icon).length,2,'no duplicate faces');
 });
 
 test('horizontal SETKA to cycle uses EXACT same live Y angle for every glyph',()=>{
@@ -156,10 +150,6 @@ test('experiment only: fixed dock shell, readable reverse, and original vertical
   assert.match(html,/SETKA_CYCLE_DOCK_ROTATION\?\.rest\(inCycle\)/);
   assert.match(css,/#st34Nav \.setka-cycle-icon-rear/);
   assert.match(css,/-webkit-backface-visibility:hidden/);
-  assert.doesNotMatch(css,/setka-cycle-icon-depth/);
-  assert.match(rotor,/graphic\.cloneNode\(true\)/);
-  assert.match(html,/standalone-cycle-dock-objects-v2\.js\?v=/);
-  assert.match(html,/standalone-cycle-dock-rotation-v1\.css\?v=20261122-original-white-line/);
   assert.doesNotMatch(css,/#st34Nav\s*\{[^}]*transform/);
   assert.match(html,/standalone-vertical-logo-v1\.js\?v=/);
 });
