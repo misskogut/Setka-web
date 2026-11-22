@@ -73,6 +73,7 @@ function fixture(initial='#setka'){
   vm.runInNewContext(rotor,context,{filename:'standalone-cycle-dock-rotation-v1.js'});
   vm.runInNewContext(horizontal,context,{filename:'standalone-v34-cycle-logo3d.horizontal.js'});
   const step=t=>{const e=tasks.entries().next().value;if(!e)throw Error('no scheduled frame');tasks.delete(e[0]);e[1](t)};
+  step(0); // the horizontal module's initial outline-render RAF
   const angle=()=>Number.parseFloat(nav.style['--setka-cycle-dock-angle']);
   const faceOf=icon=>icon.children.filter(x=>x.className.includes('setka-cycle-icon-face'));
   return {body,app,back,nav,lib,game,left,right,icons,labels,window:context.window,step,angle,faceOf};
@@ -103,7 +104,8 @@ test('horizontal SETKA to cycle uses EXACT same live Y angle for every glyph',()
   x.step(0);x.step(160);
   const a=x.angle();
   assert.ok(Math.abs(a)>5 && Math.abs(a)<180,'rotation needs a true intermediate angle');
-  assert.ok(x.app.style.transform.includes('rotateY('+a+'deg)'), 'icons must share card Y angle');
+  const faceAngle=Number(x.app.style.transform.match(/rotateY\\(([-\\d.]+)deg\\)/)?.[1]);
+  assert.ok(Math.abs(faceAngle-a)<.001,'icons must share exact card Y angle');
   assert.equal(x.nav.style.transform,undefined,'dock shell must have no transform');
   x.step(900);
   assert.equal(x.angle(),180,'icons rest normally oriented on reverse face');
@@ -113,7 +115,8 @@ test('horizontal SETKA to cycle uses EXACT same live Y angle for every glyph',()
   x.step(1100);x.step(1260);
   const b=x.angle();
   assert.ok(Math.abs(b)>5 && Math.abs(b)<180);
-  assert.ok(x.app.style.transform.includes('rotateY('+b+'deg)'), 'return swipe matches card');
+  const returnAngle=Number(x.app.style.transform.match(/rotateY\\(([-\\d.]+)deg\\)/)?.[1]);
+  assert.ok(Math.abs(returnAngle-b)<.001,'return swipe matches card');
   x.step(2000);
   assert.equal(x.angle(),0);
   assert.equal(x.window.SETKA_CYCLE_LAB.getSide(),'setka');
@@ -127,7 +130,8 @@ test('an edge drag controls icon and card signs together without intercepting na
   x.right.events.pointermove[0]({...down,clientX:275,preventDefault(){}});
   const ang=x.angle();
   assert.ok(ang<0&&ang>-180);
-  assert.ok(x.app.style.transform.includes('rotateY('+ang+'deg)'));
+  const swipeAngle=Number(x.app.style.transform.match(/rotateY\\(([-\\d.]+)deg\\)/)?.[1]);
+  assert.ok(Math.abs(swipeAngle-ang)<.001);
   assert.equal(x.nav.parentNode,x.body);
   x.right.events.pointerup[0]({...down,clientX:275});
 });
