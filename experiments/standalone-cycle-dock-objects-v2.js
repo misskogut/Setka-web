@@ -1,10 +1,11 @@
 (()=>{
 "use strict";
 /*
-  SETKA | true-volume navigation objects v2.
-  One shared WebGL context, five independently triangulated solids in XYZ:
-  clock with two dials, bound note with physical pages/plus, inflated heart,
-  faceted crystal, and a sculpted head-and-shoulders bust.
+  SETKA | minimalist white-outline navigation objects v2.
+  Original 22px white SVG icons remain pixel-identical at rest.
+  During horizontal turning, five genuine XYZ solids reveal rounded side
+  contours as WHITE THIN LINES ONLY: no new colored or filled icons.
+  One shared WebGL context, five independently triangulated solid meshes.
   The navigation capsule / buttons / labels are NEVER transformed here.
   render(angle) is driven exclusively by the horizontal card swipe engine.
   No dependencies, network requests, image textures or additional contexts.
@@ -14,13 +15,12 @@ const dock=document.getElementById("st34Nav");
 if(!dock)return;
 const KINDS=["today","notes","pulse","symptoms","me"];
 const TAU=Math.PI*2;
-const C={
-  steel:[.69,.72,.83], silver:[.9,.89,.98], rim:[.47,.41,.62],
-  slate:[.18,.18,.29], paper:[.84,.82,.95], purple:[.63,.34,.73],
-  heart:[.79,.25,.47], red:[.88,.36,.52], crystal:[.53,.34,.82],
-  skin:[.68,.66,.83], shadow:[.27,.24,.42], gold:[.94,.78,.51],
-  ink:[.30,.30,.47]
-};
+// Mesh color attributes are white; the fragment shader only reveals the
+// geometric view-dependent contour, never the filled surface or a material.
+const WHITE=[1,1,1];
+const C=Object.fromEntries(["steel","silver","rim","slate","paper",
+  "purple","heart","red","crystal","skin","shadow","gold","ink"]
+  .map(key=>[key,WHITE]));
 const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
 const sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]];
 const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
@@ -113,40 +113,20 @@ function builder(){
    smooth(pts,faces,C.heart);
  }
  function clock(){
-   // Complete three-dimensional watch case, front/rear faceplates, raised
-   // metallic bezels, tick markers and hands on BOTH sides.
-   cylinder(0,0,0,.82,.32,C.steel);
-   for(const s of [-1,1]){
-     cylinder(0,0,s*.174,.72,.03,C.rim);
-     cylinder(0,0,s*.200,.62,.015,C.slate);
-     for(let k=0;k<12;k++){
-       const a=k*TAU/12;
-       rod(Math.sin(a)*.47,Math.cos(a)*.47,
-           Math.sin(a)*.56,Math.cos(a)*.56,s*.229,
-           k%3===0?.055:.026,.026,C.silver);
-     }
-     rod(0,0,-.29,.23,s*.255,.075,.038,C.silver);
-     rod(0,0,.07,.40,s*.274,.055,.038,C.gold);
-     ellipsoid(0,0,s*.29,.065,.065,.045,C.gold,7,12);
+   // Keep the original simple clock-sketch identity: one round outline and
+   // two hands, with a REAL rounded case. No markers, crown or metal paint.
+   cylinder(0,0,0,.79,.43,C.steel,48);
+   for(const sign of [-1,1]){
+     cylinder(0,0,sign*.23,.70,.012,C.rim,48);
+     rod(0,0,0,.38,sign*.26,.062,.037,C.silver);
+     rod(0,0,.29,-.18,sign*.27,.054,.037,C.silver);
    }
-   // The crown is a separate radial cylinder, visually distinct at 90deg.
-   box(.84,.02,0,.18,.17,.24,C.silver);
  }
  function note(){
-   // Small solid paper notebook: offset pages, cover, bound spine and a
-   // raised '+' on both covers (not a flat plus extruded backwards).
-   box(0,0,0,1.19,1.39,.28,C.steel);
-   box(.045,-.025,.0,1.02,1.21,.35,C.paper);
-   box(0,0,.205,1.19,1.39,.085,C.rim);
-   box(0,0,-.205,1.19,1.39,.085,C.rim);
-   for(const s of [-1,1]){
-     box(.04,-.08,s*.265,.67,.11,.065,C.silver);
-     box(.04,-.08,s*.284,.11,.67,.065,C.silver);
-     for(let k=0;k<4;k++)
-       ellipsoid(-.52,.46-k*.30,s*.26,.083,.061,.085,C.gold,7,10);
-   }
-   // Tabs along the sheet edge emphasize the independent page thickness.
-   for(let k=0;k<3;k++)box(.58,-.39+k*.21,-.005,.11,.11,.26,C.silver);
+   // The source icon is a minimalist PLUS, not a notebook. Represent the
+   // EXACT SAME cross with two intersecting rounded 3D capsule-like bars.
+   ellipsoid(0,0,0,.115,.72,.265,C.silver,15,26);
+   ellipsoid(0,0,0,.72,.115,.265,C.silver,15,26);
  }
  function diamond(){
    // A faceted double-crown jewel with true beveled side surfaces.
@@ -171,15 +151,10 @@ function builder(){
    }
  }
  function bust(){
-   // Head is a closed, round 3D ellipsoid, not the old flat user glyph.
-   // Shoulders are separate sculpted 3D solids; the nose casts a side shadow.
-   ellipsoid(0,-.43,0,.77,.43,.43,C.rim,14,25);
-   ellipsoid(0,-.64,.06,.66,.31,.44,C.shadow,12,23);
-   cylinder(0,-.06,0,.205,.44,C.steel,18);
-   ellipsoid(0,.40,0,.39,.50,.38,C.skin,17,28);
-   ellipsoid(-.35,.35,-.004,.087,.19,.18,C.rim,10,14);
-   ellipsoid(.35,.35,-.004,.087,.19,.18,C.rim,10,14);
-   ellipsoid(0,.25,.39,.09,.13,.12,C.silver,10,14);
+   // Original sketch: only a round head and simple shoulder outline.
+   // Two closed curved XYZ surfaces create a real head and curved shoulders.
+   ellipsoid(0,-.48,0,.81,.46,.43,C.silver,18,36);
+   ellipsoid(0,.39,0,.36,.39,.36,C.silver,18,32);
  }
  function get(){return new Float32Array(data)}
  return{tri,quad,box,rod,cylinder,ellipsoid,clock,note,inflatedHeart,diamond,bust,get};
@@ -218,7 +193,7 @@ function init(){
  dock.appendChild(canvas);
  try{
    gl=canvas.getContext("webgl",{alpha:true,depth:true,antialias:true,
-     premultipliedAlpha:true,preserveDrawingBuffer:false,powerPreference:"low-power"});
+     premultipliedAlpha:false,preserveDrawingBuffer:false,powerPreference:"low-power"});
    if(!gl)throw Error("WebGL unavailable");
    const vs=shader(gl.VERTEX_SHADER,[
      "precision highp float;",
@@ -238,14 +213,12 @@ function init(){
      "precision mediump float;",
      "varying vec3 vNormal;varying vec3 vColor;varying vec3 vPosition;",
      "void main(){",
-     " vec3 n=normalize(vNormal);",
-     " vec3 light=normalize(vec3(-.42,.72,1.0));",
-     " float lit=.40+.61*max(dot(n,light),0.);",
+     " // A true 3D silhouette: show white contours only, not solid faces.",
      " vec3 eye=normalize(vec3(0.,0.,3.65)-vPosition);",
-     " vec3 halfDir=normalize(light+eye);",
-     " float gloss=pow(max(dot(n,halfDir),0.),25.)*.30;",
-     " vec3 col=clamp(vColor*lit+vec3(gloss),0.,1.);",
-     " gl_FragColor=vec4(col,1.);",
+     " float facing=abs(dot(normalize(vNormal),eye));",
+     " float ink=1.0-smoothstep(.055,.215,facing);",
+     " if(ink<.025) discard;",
+     " gl_FragColor=vec4(vec3(1.0),ink);",
      "}"
    ].join("\n"));
    program=gl.createProgram();
@@ -299,7 +272,8 @@ function measure(){
    const r=icon.getBoundingClientRect();
    const cx=(r.left+r.width/2-navRect.left)*ratio;
    const cy=(r.top+r.height/2-navRect.top)*ratio;
-   const size=Math.round(Math.min(35*ratio,w*ratio/5*.75));
+   // Respect the exact existing 22px dock glyph size, including on iPhone.
+   const size=Math.round(Math.min(22*ratio,r.width*ratio));
    const tab=icon.closest("button");
    return{x:Math.round(cx-size/2),y:Math.round(ph-(cy+size/2)),
      size,intensity:tab?.classList.contains("active")?1:0.85,
@@ -333,6 +307,10 @@ function draw(angle){
 }
 function render(degrees){
  lastAngle=Number.isFinite(degrees)?degrees:0;
+ // Native SVG is exact at rest (0/180). As the real card turns, crossfade
+ // into the view-dependent white wire silhouette. No size / color jump.
+ const ink=Math.abs(Math.sin(lastAngle*Math.PI/180));
+ dock.style.setProperty("--setka-dock-3d-blend",ink.toFixed(4));
  draw(lastAngle);
 }
 function rest(onCycle){render(onCycle?180:0)}
@@ -345,6 +323,7 @@ window.SETKA_CYCLE_3D_MODELS={
  getAngle:()=>lastAngle,
  getInfo:()=>({live,renderCount,drawCalls:models.length,models:info,
    oneWebGLContext:true,staticDock:true,trueVolume:true,
+   lineOnly:true,strokeColor:"white",nativeSizePx:22,
    vertexCount:info.reduce((s,x)=>s+x.vertexCount,0)})
 };
 })();
