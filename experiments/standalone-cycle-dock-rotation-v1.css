@@ -5,8 +5,15 @@
  * The SVG fallback uses simple two-sided glyphs on unsupported browsers.
  */
 #st34Nav.setka-cycle-webgl-objects{isolation:isolate}
+/* At 0°/180° keep the EXACT native thin-white SVG sketch.
+   During horizontal turning smoothly reveal genuine 3D white contours.
+   Do not resize or recolor the five icons. */
 #st34Nav.setka-cycle-webgl-objects .st-dock-icon>svg{
-  visibility:hidden!important;
+  visibility:visible!important;
+  opacity:calc(1 - var(--setka-dock-3d-blend,0));
+}
+#st34Nav.setka-cycle-webgl-objects #setkaCycle3DObjects{
+  opacity:var(--setka-dock-3d-blend,0);
 }
 #st34Nav #setkaCycle3DObjects{
   display:block;
