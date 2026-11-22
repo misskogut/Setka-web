@@ -104,7 +104,7 @@ test('horizontal SETKA to cycle uses EXACT same live Y angle for every glyph',()
   x.step(0);x.step(160);
   const a=x.angle();
   assert.ok(Math.abs(a)>5 && Math.abs(a)<180,'rotation needs a true intermediate angle');
-  const faceAngle=Number(x.app.style.transform.match(/rotateY\\(([-\\d.]+)deg\\)/)?.[1]);
+  const faceAngle=Number(x.app.style.transform.match(/rotateY\(([-\d.]+)deg\)/)?.[1]);
   assert.ok(Math.abs(faceAngle-a)<.001,'icons must share exact card Y angle');
   assert.equal(x.nav.style.transform,undefined,'dock shell must have no transform');
   x.step(900);
@@ -115,7 +115,7 @@ test('horizontal SETKA to cycle uses EXACT same live Y angle for every glyph',()
   x.step(1100);x.step(1260);
   const b=x.angle();
   assert.ok(Math.abs(b)>5 && Math.abs(b)<180);
-  const returnAngle=Number(x.app.style.transform.match(/rotateY\\(([-\\d.]+)deg\\)/)?.[1]);
+  const returnAngle=Number(x.app.style.transform.match(/rotateY\(([-\d.]+)deg\)/)?.[1]);
   assert.ok(Math.abs(returnAngle-b)<.001,'return swipe matches card');
   x.step(2000);
   assert.equal(x.angle(),0);
@@ -130,7 +130,7 @@ test('an edge drag controls icon and card signs together without intercepting na
   x.right.events.pointermove[0]({...down,clientX:275,preventDefault(){}});
   const ang=x.angle();
   assert.ok(ang<0&&ang>-180);
-  const swipeAngle=Number(x.app.style.transform.match(/rotateY\\(([-\\d.]+)deg\\)/)?.[1]);
+  const swipeAngle=Number(x.app.style.transform.match(/rotateY\(([-\d.]+)deg\)/)?.[1]);
   assert.ok(Math.abs(swipeAngle-ang)<.001);
   assert.equal(x.nav.parentNode,x.body);
   x.right.events.pointerup[0]({...down,clientX:275});
