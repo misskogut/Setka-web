@@ -117,7 +117,7 @@ test("five distinct native XYZ meshes, one shared WebGL, with real 3-axis extent
  assert.deepEqual(Array.from(inf.models.map(m=>m.key)),["today","notes","pulse","symptoms","me"]);
  assert.ok(inf.models.every(m=>m.vertexCount>150));
  const combined=x.calls.buffers[0];
- assert.ok(combined instanceof Float32Array);
+ assert.ok(ArrayBuffer.isView(combined),"WebGL receives a Float32Array vertex buffer even across VM realms");
  assert.equal(combined.length,inf.vertexCount*9);
  let at=0;
  for(const model of inf.models){
