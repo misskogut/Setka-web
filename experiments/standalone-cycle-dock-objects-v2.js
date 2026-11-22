@@ -197,21 +197,21 @@ function init(){
    if(!gl)throw Error("WebGL unavailable");
    const vs=shader(gl.VERTEX_SHADER,[
      "precision highp float;",
-     "attribute vec3 aPos;attribute vec3 aNormal;attribute vec3 aColor;",
-     "uniform float uAngle;uniform float uIntensity;",
-     "varying vec3 vNormal;varying vec3 vColor;varying vec3 vPosition;",
+     "attribute vec3 aPos;attribute vec3 aNormal;",
+     "uniform float uAngle;",
+     "varying vec3 vNormal;varying vec3 vPosition;",
      "void main(){",
      " float c=cos(uAngle),s=sin(uAngle);",
      " mat3 rot=mat3(c,0.,-s, 0.,1.,0., s,0.,c);",
      " vec3 p=rot*aPos;",
      " float z=3.65-p.z;",
      " gl_Position=vec4(p.x*3.65,p.y*3.65,(z-2.)*1.3,z);",
-     " vNormal=normalize(rot*aNormal);vColor=aColor*uIntensity;vPosition=p;",
+     " vNormal=normalize(rot*aNormal);vPosition=p;",
      "}"
    ].join("\n"));
    const fs=shader(gl.FRAGMENT_SHADER,[
      "precision mediump float;",
-     "varying vec3 vNormal;varying vec3 vColor;varying vec3 vPosition;",
+     "varying vec3 vNormal;varying vec3 vPosition;",
      "void main(){",
      " // A true 3D silhouette: show white contours only, not solid faces.",
      " vec3 eye=normalize(vec3(0.,0.,3.65)-vPosition);",
@@ -234,7 +234,7 @@ function init(){
    const all=new Float32Array(total*9);
    let at=0;for(const m of models){all.set(m.vertices,at);at+=m.vertices.length}
    gl.bufferData(gl.ARRAY_BUFFER,all,gl.STATIC_DRAW);
-   for(const [name,size,offset] of [["aPos",3,0],["aNormal",3,12],["aColor",3,24]]){
+   for(const [name,size,offset] of [["aPos",3,0],["aNormal",3,12]]){
      const loc=gl.getAttribLocation(program,name);
      gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,size,gl.FLOAT,false,36,offset);
    }
@@ -242,13 +242,12 @@ function init(){
    gl.enable(gl.SCISSOR_TEST);gl.disable(gl.CULL_FACE);
    gl.clearColor(0,0,0,0);
    const uAngle=gl.getUniformLocation(program,"uAngle");
-   const uIntensity=gl.getUniformLocation(program,"uIntensity");
-   gl.uniform1f(uAngle,0);gl.uniform1f(uIntensity,1);
+   gl.uniform1f(uAngle,0);
    canvas.addEventListener("webglcontextlost",event=>{event.preventDefault();fail()});
    canvas.addEventListener("webglcontextrestored",()=>{location.reload()});
    live=true;
    dock.classList.add("setka-cycle-webgl-objects");
-   return{uAngle,uIntensity};
+   return{uAngle};
  }catch(error){
    console.warn("[SETKA 3D nav] WebGL unavailable, retaining original SVG",error);
    fail();return null;
@@ -300,7 +299,6 @@ function draw(angle){
    gl.viewport(r.x,r.y,r.size,r.size);
    gl.scissor(r.x,r.y,r.size,r.size);
    gl.clear(gl.DEPTH_BUFFER_BIT);
-   gl.uniform1f(uniforms.uIntensity,r.intensity);
    gl.drawArrays(gl.TRIANGLES,m.offset,m.vertices.length/9);
  }
  renderCount++;
