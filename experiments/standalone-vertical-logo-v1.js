@@ -153,8 +153,14 @@ function begin(e){
   if(e.pointerType==="mouse"&&e.button!==0)return;
   if(!logoVisible&&e.currentTarget===card)return;
   origin=logoVisible?origin:(fromCycle()?"cycle":"setka");
+  // Cache the UNTRANSFORMED card height once. getBoundingClientRect()
+  // collapses toward zero when rotateX approaches 90 degrees, so using its
+  // live height during the drag made swipe progress suddenly jump to 100%.
+  const unrotatedHeight=card.offsetHeight||card.clientHeight||innerHeight;
+  const dragDistance=Math.max(250,Math.min(unrotatedHeight*.69,630));
   pointer={
     id:e.pointerId,startX:e.clientX,startY:e.clientY,
+    dragDistance,
     fromLogo:logoVisible,gesture:false,rejected:false,
     isGrip:e.currentTarget===top||e.currentTarget===bottom
   };
@@ -186,9 +192,9 @@ function move(e){
     return;
   }
   e.preventDefault();
-  const height=card.getBoundingClientRect().height||innerHeight;
-  const distance=Math.max(250,Math.min(height*.69,630));
-  const advance=Math.abs(dy)/distance;
+  // The gesture distance must stay constant even when the visible card
+  // becomes edge-on; otherwise its shrinking bounding box warps progress.
+  const advance=Math.abs(dy)/p.dragDistance;
   draw(p.fromLogo?1-advance:advance);
 }
 function end(e,cancelled){
