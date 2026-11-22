@@ -168,9 +168,59 @@ const models=KINDS.map((key,i)=>{
  if(key==="me")b.bust();
  return{key,index:i,vertices:b.get()};
 });
+// Extract an actual 3D surface mesh's adjacency once. During the turn
+// render ONLY viewpoint-dependent exterior silhouettes and hard crease edges.
+// No filled WebGL triangles, no facet shading, no polygon grid on the heart.
+function buildSurfaceEdges(model){
+  const src=model.vertices,vertices=[],lookup=new Map(),faces=[],edges=new Map();
+  function pointId(x,y,z){
+    const key=[x,y,z].map(v=>Math.round(v*10000)).join("/");
+    if(lookup.has(key))return lookup.get(key);
+    const id=vertices.length;
+    vertices.push([x,y,z]);lookup.set(key,id);
+    return id;
+  }
+  for(let j=0;j<src.length;j+=27){
+    const a=pointId(src[j],src[j+1],src[j+2]);
+    const b=pointId(src[j+9],src[j+10],src[j+11]);
+    const c=pointId(src[j+18],src[j+19],src[j+20]);
+    const normal=norm(cross(sub(vertices[b],vertices[a]),sub(vertices[c],vertices[a])));
+    const face=faces.length;faces.push(normal);
+    for(const [u,v] of [[a,b],[b,c],[c,a]]){
+      if(u===v)continue;
+      const lo=Math.min(u,v),hi=Math.max(u,v),key=lo+"/"+hi;
+      const edge=edges.get(key);
+      if(edge)edge.faces.push(face);
+      else edges.set(key,{a:vertices[lo],b:vertices[hi],faces:[face]});
+    }
+  }
+  model.surfaceFaces=faces;
+  model.surfaceEdges=Array.from(edges.values());
+}
+function outlineFor(model,radians){
+  const c=Math.cos(radians),s=Math.sin(radians);
+  // Rotating about the card's Y axis changes which facets face the camera.
+  const front=model.surfaceFaces.map(n=>-s*n[0]+c*n[2]);
+  const out=[];
+  for(const edge of model.surfaceEdges){
+    const ids=edge.faces;
+    const near=ids.some(i=>front[i]>.001);
+    const far=ids.some(i=>front[i]<-.001);
+    const silhouette=near&&far||
+      ids.length===1&&near;
+    // Keep intentional facets (clock's rim, crystal, 3D plus contours).
+    // Smooth hearts/spheres never pass this hard-angle threshold.
+    const crease=ids.length>=2&&near&&ids.some((i,k)=>
+      ids.some((j,l)=>l!==k&&dot(model.surfaceFaces[i],model.surfaceFaces[j])<.64));
+    if(!silhouette&&!crease)continue;
+    out.push(...edge.a,...edge.b);
+  }
+  return new Float32Array(out);
+}
+for(const model of models)buildSurfaceEdges(model);
 const info=models.map(m=>({key:m.key,vertexCount:m.vertices.length/9,
-  object3D:true,solidMesh:true}));
-let canvas=null,gl=null,program=null,buffer=null;
+  object3D:true,solidMesh:true,surfaceEdges:m.surfaceEdges.length}));
+let canvas=null,gl=null,program=null,buffer=null,outlineBuffer=null;
 let live=false,lastAngle=0,renderCount=0,rects=[],lastW=0,lastH=0;
 const dpr=()=>Math.min(2,Math.max(1,window.devicePixelRatio||1));
 function fail(){
@@ -197,28 +247,20 @@ function init(){
    if(!gl)throw Error("WebGL unavailable");
    const vs=shader(gl.VERTEX_SHADER,[
      "precision highp float;",
-     "attribute vec3 aPos;attribute vec3 aNormal;",
+     "attribute vec3 aPos;",
      "uniform float uAngle;",
-     "varying vec3 vNormal;varying vec3 vPosition;",
      "void main(){",
      " float c=cos(uAngle),s=sin(uAngle);",
-     " mat3 rot=mat3(c,0.,-s, 0.,1.,0., s,0.,c);",
-     " vec3 p=rot*aPos;",
+     " vec3 p=vec3(c*aPos.x+s*aPos.z,aPos.y,-s*aPos.x+c*aPos.z);",
      " float z=3.65-p.z;",
      " gl_Position=vec4(p.x*3.65,p.y*3.65,(z-2.)*1.3,z);",
-     " vNormal=normalize(rot*aNormal);vPosition=p;",
      "}"
    ].join("\n"));
    const fs=shader(gl.FRAGMENT_SHADER,[
      "precision mediump float;",
-     "varying vec3 vNormal;varying vec3 vPosition;",
      "void main(){",
-     " // A true 3D silhouette: show white contours only, not solid faces.",
-     " vec3 eye=normalize(vec3(0.,0.,3.65)-vPosition);",
-     " float facing=abs(dot(normalize(vNormal),eye));",
-     " float ink=1.0-smoothstep(.055,.215,facing);",
-     " if(ink<.025) discard;",
-     " gl_FragColor=vec4(vec3(1.0),ink);",
+     " // Only actual XYZ silhouette/crease LINES: no filled faces or colors.",
+     " gl_FragColor=vec4(1.0,1.0,1.0,1.0);",
      "}"
    ].join("\n"));
    program=gl.createProgram();
@@ -234,10 +276,10 @@ function init(){
    const all=new Float32Array(total*9);
    let at=0;for(const m of models){all.set(m.vertices,at);at+=m.vertices.length}
    gl.bufferData(gl.ARRAY_BUFFER,all,gl.STATIC_DRAW);
-   for(const [name,size,offset] of [["aPos",3,0],["aNormal",3,12]]){
-     const loc=gl.getAttribLocation(program,name);
-     gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,size,gl.FLOAT,false,36,offset);
-   }
+   const loc=gl.getAttribLocation(program,"aPos");
+   gl.enableVertexAttribArray(loc);
+   gl.vertexAttribPointer(loc,3,gl.FLOAT,false,36,0);
+   outlineBuffer=gl.createBuffer();
    gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);
    gl.enable(gl.SCISSOR_TEST);gl.disable(gl.CULL_FACE);
    gl.clearColor(0,0,0,0);
@@ -299,7 +341,12 @@ function draw(angle){
    gl.viewport(r.x,r.y,r.size,r.size);
    gl.scissor(r.x,r.y,r.size,r.size);
    gl.clear(gl.DEPTH_BUFFER_BIT);
-   gl.drawArrays(gl.TRIANGLES,m.offset,m.vertices.length/9);
+   const lines=outlineFor(m,angle*Math.PI/180);
+   if(lines.length<6)continue;
+   gl.bindBuffer(gl.ARRAY_BUFFER,outlineBuffer);
+   gl.bufferData(gl.ARRAY_BUFFER,lines,gl.DYNAMIC_DRAW);
+   gl.vertexAttribPointer(gl.getAttribLocation(program,"aPos"),3,gl.FLOAT,false,12,0);
+   gl.drawArrays(gl.LINES,0,lines.length/3);
  }
  renderCount++;
 }
@@ -321,7 +368,7 @@ window.SETKA_CYCLE_3D_MODELS={
  getAngle:()=>lastAngle,
  getInfo:()=>({live,renderCount,drawCalls:models.length,models:info,
    oneWebGLContext:true,staticDock:true,trueVolume:true,
-   lineOnly:true,strokeColor:"white",nativeSizePx:22,
+   lineOnly:true,silhouetteOnly:true,strokeColor:"white",nativeSizePx:22,
    vertexCount:info.reduce((s,x)=>s+x.vertexCount,0)})
 };
 })();
