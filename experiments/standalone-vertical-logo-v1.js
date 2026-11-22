@@ -29,11 +29,22 @@ const fromCycle=()=>window.SETKA_CYCLE_LAB?.getSide?.()==="cycle";
  // DOM position at rest so sheets/gameplay keep their original layout.
 const currentSource=()=>origin==="cycle"?cycle:app;
 function attachDockToTurningFace(){
+  if(!dock)return;
   const source=currentSource();
-  if(dock&&dock.parentNode!==source)source.appendChild(dock);
+  if(dock.parentNode===source)return;
+  // The native dock is fixed to the VIEWPORT; a transformed parent changes
+  // the containing block of position:fixed in WebKit. Freeze its exact
+  // pre-flip screen position so it does not jump when reparented.
+  const before=dock.getBoundingClientRect();
+  const bounds=source.getBoundingClientRect();
+  source.appendChild(dock);
+  dock.style.top=(before.top-bounds.top).toFixed(2)+"px";
+  dock.style.bottom="auto";
 }
 function restoreDockHome(){
   if(!dock||!dockHome||dock.parentNode===dockHome)return;
+  dock.style.removeProperty("top");
+  dock.style.removeProperty("bottom");
   if(dockHomeNext?.parentNode===dockHome)
     dockHome.insertBefore(dock,dockHomeNext);
   else dockHome.appendChild(dock);
