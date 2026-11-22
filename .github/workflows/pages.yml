@@ -59,6 +59,8 @@ jobs:
           node --check experiments/standalone-vertical-logo-v1.js
           node --check experiments/standalone-vertical-logo-globe-v3.js
           node --test tests/setka-vertical-logo-dock.test.mjs
+          node --check experiments/standalone-cycle-dock-rotation-v1.js
+          node --test tests/setka-cycle-dock-rotation.test.mjs
       - name: Verify anonymous device presence and private unpublished note backups
         run: |
           mkdir -p artifacts
