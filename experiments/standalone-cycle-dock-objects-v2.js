@@ -168,58 +168,111 @@ const models=KINDS.map((key,i)=>{
  if(key==="me")b.bust();
  return{key,index:i,vertices:b.get()};
 });
-// Extract an actual 3D surface mesh's adjacency once. During the turn
-// render ONLY viewpoint-dependent exterior silhouettes and hard crease edges.
-// No filled WebGL triangles, no facet shading, no polygon grid on the heart.
-function buildSurfaceEdges(model){
-  const src=model.vertices,vertices=[],lookup=new Map(),faces=[],edges=new Map();
-  function pointId(x,y,z){
-    const key=[x,y,z].map(v=>Math.round(v*10000)).join("/");
-    if(lookup.has(key))return lookup.get(key);
-    const id=vertices.length;
-    vertices.push([x,y,z]);lookup.set(key,id);
-    return id;
+// We retain five REAL closed XYZ solids. For a 22px monochrome sketch,
+// however, their triangulation must never leak into the visual strokes.
+// Find each solid's projected outer silhouette using 48 radial support rays:
+// ONE perimeter, not the hundreds of intersecting polygon edges that
+// previously made the clock, heart and profile look like tangled wire.
+function buildSilhouetteSamples(model){
+  const raw=model.vertices,unique=new Map();
+  for(let i=0;i<raw.length;i+=9){
+    const x=raw[i],y=raw[i+1],z=raw[i+2];
+    const id=[x,y,z].map(v=>Math.round(v*200)).join("/");
+    if(!unique.has(id))unique.set(id,[x,y,z]);
   }
-  for(let j=0;j<src.length;j+=27){
-    const a=pointId(src[j],src[j+1],src[j+2]);
-    const b=pointId(src[j+9],src[j+10],src[j+11]);
-    const c=pointId(src[j+18],src[j+19],src[j+20]);
-    const normal=norm(cross(sub(vertices[b],vertices[a]),sub(vertices[c],vertices[a])));
-    const face=faces.length;faces.push(normal);
-    for(const [u,v] of [[a,b],[b,c],[c,a]]){
-      if(u===v)continue;
-      const lo=Math.min(u,v),hi=Math.max(u,v),key=lo+"/"+hi;
-      const edge=edges.get(key);
-      if(edge)edge.faces.push(face);
-      else edges.set(key,{a:vertices[lo],b:vertices[hi],faces:[face]});
-    }
-  }
-  model.surfaceFaces=faces;
-  model.surfaceEdges=Array.from(edges.values());
+  model.silhouetteSamples=Array.from(unique.values());
 }
+for(const model of models)buildSilhouetteSamples(model);
+const HULL_STEPS=48;
+function project(p,c,s){
+  const z=-s*p[0]+c*p[2];
+  const k=3.65/(3.65-z);
+  return[(c*p[0]+s*p[2])*k,p[1]*k];
+}
+function outlineHull(points,c,s,steps=HULL_STEPS){
+  const projected=points.map(p=>project(p,c,s));
+  const selected=[];
+  for(let i=0;i<steps;i++){
+    const a=TAU*i/steps,dx=Math.cos(a),dy=Math.sin(a);
+    let best=-Infinity,bi=-1;
+    for(let j=0;j<projected.length;j++){
+      const p=projected[j],v=p[0]*dx+p[1]*dy;
+      if(v>best){best=v;bi=j}
+    }
+    if(bi<0)continue;
+    if(!selected.length||selected[selected.length-1]!==bi)selected.push(bi);
+  }
+  if(selected.length>1&&selected[0]===selected[selected.length-1])selected.pop();
+  const out=[];
+  for(let i=0;i<selected.length;i++){
+    const pa=points[selected[i]],pb=points[selected[(i+1)%selected.length]];
+    if(Math.hypot(...sub(pa,pb))<.015)continue;
+    out.push(...pa,...pb);
+  }
+  return out;
+}
+function strokedLine(out,a,b){out.push(...a,...b)}
 function outlineFor(model,radians){
   const c=Math.cos(radians),s=Math.sin(radians);
-  // Rotating about the card's Y axis changes which facets face the camera.
-  const front=model.surfaceFaces.map(n=>-s*n[0]+c*n[2]);
-  const out=[];
-  for(const edge of model.surfaceEdges){
-    const ids=edge.faces;
-    const near=ids.some(i=>front[i]>.001);
-    const far=ids.some(i=>front[i]<-.001);
-    const silhouette=near&&far||
-      ids.length===1&&near;
-    // Keep intentional facets (clock's rim, crystal, 3D plus contours).
-    // Smooth hearts/spheres never pass this hard-angle threshold.
-    const crease=ids.length>=2&&near&&ids.some((i,k)=>
-      ids.some((j,l)=>l!==k&&dot(model.surfaceFaces[i],model.surfaceFaces[j])<.64));
-    if(!silhouette&&!crease)continue;
-    out.push(...edge.a,...edge.b);
+  // This is a *viewpoint-dependent projection of the real 3D solid*,
+  // not a duplicate copy of an SVG shifted along Z.
+  if(model.key==="today"){
+    const out=outlineHull(model.silhouetteSamples,c,s);
+    // The native clock icon has just two hands. No concentric dial rings,
+    // dozens of tick marks or crown/metal ornament in the 3D sketch.
+    if(Math.abs(c)>.22){
+      const z=c>=0?.27:-.27;
+      strokedLine(out,[0,0,z],[0,.39,z]);
+      strokedLine(out,[0,0,z],[.29,-.19,z]);
+    }
+    return new Float32Array(out);
   }
-  return new Float32Array(out);
+  if(model.key==="notes"){
+    // Preserve the tiny '+' sign: two continuous rods in 3D. The
+    // horizontal rod foreshortens naturally and the pair has real Z depth.
+    const out=[],z=c>=0?.24:-.24;
+    strokedLine(out,[0,-.67,z],[0,.67,z]);
+    strokedLine(out,[-.67,0,z],[.67,0,z]);
+    if(Math.abs(s)>.68){
+      // Only two short side edges, not another whole outline on top.
+      strokedLine(out,[0,.67,-.23],[0,.67,.23]);
+      strokedLine(out,[0,-.67,-.23],[0,-.67,.23]);
+    }
+    return new Float32Array(out);
+  }
+  if(model.key==="me"){
+    const out=[];
+    // True ellipsoid silhouette in the camera-facing tangent plane.
+    // Head and SHOULDER ARCH only: no lower-body oval, overlapping
+    // sphere rings, ears or newly drawn facial features.
+    function contour(cx,cy,rx,ry,rz,start,end,steps){
+      const r=Math.max(.0001,Math.hypot(rx*c,rz*s));
+      let previous=null;
+      for(let i=0;i<=steps;i++){
+        const a=start+(end-start)*i/steps;
+        const p=[cx+(rx*rx*c/r)*Math.cos(a),
+                 cy+ry*Math.sin(a),
+                 (rz*rz*s/r)*Math.cos(a)];
+        if(previous)strokedLine(out,previous,p);
+        previous=p;
+      }
+    }
+    contour(0,.39,.36,.39,.36,0,TAU,30);
+    contour(0,-.48,.81,.46,.43,0,Math.PI,24);
+    // The shoulder curve connects to the short straight sides of original
+    // SVG profile, but does not draw an enclosing bottom ellipse.
+    const left=[-.81*c,-.48,.43*-s],right=[.81*c,-.48,.43*s];
+    strokedLine(out,left,[left[0],-.78,left[2]]);
+    strokedLine(out,right,[right[0],-.78,right[2]]);
+    return new Float32Array(out);
+  }
+  // Heart is the inflated 3D heart solid; the diamond is its actual
+  // faceted volume. One smooth changing silhouette each (no mesh grid).
+  return new Float32Array(outlineHull(model.silhouetteSamples,c,s));
 }
-for(const model of models)buildSurfaceEdges(model);
 const info=models.map(m=>({key:m.key,vertexCount:m.vertices.length/9,
-  object3D:true,solidMesh:true,surfaceEdges:m.surfaceEdges.length}));
+  object3D:true,solidMesh:true,surfaceEdges:m.silhouetteSamples.length,
+  silhouetteSegmentsMax:60}));
 let canvas=null,gl=null,program=null,buffer=null,outlineBuffer=null;
 let live=false,lastAngle=0,renderCount=0,rects=[],lastW=0,lastH=0;
 const dpr=()=>Math.min(2,Math.max(1,window.devicePixelRatio||1));
