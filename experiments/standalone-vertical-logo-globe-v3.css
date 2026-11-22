@@ -1,0 +1,86 @@
+/* Original SETKA globe wordmark: card-mounted 3D planet, physically curved title.
+   WebGL paints the real model; these rules supply a tasteful no-WebGL fallback. */
+body:not(.setka-vlogo-webgl) .setka-vlogo-3d{
+  position:relative!important;
+  transform:none!important;
+  transition:none!important;
+  filter:none!important;
+  width:min(90%,350px)!important;
+  min-height:235px!important;
+  height:255px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:1px!important;
+  isolation:isolate;
+}
+body:not(.setka-vlogo-webgl) .setka-vlogo-3d::before{
+  content:"";
+  position:absolute;
+  left:50%;
+  top:50%;
+  width:min(60vw,224px);
+  height:min(60vw,224px);
+  max-width:224px;
+  max-height:224px;
+  transform:translate(-50%,-50%);
+  border:1px solid rgba(154,98,216,.45);
+  border-radius:50%;
+  z-index:0;
+  background:
+    repeating-radial-gradient(ellipse at 50% 50%,
+      transparent 0 15px,rgba(179,99,223,.11) 16px 17px,transparent 18px 35px),
+    radial-gradient(circle at 34% 25%,rgba(109,70,174,.55),rgba(35,15,66,.80) 47%,#070710 79%);
+  box-shadow:0 0 22px rgba(163,79,206,.20),inset -22px -20px 46px #010106;
+  pointer-events:none;
+}
+body:not(.setka-vlogo-webgl) .setka-vlogo-3d::after{
+  content:"";
+  position:absolute;
+  left:3%;right:3%;top:42%;
+  height:28px;
+  transform:rotate(-11deg);
+  border-top:2px solid rgba(205,134,251,.28);
+  border-bottom:1px solid rgba(205,134,251,.13);
+  border-radius:50%;
+  filter:drop-shadow(0 0 5px rgba(165,93,213,.32));
+  pointer-events:none;
+}
+body:not(.setka-vlogo-webgl) .setka-vlogo-line{
+  z-index:1;
+  height:57px!important;
+  width:100%;
+  isolation:isolate;
+}
+body:not(.setka-vlogo-webgl) .setka-vlogo-line.secondary{
+  height:34px!important;
+}
+body:not(.setka-vlogo-webgl) .setka-vlogo-slice.wall{display:none!important}
+body:not(.setka-vlogo-webgl) .setka-vlogo-slice.surface{
+  font-size:clamp(37px,11vw,54px)!important;
+  text-shadow:0 3px 6px rgba(8,3,16,.95),0 0 13px rgba(178,83,243,.35)!important;
+  transform:translateY(-50%)!important;
+}
+body:not(.setka-vlogo-webgl) .setka-vlogo-line.secondary .setka-vlogo-slice.surface{
+  font-size:clamp(21px,6vw,30px)!important;
+}
+body.setka-vlogo-webgl .setka-vlogo-3d,
+body.setka-vlogo-webgl .setka-vlogo-crest{
+  visibility:hidden!important;
+}
+body.setka-vlogo-webgl #setkaVerticalSolidText{
+  pointer-events:none!important;
+  -webkit-user-select:none;
+  user-select:none;
+}
+/* Keep independent fixed WebGL canvas above the turning card's flat plane.
+   The GPU uses immutable dimensions; pointer and scroll events pass through. */
+#setkaVerticalSolidText{
+  -webkit-transform:translateX(-50%) translateZ(0);
+  transform:translateX(-50%) translateZ(0);
+  backface-visibility:visible;
+  -webkit-backface-visibility:visible;
+}
+@media(prefers-reduced-motion:reduce){
+  body:not(.setka-vlogo-webgl) .setka-vlogo-3d{transition:none!important}
+}
