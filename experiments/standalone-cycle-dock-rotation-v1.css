@@ -1,50 +1,40 @@
-/*
- * Horizontal SETKA <-> ALMA.
- * Native capsule stays fixed; the shared WebGL canvas paints five volumetric
- * meshes over the original SVG locations. Native labels and hit areas remain.
- * The SVG fallback uses simple two-sided glyphs on unsupported browsers.
- */
-#st34Nav.setka-cycle-webgl-objects{isolation:isolate}
-/* At 0°/180° keep the EXACT native thin-white SVG sketch.
-   During horizontal turning smoothly reveal genuine 3D white contours.
-   Do not resize or recolor the five icons. */
-#st34Nav.setka-cycle-webgl-objects .st-dock-icon>svg{
-  visibility:visible!important;
-  opacity:calc(1 - var(--setka-dock-3d-blend,0));
-}
-#st34Nav.setka-cycle-webgl-objects #setkaCycle3DObjects{
-  opacity:var(--setka-dock-3d-blend,0);
-}
-#st34Nav #setkaCycle3DObjects{
-  display:block;
-  position:absolute;
-  inset:0;
-  width:100%;
-  height:100%;
-  pointer-events:none!important;
-  z-index:5;
-  background:transparent;
-  border-radius:inherit;
-}
+/* The five navigation glyphs share the card's horizontal Y-axis angle.
+   The stationary nav shell, labels, button sizing and hit boxes are untouched. */
 #st34Nav .st-dock-icon:has(> .setka-cycle-icon-face){
   position:relative;
   display:block;
-  width:22px;height:22px;
   -webkit-transform-style:preserve-3d;
   transform-style:preserve-3d;
+  -webkit-transform-origin:50% 50%;
+  transform-origin:50% 50%;
   -webkit-transform:perspective(1450px) rotateY(var(--setka-cycle-dock-angle,0deg));
   transform:perspective(1450px) rotateY(var(--setka-cycle-dock-angle,0deg));
   pointer-events:none;
 }
 #st34Nav .setka-cycle-icon-face{
-  position:absolute;inset:0;
-  display:flex;align-items:center;justify-content:center;
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
   -webkit-backface-visibility:hidden;
   backface-visibility:hidden;
+  -webkit-transform-style:preserve-3d;
+  transform-style:preserve-3d;
   pointer-events:none;
 }
-#st34Nav .setka-cycle-icon-front{transform:rotateY(0deg);-webkit-transform:rotateY(0deg)}
-#st34Nav .setka-cycle-icon-rear{transform:rotateY(180deg);-webkit-transform:rotateY(180deg)}
-#st34Nav .setka-cycle-icon-face>svg{width:22px;height:22px;flex:0 0 22px}
+#st34Nav .setka-cycle-icon-front{
+  -webkit-transform:rotateY(0deg);
+  transform:rotateY(0deg);
+}
+#st34Nav .setka-cycle-icon-rear{
+  -webkit-transform:rotateY(180deg);
+  transform:rotateY(180deg);
+}
+#st34Nav .setka-cycle-icon-face > svg{
+  flex:0 0 22px;
+  width:22px;
+  height:22px;
+}
 body.cycle-flip-active #st34Nav button,
 body.cycle-busy #st34Nav button{pointer-events:none!important}
