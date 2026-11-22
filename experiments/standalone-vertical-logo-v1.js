@@ -9,6 +9,9 @@ const logo=$("setkaVerticalLogo");
 const card=$("setkaVerticalLogoCard");
 const lib=$("libraryScreen");
 const app=$("app");
+const dock=$("st34Nav");
+const dockHome=dock?.parentNode;
+const dockHomeNext=dock?.nextSibling;
 const cycle=$("setkaCycleBack");
 const game=$("gameScreen");
 const top=$("setkaVerticalGripTop");
@@ -20,7 +23,21 @@ const ease=t=>1-Math.pow(1-t,3);
 const usable=()=>lib.classList.contains("active")&&!game.classList.contains("active");
 const horizontalBusy=()=>document.body.classList.contains("cycle-flip-active")||document.body.classList.contains("cycle-busy");
 const fromCycle=()=>window.SETKA_CYCLE_LAB?.getSide?.()==="cycle";
-const currentSource=()=>origin==="cycle"?cycle:lib;
+// The front of the physical card includes BOTH the library and its bottom dock.
+ // #st34Nav is normally attached to <body> by standalone-core-v34; during
+ // a vertical flip move it into the rotating source, then restore its exact
+ // DOM position at rest so sheets/gameplay keep their original layout.
+const currentSource=()=>origin==="cycle"?cycle:app;
+function attachDockToTurningFace(){
+  const source=currentSource();
+  if(dock&&dock.parentNode!==source)source.appendChild(dock);
+}
+function restoreDockHome(){
+  if(!dock||!dockHome||dock.parentNode===dockHome)return;
+  if(dockHomeNext?.parentNode===dockHome)
+    dockHome.insertBefore(dock,dockHomeNext);
+  else dockHome.appendChild(dock);
+}
 const edgeControls=[top,bottom];
 let logoVisible=false,origin="setka",progress=0,direction=1,pointer=null;
 let animating=false,raf=0,token=0;
@@ -57,7 +74,7 @@ function setDocumentHash(value){
   }catch(_){}
 }
 function clear3D(){
-  for(const el of [lib,cycle,logo]){
+  for(const el of [app,lib,cycle,logo]){
     el.style.removeProperty("transform");
     el.style.removeProperty("transform-origin");
     el.style.removeProperty("opacity");
@@ -73,6 +90,7 @@ function rest(showLogo,{restoreHash=true}={}){
   document.body.classList.remove("setka-vlogo-flip-active","setka-vlogo-busy");
   logo.hidden=!logoVisible;
   logo.inert=!logoVisible;
+  restoreDockHome();
   clear3D();
   // Do NOT touch the other face or app visibility. The original horizontal
   // module owns them and keeps the calendar scroll/history exactly as it was.
@@ -81,6 +99,7 @@ function rest(showLogo,{restoreHash=true}={}){
     logo.style.visibility="";
     resetTilt();
   }else{
+    if(origin==="setka")app.style.removeProperty("visibility");
     lib.style.removeProperty("visibility");
     cycle.style.removeProperty("visibility");
     logo.style.removeProperty("visibility");
@@ -98,6 +117,7 @@ function startVisual(){
   logo.inert=true;
   document.body.classList.add("setka-vlogo-flip-active");
   const source=currentSource();
+  attachDockToTurningFace();
   // The full-screen DOM planes must turn around the CENTER OF THE CARD,
   // not the middle of the phone viewport. The WebGL wordmark uses that
   // same card-centered origin, with all of its Z above the card surface.
