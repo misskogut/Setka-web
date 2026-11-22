@@ -29,46 +29,26 @@ function makeType(){
   for(const [id,value] of [["setkaVerticalTitleOne","СКВИШ"],["setkaVerticalTitleTwo","ДЛЯ МОЗГА"]]){
     const el=$(id);
     if(!el||el.children.length)return;
-    const f=document.createDocumentFragment();
-    // Physical thickness: 39 separate parallel planes in CSS 3D space.
-    // These aren't a flattened texture, SVG or a pre-rendered bitmap.
-    for(let depth=38;depth>=1;depth--){
-      const slice=document.createElement("span");
-      slice.className="setka-vlogo-slice wall";
-      slice.textContent=value;
-      slice.style.setProperty("--layer",String(depth));
-      // Use concrete 3D coordinates, not advanced CSS calc multiplication:
-      // the latter is still inconsistent on some iPhone Safari builds.
-      slice.style.transform="translate3d("+(depth*.28).toFixed(2)+"px,"+
-        (depth*.4).toFixed(2)+"px,"+(-depth*1.15).toFixed(2)+"px) translateY(-50%)";
-      slice.setAttribute("aria-hidden","true");
-      f.appendChild(slice);
-    }
+    // Fallback only: do not create stacked 3D DOM planes, which became
+    // stretched purple bars at the card's 90-degree turn on iOS Safari.
+    // Real depth belongs entirely to the rigid WebGL planet/logo model.
     const face=document.createElement("span");
     face.className="setka-vlogo-slice surface";
     face.textContent=value;
     face.setAttribute("aria-hidden","true");
-    f.appendChild(face);
-    el.appendChild(f);
+    el.appendChild(face);
   }
 }
 makeType();
 
-/* Separate solid geometry: the card may rotate edge-on, but its lettering
-   retains real Z depth outside the flattening DOM card/layer hierarchy. */
-function renderSolid({angle=0,visible=logoVisible,tiltX=-12,tiltY=-18}={}){
-  window.SETKA_SOLID_WORDMARK?.render({angle,visible,tiltX,tiltY});
+/* One rigid assembly. Planet and all 3D letters are permanently attached
+   to the logo-side card at fixed model-space positions. Gesture controls
+   change ONLY the card's vertical angle, not the object's individual axes. */
+function renderSolid({angle=0,visible=logoVisible}={}){
+  window.SETKA_SOLID_WORDMARK?.render({angle,visible});
 }
-function applyTilt(dx,dy){
-  const object=$("setkaVerticalTitleObject");
-  if(!object)return;
-  const x=clamp(-14+dy*12,-24,1);
-  const y=clamp(-20+dx*18,-42,12);
-  object.style.setProperty("--vlogo-tilt-x",x.toFixed(1)+"deg");
-  object.style.setProperty("--vlogo-tilt-y",y.toFixed(1)+"deg");
-  if(logoVisible&&!animating)renderSolid({angle:0,visible:true,tiltX:x,tiltY:y});
-}
-function resetTilt(){applyTilt(0,0)}
+function applyTilt(){/* No independent tilt: the globe is card-mounted. */}
+function resetTilt(){/* Stable mounted pose at rest. */}
 
 function setDocumentHash(value){
   try{
@@ -145,7 +125,7 @@ function draw(v){
   logo.style.transform="perspective(1450px) rotateX("+(direction*180*(1-p)).toFixed(3)+"deg)";
   // The front/back pages are CSS planes. The title is a real independent
   // 3D solid: at the 90-degree midpoint its SIDE faces remain visible.
-  renderSolid({angle:direction*180*(1-p),visible:p>=.5,tiltX:-12,tiltY:-18});
+  renderSolid({angle:direction*180*(1-p),visible:p>=.5});
 }
 function settle(toLogo){
   const end=toLogo?1:0;
