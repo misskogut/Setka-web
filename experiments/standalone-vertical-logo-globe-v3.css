@@ -42,6 +42,7 @@ body:not(.setka-vlogo-webgl) .setka-vlogo-3d::before{
 .setka-vlogo-crest,
 .setka-vlogo-shadow,
 .setka-vlogo-line,
+.setka-vlogo-microcopy,
 .setka-vlogo-3d::after{
   display:none!important;
 }
