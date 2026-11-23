@@ -25,12 +25,14 @@ function geometry(progress,direction=-1,width=390){
  const facing=clamp(Math.cos(a)/.4,0,1);
  const smoothFacing=facing*facing*(3-2*facing);
  const almaTransmission=p>=.5?.28+.72*smoothFacing:0;
- // Every submerged vertex moves into ALMA's interior at ANY angle:
- // a fade-gated fold previously pierced SETKA until ~75 degrees.
+ // Keep the buried HALF in its ORIGINAL side of the lotus, inside the
+ // visible ALMA card surface. v8 mistakenly folded it onto the exposed
+ // half, making the calendar-side petal disappear completely.
  const submergedAtX=x=>Math.max(0,-depthAtX(x));
- const projectInteriorX=x=>s<1e-7?x:
-  Math.sign(Math.sin(a))*submergedAtX(x)*(.22+.12*s);
- const interiorZAtX=x=>-submergedAtX(x)*(.35+.35*s);
+ const cardFace=Math.abs(Math.cos(a));
+ const chamberWidth=cardFace*(.8+.2*cardFace)+.04*s;
+ const projectInteriorX=x=>x*chamberWidth;
+ const interiorZAtX=x=>-submergedAtX(x)*(.18+.22*s);
  const edge=Math.max(0,Math.min(1,(s-.05)/.8));
  const edgeTransmission=edge*edge*(3-2*edge);
  const transmissionAtX=x=>{
@@ -41,7 +43,7 @@ function geometry(progress,direction=-1,width=390){
   clamp(.5+CLEARANCE*Math.cos(a)/(Math.max(1,width)*s),0,1);
  return {progress:p,direction:sign,cardYaw,counterYaw,yaw,radians:a,
   emergingSide:sign<0?"right":"left",depthAtX,transmissionAtX,
-  projectInteriorX,interiorZAtX,almaTransmission,
+  projectInteriorX,interiorZAtX,chamberWidth,almaTransmission,
   visibleFraction,opacity:1,enabled:p>0};
 }
 function original(hidden,doc=view?.doc){
@@ -106,13 +108,14 @@ const VS=[
 " vec3 world=ry(inCard,uAngle);",
 " if(uIsLotus>.5)world.z+=uClearance;",
 " vCycleSide=inCard.z+(uIsLotus>.5?uClearance*cos(uAngle):0.);vUV=aUV;",
-" // Inner petals never project into the opaque SETKA screen half-space.",
-" // The full source remains one subdivided 3D sheet, recessed into ALMA.",
+" // Keep submerged petals on their OWN half of the ALMA card.",
+" // Compress them only to the card's projected width, never across its axis.",
 " if(uIsLotus>.5&&uLayer<.5){",
 "   float immersed=max(0.,-vCycleSide);",
-"   float s=sin(uAngle);",
-"   world.x=sign(s)*immersed*(.22+.12*abs(s));",
-"   world.z=-immersed*(.35+.35*abs(s));",
+"   float face=abs(cos(uAngle)),edge=abs(sin(uAngle));",
+"   float chamberWidth=face*(.8+.2*face)+.04*edge;",
+"   world.x=aPos.x*chamberWidth;",
+"   world.z=-immersed*(.18+.22*edge);",
 " }",
 " float focal=1450.,d=focal-world.z,near=15.,far=3000.;",
 " vec2 pivotNDC=vec2(2.*uPivot.x/uScreen.x-1.,1.-2.*uPivot.y/uScreen.y);",
@@ -134,12 +137,12 @@ const FS=[
 "   if(uCycleFace<.5)discard;",
 "   if(vCycleSide>=0.)discard;",
 "   float travel=max(0.,-vCycleSide);",
-"   float absorption=.16+.84*exp(-travel/140.);",
-"   float edgeTransmission=smoothstep(.05,.85,abs(sin(uAngle)));",
-"   float almaTransmission=.28+.72*smoothstep(0.,.4,max(0.,cos(uAngle)));",
+"   float absorption=.48+.52*exp(-travel/190.);",
+"   float edgeTransmission=smoothstep(.02,.55,abs(sin(uAngle)));",
+"   float almaTransmission=.48+.52*smoothstep(0.,.4,max(0.,cos(uAngle)));",
 "   float transmission=absorption*edgeTransmission*almaTransmission;",
 "   if(transmission<.001)discard;",
-"   c.rgb*=mix(.72,1.,absorption);",
+"   c.rgb*=mix(.82,1.,absorption);",
 "   c.a*=transmission;",
 " } else {",
 "   if(vCycleSide<0.)discard;",
@@ -448,7 +451,7 @@ window.SETKA_CYCLE_LOTUS_AXIS={
  getInfo:()=>({turning,hasSource:!!view,ready:!!view?.ready,
   prewarmed:!!view?.ready&&!turning,textureSource:lastTextureSource,
   pivotX:view?.box?.pivotX??null,pivotY:view?.box?.pivotY??null,
-  lotusWidth:view?.box?.w??null,
+  lotusWidth:view?.box?.w??null,cardWidth:view?.box?.W??null,
   textureFailures,real3D:!!view?.gl,depthIntersection:true,frames,
   ...geometry(lastP,lastDirection,view?.box.w||390)})
 };

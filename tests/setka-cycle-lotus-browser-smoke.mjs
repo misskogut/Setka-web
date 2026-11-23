@@ -133,51 +133,60 @@ try{
   return petals;
  });
  console.log("LOTUS VOLUMETRIC CROSS SECTION",JSON.stringify(crossSection));
- assert.ok(crossSection.leftInside.left<15&&crossSection.leftInside.right>25,
-  "ALMA right: lotus may not pierce SETKA on the left");
- assert.ok(crossSection.rightInside.right<15&&crossSection.rightInside.left>25,
-  "ALMA left: lotus may not pierce SETKA on the right");
+ assert.ok(crossSection.leftInside.right>25,"ALMA right: outer lotus must remain bright");
+ assert.ok(crossSection.rightInside.left>25,"ALMA left: outer lotus must remain bright");
 
- // A 90-degree screenshot misses the original v7 regression at 15–60°.
- // Inspect GPU pixels through the whole visible calendar-side half-turn.
- const sweep=await page.evaluate(()=>{
+ // Visible inner petals must occupy the OTHER half of ALMA's card.
+ // Test the real GPU buffer at a diagonal angle in BOTH directions.
+ const visualHalves=await page.evaluate(()=>{
   const axis=window.SETKA_CYCLE_LOTUS_AXIS;
   const canvas=document.getElementById("setkaCycleLotusTurn");
   const gl=canvas.getContext("webgl"),scale=canvas.width/window.innerWidth;
   const pivot=Math.round(axis.getInfo().pivotX*scale);
   const earlier=axis.getInfo(),results=[];
   for(const direction of [-1,1]){
-   for(const p of [.5,.6,.7,.75,.8,.85]){
+   for(const p of [.65,.75,.85]){
     axis.render(p,direction);
     const raw=new Uint8Array(canvas.width*canvas.height*4);
     gl.readPixels(0,0,canvas.width,canvas.height,gl.RGBA,gl.UNSIGNED_BYTE,raw);
-    let setkaLeak=0,almaPixels=0;
+    let inner=0,outer=0,escaped=0;
+    const state=axis.getInfo();
+    const cardLimit=state.cardWidth/2*Math.abs(Math.cos(state.radians))*scale+15*scale;
     for(let y=0;y<canvas.height;y+=2){
      for(let x=0;x<canvas.width;x+=2){
-      const i=(y*canvas.width+x)*4;
-      const r=raw[i],g=raw[i+1],b=raw[i+2],a=raw[i+3];
-      if(a<22||r<55||b<75||b<=g*1.15)continue;
-      if(direction<0){
-       if(x<pivot-24*scale)setkaLeak++;
-       else if(x>pivot+24*scale)almaPixels++;
-      }else{
-       if(x>pivot+24*scale)setkaLeak++;
-       else if(x<pivot-24*scale)almaPixels++;
-      }
+      const i=(y*canvas.width+x)*4,r=raw[i],g=raw[i+1],b=raw[i+2],a=raw[i+3];
+      if(a<28||r<48||b<70||b<=g*1.12)continue;
+      const dx=x-pivot,innerSide=direction<0?dx<0:dx>0;
+      if(innerSide){
+       if(Math.abs(dx)>cardLimit)escaped++;
+       else if(Math.abs(dx)>6*scale)inner++;
+      }else if(Math.abs(dx)>12*scale)outer++;
      }
     }
-    results.push({direction,p,setkaLeak,almaPixels});
+    results.push({direction,p,inner,outer,escaped});
    }
   }
   axis.render(earlier.progress,earlier.direction);
   return results;
  });
- console.log("LOTUS ALMA-ONLY ANGLE SWEEP",JSON.stringify(sweep));
- for(const sample of sweep){
-  assert.ok(sample.setkaLeak<15,
-   "petals crossed the SETKA side at p="+sample.p+" direction="+sample.direction);
-  assert.ok(sample.almaPixels>25,
-   "ALMA petals vanished at p="+sample.p+" direction="+sample.direction);
+ console.log("VISIBLE LOTUS HALVES INSIDE ALMA",JSON.stringify(visualHalves));
+ for(const x of visualHalves){
+  assert.ok(x.inner>20,
+   "the inner half must be visible ON the cycle card at p="+x.p+" dir="+x.direction);
+  assert.ok(x.outer>30,
+   "the exposed half must remain visible at p="+x.p+" dir="+x.direction);
+  assert.ok(x.escaped<20,
+   "the internal half cannot leave ALMA's card at p="+x.p+" dir="+x.direction);
+ }
+
+ // The opaque SETKA half-turn cannot reveal the transparent interior.
+ for(const direction of [-1,1]){
+  const invisible=await page.evaluate(([p,d])=>{
+   const axis=window.SETKA_CYCLE_LOTUS_AXIS;
+   const a=axis.geometry(p,d,axis.getInfo().lotusWidth);
+   return a.transmissionAtX(d<0?-100:100);
+  },[.35,direction]);
+  assert.equal(invisible,0,"SETKA's squish side remains opaque");
  }
 
  await page.mouse.up();
