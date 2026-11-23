@@ -42,7 +42,7 @@ function ensurePortal(){
  `;
  holder=document.createElement("div");
  holder.className="setka-cycle-lotus-direct-holder";
- root.append(css,rule,holder);
+ root.appendChild(css);root.appendChild(rule);root.appendChild(holder);
  back.appendChild(portal);
  return true;
 }
@@ -76,7 +76,7 @@ function start(){
  }catch(_){}
  originalRef=svg;
  active={doc,button,svg};
- // Native adoption: this is the actual React SVG node, NOT cloneNode.
+ // Native adoption: this is the actual React SVG node, not a duplication.
  // Keep button in iframe for its original React click handler.
  holder.appendChild(svg);
  portal.style.visibility="hidden";
