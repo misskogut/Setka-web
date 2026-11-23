@@ -7,155 +7,88 @@ const js=fs.readFileSync("experiments/standalone-cycle-lotus-axis-v1.js","utf8")
 const css=fs.readFileSync("experiments/standalone-cycle-lotus-axis-v1.css","utf8");
 const host=fs.readFileSync("standalone-v34-cycle-logo3d.html","utf8");
 const canonical=fs.readFileSync("standalone-v34.html","utf8");
-
-function element(id=""){
- const children=[];
- const node={
-  id,children,style:{
-   setProperty(name,value){this[name]=value;}
-  },
-  classList:{_set:new Set(),add(name){this._set.add(name)},remove(name){this._set.delete(name)},contains(name){return this._set.has(name)}},
-  dataset:{},
-  attributes:new Map(),
-  setAttribute(name,value){this.attributes.set(name,value);},
-  getAttribute(name){return this.attributes.get(name)||null;},
-  removeAttribute(name){this.attributes.delete(name);},
-  querySelectorAll(){return []},
-  appendChild(child){children.push(child);child.parentNode=this;return child;},
-  remove(){this.removed=true},
-  getBoundingClientRect(){return {left:0,top:174,width:390,height:278}}
- };
- return node;
+function geometry(){
+ const win={};
+ const document={getElementById(){return null}};
+ vm.runInNewContext(js,{window:win,document,console,Math,Number},{filename:"standalone-cycle-lotus-axis-v1.js"});
+ return win.SETKA_CYCLE_LOTUS_AXIS.geometry;
 }
-function harness(){
- const svg=element("lotus");
- svg.cloneNode=()=>{
-  const clone=element("original-lotus");
-  clone.classList={add(c){clone.extraClass=c}};
-  return clone;
- };
- const button=element("button");
- button.querySelector=selector=>selector==="svg.cycle-lotus"?svg:null;
- const iframe={
-  clientWidth:390,
-  contentDocument:{
-   querySelector:selector=>selector===".cycle-lotus-button"?button:null,
-   documentElement:element("html"),
-   head:element("head"),
-   createElement:()=>element(),
-   getElementById(id){return this.head.children.find(x=>x.id===id)||null}
-  },
-  contentWindow:{getComputedStyle(){return {getPropertyValue(){return""}}}},
-  getBoundingClientRect(){return {left:14,top:12,width:390,height:720}},
-  handlers:{},
-  addEventListener(name,handler){this.handlers[name]=handler}
- };
- const back={querySelector:x=>x==="iframe"?iframe:null};
- const body=element("body");
- const document={
-  body,
-  getElementById:id=>id==="setkaCycleBack"?back:null,
-  createElement:()=>element()
- };
- const window={};
- vm.runInNewContext(js,{document,window,Math,Number,console},{filename:"standalone-cycle-lotus-axis-v1.js"});
- return {api:window.SETKA_CYCLE_LOTUS_AXIS,body,svg,iframe};
-}
+const g=geometry();
+const close=(a,b)=>assert.ok(Math.abs(a-b)<1e-7,"expected "+a+" ~ "+b);
 
-test("lotus looks at viewer when card is exactly edge-on, but half is occluded",()=>{
- const {api}=harness();
+test("physical card and lotus have two opposed Y axes throughout both swipes",()=>{
  for(const direction of [-1,1]){
-  const mid=api.geometry(.5,direction);
-  assert.equal(mid.yaw,0);
-  assert.equal(mid.visibleFraction,.5);
-  assert.equal(mid.hide,50);
-  assert.equal(mid.opacity,1);
-  assert.equal(mid.enabled,true);
-  assert.equal(mid.clip,direction<0?"inset(0 50.000% 0 0)":"inset(0 0 0 50.000%)");
- }
-});
-
-test("lotus always faces the viewer: local yaw exactly cancels card turn at EVERY angle",()=>{
- const {api}=harness();
- for(const direction of [-1,1]){
-  for(const p of [0,.1,.25,.33,.49,.5,.51,.66,.75,.9,1]){
-   const g=api.geometry(p,direction);
-   assert.equal(g.yaw,0,"world orientation is face-on even between endpoints");
-   assert.ok(Math.abs(g.cardYaw+g.counterYaw)<1e-8,
-    "lotus counter-rotates exactly opposite its card at progress "+p);
-   assert.equal(g.visibleFraction,p,"physical card exposes an increasing fraction");
-   assert.equal(g.opacity,1,"no artificial fade or sudden disappearance");
+  for(const p of [0,.05,.1,1/6,.25,1/3,.45,.5,.55,2/3,.75,5/6,.9,.95,1]){
+   const state=g(p,direction);
+   close(state.cardYaw+state.counterYaw,0);
+   assert.equal(state.yaw,0,"the original lotus always faces the viewer");
+   assert.equal(state.opacity,1,"never fade the lotus as a substitute for depth");
+   assert.equal(state.emergingSide,direction<0?"right":"left");
   }
-  const cycle=api.geometry(1,direction);
-  assert.equal(cycle.cardYaw,0,"lotus starts coplanar with the cycle card");
-  assert.equal(cycle.visibleFraction,1);
-  assert.equal(cycle.enabled,true);
-  const edge=api.geometry(.5,direction);
-  assert.equal(Math.abs(edge.counterYaw),90);
-  assert.equal(edge.visibleFraction,.5);
-  const setka=api.geometry(0,direction);
-  assert.equal(setka.visibleFraction,0,"behind SETKA");
-  assert.equal(setka.enabled,false);
+  close(g(1,direction).cardYaw,0);
+  close(Math.abs(g(.5,direction).cardYaw),90);
+  close(g(.5,direction).visibleFraction,.5);
+  close(g(0,direction).visibleFraction,0);
+  close(g(1,direction).visibleFraction,1);
  }
 });
 
-test("original ALMA SVG is cloned only for turning, never moved or modified",()=>{
- const {api,body,svg,iframe}=harness();
- api.start();
- assert.equal(body.children.length,1);
- const overlay=body.children[0];
- assert.equal(overlay.id,"setkaCycleLotusTurn");
- assert.equal(overlay.attributes.get("aria-hidden"),"true");
- const mask=overlay.children[0];
- const pivot=mask.children[0];
- assert.equal(mask.className,"setka-cycle-lotus-turn-mask");
- assert.notEqual(pivot.children[0],svg,"mirror must be a clone");
- api.render(.5,-1);
- assert.equal(mask.style.width,"50.000%","real overflow viewport cuts the visual in half");
- assert.equal(mask.style.left,"0.00px");
- assert.equal(pivot.style.left,"0.00px");
- assert.equal(pivot.style.transform,"perspective(1450px) rotateY(0.000deg)");
- assert.equal(overlay.dataset.cardEdge,"true");
- assert.equal(overlay.dataset.worldYaw,"0.000");
- assert.equal(overlay.dataset.cardYaw,"90.000");
- assert.equal(overlay.dataset.counterYaw,"-90.000");
- assert.equal(iframe.contentDocument.documentElement.classList.contains("setka-cycle-hides-original-lotus"),true,
-  "only the projection is visible during rotation, never two flowers");
- assert.equal(iframe.contentDocument.head.children.length,1,"original is hidden with one iframe-local style");
- api.render(.5,1);
- assert.equal(mask.style.width,"50.000%");
- assert.equal(mask.style.left,"195.00px");
- assert.equal(pivot.style.left,"-195.00px","keep original SVG center despite mask crop");
- api.render(.97,1);
- assert.equal(iframe.contentDocument.documentElement.classList.contains("setka-cycle-hides-original-lotus"),true,
-  "native flower cannot return until card stops rotating");
- assert.equal(mask.style.width,"97.000%","fully front-facing lotus grows behind physical card");
- api.render(1,1);
- assert.equal(mask.style.width,"100.000%","lotus becomes fully visible when coplanar with card");
- assert.equal(pivot.style.transform,"perspective(1450px) rotateY(0.000deg)");
- api.render(0,1);
- assert.equal(overlay.style.display,"none","no flower through SETKA face");
- assert.equal(iframe.contentDocument.documentElement.classList.contains("setka-cycle-hides-original-lotus"),true,
-  "the original is still hidden until the card is reset");
- api.rest();
- assert.equal(overlay.removed,true);
- assert.equal(api.getInfo().turning,false);
- assert.equal(iframe.contentDocument.documentElement.classList.contains("setka-cycle-hides-original-lotus"),false,
-  "no hidden original remains after a cancelled or completed turn");
- assert.equal(svg.removed,undefined,"do not detach original ALMA lotus");
+test("3D half-space selects only the ALMA-facing half, never SETKA's reverse",()=>{
+ const pivot=0,edge=110;
+ for(const direction of [-1,1]){
+  const s=g(.5,direction);
+  close(s.depthAtX(pivot),0);
+  const exposed=direction<0?edge:-edge;
+  const buried=-exposed;
+  assert.ok(s.depthAtX(exposed)>0,"exposed petal belongs to ALMA half-space");
+  assert.ok(s.depthAtX(buried)<0,"opposite petal is inside the card");
+  for(const p of [1/6,.25,.5,.75,5/6]){
+   const state=g(p,direction);
+   assert.ok(state.depthAtX(exposed)>state.depthAtX(buried));
+  }
+  assert.ok(g(.75,direction).visibleFraction>.5);
+  assert.ok(g(.25,direction).visibleFraction<.5);
+  assert.equal(g(0,direction).enabled,false);
+  assert.equal(g(1,direction).enabled,true);
+ }
 });
 
-test("only experimental SETKA page gets the Y-axis lotus animation, not the canonical front",()=>{
- assert.match(host,/standalone-cycle-lotus-axis-v1\.js\?v=20261123-counterrotating-face-on-360/);
- assert.match(host,/standalone-cycle-lotus-axis-v1\.css\?v=20261123-counterrotating-face-on-360/);
+test("the actual painter uses physical WebGL 3D rather than a 2D cropping mask",()=>{
+ assert.match(js,/getContext\("webgl"/);
+ assert.match(js,/attribute vec2 aPos/);
+ assert.match(js,/vec3 inCard=uIsLotus>\.5\?ry\(vec3\(aPos,0\.\),-uAngle\)/);
+ assert.match(js,/vec3 world=ry\(inCard,uAngle\)/);
+ assert.match(js,/vCycleSide=inCard\.z/);
+ assert.match(js,/if\(vCycleSide<0\.\)discard/);
+ assert.match(js,/gl\.enable\(gl\.DEPTH_TEST\)/);
+ assert.match(js,/gl\.colorMask\(false,false,false,false\)/);
+ assert.match(js,/gl\.drawArrays\(gl\.TRIANGLES,0,6\)/);
+ assert.match(js,/quad\(-box\.W\/2,box\.topY,box\.W\/2,box\.bottomY\)/);
+ assert.match(js,/quad\(-box\.w\/2,-box\.h\/2,box\.w\/2,box\.h\/2\)/);
+ assert.doesNotMatch(js,/mask\.style\.width|pivot\.style\.left|style\.clipPath|webkitClipPath/);
+ assert.doesNotMatch(css,/clip-path|overflow:hidden|turn-mask|turn-pivot/);
+ assert.match(css,/canvas|lotus-webgl/);
+});
+
+test("original ALMA is restored when the flip ends, with the same calendar and gestures",()=>{
+ assert.match(js,/svg\.cloneNode\(true\)/);
+ assert.match(js,/copyStyleTree\(svg,copy,iframe\.contentWindow\)/);
+ assert.match(js,/XMLSerializer/);
+ assert.match(js,/original\(true,v\.doc\)/);
+ assert.match(js,/original\(false,v\.doc\)/);
+ assert.match(js,/v\.canvas\.remove\(\)/);
+ assert.match(js,/setka-cycle-single-lotus-rule/);
+ assert.match(css,/pointer-events:none!important/);
+ assert.match(css,/body:not\(\.cycle-flip-active\)/);
+});
+
+test("3D animation is isolated to experimental front; canonical SETKA stays unchanged",()=>{
+ const revision="20261123-lotus-hinged-3d-depth-v2";
+ assert.ok(host.includes("standalone-cycle-lotus-axis-v1.js?v="+revision));
+ assert.ok(host.includes("standalone-cycle-lotus-axis-v1.css?v="+revision));
  assert.match(host,/SETKA_CYCLE_LOTUS_AXIS\?\.start\(\)/);
  assert.match(host,/SETKA_CYCLE_LOTUS_AXIS\?\.render\(progress,direction\)/);
  assert.match(host,/SETKA_CYCLE_LOTUS_AXIS\?\.rest\(\)/);
- assert.ok(host.indexOf("standalone-cycle-lotus-axis-v1.js")<host.indexOf("function setAtRest(cycle)"));
  assert.doesNotMatch(canonical,/standalone-cycle-lotus-axis-v1/);
- assert.match(css,/pointer-events:none!important/);
- assert.ok(css.includes("body:not(.cycle-flip-active)"),"overlay never paints at rest");
- assert.ok(css.includes(".setka-cycle-lotus-turn-mask{"),"physical overflow clipping layer exists");
- assert.match(css,/overflow:hidden/);
- assert.doesNotMatch(css,/will-change:opacity,clip-path/);
+ assert.ok(host.indexOf("standalone-cycle-lotus-axis-v1.js")<host.indexOf("function setAtRest(cycle)"));
 });
