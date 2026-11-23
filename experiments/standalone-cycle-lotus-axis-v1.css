@@ -1,62 +1,26 @@
-/* ALMA original lotus: an independent 3D-axis visual ONLY DURING
-   the horizontal SETKA <-> cycle card flip. The untouched ALMA iframe
-   continues to own all real cycle interactions at rest. */
-.setka-cycle-lotus-turn{
+/* ALMA cycle lotus — textured original SVG on an independent 3D Y axis.
+   The WebGL renderer owns card depth and ALMA-facing spatial intersection.
+   Never use flat overlay masks, clip-path, or 50%-width cropped SVGs. */
+#setkaCycleLotusTurn.setka-cycle-lotus-webgl{
  position:fixed;
- z-index:125;
- display:none;
- overflow:visible;
- padding:0;
- margin:0;
- background:transparent;
- isolation:isolate;
- pointer-events:none!important;
- transform:none!important;
- transform-origin:50% 50%;
- will-change:opacity;
- -webkit-backface-visibility:visible;
- backface-visibility:visible;
-}
-/* A physical half-plane mask, not WebKit clip-path on a 3D fixed layer. */
-.setka-cycle-lotus-turn-mask{
- display:block;
- position:absolute;
- top:0;
- bottom:0;
- left:0;
- width:100%;
- overflow:hidden;
- contain:paint;
- pointer-events:none!important;
- will-change:left,width;
-}
-.setka-cycle-lotus-turn-pivot{
- display:block;
- position:absolute;
  inset:0;
- width:100%;
- height:100%;
- pointer-events:none!important;
- transform-origin:50% 50%;
- -webkit-transform-style:preserve-3d;
- transform-style:preserve-3d;
- -webkit-backface-visibility:visible;
- backface-visibility:visible;
- will-change:transform;
-}
-.setka-cycle-lotus-turn-svg{
- display:block!important;
- width:100%!important;
- height:250px!important;
- max-height:100%;
- overflow:visible!important;
+ display:none;
+ width:100vw;
+ height:100dvh;
+ margin:0;
+ padding:0;
+ z-index:125;
+ background:transparent;
+ border:0;
  pointer-events:none!important;
  -webkit-user-select:none;
  user-select:none;
+ touch-action:none;
+ transform:none!important;
+ contain:strict;
 }
-body:not(.cycle-flip-active) .setka-cycle-lotus-turn{
+body:not(.cycle-flip-active) #setkaCycleLotusTurn,
+body:has(#gameScreen.active) #setkaCycleLotusTurn{
  display:none!important;
-}
-body:has(#gameScreen.active) .setka-cycle-lotus-turn{
- display:none!important;
+ pointer-events:none!important;
 }
