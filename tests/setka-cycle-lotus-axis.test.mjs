@@ -68,7 +68,7 @@ test("submerged lotus petals keep non-zero visible transmission in both directio
   const projected=atEdge.projectInteriorX(-outside);
   assert.ok(projected*(direction<0?1:-1)>0,
    "interior petals must project toward ALMA, never toward squishes");
-  assert.ok(Math.abs(projected)<outside*.35,
+  assert.ok(Math.abs(projected)<Math.abs(outside)*.35,
    "buried petals recede near ALMA's plane");
   assert.equal(g(1,direction).projectInteriorX(-outside),-outside,
    "resting original must preserve its geometry");
