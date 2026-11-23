@@ -138,6 +138,48 @@ try{
  assert.ok(crossSection.rightInside.right<15&&crossSection.rightInside.left>25,
   "ALMA left: lotus may not pierce SETKA on the right");
 
+ // A 90-degree screenshot misses the original v7 regression at 15–60°.
+ // Inspect GPU pixels through the whole visible calendar-side half-turn.
+ const sweep=await page.evaluate(()=>{
+  const axis=window.SETKA_CYCLE_LOTUS_AXIS;
+  const canvas=document.getElementById("setkaCycleLotusTurn");
+  const gl=canvas.getContext("webgl"),scale=canvas.width/window.innerWidth;
+  const pivot=Math.round(axis.getInfo().pivotX*scale);
+  const earlier=axis.getInfo(),results=[];
+  for(const direction of [-1,1]){
+   for(const p of [.5,.6,.7,.75,.8,.85]){
+    axis.render(p,direction);
+    const raw=new Uint8Array(canvas.width*canvas.height*4);
+    gl.readPixels(0,0,canvas.width,canvas.height,gl.RGBA,gl.UNSIGNED_BYTE,raw);
+    let setkaLeak=0,almaPixels=0;
+    for(let y=0;y<canvas.height;y+=2){
+     for(let x=0;x<canvas.width;x+=2){
+      const i=(y*canvas.width+x)*4;
+      const r=raw[i],g=raw[i+1],b=raw[i+2],a=raw[i+3];
+      if(a<22||r<55||b<75||b<=g*1.15)continue;
+      if(direction<0){
+       if(x<pivot-24*scale)setkaLeak++;
+       else if(x>pivot+24*scale)almaPixels++;
+      }else{
+       if(x>pivot+24*scale)setkaLeak++;
+       else if(x<pivot-24*scale)almaPixels++;
+      }
+     }
+    }
+    results.push({direction,p,setkaLeak,almaPixels});
+   }
+  }
+  axis.render(earlier.progress,earlier.direction);
+  return results;
+ });
+ console.log("LOTUS ALMA-ONLY ANGLE SWEEP",JSON.stringify(sweep));
+ for(const sample of sweep){
+  assert.ok(sample.setkaLeak<15,
+   "petals crossed the SETKA side at p="+sample.p+" direction="+sample.direction);
+  assert.ok(sample.almaPixels>25,
+   "ALMA petals vanished at p="+sample.p+" direction="+sample.direction);
+ }
+
  await page.mouse.up();
  // Software WebGL in CI can deliver only a few animation frames per second.
  // Wait for the real flip controller's settled state, not an assumed 700 ms.

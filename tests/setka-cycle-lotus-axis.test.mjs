@@ -76,6 +76,17 @@ test("submerged lotus petals keep non-zero visible transmission in both directio
    "buried petals recede near ALMA's plane");
   assert.equal(g(1,direction).projectInteriorX(-outside),-outside,
    "resting original must preserve its geometry");
+  for(const p of [.35,.4,.45,.5,.55,.6,.65,.7,.75,.8,.85,.9,.95]){
+   const current=g(p,direction),submerged=-outside,depth=current.depthAtX(submerged);
+   if(depth>=0||current.transmissionAtX(submerged)<=.01)continue;
+   const screenX=current.projectInteriorX(submerged);
+   assert.ok(screenX*(direction<0?1:-1)>0,
+    "submerged petals must never project toward SETKA at p="+p);
+   assert.ok(Math.abs(screenX)<Math.abs(outside)*.35,
+    "interior geometry must remain confined to the narrow ALMA-side chamber");
+   assert.ok(current.interiorZAtX(submerged)<0,
+    "inner petals recede into Z-depth behind the ALMA surface");
+  }
  }
 });
 
@@ -93,8 +104,8 @@ test("the actual painter uses physical WebGL 3D rather than a 2D cropping mask",
  assert.match(js,/float absorption=\.16\+\.84\*exp\(-travel\/140\.\)/);
  assert.match(js,/float edgeTransmission=smoothstep/);
  assert.match(js,/c\.a\*=transmission/,"submerged petals transmit, not disappear");
- assert.match(js,/world\.x\+=sign\(sin\(uAngle\)\)\*immersed\*1\.24\*bend/);
- assert.match(js,/world\.z-=immersed\*\.65\*bend/);
+ assert.match(js,/world\.x=sign\(s\)\*immersed\*\(\.22\+\.12\*abs\(s\)\)/);
+ assert.match(js,/world\.z=-immersed\*\(\.35\+\.35\*abs\(s\)\)/);
  assert.match(js,/uCycleFace<\.5\)discard/,"opaque squish face must occlude interior");
  assert.match(js,/almaTransmission=\.28\+\.72\*smoothstep/);
  assert.match(js,/function strips\(/);
@@ -122,7 +133,7 @@ test("original ALMA is restored when the flip ends, with the same calendar and g
 });
 
 test("3D animation is isolated to experimental front; canonical SETKA stays unchanged",()=>{
- const revision="20261123-lotus-opaque-setka-v7";
+ const revision="20261123-alma-opaque-geometry-v8";
  assert.ok(host.includes("standalone-cycle-lotus-axis-v1.js?v="+revision));
  assert.ok(host.includes("standalone-cycle-lotus-axis-v1.css?v="+revision));
  assert.match(host,/SETKA_CYCLE_LOTUS_AXIS\?\.start\(\)/);

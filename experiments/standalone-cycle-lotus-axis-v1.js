@@ -20,16 +20,17 @@ function geometry(progress,direction=-1,width=390){
  // Near the edge the submerged petals are visible; the opaque SETKA face
  // conceals them as the card settles flat. Full ALMA-facing petals stay bright.
  const s=Math.abs(Math.sin(a));
- // Inner petals bend into ALMA's volume, not through the SETKA face.
- const foldT=clamp((s-.55)/.35,0,1);
- const fold=foldT*foldT*(3-2*foldT);
  // The host shows SETKA until p=.5, then ALMA. Internal petals must
  // NEVER transmit while the opaque squish face is actually rendered.
  const facing=clamp(Math.cos(a)/.4,0,1);
  const smoothFacing=facing*facing*(3-2*facing);
  const almaTransmission=p>=.5?.28+.72*smoothFacing:0;
- const projectInteriorX=x=>x+(Math.sin(a)<0?-1:1)
-  *Math.max(0,-depthAtX(x))*1.24*fold;
+ // Every submerged vertex moves into ALMA's interior at ANY angle:
+ // a fade-gated fold previously pierced SETKA until ~75 degrees.
+ const submergedAtX=x=>Math.max(0,-depthAtX(x));
+ const projectInteriorX=x=>s<1e-7?x:
+  Math.sign(Math.sin(a))*submergedAtX(x)*(.22+.12*s);
+ const interiorZAtX=x=>-submergedAtX(x)*(.35+.35*s);
  const edge=Math.max(0,Math.min(1,(s-.05)/.8));
  const edgeTransmission=edge*edge*(3-2*edge);
  const transmissionAtX=x=>{
@@ -40,7 +41,7 @@ function geometry(progress,direction=-1,width=390){
   clamp(.5+CLEARANCE*Math.cos(a)/(Math.max(1,width)*s),0,1);
  return {progress:p,direction:sign,cardYaw,counterYaw,yaw,radians:a,
   emergingSide:sign<0?"right":"left",depthAtX,transmissionAtX,
-  projectInteriorX,almaTransmission,
+  projectInteriorX,interiorZAtX,almaTransmission,
   visibleFraction,opacity:1,enabled:p>0};
 }
 function original(hidden,doc=view?.doc){
@@ -105,12 +106,13 @@ const VS=[
 " vec3 world=ry(inCard,uAngle);",
 " if(uIsLotus>.5)world.z+=uClearance;",
 " vCycleSide=inCard.z+(uIsLotus>.5?uClearance*cos(uAngle):0.);vUV=aUV;",
-" // Bend submerged petals into the ALMA half and recess them in Z.",
+" // Inner petals never project into the opaque SETKA screen half-space.",
+" // The full source remains one subdivided 3D sheet, recessed into ALMA.",
 " if(uIsLotus>.5&&uLayer<.5){",
 "   float immersed=max(0.,-vCycleSide);",
-"   float bend=smoothstep(.55,.90,abs(sin(uAngle)));",
-"   world.x+=sign(sin(uAngle))*immersed*1.24*bend;",
-"   world.z-=immersed*.65*bend;",
+"   float s=sin(uAngle);",
+"   world.x=sign(s)*immersed*(.22+.12*abs(s));",
+"   world.z=-immersed*(.35+.35*abs(s));",
 " }",
 " float focal=1450.,d=focal-world.z,near=15.,far=3000.;",
 " vec2 pivotNDC=vec2(2.*uPivot.x/uScreen.x-1.,1.-2.*uPivot.y/uScreen.y);",
