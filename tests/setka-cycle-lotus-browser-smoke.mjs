@@ -103,6 +103,42 @@ try{
  console.log("VISIBLE LOTUS PIXELS",violet,"WARNINGS",JSON.stringify(notices.slice(-8)));
  assert.ok(violet>60,"a real neon lotus must be painted on the visible ALMA side, not a blank WebGL canvas");
 
+ // Inspect the REAL GPU framebuffer at an exact 90-degree card orientation.
+ // The original regression painted ZERO pixels on the submerged half.
+ // Both directions must retain the full SVG through physically attenuated
+ // material. Reading the canvas, not the screenshot, excludes purple UI text.
+ const crossSection=await page.evaluate(()=>{
+  const axis=window.SETKA_CYCLE_LOTUS_AXIS;
+  const earlier=axis.getInfo(),canvas=document.getElementById("setkaCycleLotusTurn");
+  const gl=canvas.getContext("webgl"),scale=canvas.width/window.innerWidth;
+  const pivot=Math.round(axis.getInfo().pivotX*scale);
+  const petals={};
+  for(const direction of [-1,1]){
+   axis.render(.5,direction);
+   const raw=new Uint8Array(canvas.width*canvas.height*4);
+   gl.readPixels(0,0,canvas.width,canvas.height,gl.RGBA,gl.UNSIGNED_BYTE,raw);
+   let left=0,right=0;
+   const radius=Math.min(Math.floor(axis.getInfo().lotusWidth*scale/2),pivot,canvas.width-pivot);
+   for(let y=0;y<canvas.height;y+=2){
+    for(let x=Math.max(0,pivot-radius);x<Math.min(canvas.width,pivot+radius);x+=2){
+     const i=(y*canvas.width+x)*4;
+     const r=raw[i],g=raw[i+1],b=raw[i+2],a=raw[i+3];
+     if(a>22&&r>55&&b>75&&b>g*1.15){
+      if(x<pivot)left++;else right++;
+     }
+    }
+   }
+   petals[direction<0?"leftInside":"rightInside"]={left,right};
+  }
+  axis.render(earlier.progress,earlier.direction);
+  return petals;
+ });
+ console.log("LOTUS VOLUMETRIC CROSS SECTION",JSON.stringify(crossSection));
+ assert.ok(crossSection.leftInside.left>25&&crossSection.leftInside.right>25,
+  "both inner and outer petal halves must be visible at the card edge");
+ assert.ok(crossSection.rightInside.left>25&&crossSection.rightInside.right>25,
+  "both petal halves must survive the opposite card rotation");
+
  await page.mouse.up();
  // Software WebGL in CI can deliver only a few animation frames per second.
  // Wait for the real flip controller's settled state, not an assumed 700 ms.

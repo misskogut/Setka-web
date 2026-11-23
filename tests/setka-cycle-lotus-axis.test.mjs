@@ -53,6 +53,19 @@ test("3D half-space selects only the ALMA-facing half, never SETKA's reverse",()
  }
 });
 
+test("submerged lotus petals keep non-zero visible transmission in both directions",()=>{
+ for(const direction of [-1,1]){
+  const atEdge=g(.5,direction),outside=direction<0?110:-110;
+  assert.equal(atEdge.transmissionAtX(outside),1,"exposed petals remain opaque");
+  assert.ok(atEdge.transmissionAtX(-outside)>.2,"submerged petal is not discarded");
+  assert.ok(atEdge.transmissionAtX(-outside)<1,"depth absorbs the inner light");
+  assert.ok(atEdge.transmissionAtX(-outside/3)>atEdge.transmissionAtX(-outside),
+   "deeply submerged petal is visibly dimmer");
+  assert.equal(g(0,direction).transmissionAtX(-outside),0,
+   "the flat SETKA backside must not glow with interior petals");
+ }
+});
+
 test("the actual painter uses physical WebGL 3D rather than a 2D cropping mask",()=>{
  assert.match(js,/getContext\("webgl"/);
  assert.match(js,/const FS=\[/);
@@ -63,7 +76,11 @@ test("the actual painter uses physical WebGL 3D rather than a 2D cropping mask",
  assert.match(js,/vec3 inCard=uIsLotus>\.5\?ry\(vec3\(aPos,0\.\),-uAngle\)/);
  assert.match(js,/vec3 world=ry\(inCard,uAngle\)/);
  assert.match(js,/vCycleSide=inCard\.z/);
- assert.match(js,/if\(vCycleSide<0\.\)discard/);
+ assert.match(js,/if\(uLayer<\.5\)/,"back petals must have their own pass");
+ assert.match(js,/float absorption=\.16\+\.84\*exp\(-travel\/140\.\)/);
+ assert.match(js,/float edgeTransmission=smoothstep/);
+ assert.match(js,/c\.a\*=transmission/,"submerged petals transmit, not disappear");
+ assert.match(js,/gl\.disable\(gl\.DEPTH_TEST\)/,"rear transmission is not killed by the card depth");
  assert.match(js,/gl\.enable\(gl\.DEPTH_TEST\)/);
  assert.match(js,/gl\.colorMask\(false,false,false,false\)/);
  assert.match(js,/gl\.drawArrays\(gl\.TRIANGLES,0,6\)/);
@@ -87,7 +104,7 @@ test("original ALMA is restored when the flip ends, with the same calendar and g
 });
 
 test("3D animation is isolated to experimental front; canonical SETKA stays unchanged",()=>{
- const revision="20261123-lotus-hinged-3d-depth-v4-live-pivot";
+ const revision="20261123-lotus-volumetric-rear-v5";
  assert.ok(host.includes("standalone-cycle-lotus-axis-v1.js?v="+revision));
  assert.ok(host.includes("standalone-cycle-lotus-axis-v1.css?v="+revision));
  assert.match(host,/SETKA_CYCLE_LOTUS_AXIS\?\.start\(\)/);
@@ -181,14 +198,14 @@ test("mobile first swipe: 3D lotus texture is decoded BEFORE gesture and GPU is 
  assert.equal(api.getInfo().pivotY,hiddenPivot+174,
   "3D hinge must be measured AFTER the calendar card becomes visible");
  api.render(.5,-1);
- assert.equal(paints,2,"one depth-only card plane plus lotus are rendered");
+ assert.equal(paints,3,"rear material, depth-only card and exposed lotus all draw");
  assert.equal(doc.documentElement.classList.contains("setka-cycle-hides-original-lotus"),true);
  api.rest();
  assert.equal(api.getInfo().ready,true,"releasing swipe must preserve prepared GPU texture");
  assert.equal(api.getInfo().prewarmed,true);
  assert.equal(doc.documentElement.classList.contains("setka-cycle-hides-original-lotus"),false);
  api.start();api.render(.65,1);
- assert.equal(paints,4,"second gesture renders immediately without async load");
+ assert.equal(paints,6,"both depth layers repaint instantly on reverse gesture");
  assert.equal(createdImages,1,"no image reload after normal release");
  api.rest();
 });

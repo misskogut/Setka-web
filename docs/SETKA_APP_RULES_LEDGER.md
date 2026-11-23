@@ -1,5 +1,12 @@
 # SETKA APP · REGISTER OF PRODUCT RULES AND AUTOMATED GUARANTEES
 
+## APP-ALMA-VOLUMETRIC-INTERIOR-20261123 · Видимая глубина вместо вырезанной половины
+
+**Приоритетное уточнение владельца по реальному скриншоту:** погружённая в 3D-карточку половина лотоса НЕ должна исчезать из-за `discard` или depth-only окклюзии. При повороте ровно ребром обе половины должны существовать в одном исходном изображении: выступающая яркая, погружённая различимая через тёмную полупрозрачную среду с зависящим от глубины поглощением. На поверхности поглощение непрерывное (без вертикального среза), глубже свет ослабевает; зеркальное поведение при обратном свайпе. В покое SETKA задняя сторона карточки скрывает цвет, а в покое ALMA работает живой оригинал, без дубликатов.
+
+Три отдельных физических WebGL-прохода (задний перед depth-test, depth-only карта, передний с depth-test) заменяют жёсткое `if(vCycleSide<0.)discard`. `tests/setka-cycle-lotus-axis.test.mjs` проверяет неравную передачу света по глубине, геометрию двух осей, пиксельный renderer contract и повторные свайпы; `tests/setka-cycle-lotus-browser-smoke.mjs` проверяет реально окрашенные GPU-пиксели обеих половин в обоих направлениях. Прежнее правило строго 50% видимости относится только к *яркой наружной* половине, а не к полному исчезновению внутренней. Это изменение касается исключительно экспериментальной ALMA-карточки, не фронта, админки или данных; настоящий iPhone остаётся отдельной приёмкой.
+
+
 **Status:** living product acceptance ledger; current policy from 2026-10-21. **Applies only to SETKA App**, not to VERSTAK/CANON/Foundation/Diamond.
 
 Read with [SETKA_APP_CANONICAL_CONTRACT.md](../SETKA_APP_CANONICAL_CONTRACT.md), [PATTERN_PLATFORM_V2.md](PATTERN_PLATFORM_V2.md), [SETKA_DATA_MODEL_V1.md](../SETKA_DATA_MODEL_V1.md) and root [AGENTS.md](../AGENTS.md). If implementation conflicts with a rule, fix the implementation *and* add executable proof — don't change the rule to disguise the regression.

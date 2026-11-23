@@ -16,11 +16,20 @@ function geometry(progress,direction=-1,width=390){
  const counterYaw=p===1?0:-cardYaw;
  const yaw=cardYaw+counterYaw,a=cardYaw*DEG;
  const depthAtX=x=>x*Math.sin(a)+CLEARANCE*Math.cos(a);
+ // Inside the card is a translucent volume, not a discarded half-plane.
+ // Near the edge the submerged petals are visible; the opaque SETKA face
+ // conceals them as the card settles flat. Full ALMA-facing petals stay bright.
  const s=Math.abs(Math.sin(a));
+ const edge=Math.max(0,Math.min(1,(s-.05)/.8));
+ const edgeTransmission=edge*edge*(3-2*edge);
+ const transmissionAtX=x=>{
+  const d=depthAtX(x);
+  return d>=0?1:edgeTransmission*(.16+.84*Math.exp(d/140));
+ };
  const visibleFraction=s<1e-7?(Math.cos(a)>0?1:0):
   clamp(.5+CLEARANCE*Math.cos(a)/(Math.max(1,width)*s),0,1);
  return {progress:p,direction:sign,cardYaw,counterYaw,yaw,radians:a,
-  emergingSide:sign<0?"right":"left",depthAtX,
+  emergingSide:sign<0?"right":"left",depthAtX,transmissionAtX,
   visibleFraction,opacity:1,enabled:p>0};
 }
 function original(hidden,doc=view?.doc){
@@ -93,13 +102,25 @@ const VS=[
 "}"].join("\n");
 const FS=[
 "precision highp float;",
-"uniform sampler2D uTex;uniform float uIsLotus;",
+"uniform sampler2D uTex;uniform float uIsLotus,uLayer,uAngle;",
 "varying vec2 vUV;varying float vCycleSide;",
 "void main(){",
 " if(uIsLotus<.5){gl_FragColor=vec4(0.);return;}",
-" // Positive 3D card-local Z belongs to the ALMA side, not SETKA.",
-" if(vCycleSide<0.)discard;",
 " vec4 c=texture2D(uTex,vUV);if(c.a<.008)discard;",
+" // The geometric back HALF is still present inside the ALMA card.",
+" // It transmits violet light through a dark volume instead of being cut off.",
+" if(uLayer<.5){",
+"   if(vCycleSide>=0.)discard;",
+"   float travel=max(0.,-vCycleSide);",
+"   float absorption=.16+.84*exp(-travel/140.);",
+"   float edgeTransmission=smoothstep(.05,.85,abs(sin(uAngle)));",
+"   float transmission=absorption*edgeTransmission;",
+"   if(transmission<.001)discard;",
+"   c.rgb*=mix(.72,1.,absorption);",
+"   c.a*=transmission;",
+" } else {",
+"   if(vCycleSide<0.)discard;",
+" }",
 " gl_FragColor=c;",
 "}"].join("\n");
 function renderer(canvas){
@@ -133,6 +154,7 @@ function renderer(canvas){
   pivot:gl.getUniformLocation(program,"uPivot"),
   angle:gl.getUniformLocation(program,"uAngle"),
   lotus:gl.getUniformLocation(program,"uIsLotus"),
+  layer:gl.getUniformLocation(program,"uLayer"),
   clearance:gl.getUniformLocation(program,"uClearance"),
   texture:gl.getUniformLocation(program,"uTex")};
  const buffer=gl.createBuffer(),texture=gl.createTexture();
@@ -169,16 +191,26 @@ function renderer(canvas){
   gl.vertexAttribPointer(at.pos,2,gl.FLOAT,false,16,0);
   gl.vertexAttribPointer(at.uv,2,gl.FLOAT,false,16,8);
   gl.enableVertexAttribArray(at.pos);gl.enableVertexAttribArray(at.uv);
-  // Exactly the physical ALMA card: an invisible depth-only plane.
+  // Rear petals occupy NEGATIVE card-local depth. Render their attenuated
+  // transmission first, behind the physical card surface, not as a 2D crop.
+  const petals=quad(-box.w/2,-box.h/2,box.w/2,box.h/2);
+  gl.uniform1f(u.lotus,1);gl.uniform1f(u.layer,0);
+  gl.bufferData(gl.ARRAY_BUFFER,petals,gl.DYNAMIC_DRAW);
+  gl.disable(gl.DEPTH_TEST);gl.depthMask(false);
+  gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
+  gl.drawArrays(gl.TRIANGLES,0,6);
+  gl.disable(gl.BLEND);
+  // Opaque depth-only geometry still occludes the FRONT petal pass. The
+  // translucent interior was already composited with depth absorption.
+  gl.enable(gl.DEPTH_TEST);gl.depthMask(true);
   gl.uniform1f(u.lotus,0);
   gl.bufferData(gl.ARRAY_BUFFER,quad(-box.W/2,box.topY,box.W/2,box.bottomY),gl.DYNAMIC_DRAW);
-  gl.disable(gl.BLEND);gl.colorMask(false,false,false,false);
-  gl.depthMask(true);gl.drawArrays(gl.TRIANGLES,0,6);
+  gl.colorMask(false,false,false,false);
+  gl.drawArrays(gl.TRIANGLES,0,6);
   gl.colorMask(true,true,true,true);
-  // The ORIGINAL SVG is a textured plane on a separate Y axis;
-  // its negative card-local depth is inside the card and stays hidden.
-  gl.uniform1f(u.lotus,1);
-  gl.bufferData(gl.ARRAY_BUFFER,quad(-box.w/2,-box.h/2,box.w/2,box.h/2),gl.DYNAMIC_DRAW);
+  // Exposed ALMA petals retain full brightness and real depth testing.
+  gl.uniform1f(u.lotus,1);gl.uniform1f(u.layer,1);
+  gl.bufferData(gl.ARRAY_BUFFER,petals,gl.DYNAMIC_DRAW);
   gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
   gl.drawArrays(gl.TRIANGLES,0,6);gl.disable(gl.BLEND);
  }
@@ -376,7 +408,8 @@ window.SETKA_CYCLE_LOTUS_AXIS={
  start,render,rest,geometry,
  getInfo:()=>({turning,hasSource:!!view,ready:!!view?.ready,
   prewarmed:!!view?.ready&&!turning,textureSource:lastTextureSource,
-  pivotY:view?.box?.pivotY??null,lotusWidth:view?.box?.w??null,
+  pivotX:view?.box?.pivotX??null,pivotY:view?.box?.pivotY??null,
+  lotusWidth:view?.box?.w??null,
   textureFailures,real3D:!!view?.gl,depthIntersection:true,frames,
   ...geometry(lastP,lastDirection,view?.box.w||390)})
 };
