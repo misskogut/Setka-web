@@ -121,28 +121,72 @@ function cardPlane(w,h,scale){
  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(vertices),gl.DYNAMIC_DRAW);
 }
 let active=false,lost=false,disposed=false,angle=0;
-const movers=Array.from({length:5},()=>({p:[0,0,0],v:[0,0,0],target:[0,0,0],next:0}));
-let phase=0,loopId=0,lastStep=0,lastPaint=0;
+
+const ORIGINAL=[[-.52,.34,.04],[.47,.32,-.18],[-.35,-.48,.12],[.52,-.38,.24],[0,-.06,.05]];
 const random=(a,b)=>a+Math.random()*(b-a);
+const movers=ORIGINAL.map(h=>({
+ p:h.slice(),home:h.slice(),v:[random(-.13,.13),random(-.13,.13),random(-.13,.13)],
+ target:h.slice(),timer:random(.35,.9)
+}));
+let phase=0,loopId=0,lastStep=0,lastPaint=0,lastMesh=0;
+let press=0,pressGoal=0,contact=[0,0],activeTouch=null;
+const FLUID_REBUILD_MS=82;
+// All 5 moving lobes are resampled into ONE watertight isosurface.
+// No GPU position changes depend on separately shaded polygon normals.
+function refreshFluid(){
+ const result=buildMesh(phase,movers.map(q=>q.p),press,contact);
+ const count=result.data.length/7;
+ if(count<5000||count>160000)throw Error("Unexpected live mesh size: "+count);
+ gl.bindBuffer(gl.ARRAY_BUFFER,buf);
+ gl.bufferData(gl.ARRAY_BUFFER,result.data,gl.DYNAMIC_DRAW);
+ total=count;
+ stats.vertices=count;
+ stats.metaballTriangles=result.honeyTriangles;
+ stats.metaballBounds=result.honeyBounds;
+}
+function fluidInput(x,y,dx,dy){
+ contact=[x,y];pressGoal=.43;
+ for(const b of movers){
+  const distance=(b.p[0]-x)**2+(b.p[1]-y)**2;
+  const influence=Math.exp(-distance*3);
+  b.v[0]+=dx*2.4*influence;
+  b.v[1]+=dy*2.4*influence;
+ }
+}
 function animate(now){
- loopId=0;if(!active||lost||disposed)return;
+ loopId=0;
+ if(!active||lost||disposed)return;
  const dt=lastStep?Math.min(.05,(now-lastStep)/1000):.016;
  lastStep=now;phase+=dt;
- for(const m of movers){
-  m.next-=dt;
-  if(m.next<=0){m.next=random(.35,.95);m.target=[random(-.17,.17),random(-.17,.17),random(-.17,.17)];}
-  for(let j=0;j<3;j++){
-   const force=(m.target[j]-m.p[j])*2.15-m.p[j]*.24+random(-.32,.32);
-   m.v[j]=(m.v[j]+force*dt)*Math.exp(-.82*dt);
-   m.v[j]=Math.max(-.33,Math.min(.33,m.v[j]));
-   m.p[j]+=m.v[j]*dt;
+ // The exact approved #08 zero-gravity physics, with nonrepeating impulses.
+ for(const b of movers){
+  b.timer-=dt;
+  if(b.timer<=0){
+   b.timer=random(.28,.85);
+   b.target=b.home.map(x=>x+random(-.19,.19));
+  }
+  for(let i=0;i<3;i++){
+   const force=(b.target[i]-b.p[i])*2.35+(b.home[i]-b.p[i])*.48+random(-.50,.50);
+   b.v[i]=(b.v[i]+force*dt)*Math.exp(-.83*dt);
+   b.v[i]=Math.max(-.43,Math.min(.43,b.v[i]));
+   b.p[i]+=b.v[i]*dt;
   }
  }
- if(now-lastPaint>36){paint();lastPaint=now;}
+ press+=(pressGoal-press)*Math.min(1,dt*8);
+ if(now-lastMesh>=FLUID_REBUILD_MS){
+  try{refreshFluid()}catch(error){
+   console.warn("[SETKA #08] live mesh frame skipped",error);
+  }
+  lastMesh=now;
+ }
+ if(now-lastPaint>32){paint();lastPaint=now}
  loopId=requestAnimationFrame(animate);
 }
 function startAnimation(){if(!loopId&&active&&!lost&&!disposed)loopId=requestAnimationFrame(animate)}
-function stopAnimation(){if(loopId){cancelAnimationFrame(loopId);loopId=0;}lastStep=0;}
+function stopAnimation(){
+ if(loopId){cancelAnimationFrame(loopId);loopId=0}
+ lastStep=0;lastMesh=0;pressGoal=0;activeTouch=null;
+}
 function projection(frame){
  const D=1450,near=.5,far=3800,f=2*D/frame.renderH,nf=1/(near-far);
  return new Float32Array([
@@ -180,7 +224,7 @@ function paint(){
  gl.uniform1f(U.flip,-angle*Math.PI/180);
  gl.uniform1f(U.scale,scale);
  gl.uniform1f(U.time,phase);
- gl.uniform3fv(U.motion,new Float32Array(movers.flatMap(m=>m.p)));
+
  // First draw an invisible, infinitely thin card to the DEPTH BUFFER.
  // The metaball is rendered on every frame, including angle=180° and 90°;
  // only the parts naturally behind the card are occluded. No 50% toggle.
@@ -211,7 +255,7 @@ window.addEventListener("resize",()=>{if(active)paint()},{passive:true});
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&active)paint()});
 window.SETKA_SOLID_WORDMARK={
  render,
- getInfo:()=>({...stats,real3D:true,renderer:"WebGL faceted honey #08",angle,active,rigid:true,continuous:true,metaball:true,faceted:true,globeDecorations:false,animatedFluid:true,depthOcclusion:true}),
+ getInfo:()=>({...stats,real3D:true,renderer:"WebGL original honey #08 live rebuilt",angle,active,rigid:true,continuous:true,metaball:true,faceted:true,globeDecorations:false,animatedFluid:true,liveRebuild:true,depthOcclusion:true}),
  dispose(){
   disposed=true;active=false;stopAnimation();canvas.remove();
   gl.deleteBuffer(buf);gl.deleteBuffer(plateBuffer);gl.deleteProgram(prog);
