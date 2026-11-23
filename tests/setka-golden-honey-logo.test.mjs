@@ -118,7 +118,7 @@ test('WebGL port uses original #08 CPU rebuild and never pulls mesh corners apar
 test('experimental page cache-busts faceted renderer; CSS hides legacy globe decorations',()=>{
  const css=fs.readFileSync('experiments/standalone-vertical-logo-globe-v3.css','utf8');
  assert.match(experimentalHtml,/setka-metaball-mesh-v1\.js\?v=20261123-honey08-original-live/);
- assert.match(experimentalHtml,/standalone-vertical-logo-globe-v3\.js\?v=20261123-honey08-original-live/);
+ assert.match(experimentalHtml,/standalone-vertical-logo-globe-v3\.js\?v=20261123-honey08-tap-energy/);
  assert.match(experimentalHtml,/standalone-vertical-logo-globe-v3\.css\?v=20261123-honey08-original-live/);
  assert.match(css,/\.setka-vlogo-crest,\s*\.setka-vlogo-shadow,\s*\.setka-vlogo-line,/);
  assert.match(css,/\.setka-vlogo-3d::after\s*\{\s*display:none!important;/);
