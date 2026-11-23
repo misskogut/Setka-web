@@ -36,10 +36,24 @@ const vert=[
 "precision highp float;",
 "attribute vec3 aPosition;attribute vec3 aNormal;attribute float aMaterial;",
 "uniform mat4 uProjection;uniform float uFlip;uniform float uScale;",
+"uniform float uTime;uniform vec3 uMotion[5];",
 "varying vec3 vN;varying vec3 vLocal;varying float vMat;",
 "vec3 rotX(vec3 p,float a){float c=cos(a),s=sin(a);return vec3(p.x,p.y*c-p.z*s,p.y*s+p.z*c);}",
 "void main(){",
-"  vec3 p=aPosition*uScale;",
+"  vec3 p=aPosition;",
+"  if(aMaterial<.5){",
+"   vec3 q=(p-vec3(0.,0.,110.))/94.;",
+"   vec3 home[5];",
+"   home[0]=vec3(-.52,.34,.04);home[1]=vec3(.47,.32,-.18);",
+"   home[2]=vec3(-.35,-.48,.12);home[3]=vec3(.52,-.38,.24);home[4]=vec3(0.,-.06,.05);",
+"   vec3 offset=vec3(0.);float weight=.0001;",
+"   for(int i=0;i<5;i++){vec3 d=q-home[i];float w=exp(-dot(d,d)*3.2);offset+=w*uMotion[i];weight+=w;}",
+"   offset/=weight;",
+"   float a=sin(q.x*4.7+uTime*1.03)*sin(q.y*3.1-uTime*.68);",
+"   float b=cos(q.z*4.9-uTime*.81)*sin(q.x*2.9+uTime*.43);",
+"   p+=94.*offset+aNormal*(3.2*a+2.4*b);",
+"  }",
+"  p*=uScale;",
 "  vec3 world=rotX(p,uFlip);",
 "  vN=normalize(rotX(aNormal,uFlip));",
 "  vLocal=aPosition;vMat=aMaterial;",
@@ -97,7 +111,9 @@ const A={pos:gl.getAttribLocation(prog,"aPosition"),
  material:gl.getAttribLocation(prog,"aMaterial")};
 const U={projection:gl.getUniformLocation(prog,"uProjection"),
  flip:gl.getUniformLocation(prog,"uFlip"),
- scale:gl.getUniformLocation(prog,"uScale")};
+ scale:gl.getUniformLocation(prog,"uScale"),
+ time:gl.getUniformLocation(prog,"uTime"),
+ motion:gl.getUniformLocation(prog,"uMotion[0]")};
 function buildMesh(){
  const data=[];
  const push=(p,n,m)=>data.push(p[0],p[1],p[2],n[0],n[1],n[2],m);
@@ -252,6 +268,28 @@ function cardPlane(w,h,scale){
  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(vertices),gl.DYNAMIC_DRAW);
 }
 let active=false,lost=false,disposed=false,angle=0;
+const movers=Array.from({length:5},()=>({p:[0,0,0],v:[0,0,0],target:[0,0,0],next:0}));
+let phase=0,loopId=0,lastStep=0,lastPaint=0;
+const random=(a,b)=>a+Math.random()*(b-a);
+function animate(now){
+ loopId=0;if(!active||lost||disposed)return;
+ const dt=lastStep?Math.min(.05,(now-lastStep)/1000):.016;
+ lastStep=now;phase+=dt;
+ for(const m of movers){
+  m.next-=dt;
+  if(m.next<=0){m.next=random(.35,.95);m.target=[random(-.17,.17),random(-.17,.17),random(-.17,.17)];}
+  for(let j=0;j<3;j++){
+   const force=(m.target[j]-m.p[j])*2.15-m.p[j]*.24+random(-.32,.32);
+   m.v[j]=(m.v[j]+force*dt)*Math.exp(-.82*dt);
+   m.v[j]=Math.max(-.33,Math.min(.33,m.v[j]));
+   m.p[j]+=m.v[j]*dt;
+  }
+ }
+ if(now-lastPaint>36){paint();lastPaint=now;}
+ loopId=requestAnimationFrame(animate);
+}
+function startAnimation(){if(!loopId&&active&&!lost&&!disposed)loopId=requestAnimationFrame(animate)}
+function stopAnimation(){if(loopId){cancelAnimationFrame(loopId);loopId=0;}lastStep=0;}
 function projection(frame){
  const D=1450,near=.5,far=3800,f=2*D/frame.renderH,nf=1/(near-far);
  return new Float32Array([
@@ -288,6 +326,8 @@ function paint(){
  // Match CSS screen-down rotation to WebGL's Y-up coordinate system.
  gl.uniform1f(U.flip,-angle*Math.PI/180);
  gl.uniform1f(U.scale,scale);
+ gl.uniform1f(U.time,phase);
+ gl.uniform3fv(U.motion,new Float32Array(movers.flatMap(m=>m.p)));
  // First draw an invisible, infinitely thin card to the DEPTH BUFFER.
  // The sphere is rendered on every frame, including angle=180° and 90°;
  // only the parts naturally behind the card are occluded. No 50% toggle.
@@ -306,10 +346,11 @@ function render(opts={}){
  active=opts.visible!==false;
  angle=Number.isFinite(opts.angle)?opts.angle:0;
  canvas.style.display=active?"block":"none";
- if(active)paint();
+ if(active){paint();startAnimation();}
+ else stopAnimation();
 }
 canvas.addEventListener("webglcontextlost",e=>{
- e.preventDefault();lost=true;active=false;
+ e.preventDefault();lost=true;active=false;stopAnimation();
  canvas.style.display="none";document.body.classList.remove("setka-vlogo-webgl");
 });
 canvas.addEventListener("webglcontextrestored",()=>location.reload());
@@ -317,9 +358,9 @@ window.addEventListener("resize",()=>{if(active)paint()},{passive:true});
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&active)paint()});
 window.SETKA_SOLID_WORDMARK={
  render,
- getInfo:()=>({...stats,real3D:true,renderer:"WebGL golden honey #08",angle,active,rigid:true,continuous:true,metaball:true,depthOcclusion:true}),
+ getInfo:()=>({...stats,real3D:true,renderer:"WebGL golden honey #08",angle,active,rigid:true,continuous:true,metaball:true,animatedFluid:true,depthOcclusion:true}),
  dispose(){
-  disposed=true;active=false;canvas.remove();
+  disposed=true;active=false;stopAnimation();canvas.remove();
   gl.deleteBuffer(buf);gl.deleteBuffer(plateBuffer);gl.deleteProgram(prog);
   document.body.classList.remove("setka-vlogo-webgl");
  }
