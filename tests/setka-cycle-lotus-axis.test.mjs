@@ -95,6 +95,14 @@ test("submerged lotus petals keep non-zero visible transmission in both directio
     "the buried half must remain within its original half-card footprint");
    assert.ok(current.interiorZAtX(submerged)<0,
     "inner petals recede into Z-depth behind the ALMA surface");
+   // The shader and acceptance model must apply the same ALMA absorption.
+   const s=Math.abs(Math.sin(current.radians));
+   const e=Math.max(0,Math.min(1,(s-.02)/.53));
+   const edge=e*e*(3-2*e);
+   const f=Math.max(0,Math.min(1,Math.cos(current.radians)/.4));
+   const face=f*f*(3-2*f);
+   const alpha=(current.progress>=.5?.48+.52*face:0)*edge*(.48+.52*Math.exp(depth/190));
+   close(current.transmissionAtX(submerged),alpha);
   }
  }
 });
@@ -116,7 +124,7 @@ test("the actual painter uses physical WebGL 3D rather than a 2D cropping mask",
  assert.match(js,/world\.x=aPos\.x\*chamberWidth/);
  assert.match(js,/world\.z=-immersed\*\(\.18\+\.22\*edge\)/);
  assert.match(js,/uCycleFace<\.5\)discard/,"opaque squish face must occlude interior");
- assert.match(js,/almaTransmission=\.28\+\.72\*smoothstep/);
+ assert.match(js,/almaTransmission=\.48\+\.52\*smoothstep/);
  assert.match(js,/function strips\(/);
  assert.match(js,/gl\.disable\(gl\.DEPTH_TEST\)/,"rear transmission is not killed by the card depth");
  assert.match(js,/gl\.enable\(gl\.DEPTH_TEST\)/);

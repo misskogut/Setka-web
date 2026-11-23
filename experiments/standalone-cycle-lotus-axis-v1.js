@@ -24,7 +24,7 @@ function geometry(progress,direction=-1,width=390){
  // NEVER transmit while the opaque squish face is actually rendered.
  const facing=clamp(Math.cos(a)/.4,0,1);
  const smoothFacing=facing*facing*(3-2*facing);
- const almaTransmission=p>=.5?.28+.72*smoothFacing:0;
+ const almaTransmission=p>=.5?.48+.52*smoothFacing:0;
  // Keep the buried HALF in its ORIGINAL side of the lotus, inside the
  // visible ALMA card surface. v8 mistakenly folded it onto the exposed
  // half, making the calendar-side petal disappear completely.
@@ -33,11 +33,12 @@ function geometry(progress,direction=-1,width=390){
  const chamberWidth=cardFace*(.8+.2*cardFace)+.04*s;
  const projectInteriorX=x=>x*chamberWidth;
  const interiorZAtX=x=>-submergedAtX(x)*(.18+.22*s);
- const edge=Math.max(0,Math.min(1,(s-.05)/.8));
+ const edge=clamp((s-.02)/.53,0,1);
  const edgeTransmission=edge*edge*(3-2*edge);
  const transmissionAtX=x=>{
   const d=depthAtX(x);
-  return d>=0?1:almaTransmission*edgeTransmission*(.16+.84*Math.exp(d/140));
+  // The JS acceptance geometry and WebGL material use ONE attenuation law.
+  return d>=0?1:almaTransmission*edgeTransmission*(.48+.52*Math.exp(d/190));
  };
  const visibleFraction=s<1e-7?(Math.cos(a)>0?1:0):
   clamp(.5+CLEARANCE*Math.cos(a)/(Math.max(1,width)*s),0,1);
