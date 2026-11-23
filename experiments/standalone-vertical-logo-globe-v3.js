@@ -50,16 +50,14 @@ const frag=[
 "precision highp float;",
 "varying vec3 vN;varying vec3 vLocal;varying float vMat;",
 "uniform float uFlip;",
-"vec3 colorPlanet(vec3 normal){",
-" vec3 n=normalize(normal);",
-" float lat=asin(clamp(n.y,-.999,.999));",
-" float lon=atan(n.z,n.x);",
-" float mer=smoothstep(.984,.998,cos(lon*12.0));",
-" float par=smoothstep(.984,.998,cos(lat*13.0));",
-" float grid=max(mer,par)*.70;",
-" vec3 deep=mix(vec3(.025,.018,.064),vec3(.14,.062,.26),",
-"      clamp(.52+n.y*.31+.21*sin(lon*2.2),.0,1.0));",
-" return deep+vec3(.20,.095,.37)*grid;",
+"vec3 colorHoney(vec3 n,float lam,float highlight,float rim){",
+" float env=pow(abs(sin((n.x*.71+n.y*.23+n.z*.37)*10.8)),13.0)",
+"           +.38*pow(abs(sin((n.x*1.2+n.z*.13)*3.9+2.0)),12.0);",
+" vec3 rgb=vec3(87.+127.*lam+115.*env+40.*highlight,",
+"               37.+104.*lam+86.*env+37.*highlight,",
+"               4.+45.*lam+28.*env+20.*highlight);",
+" rgb+=vec3(18.,10.,2.)*rim;",
+" return clamp(rgb/255.,0.,1.);",
 "}",
 "void main(){",
 " vec3 n=normalize(vN);",
@@ -71,9 +69,7 @@ const frag=[
 " float rim=pow(1.0-abs(dot(n,viewDir)),3.2);",
 " vec3 col;",
 " if(vMat<.5){",
-"   col=colorPlanet(normalize(vLocal-vec3(0.,0.,110.)));",
-"   col*=.45+.55*lam+.18*side;",
-"   col+=vec3(.17,.05,.26)*rim+vec3(.35,.16,.57)*highlight*.29;",
+"   col=colorHoney(n,lam,highlight,rim);",
 " }else if(vMat<1.5){",
 "   col=mix(vec3(.31,.12,.45),vec3(.65,.36,.84),clamp(lam+.30,0.,1.));",
 "   col+=vec3(.30,.11,.44)*rim;",
@@ -95,7 +91,7 @@ try{
  prog=gl.createProgram();gl.attachShader(prog,v);gl.attachShader(prog,f);
  gl.linkProgram(prog);gl.deleteShader(v);gl.deleteShader(f);
  if(!gl.getProgramParameter(prog,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(prog));
-}catch(e){console.warn("[SETKA 3D globe] no WebGL shader",e);canvas.remove();return}
+}catch(e){console.warn("[SETKA golden honey] no WebGL shader",e);canvas.remove();return}
 const A={pos:gl.getAttribLocation(prog,"aPosition"),
  normal:gl.getAttribLocation(prog,"aNormal"),
  material:gl.getAttribLocation(prog,"aMaterial")};
@@ -120,16 +116,14 @@ function buildMesh(){
           C[1]+r*Math.cos(t),
           C[2]+r*Math.sin(t)*Math.sin(p)];
  }
- const latCount=30,lonCount=68;
- for(let i=0;i<latCount;i++){
-  for(let j=0;j<lonCount;j++){
-   const t0=i*Math.PI/latCount,t1=(i+1)*Math.PI/latCount;
-   const p0=j*2*Math.PI/lonCount,p1=(j+1)*2*Math.PI/lonCount;
-   const a=sph(t0,p0),b=sph(t1,p0),c=sph(t1,p1),d=sph(t0,p1);
-   tri(a,b,c,norm(sub(a,C)),norm(sub(b,C)),norm(sub(c,C)),0);
-   tri(a,c,d,norm(sub(a,C)),norm(sub(c,C)),norm(sub(d,C)),0);
-  }
- }
+ // Original #08 material: closed marching-tetrahedra isosurface.
+ // A single smooth union of five lobes; no latitude strips or holes.
+ if(!window.SETKA_METABALL_MESH)throw Error("Missing SETKA honey geometry");
+ const honey=window.SETKA_METABALL_MESH.create({steps:23,scale:94,zOffset:110});
+ const surface=honey.vertices;
+ for(let i=0;i<surface.length;i+=6)
+  push([surface[i],surface[i+1],surface[i+2]],[surface[i+3],surface[i+4],surface[i+5]],0);
+
  // Two rings that cross the hemisphere at different inclinations; the
  // native depth buffer naturally hides their rear halves behind the globe.
  function tube(point,radius,mat,segments=128,sides=5){
@@ -213,18 +207,18 @@ function buildMesh(){
  }
  word("СКВИШ",52,25,.34,123,13,2.15);
  word("ДЛЯ МОЗГА",27,-75,.204,131,9,1.65);
- return{data:new Float32Array(data),planetRadius:R,center:C};
+ return{data:new Float32Array(data),planetRadius:R,center:C,honeyTriangles:honey.triangleCount,honeyBounds:honey.bounds};
 }
 try{
  const result=buildMesh();
  total=result.data.length/7;
- stats={vertices:total,globeRadius:result.planetRadius,
-       globeCenterZ:result.center[2],minimumGlobeZ:result.center[2]-result.planetRadius};
+ stats={vertices:total,metaballTriangles:result.honeyTriangles,metaballBounds:result.honeyBounds,
+       material:"golden-honey-08",closedSurface:true,irregularCells:true};
  if(total<8000||total>280000)throw Error("Unexpected geometry size: "+total);
  buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buf);
  gl.bufferData(gl.ARRAY_BUFFER,result.data,gl.STATIC_DRAW);
 }catch(e){
- console.warn("[SETKA 3D globe] geometry failed",e);
+ console.warn("[SETKA golden honey] geometry failed",e);
  canvas.remove();return;
 }
 gl.useProgram(prog);
@@ -323,7 +317,7 @@ window.addEventListener("resize",()=>{if(active)paint()},{passive:true});
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&active)paint()});
 window.SETKA_SOLID_WORDMARK={
  render,
- getInfo:()=>({...stats,real3D:true,renderer:"WebGL globe v3",angle,active,rigid:true,continuous:true,depthOcclusion:true}),
+ getInfo:()=>({...stats,real3D:true,renderer:"WebGL golden honey #08",angle,active,rigid:true,continuous:true,metaball:true,depthOcclusion:true}),
  dispose(){
   disposed=true;active=false;canvas.remove();
   gl.deleteBuffer(buf);gl.deleteBuffer(plateBuffer);gl.deleteProgram(prog);
