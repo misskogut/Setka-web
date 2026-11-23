@@ -130,6 +130,8 @@ const movers=ORIGINAL.map(h=>({
 }));
 let phase=0,loopId=0,lastStep=0,lastPaint=0,lastMesh=0;
 let press=0,pressGoal=0,contact=[0,0],activeTouch=null;
+let excitement=0,tapCount=0;
+const clamp=(x,min,max)=>Math.max(min,Math.min(max,x));
 const FLUID_REBUILD_MS=82;
 // All 5 moving lobes are resampled into ONE watertight isosurface.
 // No GPU position changes depend on separately shaded polygon normals.
@@ -143,6 +145,25 @@ function refreshFluid(){
  stats.vertices=count;
  stats.metaballTriangles=result.honeyTriangles;
  stats.metaballBounds=result.honeyBounds;
+}
+// Tapping the visible honey energizes all five lobes for a few seconds.
+// Repeated taps build intensity, which decays smoothly; the fluid stays whole.
+function exciteHoney(x,y){
+ excitement=Math.min(2.25,excitement+1.1);
+ tapCount++;
+ contact=[x,y];press=Math.min(.65,press+.44);pressGoal=0;
+ for(let i=0;i<movers.length;i++){
+  const b=movers[i],dx=b.p[0]-x,dy=b.p[1]-y;
+  const distance=Math.hypot(dx,dy),falloff=Math.exp(-distance*distance*2.3);
+  const force=(.27+.24*falloff)*(1+.24*excitement);
+  const direction=1/(distance+.25);
+  b.v[0]=clamp(b.v[0]+force*dx*direction+random(-.20,.20),-.78,.78);
+  b.v[1]=clamp(b.v[1]+force*dy*direction+random(-.20,.20),-.78,.78);
+  b.v[2]=clamp(b.v[2]+random(-.35,.35),-.78,.78);
+  b.timer=Math.min(b.timer,.06);
+ }
+ // Render the deformation on the very next animation frame.
+ lastMesh=0;
 }
 function fluidInput(x,y,dx,dy){
  contact=[x,y];pressGoal=.43;
@@ -158,18 +179,27 @@ function animate(now){
  if(!active||lost||disposed)return;
  const dt=lastStep?Math.min(.05,(now-lastStep)/1000):.016;
  lastStep=now;phase+=dt;
+ // The baseline is unchanged; a tap temporarily multiplies movement energy.
+ const boost=excitement;
+ excitement*=Math.exp(-dt*.61);
+ if(excitement<.005)excitement=0;
  // The exact approved #08 zero-gravity physics, with nonrepeating impulses.
  for(const b of movers){
-  b.timer-=dt;
+  b.timer-=dt*(1+boost*.75);
   if(b.timer<=0){
-   b.timer=random(.28,.85);
-   b.target=b.home.map(x=>x+random(-.19,.19));
+   b.timer=random(.28,.85)/(1+boost*.38);
+   const amplitude=.19+.052*boost;
+   b.target=b.home.map((x,i)=>x+random(-amplitude*(i===2?.82:1),amplitude*(i===2?.82:1)));
   }
   for(let i=0;i<3;i++){
-   const force=(b.target[i]-b.p[i])*2.35+(b.home[i]-b.p[i])*.48+random(-.50,.50);
+   const force=(b.target[i]-b.p[i])*(2.35+.8*boost)+(b.home[i]-b.p[i])*.48+random(-.50,.50)*(1+.8*boost);
    b.v[i]=(b.v[i]+force*dt)*Math.exp(-.83*dt);
-   b.v[i]=Math.max(-.43,Math.min(.43,b.v[i]));
+   b.v[i]=clamp(b.v[i],-.43-.14*boost,.43+.14*boost);
    b.p[i]+=b.v[i]*dt;
+   // Bound the fluid inside the SDF volume; no clipped outer lobes or holes.
+   const maxDrift=i===2?.22:.27;
+   b.p[i]=clamp(b.p[i],b.home[i]-maxDrift,b.home[i]+maxDrift);
+   if(Math.abs(b.p[i]-b.home[i])>=maxDrift-.0001)b.v[i]*=-.32;
   }
  }
  press+=(pressGoal-press)*Math.min(1,dt*8);
@@ -268,7 +298,7 @@ card.addEventListener("pointerdown",e=>{
  if(!active||lost||disposed||(e.pointerType==="mouse"&&e.button!==0))return;
  const p=fluidPointerXY(e);
  if(Math.hypot(p[0],p[1])>1.05)return;
- activeTouch={id:e.pointerId,p,px:e.clientX,py:e.clientY};
+ activeTouch={id:e.pointerId,p,px:e.clientX,py:e.clientY,startX:e.clientX,startY:e.clientY,started:performance.now(),travel:0};
  contact=p;pressGoal=.2;
 },{passive:true});
 card.addEventListener("pointermove",e=>{
@@ -278,17 +308,24 @@ card.addEventListener("pointermove",e=>{
  const unit=94*scale;
  const dx=(e.clientX-activeTouch.px)/unit;
  const dy=-(e.clientY-activeTouch.py)/unit;
+ activeTouch.travel=Math.max(activeTouch.travel,Math.hypot(e.clientX-activeTouch.startX,e.clientY-activeTouch.startY));
  fluidInput(p[0],p[1],dx,dy);
  activeTouch.p=p;activeTouch.px=e.clientX;activeTouch.py=e.clientY;
 },{passive:true});
-function endFluidPointer(e){
- if(activeTouch&&activeTouch.id===e.pointerId){activeTouch=null;pressGoal=0;}
+function endFluidPointer(e,cancelled=false){
+ if(!activeTouch||activeTouch.id!==e.pointerId)return;
+ const pointer=activeTouch;activeTouch=null;pressGoal=0;
+ const distance=Math.max(pointer.travel,Math.hypot(e.clientX-pointer.startX,e.clientY-pointer.startY));
+ const elapsed=performance.now()-pointer.started;
+ // A short tap activates the honey. A vertical or horizontal swipe does not.
+ if(!cancelled&&active&&!lost&&!disposed&&Math.abs(angle%360)<12&&distance<13&&elapsed<500)
+  exciteHoney(pointer.p[0],pointer.p[1]);
 }
-card.addEventListener("pointerup",endFluidPointer,{passive:true});
-card.addEventListener("pointercancel",endFluidPointer,{passive:true});
+card.addEventListener("pointerup",e=>endFluidPointer(e),{passive:true});
+card.addEventListener("pointercancel",e=>endFluidPointer(e,true),{passive:true});
 window.SETKA_SOLID_WORDMARK={
  render,
- getInfo:()=>({...stats,real3D:true,renderer:"WebGL original honey #08 live rebuilt",angle,active,rigid:true,continuous:true,metaball:true,faceted:true,globeDecorations:false,animatedFluid:true,liveRebuild:true,depthOcclusion:true}),
+ getInfo:()=>({...stats,real3D:true,renderer:"WebGL original honey #08 live rebuilt",angle,active,rigid:true,continuous:true,metaball:true,faceted:true,globeDecorations:false,animatedFluid:true,liveRebuild:true,depthOcclusion:true,tapExcitation:true,excitationLevel:excitement,taps:tapCount}),
  dispose(){
   disposed=true;active=false;stopAnimation();canvas.remove();
   gl.deleteBuffer(buf);gl.deleteBuffer(plateBuffer);gl.deleteProgram(prog);
