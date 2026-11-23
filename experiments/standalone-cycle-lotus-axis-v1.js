@@ -314,10 +314,20 @@ function schedulePrewarm(attempt=0){
 }
 function start(){
  turning=true;
- if(view?.ready)return;
- // A cold first swipe may happen before ALMA finishes booting.
- // Continue building, but do not rely on finishing a texture decode
- // inside a short card transition for subsequent gestures.
+ if(view?.ready){
+  // Prewarm runs while the CALENDAR CARD IS HIDDEN by CSS. At that
+  // moment the SVG's rect is 0x0; remeasure immediately after
+  // startVisual() removes back.hidden, BEFORE the first card transform.
+  // Keep the same WebGL texture: only its card-fixed hinge position changes.
+  try{
+   const btn=view.doc.querySelector(".cycle-lotus-button");
+   const svg=btn?.querySelector("svg.cycle-lotus");
+   if(svg&&btn)view.box=dimensions(svg,btn);
+  }catch(_){}
+  return;
+ }
+ // First launch can race asynchronous ALMA React mount; subsequent
+ // swipes use the predecoded and GPU-uploaded original.
  if(!view)build();
 }
 function render(p,direction=-1){
@@ -366,6 +376,7 @@ window.SETKA_CYCLE_LOTUS_AXIS={
  start,render,rest,geometry,
  getInfo:()=>({turning,hasSource:!!view,ready:!!view?.ready,
   prewarmed:!!view?.ready&&!turning,textureSource:lastTextureSource,
+  pivotY:view?.box?.pivotY??null,lotusWidth:view?.box?.w??null,
   textureFailures,real3D:!!view?.gl,depthIntersection:true,frames,
   ...geometry(lastP,lastDirection,view?.box.w||390)})
 };
