@@ -4,34 +4,36 @@
  * ALMA's actual SVG is sampled for the moving visual; the live React lotus
  * remains untouched and interactive on the settled cycle face.
  *
- * Card rotates through 180 degrees around Y. Lotus has an independent Y
- * rotation phase of 90 -> 0 -> -90 degrees during the same progress.
- * At the card's edge (p=.5) it faces the viewer, but the card bisects it:
- * exactly one half of the image is covered, selected by swipe direction.
+ * The live lotus and the cycle side begin COPLANAR at p=1. While the
+ * card turns, the lotus counter-rotates by EXACTLY the opposite angle
+ * in the card's own frame. Its WORLD yaw is therefore always zero.
+ * The rotating physical card occludes the lotus progressively: none
+ * is visible on the SETKA face, half at the 90-degree edge, and all
+ * of it on the ALMA cycle face. Opposite swipes mirror the exposed side.
  * No second calendar, no copied user data and no modifications to ALMA.
  */
 if(window.SETKA_CYCLE_LOTUS_AXIS)return;
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-const FULL=Math.PI;
 function geometry(progress,direction=-1){
  const p=clamp(Number.isFinite(progress)?progress:0,0,1);
  const sign=direction>=0?1:-1;
- // World-space lotus yaw is opposed to the card's Y turn, front-facing at 90.
- const yaw=p===.5?0:sign*(90-180*p);
- // The visible slice grows from behind the physical card at the first edge,
- // equals EXACTLY half when the card is edge-on, then opens into the ALMA face.
- const visibleFraction=p<=.5
-   ? .5*clamp((p-.08)/.42,0,1)
-   : .5+.5*clamp((p-.5)/.36,0,1);
- const fadeIn=clamp((p-.12)/.24,0,1);
- const fadeOut=clamp((.89-p)/.27,0,1);
- const opacity=Math.min(fadeIn,fadeOut);
+ // The actual ALMA card in the host is transformed with this Y angle.
+ // The lotus's LOCAL counter-turn precisely cancels it at every frame,
+ // not just at 90 degrees. As the visual is mounted outside the card,
+ // its rendered WORLD yaw must be constant 0deg.
+ const cardYaw=-sign*180*(1-p);
+ const counterYaw=-cardYaw;
+ const yaw=cardYaw+counterYaw;
+ // The card is in front at p=0, edge-on at p=.5, and fully exposes
+ // the ALMA lotus at p=1. Unlike the old easing/fading mask this
+ // maintains the same full-size, front-facing SVG through the turn.
+ const visibleFraction=p;
  const hide=100*(1-visibleFraction);
  const clip=sign<0
    ? "inset(0 "+hide.toFixed(3)+"% 0 0)"
    : "inset(0 0 0 "+hide.toFixed(3)+"%)";
- return {progress:p,direction:sign,yaw,visibleFraction,hide,clip,opacity,
-  enabled:p>.12&&p<.89&&opacity>0};
+ return {progress:p,direction:sign,cardYaw,counterYaw,yaw,
+  visibleFraction,hide,clip,opacity:1,enabled:p>0};
 }
 const back=document.getElementById("setkaCycleBack");
 const iframe=back?.querySelector("iframe");
@@ -167,8 +169,11 @@ function render(progress,direction=-1){
  if(!overlay&&!build())return;
  const state=geometry(progress,direction);
  const {outer,mask,pivot}=overlay;
+ // The native ALMA SVG must NEVER reappear while its iframe is still
+ // turning. Otherwise iOS paints it sideways behind the projection.
+ // Restore it only after setAtRest() resets the card transforms.
+ setOriginalHidden(true);
  outer.style.display=state.enabled?"block":"none";
- setOriginalHidden(state.enabled);
  if(!state.enabled)return;
  // The flower stays at the unrotated card's pivot; only the visible
  // side of the physical Y-plane is exposed through an overflow mask.
@@ -180,7 +185,10 @@ function render(progress,direction=-1){
  mask.style.left=(state.direction<0?0:hiddenWidth).toFixed(2)+"px";
  pivot.style.left=(state.direction<0?0:-hiddenWidth).toFixed(2)+"px";
  pivot.style.transform="perspective(1450px) rotateY("+state.yaw.toFixed(3)+"deg)";
- outer.style.opacity=state.opacity.toFixed(4);
+ outer.style.opacity="1";
+ outer.dataset.cardYaw=state.cardYaw.toFixed(3);
+ outer.dataset.counterYaw=state.counterYaw.toFixed(3);
+ outer.dataset.worldYaw=state.yaw.toFixed(3);
  outer.dataset.progress=state.progress.toFixed(3);
  outer.dataset.cardEdge=String(Math.abs(state.progress-.5)<.001);
  frameCount++;
