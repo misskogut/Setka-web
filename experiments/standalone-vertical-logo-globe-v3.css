@@ -1,5 +1,5 @@
-/* SETKA golden honey #08 wordmark: card-mounted 3D planet, physically curved title.
-   WebGL paints the real model; these rules supply a tasteful no-WebGL fallback. */
+/* SETKA approved #08 faceted golden honey. No old globe, belts, or title.
+   WebGL renders a closed irregular 3D surface; CSS supports no-WebGL fallback. */
 body:not(.setka-vlogo-webgl) .setka-vlogo-3d{
   position:relative!important;
   transform:none!important;
@@ -16,55 +16,34 @@ body:not(.setka-vlogo-webgl) .setka-vlogo-3d{
 }
 /* No-WebGL fallback follows the selected golden honey silhouette instead
    of showing the old purple globe. The GPU is required for real depth. */
+/* On WebGL-disabled devices: visibly faceted gold, never a purple planet.
+   The fallback is stylised 2D; true geometry is the GPU model. */
 body:not(.setka-vlogo-webgl) .setka-vlogo-3d::before{
   content:"";
   position:absolute;left:50%;top:50%;
-  width:min(64vw,234px);height:min(57vw,220px);
+  width:min(70vw,245px);height:min(63vw,235px);
+  border-radius:48% 57% 43% 59% / 56% 41% 61% 48%;
+  clip-path:polygon(11% 18%,26% 8%,39% 11%,49% 4%,66% 5%,79% 15%,85% 26%,96% 35%,95% 51%,85% 62%,88% 80%,69% 95%,52% 90%,36% 97%,17% 86%,7% 71%,4% 52%,8% 35%);
   transform:translate(-50%,-50%);
-  border:1px solid rgba(243,186,83,.26);
-  border-radius:49% 61% 43% 56% / 57% 37% 60% 44%;
   background:
-    radial-gradient(ellipse 35% 29% at 28% 25%,rgba(255,248,205,.84),transparent 72%),
-    radial-gradient(ellipse 40% 44% at 67% 31%,rgba(255,189,65,.88),transparent 82%),
-    radial-gradient(ellipse 43% 44% at 42% 72%,rgba(233,127,12,.71),transparent 86%),
-    radial-gradient(ellipse at 43% 38%,#d88b2d 8%,#a85812 48%,#321700 87%);
-  box-shadow:inset 16px 15px 18px rgba(255,219,142,.26),
-             inset -23px -28px 43px rgba(43,16,0,.8),
-             0 9px 32px rgba(188,106,12,.18);
-  animation:setkaHoneyFallback 7.3s ease-in-out infinite alternate;
+    radial-gradient(ellipse 25% 19% at 31% 24%,rgba(255,241,184,.85),transparent 100%),
+    conic-gradient(from 15deg at 52% 47%,#ba6c1f 0deg 22deg,#e3a252 22deg 45deg,#a9510b 45deg 69deg,#df9634 69deg 94deg,#6d3408 94deg 123deg,#bc6917 123deg 160deg,#f2bd67 160deg 181deg,#955010 181deg 218deg,#d48724 218deg 257deg,#834006 257deg 302deg,#dfa03b 302deg 331deg,#ba6c1f 331deg 360deg);
+  box-shadow:inset -18px -21px 43px rgba(47,19,0,.65),0 9px 26px rgba(205,128,23,.12);
+  filter:drop-shadow(0 0 4px rgba(255,181,63,.12));
+  animation:setkaHoneyFallback 8s ease-in-out infinite alternate;
   pointer-events:none;z-index:0;
 }
 @keyframes setkaHoneyFallback{
-  0%{border-radius:49% 61% 43% 56% / 57% 37% 60% 44%;transform:translate(-50%,-50%) rotate(-9deg) scale(.97)}
-  50%{border-radius:58% 46% 62% 41% / 46% 61% 38% 57%;transform:translate(-50%,-50%) rotate(11deg) scale(1.03)}
-  100%{border-radius:42% 59% 49% 57% / 63% 42% 59% 39%;transform:translate(-50%,-50%) rotate(-6deg) scale(1)}
+  0%{transform:translate(-50%,-50%) rotate(-8deg) scale(.97);border-radius:48% 57% 43% 59% / 56% 41% 61% 48%}
+  50%{transform:translate(-50%,-50%) rotate(8deg) scale(1.03);border-radius:57% 42% 56% 45% / 45% 64% 37% 58%}
+  100%{transform:translate(-50%,-50%) rotate(-4deg) scale(1.00);border-radius:44% 62% 43% 57% / 64% 42% 60% 39%}
 }
-body:not(.setka-vlogo-webgl) .setka-vlogo-3d::after{
-  content:"";
-  position:absolute;left:3%;right:3%;top:42%;height:28px;
-  transform:rotate(-11deg);
-  border-top:2px solid rgba(245,192,92,.35);
-  border-bottom:1px solid rgba(246,180,54,.17);
-  border-radius:50%;
-  pointer-events:none;
-}
-body:not(.setka-vlogo-webgl) .setka-vlogo-line{
-  z-index:1;
-  height:57px!important;
-  width:100%;
-  isolation:isolate;
-}
-body:not(.setka-vlogo-webgl) .setka-vlogo-line.secondary{
-  height:34px!important;
-}
-body:not(.setka-vlogo-webgl) .setka-vlogo-slice.wall{display:none!important}
-body:not(.setka-vlogo-webgl) .setka-vlogo-slice.surface{
-  font-size:clamp(37px,11vw,54px)!important;
-  text-shadow:0 3px 6px rgba(8,3,16,.95),0 0 13px rgba(178,83,243,.35)!important;
-  transform:translateY(-50%)!important;
-}
-body:not(.setka-vlogo-webgl) .setka-vlogo-line.secondary .setka-vlogo-slice.surface{
-  font-size:clamp(21px,6vw,30px)!important;
+/* These are legacy globe/wordmark decorations: hide them in both renderers. */
+.setka-vlogo-crest,
+.setka-vlogo-shadow,
+.setka-vlogo-line,
+.setka-vlogo-3d::after{
+  display:none!important;
 }
 body.setka-vlogo-webgl .setka-vlogo-3d,
 body.setka-vlogo-webgl .setka-vlogo-crest{
