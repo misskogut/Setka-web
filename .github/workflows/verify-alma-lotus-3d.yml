@@ -1,10 +1,8 @@
 name: Verify ALMA lotus WebGL on mobile
+# Heavy browser/GPU screenshot test is invoked only for targeted ALMA visual
+# diagnostics. Ordinary source pushes remain guarded by the lean Pages tests.
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - "tests/setka-cycle-lotus-browser-smoke.mjs"
-      - ".github/workflows/verify-alma-lotus-3d.yml"
 
 permissions:
   contents: read
