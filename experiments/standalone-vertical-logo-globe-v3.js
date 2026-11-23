@@ -253,6 +253,39 @@ canvas.addEventListener("webglcontextlost",e=>{
 canvas.addEventListener("webglcontextrestored",()=>location.reload());
 window.addEventListener("resize",()=>{if(active)paint()},{passive:true});
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&active)paint()});
+
+/* The approved chat preview allows gently squeezing/pulling the liquid.
+   Observe touches passively so the existing vertical card swipe still works. */
+function fluidPointerXY(e){
+ const w=card.offsetWidth||360,h=card.offsetHeight||600;
+ const frame=card.getBoundingClientRect();
+ const scale=Math.min(1,Math.max(.62,(w-34)/370));
+ const k=94*scale;
+ return [(e.clientX-frame.left-frame.width/2)/k,
+         -(e.clientY-frame.top-frame.height/2)/k];
+}
+card.addEventListener("pointerdown",e=>{
+ if(!active||lost||disposed||(e.pointerType==="mouse"&&e.button!==0))return;
+ const p=fluidPointerXY(e);
+ if(Math.hypot(p[0],p[1])>1.05)return;
+ activeTouch={id:e.pointerId,p,px:e.clientX,py:e.clientY};
+ contact=p;pressGoal=.2;
+},{passive:true});
+card.addEventListener("pointermove",e=>{
+ if(!activeTouch||activeTouch.id!==e.pointerId)return;
+ const p=fluidPointerXY(e);
+ const scale=Math.min(1,Math.max(.62,(card.offsetWidth-34)/370));
+ const unit=94*scale;
+ const dx=(e.clientX-activeTouch.px)/unit;
+ const dy=-(e.clientY-activeTouch.py)/unit;
+ fluidInput(p[0],p[1],dx,dy);
+ activeTouch.p=p;activeTouch.px=e.clientX;activeTouch.py=e.clientY;
+},{passive:true});
+function endFluidPointer(e){
+ if(activeTouch&&activeTouch.id===e.pointerId){activeTouch=null;pressGoal=0;}
+}
+card.addEventListener("pointerup",endFluidPointer,{passive:true});
+card.addEventListener("pointercancel",endFluidPointer,{passive:true});
 window.SETKA_SOLID_WORDMARK={
  render,
  getInfo:()=>({...stats,real3D:true,renderer:"WebGL original honey #08 live rebuilt",angle,active,rigid:true,continuous:true,metaball:true,faceted:true,globeDecorations:false,animatedFluid:true,liveRebuild:true,depthOcclusion:true}),
