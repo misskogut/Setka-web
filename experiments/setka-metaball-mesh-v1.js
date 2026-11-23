@@ -31,10 +31,19 @@ function create(opts={}){
  }
  const vertices=[];
  const boundsMin=[Infinity,Infinity,Infinity],boundsMax=[-Infinity,-Infinity,-Infinity];
+ // Keep a shared position for watertight topology, but give every
+ // irregular tetrahedral triangle ONE outward-facing normal.
+ // This is how the approved honey #08 preview had visible polygon facets:
+ // smooth interpolation of adjacent vertex normals erases the facets.
  function record(a,b,c){
-  for(const v of [a,b,c]){
-   const p=[v.p[0]*unitScale,v.p[1]*unitScale,v.p[2]*unitScale+zOffset];
-   vertices.push(...p,...v.n);
+  const u=[b.p[0]-a.p[0],b.p[1]-a.p[1],b.p[2]-a.p[2]];
+  const v=[c.p[0]-a.p[0],c.p[1]-a.p[1],c.p[2]-a.p[2]];
+  let n=normalize([u[1]*v[2]-u[2]*v[1],u[2]*v[0]-u[0]*v[2],u[0]*v[1]-u[1]*v[0]]);
+  const outward=normalize(a.n.map((q,i)=>q+b.n[i]+c.n[i]));
+  if(n[0]*outward[0]+n[1]*outward[1]+n[2]*outward[2]<0)n=n.map(x=>-x);
+  for(const vertex of [a,b,c]){
+   const p=[vertex.p[0]*unitScale,vertex.p[1]*unitScale,vertex.p[2]*unitScale+zOffset];
+   vertices.push(...p,...n);
    for(let i=0;i<3;i++){boundsMin[i]=Math.min(boundsMin[i],p[i]);boundsMax[i]=Math.max(boundsMax[i],p[i]);}
   }
  }
