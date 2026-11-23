@@ -21,8 +21,8 @@ function geometry(progress,direction=-1){
  // The lotus's LOCAL counter-turn precisely cancels it at every frame,
  // not just at 90 degrees. As the visual is mounted outside the card,
  // its rendered WORLD yaw must be constant 0deg.
- const cardYaw=-sign*180*(1-p);
- const counterYaw=-cardYaw;
+ const cardYaw=p===1?0:-sign*180*(1-p);
+ const counterYaw=p===1?0:-cardYaw;
  const yaw=cardYaw+counterYaw;
  // The card is in front at p=0, edge-on at p=.5, and fully exposes
  // the ALMA lotus at p=1. Unlike the old easing/fading mask this
