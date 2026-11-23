@@ -49,14 +49,45 @@ test('experimental page wires honey before renderer; main SETKA App stays unchan
  assert.doesNotMatch(originalLogoScript,/colorPlanet\(/);
 });
 
-test('continuous honey vertex deformation leaves existing orbit and card-depth occlusion intact',()=>{
+test('visible irregular facets have flat per-triangle normals with distinct neighboring faces',()=>{
+ const v=honey.create({steps:16}).vertices;
+ let varied=0,previous=null;
+ for(let i=0;i<v.length;i+=18){
+  const n=[v[i+3],v[i+4],v[i+5]];
+  const n1=[v[i+9],v[i+10],v[i+11]];
+  const n2=[v[i+15],v[i+16],v[i+17]];
+  for(let k=0;k<3;k++){
+   assert.ok(Math.abs(n[k]-n1[k])<1e-6,'polygon corner normal mismatch');
+   assert.ok(Math.abs(n[k]-n2[k])<1e-6,'polygon corner normal mismatch');
+  }
+  assert.ok(Math.abs(Math.hypot(...n)-1)<1e-5);
+  if(previous&&n.some((x,j)=>Math.abs(x-previous[j])>.12))varied++;
+  previous=n;
+ }
+ assert.ok(varied>450,'normals should differ between irregular polygon faces');
+});
+
+test('zero-g honey preserves full vertical 3D turn, and old globe graphics are gone',()=>{
  assert.match(originalLogoScript,/if\(aMaterial<\.5\)/);
  assert.match(originalLogoScript,/uniform vec3 uMotion\[5\]/);
  assert.match(originalLogoScript,/startAnimation\(\)/);
  assert.match(originalLogoScript,/stopAnimation\(\)/);
  assert.match(originalLogoScript,/cardPlane\(f\.w,f\.h,scale\)/);
  assert.match(originalLogoScript,/gl\.colorMask\(false,false,false,false\)/);
- assert.match(originalLogoScript,/word\("СКВИШ"/);
- assert.match(originalLogoScript,/word\("ДЛЯ МОЗГА"/);
- assert.match(originalLogoScript,/tube\(t=>\[134\*Math\.cos/);
+ assert.match(originalLogoScript,/SETKA_METABALL_MESH\.create\(\{steps:16,scale:94,zOffset:110\}\)/);
+ assert.match(originalLogoScript,/const facet=\.035\+\.385/);
+ assert.doesNotMatch(originalLogoScript,/tube\(/);
+ assert.doesNotMatch(originalLogoScript,/function glyph\(/);
+ assert.doesNotMatch(originalLogoScript,/word\("СКВИШ"/);
+ assert.doesNotMatch(originalLogoScript,/word\("ДЛЯ МОЗГА"/);
+});
+
+test('experimental page cache-busts faceted renderer; CSS hides legacy globe decorations',()=>{
+ const css=fs.readFileSync('experiments/standalone-vertical-logo-globe-v3.css','utf8');
+ assert.match(experimentalHtml,/setka-metaball-mesh-v1\.js\?v=20261123-honey-facets/);
+ assert.match(experimentalHtml,/standalone-vertical-logo-globe-v3\.js\?v=20261123-honey-facets/);
+ assert.match(experimentalHtml,/standalone-vertical-logo-globe-v3\.css\?v=20261123-honey-facets/);
+ assert.match(css,/\.setka-vlogo-crest,\s*\.setka-vlogo-shadow,\s*\.setka-vlogo-line,/);
+ assert.match(css,/\.setka-vlogo-3d::after\s*\{\s*display:none!important;/);
+ assert.match(css,/conic-gradient\(/);
 });
