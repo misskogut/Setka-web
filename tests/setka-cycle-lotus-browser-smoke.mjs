@@ -43,7 +43,20 @@ try{
   ()=>document.querySelector("#setkaCycleBack iframe")?.contentDocument?.querySelector(".cycle-lotus-button svg.cycle-lotus"),
   null,{timeout:18000}
  );
- await page.waitForFunction(()=>window.SETKA_CYCLE_LOTUS_AXIS?.getInfo().ready,null,{timeout:16000});
+ const ready=await page.waitForFunction(()=>window.SETKA_CYCLE_LOTUS_AXIS?.getInfo().ready,null,{timeout:16000}).catch(()=>null);
+ if(!ready){
+  const debug=await page.evaluate(()=>{
+   const info=window.SETKA_CYCLE_LOTUS_AXIS?.getInfo?.();
+   const c=document.getElementById("setkaCycleLotusTurn");
+   const iframe=document.querySelector("#setkaCycleBack iframe");
+   return {info,canvas:!!c,canvasWidth:c?.width,iframeLoaded:iframe?.contentDocument?.readyState,
+    sourceSVG:!!iframe?.contentDocument?.querySelector(".cycle-lotus-button svg.cycle-lotus")};
+  });
+  mkdirSync("tests/visual-smoke",{recursive:true});
+  await page.screenshot({path:"tests/visual-smoke/lotus-not-ready-"+(process.env.SETKA_BROWSER||"chromium")+".png"});
+  console.log("NOT READY DIAGNOSTIC",JSON.stringify(debug),"BROWSER WARNINGS",JSON.stringify(notices));
+  throw Error("ALMA WebGL texture never became ready before first swipe");
+ }
  const before=await page.evaluate(()=>window.SETKA_CYCLE_LOTUS_AXIS.getInfo());
  console.log("PREWARM",JSON.stringify(before));
  assert.equal(before.prewarmed,true,"WebGL lotus texture must be ready *before* user gestures");
