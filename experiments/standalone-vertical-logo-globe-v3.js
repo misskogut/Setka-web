@@ -117,9 +117,15 @@ function buildMesh(){
   const mz=(surface[i+2]+surface[i+8]+surface[i+14])/3;
   const variance=Math.sin(mx*.31+my*.43+mz*.19)*Math.cos(mx*.27-mz*.23);
   const facet=.035+.385*(.5+.5*variance);
+  // One normal per triangle, as in the approved #08 Canvas preview:
+  // the honey mesh has visibly different polygon faces, NOT smooth shading.
+  const nx=surface[i+3]+surface[i+9]+surface[i+15];
+  const ny=surface[i+4]+surface[i+10]+surface[i+16];
+  const nz=surface[i+5]+surface[i+11]+surface[i+17];
+  const length=Math.hypot(nx,ny,nz)||1;
+  const faceNormal=[nx/length,ny/length,nz/length];
   for(let j=i;j<i+18;j+=6)
-   push([surface[j],surface[j+1],surface[j+2]],
-        [surface[j+3],surface[j+4],surface[j+5]],facet);
+   push([surface[j],surface[j+1],surface[j+2]],faceNormal,facet);;
  }
  return{data:new Float32Array(data),honeyTriangles:honey.triangleCount,honeyBounds:honey.bounds};
 }
