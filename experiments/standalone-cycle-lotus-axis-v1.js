@@ -92,7 +92,7 @@ const VS=[
 " gl_Position=vec4(clip,z,d);",
 "}"].join("\n");
 const FS=[
-"precision mediump float;",
+"precision highp float;",
 "uniform sampler2D uTex;uniform float uIsLotus;",
 "varying vec2 vUV;varying float vCycleSide;",
 "void main(){",
@@ -120,7 +120,14 @@ function renderer(canvas){
   gl.linkProgram(program);gl.deleteShader(v);gl.deleteShader(f);
   if(!gl.getProgramParameter(program,gl.LINK_STATUS))
    throw Error(gl.getProgramInfoLog(program));
- }catch(e){console.warn("[SETKA ALMA 3D] shader",e);return null}
+ }catch(e){
+  console.warn("[SETKA ALMA 3D] shader",e);
+  // Failed shader links must NOT leak the WebGL context. Previously the
+  // 100 prewarm retries eventually evicted working library canvases.
+  try{gl.deleteProgram(program)}catch(_){}
+  try{gl.getExtension("WEBGL_lose_context")?.loseContext()}catch(_){}
+  return null;
+ }
  const at={pos:gl.getAttribLocation(program,"aPos"),uv:gl.getAttribLocation(program,"aUV")};
  const u={screen:gl.getUniformLocation(program,"uScreen"),
   pivot:gl.getUniformLocation(program,"uPivot"),
