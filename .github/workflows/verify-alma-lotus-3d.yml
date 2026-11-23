@@ -23,6 +23,8 @@ jobs:
         run: npm install --no-save --ignore-scripts playwright@1.64.1 pngjs
       - name: Verify 3D lotus moves and paints pixels under mobile Chromium
         run: node tests/setka-cycle-lotus-browser-smoke.mjs
+      - name: Verify 3D lotus under mobile WebKit (iPhone engine)
+        run: SETKA_BROWSER=webkit node tests/setka-cycle-lotus-browser-smoke.mjs
       - name: Save rendered lotus frame
         if: always()
         uses: actions/upload-artifact@v4
