@@ -81,6 +81,8 @@ try{
  assert.equal(during.worldYaw,undefined); // world yaw is represented as 'yaw' in geometry
  assert.equal(during.yaw,0);
  assert.equal(during.depthIntersection,true);
+ assert.ok(during.pivotY>230&&during.pivotY<550,
+  "live 3D hinge must follow ALMA lotus, not hidden iframe's zero rect");
 
  mkdirSync("tests/visual-smoke",{recursive:true});
  const image=PNG.sync.read(await page.screenshot({
@@ -90,7 +92,7 @@ try{
  // This catches a successfully linked shader drawing an EMPTY texture.
  let violet=0;
  const scaleX=image.width/390,scaleY=image.height/844;
- for(let y=235;y<680;y++){
+ for(let y=160;y<580;y++){
   for(let x=190;x<385;x++){
    const px=Math.min(image.width-1,Math.floor(x*scaleX));
    const py=Math.min(image.height-1,Math.floor(y*scaleY));
