@@ -61,6 +61,7 @@ try{
  console.log("PREWARM",JSON.stringify(before));
  assert.equal(before.prewarmed,true,"WebGL lotus texture must be ready *before* user gestures");
  assert.equal(before.real3D,true);
+ assert.equal(before.textureFailures,0,"the mobile GPU must accept the ALMA shader and texture");
 
  await page.mouse.move(379,420);
  await page.mouse.down();
