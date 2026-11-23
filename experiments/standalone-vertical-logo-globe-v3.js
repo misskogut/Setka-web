@@ -31,62 +31,8 @@ function shader(kind,src){
  }
  return sh;
 }
-const vert=[
-"precision highp float;",
-"attribute vec3 aPosition;attribute vec3 aNormal;attribute float aMaterial;",
-"uniform mat4 uProjection;uniform float uFlip;uniform float uScale;",
-"uniform float uTime;uniform vec3 uMotion[5];",
-"varying vec3 vN;varying vec3 vLocal;varying float vMat;",
-"vec3 rotX(vec3 p,float a){float c=cos(a),s=sin(a);return vec3(p.x,p.y*c-p.z*s,p.y*s+p.z*c);}",
-"void main(){",
-"  vec3 p=aPosition;",
-"  if(aMaterial<.5){",
-"   vec3 q=(p-vec3(0.,0.,110.))/94.;",
-"   vec3 home[5];",
-"   home[0]=vec3(-.52,.34,.04);home[1]=vec3(.47,.32,-.18);",
-"   home[2]=vec3(-.35,-.48,.12);home[3]=vec3(.52,-.38,.24);home[4]=vec3(0.,-.06,.05);",
-"   vec3 offset=vec3(0.);float weight=.0001;",
-"   for(int i=0;i<5;i++){vec3 d=q-home[i];float w=exp(-dot(d,d)*3.2);offset+=w*uMotion[i];weight+=w;}",
-"   offset/=weight;",
-"   float a=sin(q.x*4.7+uTime*1.03)*sin(q.y*3.1-uTime*.68);",
-"   float b=cos(q.z*4.9-uTime*.81)*sin(q.x*2.9+uTime*.43);",
-"   p+=94.*offset+aNormal*(3.2*a+2.4*b);",
-"  }",
-"  p*=uScale;",
-"  vec3 world=rotX(p,uFlip);",
-"  vN=normalize(rotX(aNormal,uFlip));",
-"  vLocal=aPosition;vMat=aMaterial;",
-"  gl_Position=uProjection*vec4(world.xy,world.z-1450.0,1.0);",
-"}"
-].join("\n");
-const frag=[
-"precision highp float;",
-"varying vec3 vN;varying vec3 vLocal;varying float vMat;",
-"vec3 colorHoney(vec3 n,float lam,float highlight,float rim){",
-" float env=pow(abs(sin((n.x*.71+n.y*.23+n.z*.37)*10.8)),13.0)",
-"         +.38*pow(abs(sin((n.x*1.2+n.z*.13)*3.9+2.0)),12.0);",
-" vec3 rgb=vec3(87.+127.*lam+115.*env+40.*highlight,",
-"               37.+104.*lam+86.*env+37.*highlight,",
-"               4.+45.*lam+28.*env+20.*highlight);",
-" rgb+=vec3(18.,10.,2.)*rim;",
-" return clamp(rgb/255.,0.,1.);",
-"}",
-"void main(){",
-" vec3 n=normalize(vN);",
-" vec3 key=normalize(vec3(-.52,.77,.95));",
-" vec3 bounce=normalize(vec3(.63,-.19,.69));",
-" vec3 view=vec3(0.,0.,1.);",
-" float lam=max(dot(n,key),0.);",
-" float fill=max(dot(n,bounce),0.);",
-" float spec=pow(max(dot(reflect(-key,n),view),0.),27.);",
-" float rim=pow(1.-abs(dot(n,view)),2.4);",
-" vec3 honey=colorHoney(n,lam+fill*.08,spec,rim);",
-" // Material channel encodes a stable per-triangle luminance value.",
-" // This makes each irregular polygon visible without drawing grid lines.",
-" float facet=.84+clamp(vMat,0.,.45)*.52;",
-" gl_FragColor=vec4(clamp(pow(honey*facet,vec3(.91)),0.,1.),1.);",
-"}"
-].join("\n");
+const vert="precision highp float;\nattribute vec3 aPosition;attribute vec3 aNormal;attribute float aMaterial;\nuniform mat4 uProjection;uniform float uFlip;uniform float uScale;\nvarying vec3 vN;varying float vAngle;\nvec3 rotX(vec3 p,float a){float c=cos(a),s=sin(a);return vec3(p.x,p.y*c-p.z*s,p.y*s+p.z*c);}\nvoid main(){\n vec3 p=aPosition*uScale;\n vec3 world=rotX(p,uFlip);\n vN=normalize(rotX(aNormal,uFlip));\n vAngle=aMaterial;\n gl_Position=uProjection*vec4(world.xy,world.z-1450.,1.);\n}";
+const frag="precision highp float;\nvarying vec3 vN;varying float vAngle;\nuniform float uTime;\nvoid main(){\n vec3 n=normalize(vN);\n vec3 light=normalize(vec3(-.52,.77,.95));\n vec3 specLight=normalize(vec3(-.30,.42,1.19));\n float lam=max(dot(n,light),0.);\n float rim=pow(1.-abs(n.z),2.4);\n float spec=pow(max(dot(n,specLight),0.),27.);\n float env=pow(abs(sin((n.x*.71+n.y*.23+n.z*.37)*10.8+uTime*.33)),13.)\n          +.38*pow(abs(sin((n.x*1.2+n.z*.13)*3.9+2.)),12.);\n float flick=.16*max(0.,sin(vAngle+uTime*.39));\n vec3 rgb=vec3(87.+127.*lam+115.*env+40.*spec+flick*30.,\n               37.+104.*lam+86.*env+37.*spec+flick*18.,\n               4.+45.*lam+28.*env+20.*spec+flick*4.);\n gl_FragColor=vec4(clamp(rgb/255.,0.,1.),1.);\n}";
 let prog=null,buf=null,total=0,stats=null;
 try{
  const v=shader(gl.VERTEX_SHADER,vert),f=shader(gl.FRAGMENT_SHADER,frag);
@@ -101,7 +47,7 @@ const U={projection:gl.getUniformLocation(prog,"uProjection"),
  flip:gl.getUniformLocation(prog,"uFlip"),
  scale:gl.getUniformLocation(prog,"uScale"),
  time:gl.getUniformLocation(prog,"uTime"),
- motion:gl.getUniformLocation(prog,"uMotion[0]")};
+ motion:null};
 function buildMesh(){
  const data=[];
  const push=(p,n,m)=>data.push(p[0],p[1],p[2],n[0],n[1],n[2],m);
