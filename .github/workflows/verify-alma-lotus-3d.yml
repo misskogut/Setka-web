@@ -1,0 +1,32 @@
+name: Verify ALMA lotus WebGL on mobile
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "tests/setka-cycle-lotus-browser-smoke.mjs"
+      - ".github/workflows/verify-alma-lotus-3d.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  mobile-render:
+    runs-on: ubuntu-latest
+    container: mcr.microsoft.com/playwright:v1.64.1-noble
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated Playwright diagnostic tools
+        run: npm install --no-save --ignore-scripts playwright@1.64.1 pngjs
+      - name: Verify 3D lotus moves and paints pixels under mobile Chromium
+        run: node tests/setka-cycle-lotus-browser-smoke.mjs
+      - name: Save rendered lotus frame
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: alma-lotus-3d-mobile-frame
+          path: tests/visual-smoke/lotus-real-3d-*.png
+          if-no-files-found: ignore
