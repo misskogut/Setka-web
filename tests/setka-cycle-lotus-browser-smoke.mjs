@@ -104,7 +104,12 @@ try{
  assert.ok(violet>60,"a real neon lotus must be painted on the visible ALMA side, not a blank WebGL canvas");
 
  await page.mouse.up();
- await sleep(700);
+ // Software WebGL in CI can deliver only a few animation frames per second.
+ // Wait for the real flip controller's settled state, not an assumed 700 ms.
+ await page.waitForFunction(
+  ()=>window.SETKA_CYCLE_LOTUS_AXIS?.getInfo().turning===false,
+  null,{timeout:25000}
+ );
  const rest=await page.evaluate(()=>window.SETKA_CYCLE_LOTUS_AXIS.getInfo());
  console.log("SETTLED",JSON.stringify(rest));
  assert.equal(rest.prewarmed,true,"GPU texture stays ready after first swipe");
