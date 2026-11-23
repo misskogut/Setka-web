@@ -90,6 +90,10 @@ function build(){
  outer.id="setkaCycleLotusTurn";
  outer.className="setka-cycle-lotus-turn";
  outer.setAttribute("aria-hidden","true");
+ // A real overflow-clipping viewport is reliable in iOS WebKit. The old
+ // clip-path on an out-of-flow 3D overlay let the full flower leak through.
+ const mask=document.createElement("div");
+ mask.className="setka-cycle-lotus-turn-mask";
  const pivot=document.createElement("div");
  pivot.className="setka-cycle-lotus-turn-pivot";
  const twin=svg.cloneNode(true);
@@ -98,11 +102,32 @@ function build(){
  twin.classList.add("setka-cycle-lotus-turn-svg");
  try{copyStyleTree(svg,twin,iframe.contentWindow)}catch(_){}
  pivot.appendChild(twin);
- outer.appendChild(pivot);
+ mask.appendChild(pivot);
+ outer.appendChild(mask);
  document.body.appendChild(outer);
- overlay={outer,pivot,twin,button};
+ overlay={outer,mask,pivot,twin,button,sourceDoc:doc};
  position();
  return true;
+}
+// Never render two flowers at once: while the mobile-safe projection is
+// showing, temporarily suppress ALMA's real SVG inside its own iframe.
+// Only a class on the iframe document changes; React, dates, and handlers
+// remain intact. On both settled faces the original is restored.
+function setOriginalHidden(hidden){
+ if(!overlay)return;
+ try{
+  const doc=overlay.sourceDoc;
+  if(!doc)return;
+  let rule=doc.getElementById("setka-cycle-single-lotus-rule");
+  if(!rule){
+   rule=doc.createElement("style");
+   rule.id="setka-cycle-single-lotus-rule";
+   rule.textContent="html.setka-cycle-hides-original-lotus .cycle-lotus-button svg.cycle-lotus{visibility:hidden!important}";
+   doc.head.appendChild(rule);
+  }
+  if(hidden)doc.documentElement.classList.add("setka-cycle-hides-original-lotus");
+  else doc.documentElement.classList.remove("setka-cycle-hides-original-lotus");
+ }catch(_){}
 }
 function position(){
  if(!overlay)return;
@@ -111,15 +136,25 @@ function position(){
   const button=overlay.button.getBoundingClientRect();
   // The iframe isn't rotated until the card's draw() phase starts.
   // During a swipe these saved values never depend on a collapsing width.
-  const hostTop=frame.top+button.top;
-  const hostLeft=frame.left+button.left;
   const width=button.width||iframe.clientWidth||360;
   const height=button.height||278;
   if(width<20||height<20)return;
-  overlay.outer.style.left=hostLeft.toFixed(2)+"px";
-  overlay.outer.style.top=hostTop.toFixed(2)+"px";
+  // The card collapses to a line when rotated. Never use its transformed
+  // getBoundingClientRect().left as the flower's pivot: keep the shared
+  // center of the original, unrotated card for the whole gesture.
+  const frameWidth=iframe.clientWidth||frame.width||width;
+  const left=Number.isFinite(window.innerWidth)
+    ? (window.innerWidth-frameWidth)/2+button.left
+    : frame.left+button.left;
+  const top=(Number.isFinite(iframe.offsetTop)?iframe.offsetTop:frame.top)+button.top;
+  overlay.outer.style.left=left.toFixed(2)+"px";
+  overlay.outer.style.top=top.toFixed(2)+"px";
   overlay.outer.style.width=width.toFixed(2)+"px";
   overlay.outer.style.height=height.toFixed(2)+"px";
+  // The projection always retains the ORIGINAL lotus width. Its mask
+  // changes size, but must not shrink/recenter the SVG as it changes.
+  overlay.pivot.style.width=width.toFixed(2)+"px";
+  overlay.pivot.style.height=height.toFixed(2)+"px";
  }catch(_){}
 }
 function start(){
@@ -131,13 +166,20 @@ function render(progress,direction=-1){
  if(!turning)return;
  if(!overlay&&!build())return;
  const state=geometry(progress,direction);
- const {outer,pivot}=overlay;
+ const {outer,mask,pivot}=overlay;
  outer.style.display=state.enabled?"block":"none";
+ setOriginalHidden(state.enabled);
  if(!state.enabled)return;
- // Keep the lotus heading toward the viewer while the CARD crosses edge-on.
+ // The flower stays at the unrotated card's pivot; only the visible
+ // side of the physical Y-plane is exposed through an overflow mask.
+ // At the 90-degree edge the mask width is EXACTLY half, not an SVG
+ // duplicate freely floating above the calendar.
+ const width=parseFloat(outer.style.width)||iframe.clientWidth||360;
+ const hiddenWidth=width*(1-state.visibleFraction);
+ mask.style.width=(state.visibleFraction*100).toFixed(3)+"%";
+ mask.style.left=(state.direction<0?0:hiddenWidth).toFixed(2)+"px";
+ pivot.style.left=(state.direction<0?0:-hiddenWidth).toFixed(2)+"px";
  pivot.style.transform="perspective(1450px) rotateY("+state.yaw.toFixed(3)+"deg)";
- outer.style.clipPath=state.clip;
- outer.style.webkitClipPath=state.clip;
  outer.style.opacity=state.opacity.toFixed(4);
  outer.dataset.progress=state.progress.toFixed(3);
  outer.dataset.cardEdge=String(Math.abs(state.progress-.5)<.001);
@@ -145,9 +187,17 @@ function render(progress,direction=-1){
 }
 function rest(){
  turning=false;
- if(overlay){overlay.outer.remove();overlay=null}
+ if(overlay){
+  setOriginalHidden(false);
+  overlay.outer.remove();
+  overlay=null;
+ }
 }
-if(iframe)iframe.addEventListener("load",()=>{if(turning&&!overlay){build();render(lastP,lastDirection)}});
+if(iframe)iframe.addEventListener("load",()=>{
+ // An iframe navigation invalidates the old SVG and source document.
+ if(overlay){setOriginalHidden(false);overlay.outer.remove();overlay=null}
+ if(turning){build();render(lastP,lastDirection)}
+});
 window.SETKA_CYCLE_LOTUS_AXIS={
  start,render,rest,geometry,
  getInfo:()=>({turning,hasSource:!!overlay,frames:frameCount,...geometry(lastP,lastDirection)})
