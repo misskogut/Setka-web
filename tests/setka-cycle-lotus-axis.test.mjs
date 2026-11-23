@@ -92,3 +92,92 @@ test("3D animation is isolated to experimental front; canonical SETKA stays unch
  assert.doesNotMatch(canonical,/standalone-cycle-lotus-axis-v1/);
  assert.ok(host.indexOf("standalone-cycle-lotus-axis-v1.js")<host.indexOf("function setAtRest(cycle)"));
 });
+
+
+test("mobile first swipe: 3D lotus texture is decoded BEFORE gesture and GPU is reused after release",()=>{
+ let paints=0,createdImages=0;
+ const waiting=[];
+ const classes=()=>({
+  values:new Set(),
+  add(x){this.values.add(x)},
+  remove(x){this.values.delete(x)},
+  contains(x){return this.values.has(x)},
+  toggle(x,flag){if(flag)this.values.add(x);else this.values.delete(x)}
+ });
+ function el(id=""){
+  const node={id,children:[],style:{setProperty(k,v){this[k]=v}},classList:classes(),
+   dataset:{},clientWidth:390,clientHeight:250,offsetTop:0,
+   setAttribute(){},removeAttribute(){},getAttribute(){return null},
+   appendChild(c){this.children.push(c);return c},remove(){this.removed=true},
+   addEventListener(){},querySelectorAll(){return []},
+   getBoundingClientRect(){return {left:0,top:174,width:390,height:250}},
+   cloneNode(){return el("copy")},
+  };
+  return node;
+ }
+ const hero=el("hero"),button=el("button"),svg=el("cycle-lotus");
+ button.querySelector=q=>q==="svg.cycle-lotus"?svg:null;
+ const doc={
+  head:el("head"),documentElement:el("html"),
+  createElement:()=>el("style"),
+  getElementById(id){return this.head.children.find(x=>x.id===id)||null},
+  querySelector:q=>q===".cycle-lotus-button"?button:q===".cycle-hero"?hero:null
+ };
+ const gl=new Proxy({},{
+  get(_target,key){
+   if(key==="NO_ERROR")return 0;
+   if(key==="getError")return ()=>0;
+   if(key==="getShaderParameter"||key==="getProgramParameter")return ()=>true;
+   if(key==="getAttribLocation")return ()=>0;
+   if(key==="getUniformLocation")return ()=>0;
+   if(key==="getShaderInfoLog"||key==="getProgramInfoLog")return ()=>"";
+   if(["createShader","createProgram","createTexture","createBuffer"].includes(key))return ()=>({});
+   if(key==="drawArrays")return ()=>{paints++};
+   if(typeof key==="string"&&/^[A-Z0-9_]+$/.test(key))return 1;
+   return ()=>{};
+  }
+ });
+ const iframe={clientWidth:390,clientHeight:700,offsetTop:12,
+  contentDocument:doc,contentWindow:{getComputedStyle(){return {getPropertyValue(){return ""}}}},
+  addEventListener(){},getBoundingClientRect(){return {left:0,top:12,width:390,height:700}}
+ };
+ const parent=el("body");
+ const back={querySelector:q=>q==="iframe"?iframe:null};
+ const browserDocument={
+  body:parent,
+  getElementById:id=>id==="setkaCycleBack"?back:null,
+  createElement:tag=>{
+   const node=el(tag);
+   if(tag==="canvas")node.getContext=kind=>kind==="webgl"?gl:null;
+   return node;
+  }
+ };
+ class FakeImage{
+  constructor(){createdImages++}
+  set src(url){this.url=url;waiting.push(this)}
+ }
+ const Window={innerWidth:390,innerHeight:844,devicePixelRatio:2,addEventListener(){}};
+ const URL={createObjectURL:()=> "blob:setka-alma-3d",revokeObjectURL(){}};
+ const context={document:browserDocument,window:Window,Image:FakeImage,URL,
+  Blob:class{constructor(){}},XMLSerializer:class{serializeToString(){return '<svg xmlns="http://www.w3.org/2000/svg"/>'}},
+  setTimeout:()=>1,clearTimeout(){},Math,Number,console};
+ vm.runInNewContext(js,context);
+ const api=Window.SETKA_CYCLE_LOTUS_AXIS;
+ assert.equal(api.getInfo().hasSource,true,"texture begins prewarming while user is idle");
+ assert.equal(api.getInfo().ready,false,"decode can legitimately be asynchronous");
+ assert.equal(createdImages,1,"prepare one copy of the live ALMA SVG");
+ waiting.shift().onload();
+ assert.equal(api.getInfo().ready,true);
+ assert.equal(api.getInfo().prewarmed,true);
+ api.start();api.render(.5,-1);
+ assert.equal(paints,2,"one depth-only card plane plus lotus are rendered");
+ assert.equal(doc.documentElement.classList.contains("setka-cycle-hides-original-lotus"),true);
+ api.rest();
+ assert.equal(api.getInfo().ready,true,"releasing swipe must preserve prepared GPU texture");
+ assert.equal(api.getInfo().prewarmed,true);
+ assert.equal(doc.documentElement.classList.contains("setka-cycle-hides-original-lotus"),false);
+ api.start();api.render(.65,1);
+ assert.equal(paints,4,"second gesture renders immediately without async load");
+ assert.equal(createdImages,1,"no image reload after normal release");
+ api.rest();
+});
