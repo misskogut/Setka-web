@@ -75,15 +75,28 @@ test("lotus looks at viewer when card is exactly edge-on, but half is occluded",
  }
 });
 
-test("lotus has its own synchronized Y rotation; card remains physically independent",()=>{
+test("lotus always faces the viewer: local yaw exactly cancels card turn at EVERY angle",()=>{
  const {api}=harness();
- const left=[0,.25,.5,.75,1].map(p=>api.geometry(p,-1).yaw);
- const right=[0,.25,.5,.75,1].map(p=>api.geometry(p,1).yaw);
- assert.deepEqual(left,[-90,-45,0,45,90]);
- assert.deepEqual(right,[90,45,0,-45,-90]);
- assert.equal(api.geometry(0,-1).enabled,false);
- assert.equal(api.geometry(1,-1).enabled,false);
- assert.ok(api.geometry(.8,-1).visibleFraction>.5);
+ for(const direction of [-1,1]){
+  for(const p of [0,.1,.25,.33,.49,.5,.51,.66,.75,.9,1]){
+   const g=api.geometry(p,direction);
+   assert.equal(g.yaw,0,"world orientation is face-on even between endpoints");
+   assert.ok(Math.abs(g.cardYaw+g.counterYaw)<1e-8,
+    "lotus counter-rotates exactly opposite its card at progress "+p);
+   assert.equal(g.visibleFraction,p,"physical card exposes an increasing fraction");
+   assert.equal(g.opacity,1,"no artificial fade or sudden disappearance");
+  }
+  const cycle=api.geometry(1,direction);
+  assert.equal(cycle.cardYaw,0,"lotus starts coplanar with the cycle card");
+  assert.equal(cycle.visibleFraction,1);
+  assert.equal(cycle.enabled,true);
+  const edge=api.geometry(.5,direction);
+  assert.equal(Math.abs(edge.counterYaw),90);
+  assert.equal(edge.visibleFraction,.5);
+  const setka=api.geometry(0,direction);
+  assert.equal(setka.visibleFraction,0,"behind SETKA");
+  assert.equal(setka.enabled,false);
+ }
 });
 
 test("original ALMA SVG is cloned only for turning, never moved or modified",()=>{
@@ -103,6 +116,9 @@ test("original ALMA SVG is cloned only for turning, never moved or modified",()=
  assert.equal(pivot.style.left,"0.00px");
  assert.equal(pivot.style.transform,"perspective(1450px) rotateY(0.000deg)");
  assert.equal(overlay.dataset.cardEdge,"true");
+ assert.equal(overlay.dataset.worldYaw,"0.000");
+ assert.equal(overlay.dataset.cardYaw,"90.000");
+ assert.equal(overlay.dataset.counterYaw,"-90.000");
  assert.equal(iframe.contentDocument.documentElement.classList.contains("setka-cycle-hides-original-lotus"),true,
   "only the projection is visible during rotation, never two flowers");
  assert.equal(iframe.contentDocument.head.children.length,1,"original is hidden with one iframe-local style");
@@ -111,8 +127,16 @@ test("original ALMA SVG is cloned only for turning, never moved or modified",()=
  assert.equal(mask.style.left,"195.00px");
  assert.equal(pivot.style.left,"-195.00px","keep original SVG center despite mask crop");
  api.render(.97,1);
- assert.equal(iframe.contentDocument.documentElement.classList.contains("setka-cycle-hides-original-lotus"),false,
-  "native flower returns as projection fades before settling");
+ assert.equal(iframe.contentDocument.documentElement.classList.contains("setka-cycle-hides-original-lotus"),true,
+  "native flower cannot return until card stops rotating");
+ assert.equal(mask.style.width,"97.000%","fully front-facing lotus grows behind physical card");
+ api.render(1,1);
+ assert.equal(mask.style.width,"100.000%","lotus becomes fully visible when coplanar with card");
+ assert.equal(pivot.style.transform,"perspective(1450px) rotateY(0.000deg)");
+ api.render(0,1);
+ assert.equal(overlay.style.display,"none","no flower through SETKA face");
+ assert.equal(iframe.contentDocument.documentElement.classList.contains("setka-cycle-hides-original-lotus"),true,
+  "the original is still hidden until the card is reset");
  api.rest();
  assert.equal(overlay.removed,true);
  assert.equal(api.getInfo().turning,false);
@@ -122,8 +146,8 @@ test("original ALMA SVG is cloned only for turning, never moved or modified",()=
 });
 
 test("only experimental SETKA page gets the Y-axis lotus animation, not the canonical front",()=>{
- assert.match(host,/standalone-cycle-lotus-axis-v1\.js\?v=20261123-single-lotus-real-mask/);
- assert.match(host,/standalone-cycle-lotus-axis-v1\.css\?v=20261123-single-lotus-real-mask/);
+ assert.match(host,/standalone-cycle-lotus-axis-v1\.js\?v=20261123-counterrotating-face-on-360/);
+ assert.match(host,/standalone-cycle-lotus-axis-v1\.css\?v=20261123-counterrotating-face-on-360/);
  assert.match(host,/SETKA_CYCLE_LOTUS_AXIS\?\.start\(\)/);
  assert.match(host,/SETKA_CYCLE_LOTUS_AXIS\?\.render\(progress,direction\)/);
  assert.match(host,/SETKA_CYCLE_LOTUS_AXIS\?\.rest\(\)/);
