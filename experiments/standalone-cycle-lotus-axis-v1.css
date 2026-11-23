@@ -13,9 +13,22 @@
  pointer-events:none!important;
  transform:none!important;
  transform-origin:50% 50%;
- will-change:opacity,clip-path;
+ will-change:opacity;
  -webkit-backface-visibility:visible;
  backface-visibility:visible;
+}
+/* A physical half-plane mask, not WebKit clip-path on a 3D fixed layer. */
+.setka-cycle-lotus-turn-mask{
+ display:block;
+ position:absolute;
+ top:0;
+ bottom:0;
+ left:0;
+ width:100%;
+ overflow:hidden;
+ contain:paint;
+ pointer-events:none!important;
+ will-change:left,width;
 }
 .setka-cycle-lotus-turn-pivot{
  display:block;
