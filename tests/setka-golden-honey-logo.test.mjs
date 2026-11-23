@@ -99,7 +99,8 @@ test('original approved #08 is rebuilt from moving lobes without any open edges'
 test('WebGL port uses original #08 CPU rebuild and never pulls mesh corners apart',()=>{
  assert.match(originalLogoScript,/steps:23,scale:94,zOffset:110,time,centers,press,contact/);
  assert.match(originalLogoScript,/const FLUID_REBUILD_MS=82/);
- assert.match(originalLogoScript,/refreshFluid\(\);lastMesh=now/);
+ assert.match(originalLogoScript,/try\{refreshFluid\(\)\}/);
+ assert.match(originalLogoScript,/lastMesh=now/);
  assert.match(originalLogoScript,/gl\.bufferData\(gl\.ARRAY_BUFFER,result\.data,gl\.DYNAMIC_DRAW\)/);
  assert.doesNotMatch(originalLogoScript,/aNormal\*\(3\.2\*a\+2\.4\*b\)/);
  assert.doesNotMatch(originalLogoScript,/uniform vec3 uMotion\[5\]/);
