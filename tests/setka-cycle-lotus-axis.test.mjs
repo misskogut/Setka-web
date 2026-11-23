@@ -55,6 +55,10 @@ test("3D half-space selects only the ALMA-facing half, never SETKA's reverse",()
 
 test("the actual painter uses physical WebGL 3D rather than a 2D cropping mask",()=>{
  assert.match(js,/getContext\("webgl"/);
+ assert.match(js,/const FS=\[/);
+ assert.match(js,/"precision highp float;"/g);
+ assert.doesNotMatch(js,/"precision mediump float;"/);
+ assert.match(js,/WEBGL_lose_context/);
  assert.match(js,/attribute vec2 aPos/);
  assert.match(js,/vec3 inCard=uIsLotus>\.5\?ry\(vec3\(aPos,0\.\),-uAngle\)/);
  assert.match(js,/vec3 world=ry\(inCard,uAngle\)/);
@@ -83,7 +87,7 @@ test("original ALMA is restored when the flip ends, with the same calendar and g
 });
 
 test("3D animation is isolated to experimental front; canonical SETKA stays unchanged",()=>{
- const revision="20261123-lotus-hinged-3d-depth-v2";
+ const revision="20261123-lotus-hinged-3d-depth-v3-precision";
  assert.ok(host.includes("standalone-cycle-lotus-axis-v1.js?v="+revision));
  assert.ok(host.includes("standalone-cycle-lotus-axis-v1.css?v="+revision));
  assert.match(host,/SETKA_CYCLE_LOTUS_AXIS\?\.start\(\)/);
