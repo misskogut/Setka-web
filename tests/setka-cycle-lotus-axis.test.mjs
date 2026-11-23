@@ -57,12 +57,21 @@ test("submerged lotus petals keep non-zero visible transmission in both directio
  for(const direction of [-1,1]){
   const atEdge=g(.5,direction),outside=direction<0?110:-110;
   assert.equal(atEdge.transmissionAtX(outside),1,"exposed petals remain opaque");
-  assert.ok(atEdge.transmissionAtX(-outside)>.2,"submerged petal is not discarded");
+  assert.ok(atEdge.transmissionAtX(-outside)>.08,"submerged petal is not discarded");
   assert.ok(atEdge.transmissionAtX(-outside)<1,"depth absorbs the inner light");
   assert.ok(atEdge.transmissionAtX(-outside/3)>atEdge.transmissionAtX(-outside),
    "deeply submerged petal is visibly dimmer");
   assert.equal(g(0,direction).transmissionAtX(-outside),0,
    "the flat SETKA backside must not glow with interior petals");
+  assert.equal(g(.25,direction).transmissionAtX(-outside),0,
+   "opaque SETKA face must not transmit interior petals");
+  const projected=atEdge.projectInteriorX(-outside);
+  assert.ok(projected*(direction<0?1:-1)>0,
+   "interior petals must project toward ALMA, never toward squishes");
+  assert.ok(Math.abs(projected)<outside*.35,
+   "buried petals recede near ALMA's plane");
+  assert.equal(g(1,direction).projectInteriorX(-outside),-outside,
+   "resting original must preserve its geometry");
  }
 });
 
@@ -80,12 +89,16 @@ test("the actual painter uses physical WebGL 3D rather than a 2D cropping mask",
  assert.match(js,/float absorption=\.16\+\.84\*exp\(-travel\/140\.\)/);
  assert.match(js,/float edgeTransmission=smoothstep/);
  assert.match(js,/c\.a\*=transmission/,"submerged petals transmit, not disappear");
+ assert.match(js,/world\.x\+=sign\(sin\(uAngle\)\)\*immersed\*1\.24\*bend/);
+ assert.match(js,/world\.z-=immersed\*\.65\*bend/);
+ assert.match(js,/almaTransmission=smoothstep\(-\.15,\.22,cos\(uAngle\)\)/);
+ assert.match(js,/function strips\(/);
  assert.match(js,/gl\.disable\(gl\.DEPTH_TEST\)/,"rear transmission is not killed by the card depth");
  assert.match(js,/gl\.enable\(gl\.DEPTH_TEST\)/);
  assert.match(js,/gl\.colorMask\(false,false,false,false\)/);
  assert.match(js,/gl\.drawArrays\(gl\.TRIANGLES,0,6\)/);
  assert.match(js,/quad\(-box\.W\/2,box\.topY,box\.W\/2,box\.bottomY\)/);
- assert.match(js,/quad\(-box\.w\/2,-box\.h\/2,box\.w\/2,box\.h\/2\)/);
+ assert.match(js,/strips\(-box\.w\/2,-box\.h\/2,box\.w\/2,box\.h\/2\)/);
  assert.doesNotMatch(js,/mask\.style\.width|pivot\.style\.left|style\.clipPath|webkitClipPath/);
  assert.doesNotMatch(css,/clip-path|overflow:hidden|turn-mask|turn-pivot/);
  assert.match(css,/canvas|lotus-webgl/);
@@ -104,7 +117,7 @@ test("original ALMA is restored when the flip ends, with the same calendar and g
 });
 
 test("3D animation is isolated to experimental front; canonical SETKA stays unchanged",()=>{
- const revision="20261123-lotus-volumetric-rear-v5";
+ const revision="20261123-lotus-internal-alma-depth-v6";
  assert.ok(host.includes("standalone-cycle-lotus-axis-v1.js?v="+revision));
  assert.ok(host.includes("standalone-cycle-lotus-axis-v1.css?v="+revision));
  assert.match(host,/SETKA_CYCLE_LOTUS_AXIS\?\.start\(\)/);

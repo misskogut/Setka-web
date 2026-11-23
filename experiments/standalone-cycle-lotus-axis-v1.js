@@ -20,16 +20,23 @@ function geometry(progress,direction=-1,width=390){
  // Near the edge the submerged petals are visible; the opaque SETKA face
  // conceals them as the card settles flat. Full ALMA-facing petals stay bright.
  const s=Math.abs(Math.sin(a));
+ // Inner petals bend into ALMA's volume, not through the SETKA face.
+ const foldT=clamp((s-.55)/.35,0,1);
+ const fold=foldT*foldT*(3-2*foldT);
+ const almaTransmission=clamp((Math.cos(a)+.15)/.37,0,1);
+ const projectInteriorX=x=>x+(Math.sin(a)<0?-1:1)
+  *Math.max(0,-depthAtX(x))*1.24*fold;
  const edge=Math.max(0,Math.min(1,(s-.05)/.8));
  const edgeTransmission=edge*edge*(3-2*edge);
  const transmissionAtX=x=>{
   const d=depthAtX(x);
-  return d>=0?1:edgeTransmission*(.16+.84*Math.exp(d/140));
+  return d>=0?1:almaTransmission*edgeTransmission*(.16+.84*Math.exp(d/140));
  };
  const visibleFraction=s<1e-7?(Math.cos(a)>0?1:0):
   clamp(.5+CLEARANCE*Math.cos(a)/(Math.max(1,width)*s),0,1);
  return {progress:p,direction:sign,cardYaw,counterYaw,yaw,radians:a,
   emergingSide:sign<0?"right":"left",depthAtX,transmissionAtX,
+  projectInteriorX,almaTransmission,
   visibleFraction,opacity:1,enabled:p>0};
 }
 function original(hidden,doc=view?.doc){
@@ -86,7 +93,7 @@ const VS=[
 "precision highp float;",
 "attribute vec2 aPos;attribute vec2 aUV;",
 "uniform vec2 uScreen,uPivot;",
-"uniform float uAngle,uIsLotus,uClearance;",
+"uniform float uAngle,uIsLotus,uLayer,uClearance;",
 "varying vec2 vUV;varying float vCycleSide;",
 "vec3 ry(vec3 p,float a){float c=cos(a),s=sin(a);return vec3(c*p.x+s*p.z,p.y,-s*p.x+c*p.z);}",
 "void main(){",
@@ -94,6 +101,13 @@ const VS=[
 " vec3 world=ry(inCard,uAngle);",
 " if(uIsLotus>.5)world.z+=uClearance;",
 " vCycleSide=inCard.z+(uIsLotus>.5?uClearance*cos(uAngle):0.);vUV=aUV;",
+" // Bend submerged petals into the ALMA half and recess them in Z.",
+" if(uIsLotus>.5&&uLayer<.5){",
+"   float immersed=max(0.,-vCycleSide);",
+"   float bend=smoothstep(.55,.90,abs(sin(uAngle)));",
+"   world.x+=sign(sin(uAngle))*immersed*1.24*bend;",
+"   world.z-=immersed*.65*bend;",
+" }",
 " float focal=1450.,d=focal-world.z,near=15.,far=3000.;",
 " vec2 pivotNDC=vec2(2.*uPivot.x/uScreen.x-1.,1.-2.*uPivot.y/uScreen.y);",
 " vec2 clip=pivotNDC*d+vec2(2.*world.x/uScreen.x,-2.*world.y/uScreen.y)*focal;",
@@ -114,7 +128,8 @@ const FS=[
 "   float travel=max(0.,-vCycleSide);",
 "   float absorption=.16+.84*exp(-travel/140.);",
 "   float edgeTransmission=smoothstep(.05,.85,abs(sin(uAngle)));",
-"   float transmission=absorption*edgeTransmission;",
+"   float almaTransmission=smoothstep(-.15,.22,cos(uAngle));",
+"   float transmission=absorption*edgeTransmission*almaTransmission;",
 "   if(transmission<.001)discard;",
 "   c.rgb*=mix(.72,1.,absorption);",
 "   c.a*=transmission;",
@@ -174,6 +189,19 @@ function renderer(canvas){
    x0,y0,0,0,x1,y0,1,0,x1,y1,1,1,
    x0,y0,0,0,x1,y1,1,1,x0,y1,0,1]);
  }
+ // Tessellate the original SVG for a continuous 3D bend.
+ function strips(x0,y0,x1,y1,count=48){
+  const vertices=new Float32Array(count*24);
+  for(let i=0;i<count;i++){
+   const a=i/count,b=(i+1)/count;
+   const xa=x0+(x1-x0)*a,xb=x0+(x1-x0)*b;
+   vertices.set([
+    xa,y0,a,0,xb,y0,b,0,xb,y1,b,1,
+    xa,y0,a,0,xb,y1,b,1,xa,y1,a,1
+   ],i*24);
+  }
+  return vertices;
+ }
  function draw(box,g){
   const W=window.innerWidth,H=window.innerHeight,dpr=Math.min(2,window.devicePixelRatio||1);
   const pw=Math.max(2,Math.round(W*dpr)),ph=Math.max(2,Math.round(H*dpr));
@@ -193,12 +221,13 @@ function renderer(canvas){
   gl.enableVertexAttribArray(at.pos);gl.enableVertexAttribArray(at.uv);
   // Rear petals occupy NEGATIVE card-local depth. Render their attenuated
   // transmission first, behind the physical card surface, not as a 2D crop.
-  const petals=quad(-box.w/2,-box.h/2,box.w/2,box.h/2);
+  const petals=strips(-box.w/2,-box.h/2,box.w/2,box.h/2);
+  const petalCount=petals.length/4;
   gl.uniform1f(u.lotus,1);gl.uniform1f(u.layer,0);
   gl.bufferData(gl.ARRAY_BUFFER,petals,gl.DYNAMIC_DRAW);
   gl.disable(gl.DEPTH_TEST);gl.depthMask(false);
   gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
-  gl.drawArrays(gl.TRIANGLES,0,6);
+  gl.drawArrays(gl.TRIANGLES,0,petalCount);
   gl.disable(gl.BLEND);
   // Opaque depth-only geometry still occludes the FRONT petal pass. The
   // translucent interior was already composited with depth absorption.
@@ -212,7 +241,7 @@ function renderer(canvas){
   gl.uniform1f(u.lotus,1);gl.uniform1f(u.layer,1);
   gl.bufferData(gl.ARRAY_BUFFER,petals,gl.DYNAMIC_DRAW);
   gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
-  gl.drawArrays(gl.TRIANGLES,0,6);gl.disable(gl.BLEND);
+  gl.drawArrays(gl.TRIANGLES,0,petalCount);gl.disable(gl.BLEND);
  }
  function dispose(){gl.deleteTexture(texture);gl.deleteBuffer(buffer);gl.deleteProgram(program)}
  return{gl,upload,draw,dispose};
