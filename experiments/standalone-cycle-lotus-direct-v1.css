@@ -1,0 +1,14 @@
+/* Original ALMA SVG is adopted into a real CSS 3D plane during a swipe.
+ * No second lotus, WebGL canvas, screenspace clipping, or mask. */
+body.cycle-flip-active #setkaCycleBack,
+#setkaCycleBack #setkaCycleLotusDirectPortal{
+ overflow:visible!important;
+ transform-style:preserve-3d!important;
+ -webkit-transform-style:preserve-3d!important;
+}
+#setkaCycleLotusDirectPortal{pointer-events:none!important;}
+body:not(.cycle-flip-active) #setkaCycleLotusDirectPortal,
+body:has(#gameScreen.active) #setkaCycleLotusDirectPortal{
+ visibility:hidden!important;
+ pointer-events:none!important;
+}
