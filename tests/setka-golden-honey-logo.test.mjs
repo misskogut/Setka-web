@@ -44,7 +44,7 @@ test('experimental page wires honey before renderer; main SETKA App stays unchan
  assert.ok(experimentalHtml.indexOf(renderer)>experimentalHtml.indexOf(generator));
  assert.ok(!canonicalHtml.includes(generator));
  assert.ok(!canonicalHtml.includes('standalone-vertical-logo-globe-v3.js'));
- assert.match(originalLogoScript,/SETKA_METABALL_MESH\.create\(\{steps:23,scale:94,zOffset:110\}\)/);
+ assert.match(originalLogoScript,/SETKA_METABALL_MESH\.create\(\{steps:16,scale:94,zOffset:110\}\)/);
  assert.doesNotMatch(originalLogoScript,/const latCount=30,lonCount=68/);
  assert.doesNotMatch(originalLogoScript,/colorPlanet\(/);
 });
