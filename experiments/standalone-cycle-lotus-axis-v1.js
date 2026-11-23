@@ -8,6 +8,8 @@ const DEG=Math.PI/180, CLEARANCE=10;
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 const iframe=document.getElementById("setkaCycleBack")?.querySelector("iframe");
 let view=null,turning=false,lastP=0,lastDirection=-1,frames=0;
+let prewarmTimer=0,refreshTimer=0,sourceObserver=null,textureFailures=0;
+let lastTextureSource="none";
 function geometry(progress,direction=-1,width=390){
  const p=clamp(Number.isFinite(progress)?progress:0,0,1),sign=direction>=0?1:-1;
  const cardYaw=p===1?0:-sign*180*(1-p);
@@ -135,6 +137,8 @@ function renderer(canvas){
    gl.texParameteri(gl.TEXTURE_2D,k,gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+  const error=gl.getError();
+  if(error!==gl.NO_ERROR)throw Error("WebGL texture upload error "+error);
  }
  function quad(x0,y0,x1,y1){
   return new Float32Array([
@@ -198,8 +202,9 @@ function build(){
  });
  canvas.addEventListener("webglcontextrestored",()=>{
   if(view!==v)return;
-  const active=turning;rest();
-  if(active){start();render(lastP,lastDirection)}
+  discardView();
+  schedulePrewarm();
+  if(turning){start();render(lastP,lastDirection)}
  });
  try{
   const copy=svg.cloneNode(true);
@@ -211,23 +216,103 @@ function build(){
   const encoded=new XMLSerializer().serializeToString(copy);
   v.url=URL.createObjectURL(new Blob([encoded],{type:"image/svg+xml;charset=utf-8"}));
   const picture=new Image();
+  let attemptedDataURL=false;
+  function releaseURL(){
+   if(v.url){URL.revokeObjectURL(v.url);v.url=null}
+  }
   picture.onload=()=>{
-   if(view!==v)return;
-   try{gl.upload(picture);v.ready=true;render(lastP,lastDirection)}
-   catch(e){console.warn("[SETKA ALMA 3D] texture",e);original(false,doc);canvas.style.display="none"}
-   finally{if(v.url){URL.revokeObjectURL(v.url);v.url=null}}
+   if(view!==v){releaseURL();return}
+   try{
+    gl.upload(picture);
+    v.ready=true;
+    lastTextureSource=attemptedDataURL?"data-url":"blob-url";
+    releaseURL();
+    // The texture is already ready BEFORE the user's first swipe.
+    if(turning)render(lastP,lastDirection);
+    attachSourceObserver();
+   }catch(e){
+    console.warn("[SETKA ALMA 3D] upload",e);
+    textureFailures++;
+    releaseURL();
+    if(turning)original(false,doc);
+    canvas.style.display="none";
+   }
   };
   picture.onerror=()=>{
-   if(view!==v)return;
-   console.warn("[SETKA ALMA 3D] source texture");
-   original(false,doc);canvas.style.display="none";
-   if(v.url){URL.revokeObjectURL(v.url);v.url=null}
+   if(view!==v){releaseURL();return}
+   // Mobile Safari may reject SVG blob URLs, but permit an inline
+   // data URI. Retry the same original artwork, not a substitute.
+   releaseURL();
+   if(!attemptedDataURL){
+    attemptedDataURL=true;
+    try{
+     picture.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(encoded);
+     return;
+    }catch(_){}
+   }
+   textureFailures++;
+   lastTextureSource="failed";
+   console.warn("[SETKA ALMA 3D] SVG image decode failed");
+   if(turning)original(false,doc);
+   canvas.style.display="none";
   };
   picture.src=v.url;
  }catch(e){console.warn("[SETKA ALMA 3D] clone",e);rest();return false}
  return true;
 }
-function start(){turning=true;build()}
+function discardView(){
+ const v=view;view=null;
+ if(!v)return;
+ original(false,v.doc);
+ if(v.url)URL.revokeObjectURL(v.url);
+ try{v.gl.dispose()}catch(_){}
+ v.canvas.remove();
+}
+function attachSourceObserver(){
+ if(sourceObserver||!view?.ready)return;
+ const doc=view.doc;
+ const root=doc?.querySelector(".cycle-hero");
+ if(!root||typeof MutationObserver!=="function")return;
+ sourceObserver=new MutationObserver(()=>{
+  if(turning)return;
+  if(refreshTimer)clearTimeout(refreshTimer);
+  refreshTimer=setTimeout(()=>{
+   refreshTimer=0;
+   if(turning)return;
+   if(sourceObserver){sourceObserver.disconnect();sourceObserver=null}
+   discardView();
+   schedulePrewarm();
+  },160);
+ });
+ sourceObserver.observe(root,{
+  subtree:true,childList:true,attributes:true,
+  attributeFilter:["class","style","d","fill","stroke","transform"]
+ });
+}
+function schedulePrewarm(attempt=0){
+ if(prewarmTimer){clearTimeout(prewarmTimer);prewarmTimer=0}
+ if(view){
+  if(view.ready)attachSourceObserver();
+  return;
+ }
+ if(build())return;
+ // ALMA mounts React asynchronously *after* the iframe load event.
+ // Retry until CycleHero and its actual SVG exist.
+ if(attempt<100){
+  prewarmTimer=setTimeout(()=>{
+   prewarmTimer=0;
+   schedulePrewarm(attempt+1);
+  },100);
+ }
+}
+function start(){
+ turning=true;
+ if(view?.ready)return;
+ // A cold first swipe may happen before ALMA finishes booting.
+ // Continue building, but do not rely on finishing a texture decode
+ // inside a short card transition for subsequent gestures.
+ if(!view)build();
+}
 function render(p,direction=-1){
  lastP=p;lastDirection=direction;
  if(!turning)return;
@@ -246,21 +331,35 @@ function render(p,direction=-1){
  frames++;
 }
 function rest(){
- const v=view;view=null;turning=false;
- if(!v)return;
- original(false,v.doc);
- if(v.url)URL.revokeObjectURL(v.url);
- try{v.gl.dispose()}catch(_){}
- v.canvas.remove();
+ // Cache the completed WebGL texture across transitions. Previously we
+ // deleted it on every pointerup; iOS could never finish the async SVG
+ // decode before the same short gesture ended.
+ turning=false;
+ if(!view)return;
+ original(false,view.doc);
+ view.canvas.style.display="none";
 }
-if(iframe)iframe.addEventListener("load",()=>{
- const active=turning;rest();
- if(active){start();render(lastP,lastDirection)}
+if(iframe){
+ iframe.addEventListener("load",()=>{
+  if(sourceObserver){sourceObserver.disconnect();sourceObserver=null}
+  discardView();
+  schedulePrewarm();
+  if(turning){start();render(lastP,lastDirection)}
+ });
+ // The calendar may already be loaded when this module is evaluated.
+ schedulePrewarm();
+}
+window.addEventListener("pagehide",()=>{
+ if(prewarmTimer)clearTimeout(prewarmTimer);
+ if(refreshTimer)clearTimeout(refreshTimer);
+ if(sourceObserver){sourceObserver.disconnect();sourceObserver=null}
+ discardView();
 });
 window.SETKA_CYCLE_LOTUS_AXIS={
  start,render,rest,geometry,
  getInfo:()=>({turning,hasSource:!!view,ready:!!view?.ready,
-  real3D:!!view?.gl,depthIntersection:true,frames,
+  prewarmed:!!view?.ready&&!turning,textureSource:lastTextureSource,
+  textureFailures,real3D:!!view?.gl,depthIntersection:true,frames,
   ...geometry(lastP,lastDirection,view?.box.w||390)})
 };
 })();
