@@ -87,7 +87,7 @@ test("original ALMA is restored when the flip ends, with the same calendar and g
 });
 
 test("3D animation is isolated to experimental front; canonical SETKA stays unchanged",()=>{
- const revision="20261123-lotus-hinged-3d-depth-v3-precision";
+ const revision="20261123-lotus-hinged-3d-depth-v4-live-pivot";
  assert.ok(host.includes("standalone-cycle-lotus-axis-v1.js?v="+revision));
  assert.ok(host.includes("standalone-cycle-lotus-axis-v1.css?v="+revision));
  assert.match(host,/SETKA_CYCLE_LOTUS_AXIS\?\.start\(\)/);
@@ -120,6 +120,8 @@ test("mobile first swipe: 3D lotus texture is decoded BEFORE gesture and GPU is 
   return node;
  }
  const hero=el("hero"),button=el("button"),svg=el("cycle-lotus");
+ let sourceTop=0; // hidden iframe layout has no top position while prewarming
+ svg.getBoundingClientRect=()=>({left:0,top:sourceTop,width:390,height:250});
  button.querySelector=q=>q==="svg.cycle-lotus"?svg:null;
  const doc={
   head:el("head"),documentElement:el("html"),
@@ -173,7 +175,12 @@ test("mobile first swipe: 3D lotus texture is decoded BEFORE gesture and GPU is 
  waiting.shift().onload();
  assert.equal(api.getInfo().ready,true);
  assert.equal(api.getInfo().prewarmed,true);
- api.start();api.render(.5,-1);
+ const hiddenPivot=api.getInfo().pivotY;
+ sourceTop=174; // startVisual() has now unhidden the ALMA card
+ api.start();
+ assert.equal(api.getInfo().pivotY,hiddenPivot+174,
+  "3D hinge must be measured AFTER the calendar card becomes visible");
+ api.render(.5,-1);
  assert.equal(paints,2,"one depth-only card plane plus lotus are rendered");
  assert.equal(doc.documentElement.classList.contains("setka-cycle-hides-original-lotus"),true);
  api.rest();
