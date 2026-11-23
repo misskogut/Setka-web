@@ -1,10 +1,9 @@
-/* SETKA experimental 3D logo: closed, smooth-min golden honey metaball.
-   Geometry is generated once and deformed continuously in the GPU.
-   The field is a true signed-distance union, not a radial sphere mesh. */
+/* SETKA original approved "ЗОЛОТОЙ МЁД · №08 / ZERO-G 3D".
+   Rebuild ONE closed marching-tetrahedra isosurface for each fluid state.
+   Never move individual triangles along their flat normals: it tears seams. */
 (function(){
 "use strict";
 const HOME=[[-.52,.34,.04,.59],[.47,.32,-.18,.57],[-.35,-.48,.12,.57],[.52,-.38,.24,.52],[0,-.06,.05,.37]];
-const RADII=Object.freeze(HOME.map(v=>v[3]));
 const normalize=v=>{const s=Math.hypot(v[0],v[1],v[2])||1;return[v[0]/s,v[1]/s,v[2]/s];};
 const sm=(a,b,k)=>{const h=Math.max(k-Math.abs(a-b),0)/k;return Math.min(a,b)-h*h*k*.25;};
 function sdf(x,y,z){
@@ -18,12 +17,27 @@ function create(opts={}){
  const steps=Math.max(12,Math.min(36,Math.round(opts.steps||23)));
  const unitScale=Number.isFinite(opts.scale)?opts.scale:94;
  const zOffset=Number.isFinite(opts.zOffset)?opts.zOffset:110;
+ const centers=Array.isArray(opts.centers)&&opts.centers.length===5
+   ? opts.centers.map((p,i)=>[Number(p[0]),Number(p[1]),Number(p[2]),HOME[i][3]])
+   : HOME;
+ const time=Number.isFinite(opts.time)?opts.time:0;
+ const pressing=Number.isFinite(opts.press)?opts.press:0;
+ const touch=Array.isArray(opts.contact)?opts.contact:[0,0];
+ // These are exactly the field/speeds from the approved chat preview #08.
+ function field(x,y,z){
+  let d=10;
+  for(const b of centers)
+   d=sm(d,Math.hypot(x-b[0],y-b[1],z-b[2])-b[3],.23);
+  d+=.009*Math.sin(x*7.3+y*4.1+time*.53)*Math.sin(z*6.6-y*3.4-time*.71);
+  d+=pressing*.09*Math.exp(-((x-touch[0])**2+(y-touch[1])**2)*9)*Math.max(0,z+.3);
+  return d;
+ }
  const span=1.48, step=span*2/steps, Q=steps+1;
  const values=new Float32Array(Q*Q*Q);
  const grads=new Float32Array(values.length*3);
  const index=(i,j,k)=>i+Q*(j+Q*k);
  for(let z=0;z<=steps;z++)for(let y=0;y<=steps;y++)for(let x=0;x<=steps;x++)
-  values[index(x,y,z)]=sdf(-span+x*step,-span+y*step,-span+z*step);
+  values[index(x,y,z)]=field(-span+x*step,-span+y*step,-span+z*step);
  for(let z=0;z<=steps;z++)for(let y=0;y<=steps;y++)for(let x=0;x<=steps;x++){
   const at=index(x,y,z), ix=Math.max(0,x-1),ax=Math.min(steps,x+1),iy=Math.max(0,y-1),ay=Math.min(steps,y+1),iz=Math.max(0,z-1),az=Math.min(steps,z+1);
   const n=normalize([values[index(ax,y,z)]-values[index(ix,y,z)],values[index(x,ay,z)]-values[index(x,iy,z)],values[index(x,y,az)]-values[index(x,y,iz)]]);
@@ -31,16 +45,14 @@ function create(opts={}){
  }
  const vertices=[];
  const boundsMin=[Infinity,Infinity,Infinity],boundsMax=[-Infinity,-Infinity,-Infinity];
- // Keep a shared position for watertight topology, but give every
- // irregular tetrahedral triangle ONE outward-facing normal.
- // This is how the approved honey #08 preview had visible polygon facets:
- // smooth interpolation of adjacent vertex normals erases the facets.
+ // The original preview used the averaged SDF gradient to shade each face;
+ // positions remain shared across all cells. No vertex-normal displacement.
  function record(a,b,c){
-  const u=[b.p[0]-a.p[0],b.p[1]-a.p[1],b.p[2]-a.p[2]];
-  const v=[c.p[0]-a.p[0],c.p[1]-a.p[1],c.p[2]-a.p[2]];
-  let n=normalize([u[1]*v[2]-u[2]*v[1],u[2]*v[0]-u[0]*v[2],u[0]*v[1]-u[1]*v[0]]);
-  const outward=normalize(a.n.map((q,i)=>q+b.n[i]+c.n[i]));
-  if(n[0]*outward[0]+n[1]*outward[1]+n[2]*outward[2]<0)n=n.map(x=>-x);
+  const n=normalize([
+   a.n[0]+b.n[0]+c.n[0],
+   a.n[1]+b.n[1]+c.n[1],
+   a.n[2]+b.n[2]+c.n[2]
+  ]);
   for(const vertex of [a,b,c]){
    const p=[vertex.p[0]*unitScale,vertex.p[1]*unitScale,vertex.p[2]*unitScale+zOffset];
    vertices.push(...p,...n);
@@ -69,7 +81,7 @@ function create(opts={}){
    }
   }
  }
- return {vertices:new Float32Array(vertices),triangleCount:vertices.length/18,bounds:{min:boundsMin,max:boundsMax},homes:HOME.map(p=>p.slice())};
+ return {vertices:new Float32Array(vertices),triangleCount:vertices.length/18,bounds:{min:boundsMin,max:boundsMax},homes:HOME.map(p=>p.slice()),time,fieldMode:"live-rebuilt-isosurface"};
 }
 const api=Object.freeze({create,sdf,homes:HOME.map(p=>p.slice()),material:"golden-honey-08",geometry:"marching-tetrahedra-smooth-union"});
 if(typeof window!=="undefined")window.SETKA_METABALL_MESH=api;
