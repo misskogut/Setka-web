@@ -123,15 +123,15 @@ test("original ALMA SVG is cloned only for turning, never moved or modified",()=
 
 test("only experimental SETKA page gets the Y-axis lotus animation, not the canonical front",()=>{
  assert.match(host,/standalone-cycle-lotus-axis-v1\.js\?v=20261123-single-lotus-real-mask/);
- assert.match(host,/standalone-cycle-lotus-axis-v1\.css\?v=20261123-lotus-3d-half-edge/);
+ assert.match(host,/standalone-cycle-lotus-axis-v1\.css\?v=20261123-single-lotus-real-mask/);
  assert.match(host,/SETKA_CYCLE_LOTUS_AXIS\?\.start\(\)/);
  assert.match(host,/SETKA_CYCLE_LOTUS_AXIS\?\.render\(progress,direction\)/);
  assert.match(host,/SETKA_CYCLE_LOTUS_AXIS\?\.rest\(\)/);
  assert.ok(host.indexOf("standalone-cycle-lotus-axis-v1.js")<host.indexOf("function setAtRest(cycle)"));
  assert.doesNotMatch(canonical,/standalone-cycle-lotus-axis-v1/);
  assert.match(css,/pointer-events:none!important/);
- assert.match(css,/body:not\\(\\.cycle-flip-active\\)/);
- assert.match(css,/\\.setka-cycle-lotus-turn-mask\\{/);
+ assert.ok(css.includes("body:not(.cycle-flip-active)"),"overlay never paints at rest");
+ assert.ok(css.includes(".setka-cycle-lotus-turn-mask{"),"physical overflow clipping layer exists");
  assert.match(css,/overflow:hidden/);
  assert.doesNotMatch(css,/will-change:opacity,clip-path/);
 });
