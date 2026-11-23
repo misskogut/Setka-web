@@ -17,7 +17,7 @@ function geometry(progress,direction=-1){
  const p=clamp(Number.isFinite(progress)?progress:0,0,1);
  const sign=direction>=0?1:-1;
  // World-space lotus yaw is opposed to the card's Y turn, front-facing at 90.
- const yaw=sign*(90-180*p);
+ const yaw=p===.5?0:sign*(90-180*p);
  // The visible slice grows from behind the physical card at the first edge,
  // equals EXACTLY half when the card is edge-on, then opens into the ALMA face.
  const visibleFraction=p<=.5
