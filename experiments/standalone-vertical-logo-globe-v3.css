@@ -1,4 +1,4 @@
-/* Original SETKA globe wordmark: card-mounted 3D planet, physically curved title.
+/* SETKA golden honey #08 wordmark: card-mounted 3D planet, physically curved title.
    WebGL paints the real model; these rules supply a tasteful no-WebGL fallback. */
 body:not(.setka-vlogo-webgl) .setka-vlogo-3d{
   position:relative!important;
@@ -14,36 +14,38 @@ body:not(.setka-vlogo-webgl) .setka-vlogo-3d{
   gap:1px!important;
   isolation:isolate;
 }
+/* No-WebGL fallback follows the selected golden honey silhouette instead
+   of showing the old purple globe. The GPU is required for real depth. */
 body:not(.setka-vlogo-webgl) .setka-vlogo-3d::before{
   content:"";
-  position:absolute;
-  left:50%;
-  top:50%;
-  width:min(60vw,224px);
-  height:min(60vw,224px);
-  max-width:224px;
-  max-height:224px;
+  position:absolute;left:50%;top:50%;
+  width:min(64vw,234px);height:min(57vw,220px);
   transform:translate(-50%,-50%);
-  border:1px solid rgba(154,98,216,.45);
-  border-radius:50%;
-  z-index:0;
+  border:1px solid rgba(243,186,83,.26);
+  border-radius:49% 61% 43% 56% / 57% 37% 60% 44%;
   background:
-    repeating-radial-gradient(ellipse at 50% 50%,
-      transparent 0 15px,rgba(179,99,223,.11) 16px 17px,transparent 18px 35px),
-    radial-gradient(circle at 34% 25%,rgba(109,70,174,.55),rgba(35,15,66,.80) 47%,#070710 79%);
-  box-shadow:0 0 22px rgba(163,79,206,.20),inset -22px -20px 46px #010106;
-  pointer-events:none;
+    radial-gradient(ellipse 35% 29% at 28% 25%,rgba(255,248,205,.84),transparent 72%),
+    radial-gradient(ellipse 40% 44% at 67% 31%,rgba(255,189,65,.88),transparent 82%),
+    radial-gradient(ellipse 43% 44% at 42% 72%,rgba(233,127,12,.71),transparent 86%),
+    radial-gradient(ellipse at 43% 38%,#d88b2d 8%,#a85812 48%,#321700 87%);
+  box-shadow:inset 16px 15px 18px rgba(255,219,142,.26),
+             inset -23px -28px 43px rgba(43,16,0,.8),
+             0 9px 32px rgba(188,106,12,.18);
+  animation:setkaHoneyFallback 7.3s ease-in-out infinite alternate;
+  pointer-events:none;z-index:0;
+}
+@keyframes setkaHoneyFallback{
+  0%{border-radius:49% 61% 43% 56% / 57% 37% 60% 44%;transform:translate(-50%,-50%) rotate(-9deg) scale(.97)}
+  50%{border-radius:58% 46% 62% 41% / 46% 61% 38% 57%;transform:translate(-50%,-50%) rotate(11deg) scale(1.03)}
+  100%{border-radius:42% 59% 49% 57% / 63% 42% 59% 39%;transform:translate(-50%,-50%) rotate(-6deg) scale(1)}
 }
 body:not(.setka-vlogo-webgl) .setka-vlogo-3d::after{
   content:"";
-  position:absolute;
-  left:3%;right:3%;top:42%;
-  height:28px;
+  position:absolute;left:3%;right:3%;top:42%;height:28px;
   transform:rotate(-11deg);
-  border-top:2px solid rgba(205,134,251,.28);
-  border-bottom:1px solid rgba(205,134,251,.13);
+  border-top:2px solid rgba(245,192,92,.35);
+  border-bottom:1px solid rgba(246,180,54,.17);
   border-radius:50%;
-  filter:drop-shadow(0 0 5px rgba(165,93,213,.32));
   pointer-events:none;
 }
 body:not(.setka-vlogo-webgl) .setka-vlogo-line{
