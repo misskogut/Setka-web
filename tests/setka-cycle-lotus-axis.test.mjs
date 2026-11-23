@@ -65,6 +65,10 @@ test("submerged lotus petals keep non-zero visible transmission in both directio
    "the flat SETKA backside must not glow with interior petals");
   assert.equal(g(.25,direction).transmissionAtX(-outside),0,
    "opaque SETKA face must not transmit interior petals");
+  assert.equal(g(.49,direction).transmissionAtX(-outside),0,
+   "near the edge SETKA is STILL shown and remains fully opaque");
+  assert.ok(g(.5,direction).transmissionAtX(-outside)>.08,
+   "ALMA interior becomes visible only when its face turns to camera");
   const projected=atEdge.projectInteriorX(-outside);
   assert.ok(projected*(direction<0?1:-1)>0,
    "interior petals must project toward ALMA, never toward squishes");
@@ -91,7 +95,8 @@ test("the actual painter uses physical WebGL 3D rather than a 2D cropping mask",
  assert.match(js,/c\.a\*=transmission/,"submerged petals transmit, not disappear");
  assert.match(js,/world\.x\+=sign\(sin\(uAngle\)\)\*immersed\*1\.24\*bend/);
  assert.match(js,/world\.z-=immersed\*\.65\*bend/);
- assert.match(js,/almaTransmission=smoothstep\(-\.15,\.22,cos\(uAngle\)\)/);
+ assert.match(js,/uCycleFace<\.5\)discard/,"opaque squish face must occlude interior");
+ assert.match(js,/almaTransmission=\.28\+\.72\*smoothstep/);
  assert.match(js,/function strips\(/);
  assert.match(js,/gl\.disable\(gl\.DEPTH_TEST\)/,"rear transmission is not killed by the card depth");
  assert.match(js,/gl\.enable\(gl\.DEPTH_TEST\)/);
@@ -117,7 +122,7 @@ test("original ALMA is restored when the flip ends, with the same calendar and g
 });
 
 test("3D animation is isolated to experimental front; canonical SETKA stays unchanged",()=>{
- const revision="20261123-lotus-internal-alma-depth-v6";
+ const revision="20261123-lotus-opaque-setka-v7";
  assert.ok(host.includes("standalone-cycle-lotus-axis-v1.js?v="+revision));
  assert.ok(host.includes("standalone-cycle-lotus-axis-v1.css?v="+revision));
  assert.match(host,/SETKA_CYCLE_LOTUS_AXIS\?\.start\(\)/);

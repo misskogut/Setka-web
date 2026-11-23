@@ -23,7 +23,11 @@ function geometry(progress,direction=-1,width=390){
  // Inner petals bend into ALMA's volume, not through the SETKA face.
  const foldT=clamp((s-.55)/.35,0,1);
  const fold=foldT*foldT*(3-2*foldT);
- const almaTransmission=clamp((Math.cos(a)+.15)/.37,0,1);
+ // The host shows SETKA until p=.5, then ALMA. Internal petals must
+ // NEVER transmit while the opaque squish face is actually rendered.
+ const facing=clamp(Math.cos(a)/.4,0,1);
+ const smoothFacing=facing*facing*(3-2*facing);
+ const almaTransmission=p>=.5?.28+.72*smoothFacing:0;
  const projectInteriorX=x=>x+(Math.sin(a)<0?-1:1)
   *Math.max(0,-depthAtX(x))*1.24*fold;
  const edge=Math.max(0,Math.min(1,(s-.05)/.8));
@@ -116,7 +120,7 @@ const VS=[
 "}"].join("\n");
 const FS=[
 "precision highp float;",
-"uniform sampler2D uTex;uniform float uIsLotus,uLayer,uAngle;",
+"uniform sampler2D uTex;uniform float uIsLotus,uLayer,uAngle,uCycleFace;",
 "varying vec2 vUV;varying float vCycleSide;",
 "void main(){",
 " if(uIsLotus<.5){gl_FragColor=vec4(0.);return;}",
@@ -124,11 +128,13 @@ const FS=[
 " // The geometric back HALF is still present inside the ALMA card.",
 " // It transmits violet light through a dark volume instead of being cut off.",
 " if(uLayer<.5){",
+"   // Actual CSS front is visible before the half-turn: it is opaque.",
+"   if(uCycleFace<.5)discard;",
 "   if(vCycleSide>=0.)discard;",
 "   float travel=max(0.,-vCycleSide);",
 "   float absorption=.16+.84*exp(-travel/140.);",
 "   float edgeTransmission=smoothstep(.05,.85,abs(sin(uAngle)));",
-"   float almaTransmission=smoothstep(-.15,.22,cos(uAngle));",
+"   float almaTransmission=.28+.72*smoothstep(0.,.4,max(0.,cos(uAngle)));",
 "   float transmission=absorption*edgeTransmission*almaTransmission;",
 "   if(transmission<.001)discard;",
 "   c.rgb*=mix(.72,1.,absorption);",
@@ -170,6 +176,7 @@ function renderer(canvas){
   angle:gl.getUniformLocation(program,"uAngle"),
   lotus:gl.getUniformLocation(program,"uIsLotus"),
   layer:gl.getUniformLocation(program,"uLayer"),
+  cycleFace:gl.getUniformLocation(program,"uCycleFace"),
   clearance:gl.getUniformLocation(program,"uClearance"),
   texture:gl.getUniformLocation(program,"uTex")};
  const buffer=gl.createBuffer(),texture=gl.createTexture();
@@ -213,6 +220,7 @@ function renderer(canvas){
   gl.useProgram(program);
   gl.uniform2f(u.screen,W,H);gl.uniform2f(u.pivot,box.pivotX,box.pivotY);
   gl.uniform1f(u.angle,g.radians);gl.uniform1f(u.clearance,CLEARANCE);
+  gl.uniform1f(u.cycleFace,g.progress>=.5?1:0);
   gl.uniform1i(u.texture,0);
   gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,texture);
   gl.bindBuffer(gl.ARRAY_BUFFER,buffer);
