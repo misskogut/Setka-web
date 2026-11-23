@@ -1,6 +1,6 @@
 /* ALMA cycle lotus — textured original SVG on an independent 3D Y axis.
    The WebGL renderer owns card depth and ALMA-facing spatial intersection.
-   Never use flat overlay masks, clip-path, or 50%-width cropped SVGs. */
+   The rendered surface uses spatial coordinates instead of image cropping. */
 #setkaCycleLotusTurn.setka-cycle-lotus-webgl{
  position:fixed;
  inset:0;
