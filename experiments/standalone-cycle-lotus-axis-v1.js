@@ -349,7 +349,7 @@ if(iframe){
  // The calendar may already be loaded when this module is evaluated.
  schedulePrewarm();
 }
-window.addEventListener("pagehide",()=>{
+if(typeof window.addEventListener==="function")window.addEventListener("pagehide",()=>{
  if(prewarmTimer)clearTimeout(prewarmTimer);
  if(refreshTimer)clearTimeout(refreshTimer);
  if(sourceObserver){sourceObserver.disconnect();sourceObserver=null}
