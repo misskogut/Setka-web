@@ -75,9 +75,12 @@ try{
  // There must be violet pixels visible in the protruding ALMA region.
  // This catches a successfully linked shader drawing an EMPTY texture.
  let violet=0;
+ const scaleX=image.width/390,scaleY=image.height/844;
  for(let y=235;y<680;y++){
   for(let x=190;x<385;x++){
-   const i=(y*image.width+x)*4,r=image.data[i],g=image.data[i+1],b=image.data[i+2];
+   const px=Math.min(image.width-1,Math.floor(x*scaleX));
+   const py=Math.min(image.height-1,Math.floor(y*scaleY));
+   const i=(py*image.width+px)*4,r=image.data[i],g=image.data[i+1],b=image.data[i+2];
    if(r>95&&b>110&&r>g*1.3&&b>g*1.5)violet++;
   }
  }
