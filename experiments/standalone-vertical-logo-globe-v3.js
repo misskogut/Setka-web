@@ -48,41 +48,44 @@ const U={projection:gl.getUniformLocation(prog,"uProjection"),
  scale:gl.getUniformLocation(prog,"uScale"),
  time:gl.getUniformLocation(prog,"uTime"),
  motion:null};
-function buildMesh(){
- const data=[];
- const push=(p,n,m)=>data.push(p[0],p[1],p[2],n[0],n[1],n[2],m);
- // Original #08 material: closed marching-tetrahedra isosurface.
- // A single smooth union of five lobes; no latitude strips or holes.
- if(!window.SETKA_METABALL_MESH)throw Error("Missing SETKA honey geometry");
- const honey=window.SETKA_METABALL_MESH.create({steps:16,scale:94,zOffset:110});
- const surface=honey.vertices;
- // Separate normals and one golden tone per triangle (not per vertex).
- for(let i=0;i<surface.length;i+=18){
-  const mx=(surface[i]+surface[i+6]+surface[i+12])/3;
-  const my=(surface[i+1]+surface[i+7]+surface[i+13])/3;
-  const mz=(surface[i+2]+surface[i+8]+surface[i+14])/3;
-  const variance=Math.sin(mx*.31+my*.43+mz*.19)*Math.cos(mx*.27-mz*.23);
-  const facet=.035+.385*(.5+.5*variance);
-  // One normal per triangle, as in the approved #08 Canvas preview:
-  // the honey mesh has visibly different polygon faces, NOT smooth shading.
-  const nx=surface[i+3]+surface[i+9]+surface[i+15];
-  const ny=surface[i+4]+surface[i+10]+surface[i+16];
-  const nz=surface[i+5]+surface[i+11]+surface[i+17];
-  const length=Math.hypot(nx,ny,nz)||1;
-  const faceNormal=[nx/length,ny/length,nz/length];
-  for(let j=i;j<i+18;j+=6)
-   push([surface[j],surface[j+1],surface[j+2]],faceNormal,facet);;
+
+/* Port of the original approved #08 CPU isosurface renderer.
+   The entire surface is rebuilt from the moving SDF; facet normals are only
+   lighting attributes and NEVER used to displace individual triangle corners. */
+function buildMesh(time=0,centers=null,press=0,contact=[0,0]){
+ if(!window.SETKA_METABALL_MESH)throw Error("Missing original #08 field");
+ const honey=window.SETKA_METABALL_MESH.create({
+  steps:23,scale:94,zOffset:110,time,centers,press,contact
+ });
+ const mesh=honey.vertices,out=new Float32Array(mesh.length/6*7);
+ let at=0;
+ for(let i=0;i<mesh.length;i+=18){
+  // Original #08 computed one color per irregular polygon using its
+  // averaged SDF normal and centroid, not painted grid lines.
+  const cx=(mesh[i]+mesh[i+6]+mesh[i+12])/(3*94);
+  const cy=(mesh[i+1]+mesh[i+7]+mesh[i+13])/(3*94);
+  const angle=cx*5+cy*7;
+  for(let j=i;j<i+18;j+=6){
+   out[at++]=mesh[j];
+   out[at++]=mesh[j+1];
+   out[at++]=mesh[j+2];
+   out[at++]=mesh[j+3];
+   out[at++]=mesh[j+4];
+   out[at++]=mesh[j+5];
+   out[at++]=angle;
+  }
  }
- return{data:new Float32Array(data),honeyTriangles:honey.triangleCount,honeyBounds:honey.bounds};
+ return {data:out,honeyTriangles:honey.triangleCount,honeyBounds:honey.bounds};
 }
+
 try{
  const result=buildMesh();
  total=result.data.length/7;
  stats={vertices:total,metaballTriangles:result.honeyTriangles,metaballBounds:result.honeyBounds,
-       material:"golden-honey-08",closedSurface:true,irregularCells:true};
+       material:"golden-honey-08-original",closedSurface:true,irregularCells:true,liveRebuild:true};
  if(total<5000||total>130000)throw Error("Unexpected geometry size: "+total);
  buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buf);
- gl.bufferData(gl.ARRAY_BUFFER,result.data,gl.STATIC_DRAW);
+ gl.bufferData(gl.ARRAY_BUFFER,result.data,gl.DYNAMIC_DRAW);
 }catch(e){
  console.warn("[SETKA golden honey] geometry failed",e);
  canvas.remove();return;
