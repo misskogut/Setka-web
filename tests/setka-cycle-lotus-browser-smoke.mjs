@@ -61,9 +61,11 @@ try{
     lotus.render(p,direction);
     const card=back.getBoundingClientRect();
     const flower=holder.querySelector("svg.cycle-lotus").getBoundingClientRect();
+    const info=lotus.getInfo();
     rows.push({p,direction,cardWidth:card.width,flowerWidth:flower.width,
       leftExcess:card.left-flower.left,rightExcess:flower.right-card.right,
-      fitScale:lotus.getInfo().fitScale});
+      fitScale:info.fitScale,originalAspect:info.originalAspectRatio,
+      projectedAspect:flower.height/Math.max(.01,flower.width)});
    }
   }
   back.style.transform=originalCardTransform;
@@ -76,6 +78,10 @@ try{
    "a live lotus is not allowed to extend outside the projected cycle card at "+b.p);
   assert.ok(b.leftExcess<=3&&b.rightExcess<=3,
    "the flower must stay inside both card boundaries, not hover in front of it");
+  if(b.flowerWidth>2){
+   assert.ok(Math.abs(b.originalAspect-b.projectedAspect)<.04,
+    "the real original lotus must keep its petal proportions in BOTH browsers");
+  }
  }
  mkdirSync("tests/visual-smoke",{recursive:true});
  const shot=PNG.sync.read(await page.screenshot({

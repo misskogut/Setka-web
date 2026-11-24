@@ -90,11 +90,13 @@ function render(p,d=-1){
  // Retain the live original SVG, but bind its SCREEN-SPACE X extent to the
  // actual perspective-projected ALMA card on every gesture frame.
  // This fixes the oversized billboard that pierced BOTH card boundaries.
+ // Uniform scale maintains the ORIGINAL petal proportions. The earlier
+ // X-only squeeze kept the bounds but made the lotus a distorted spike.
  const cardRect=back.getBoundingClientRect();
  const centerX=cardRect.left+cardRect.width/2;
  const fitScale=fitInsideCard(cardRect.width,active.naturalWidth);
  holder.style.left=(centerX-active.naturalWidth/2)+"px";
- holder.style.transform="scaleX("+fitScale.toFixed(6)+")";
+ holder.style.transform="scale("+fitScale.toFixed(6)+")";
  holder.style.webkitTransform=holder.style.transform;
  active.fitScale=fitScale;
  holder.dataset.cardYaw=g.cardYaw.toFixed(4);
@@ -133,7 +135,8 @@ window.SETKA_CYCLE_LOTUS_AXIS={
    real3D:true,nativeOriginal:true,hasClone:false,originalPreserved:!!originalRef,
    originalIn3D:!!active&&active.svg===originalRef&&active.svg.parentNode===holder,
    originalRestored:!active&&!!originalRef&&!!originalRef.closest(".cycle-lotus-button"),
-   fitScale:active?.fitScale??null,cardScreenWidth:active?back.getBoundingClientRect().width:null,
+   fitScale:active?.fitScale??null,originalAspectRatio:active?active.naturalHeight/active.naturalWidth:null,
+   cardScreenWidth:active?back.getBoundingClientRect().width:null,
    frames,portalVisible:portal?.style.visibility||"hidden"};
  }
 };

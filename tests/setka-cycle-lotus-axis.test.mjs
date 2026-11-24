@@ -93,7 +93,7 @@ test("source uses original React SVG, never shader, clone, screen masks or mater
  assert.match(js,/button\.appendChild\(svg\)/);
  assert.match(js,/portal\.appendChild\(holder\)/);
  assert.match(js,/document\.body\.appendChild\(portal\)/);
- assert.match(js,/holder\.style\.transform="scaleX\("/);
+ assert.match(js,/holder\.style\.transform="scale\("/);
  assert.match(js,/const cardRect=back\.getBoundingClientRect\(\)/);
  assert.match(js,/fitInsideCard\(cardRect\.width,active\.naturalWidth\)/);
  assert.match(js,/\.cycle-lotus-button/);
@@ -101,8 +101,8 @@ test("source uses original React SVG, never shader, clone, screen masks or mater
  assert.match(js,/fitInsideCard\(/,"card-space horizontal projection follows native ALMA card");
  assert.doesNotMatch(js,/cloneNode|getContext\(["']webgl|createTexture|texture2D|new Image\(|createElement\(["']svg/);
  assert.doesNotMatch(css,/clip-path|mask:|canvas|opacity:0/);
- assert.match(host,/standalone-cycle-lotus-direct-v1.js\?v=20261124-lotus-bound-to-cycle-card-v12/);
- assert.match(host,/standalone-cycle-lotus-direct-v1.css\?v=20261124-lotus-bound-to-cycle-card-v12/);
+ assert.match(host,/standalone-cycle-lotus-direct-v1.js\?v=20261124-lotus-proportional-card-fit-v13/);
+ assert.match(host,/standalone-cycle-lotus-direct-v1.css\?v=20261124-lotus-proportional-card-fit-v13/);
  assert.doesNotMatch(host,/standalone-cycle-lotus-axis-v1\./);
  assert.doesNotMatch(canonical,/standalone-cycle-lotus-direct-v1/);
 });
