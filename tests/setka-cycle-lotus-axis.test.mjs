@@ -48,7 +48,7 @@ test("one original ALMA SVG is MOVED (not copied) and restored after both swipes
  api.render(.75,-1);
  assert.equal(api.getInfo().originalIn3D,true);
  assert.equal(api.getInfo().portalVisible,"visible");
- assert.equal(api.getInfo().counterYaw,45);
+ assert.equal(api.getInfo().counterYaw,-45);
  api.rest();
  assert.equal(button.querySelector("svg.cycle-lotus"),svg);
  assert.equal(api.getInfo().originalRestored,true);

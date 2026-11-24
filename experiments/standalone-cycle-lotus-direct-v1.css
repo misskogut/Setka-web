@@ -1,5 +1,5 @@
 /* Original ALMA SVG is adopted into a real CSS 3D plane during a swipe.
- * No second lotus, WebGL canvas, screenspace clipping, or mask. */
+ * The calendar uses its single live element and native 3D transforms. */
 body.cycle-flip-active #setkaCycleBack,
 #setkaCycleBack #setkaCycleLotusDirectPortal{
  overflow:visible!important;
