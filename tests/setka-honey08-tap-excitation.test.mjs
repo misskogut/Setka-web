@@ -157,15 +157,20 @@ test('Mega Bubble uses external elongated reflections, other preset remains unch
  assert.match(rendererCode,/keyStrip=exp/);
  assert.match(rendererCode,/fillStrip=exp/);
  assert.match(rendererCode,/keyAxis=normalize\(cross/);
- assert.match(experiment,/20261124-circular-seal-mega-bubble-balloon-folds-v4/);
+ assert.match(experiment,/20261124-circular-seal-mega-bubble-smooth-necks-v5/);
 });
 
-test('balloon folds physically depress every Mega Bubble glyph without changing Cyber Blade',()=>{
+test('smooth balloon necks compress the shell and Sh matches the other capitals',()=>{
  const h=harness(),info=h.api.getInfo(),f=info.titleFoldStats;
- assert.equal(info.titleBalloonFolds,'local-compression-mesh-v1');
+ assert.equal(info.titleBalloonFolds,'smooth-neck-compression-v2');
  assert.equal(f.length,13);
- assert.ok(f.slice(0,5).every(x=>x.depth>0.65&&x.vertices>20),'each balloon has visible geometric creases');
+ assert.ok(f.slice(0,5).every(x=>x.depth>.35&&x.vertices>20),'each balloon has broad geometric constrictions');
  assert.ok(f.slice(5).every(x=>x.depth===0&&x.vertices===0),'lower title unaffected');
- assert.match(rendererCode,/height\[i\]=Math\.max\(baseHeight\*\.45,baseHeight\+delta\)/);
+ const avg=f.slice(0,4).reduce((sum,x)=>sum+x.height,0)/4;
+ assert.ok(Math.abs(f[4].height/avg-1)<.09,'Sh cap height matches peers');
+ assert.equal(f[4].yStretch,1.25);
+ assert.match(rendererCode,/height\[i\]=baseHeight\*\(1-pinch\*fade\)/);
+ assert.match(rendererCode,/d-=radius\*pinch\*\.46/);
+ assert.doesNotMatch(rendererCode,/balloonCreases|across\/\.42|\.78\*clamp\(vAngle/);
  assert.ok(h.titleDraws.every(x=>x.finite&&x.count%3===0));
 });
