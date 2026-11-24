@@ -98,6 +98,35 @@ body.cycle-busy .setka-cycle-edge{pointer-events:none}
 .setka-card-frame-line,.setka-card-frame-arrows{fill:none;stroke:var(--setka-outline-color);stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
 .setka-card-frame-line{stroke-width:1}
 .setka-card-frame-arrows{stroke-width:1.35;opacity:.82}
+
+/* Vertical chevrons mirror the side hints: outside the actual card outline.
+   Keep the existing 35px gesture targets and all flip handlers unchanged. */
+.setka-vlogo-hotspot{
+  --setka-grip-overhang:12px;
+  --setka-grip-bottom:var(--setka-cycle-card-bottom);
+  color:rgba(190,195,205,.23);
+}
+body.setka-vlogo-side .setka-vlogo-hotspot{
+  --setka-grip-bottom:var(--setka-vlogo-card-bottom);
+  color:rgba(190,195,205,.25);
+}
+.setka-vlogo-hotspot.top{top:max(0px,calc(var(--setka-cycle-card-top) - var(--setka-grip-overhang)))}
+.setka-vlogo-hotspot.bottom{bottom:max(0px,calc(var(--setka-grip-bottom) - var(--setka-grip-overhang)))}
+.setka-vlogo-hotspot svg,
+body.setka-vlogo-side .setka-vlogo-hotspot svg{
+  position:absolute;
+  left:50%;
+  width:12px;
+  height:7.5px;
+  stroke:currentColor;
+  stroke-width:1.8;
+  opacity:.82;
+  transform:translateX(-50%);
+  overflow:visible;
+}
+.setka-vlogo-hotspot.top svg{top:1px;transform:translateX(-50%) rotate(180deg)}
+.setka-vlogo-hotspot.bottom svg{bottom:0}
+
 #setkaCycleBackGuide{position:fixed;top:var(--setka-cycle-card-top);bottom:var(--setka-cycle-card-bottom);left:50%;transform:translateX(-50%);width:min(calc(100% - 28px),432px);pointer-events:none;z-index:2;--setka-outline-color:rgba(170,110,210,.32)}
 
 /* UI polish: advance the preview grid 10px without changing tile geometry,
