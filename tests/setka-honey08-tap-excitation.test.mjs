@@ -10,8 +10,8 @@ const experiment=fs.readFileSync('standalone-v34-cycle-logo3d.html','utf8');
 function harness(){
  let clock=1000;
  const handlers=new Map(), frames=[];
- const history=[],titleDraws=[];
- let titlePass=0,lastBuffer=null;
+ const history=[],titleDraws=[],buffers=new Map();
+ let titlePass=0,lastBuffer=null,bound=null,honeyBuffer=null;
  const gl=new Proxy({},{
   get(target,key){
    if(key==='getShaderParameter'||key==='getProgramParameter')return ()=>true;
@@ -19,10 +19,11 @@ function harness(){
    if(key==='getAttribLocation')return ()=>0;
    if(key==='getUniformLocation')return (_,name)=>name;
    if(key==='uniform1f')return (name,value)=>{if(name==='uTitlePass')titlePass=value};
-   if(key==='drawArrays')return (mode,start,count)=>{if(titlePass===1)titleDraws.push({count,finite:Array.from(lastBuffer||[]).every(Number.isFinite)});};
+   if(key==='bindBuffer')return (_,b)=>{bound=b;};
+   if(key==='drawArrays')return (mode,start,count)=>{if(titlePass>0)titleDraws.push({count,pass:titlePass,finite:buffers.get(bound)?.every(Number.isFinite)});};
    if(key==='bufferData')return (kind,value,usage)=>{
-    lastBuffer=value;
-    if(value?.length>20000)history.push({vertices:value.length/7,finite:Array.from(value).every(Number.isFinite)});
+    lastBuffer=value;buffers.set(bound,value);if(!honeyBuffer&&value?.length>20000)honeyBuffer=bound;
+    if(value?.length>20000 && bound===honeyBuffer)history.push({vertices:value.length/7,finite:Array.from(value).every(Number.isFinite)});
    };
    if(typeof key==='string'&&key===key.toUpperCase())return 1;
    return ()=>{};
@@ -124,23 +125,25 @@ test('new tap version is loaded only in isolated 3D experiment',()=>{
  assert.ok(!canonical.includes('honey08-tap-energy'));
 });
 
- test('electric title uses original thin line geometry and preserves inertial drag, with separate material pass',()=>{
- const h=harness();
- assert.equal(h.api.getInfo().titleStyle,'thin-iridescent-contours');
- assert.ok(h.titleDraws.length>0);
- assert.ok(h.titleDraws.every(x=>x.count===1038&&x.finite));
- const start=h.api.getInfo().titlePhase;
+test('solid circular seal uses selected preset and preserves inertial drag',()=>{
+ const h=harness(),info=h.api.getInfo(),p=info.titlePreset;
+ assert.equal(info.titleStyle,'circular-seal-mega-bubble-cyber-blade');
+ assert.equal(p.top.font,'Mega Bubble');assert.equal(p.top.material,'colored-jelly');
+ assert.equal(p.bottom.font,'Cyber Blade');assert.equal(p.bottom.material,'chrome-hologram');
+ assert.equal(p.bottom.size,94);assert.equal(p.bottom.volume,300);assert.equal(p.bottom.rainbow,100);
+ assert.equal(p.depth,0);assert.equal(p.honeyMotion,150);assert.equal(p.speed,22);
+ assert.equal(info.titleMeshCounts.length,13);
+ assert.ok(info.titleMeshCounts.every(x=>x>0&&x%3===0));
+ assert.ok(info.titleMeshDepths.every(x=>x>0));
+ assert.ok(h.titleDraws.some(x=>x.pass===1)&&h.titleDraws.some(x=>x.pass===2));
+ assert.ok(h.titleDraws.every(x=>x.finite&&x.count%3===0));
+ const start=info.titlePhase;
+ h.advance(40);assert.ok(h.api.getInfo().titlePhase<start,'clockwise');
  h.send('pointerdown',{clientX:65,clientY:350});
- h.advance(40);
- h.send('pointermove',{clientX:130,clientY:350});
- h.send('pointerup',{clientX:130,clientY:350});
- const released=h.api.getInfo();
- assert.ok(released.titlePhase>start);
- assert.ok(released.titleVelocity>0);
- h.advance(40);
- assert.ok(h.api.getInfo().titlePhase>released.titlePhase);
- assert.match(rendererCode,/if\(uTitlePass > 0\.5\)/);
- assert.match(rendererCode,/float pulse=exp\(-d\*d\)/);
- assert.match(rendererCode,/gl\.drawArrays\(gl\.LINES,0,data\.length\/7\)/);
- assert.doesNotMatch(rendererCode,/uTitleViewport|gl\.lineWidth\(/);
- });
+ h.advance(40);h.send('pointermove',{clientX:130,clientY:350});h.send('pointerup',{clientX:130,clientY:350});
+ const released=h.api.getInfo();assert.ok(released.titlePhase>start);assert.ok(released.titleVelocity>0);
+ h.advance(40);assert.ok(h.api.getInfo().titlePhase>released.titlePhase);
+ assert.match(rendererCode,/gl\.drawArrays\(gl\.TRIANGLES,0,e\.g\.count\)/);
+ assert.match(rendererCode,/110\+TITLE_PRESET\.depth/);
+ assert.doesNotMatch(rendererCode,/gl\.drawArrays\(gl\.LINES/);
+});
