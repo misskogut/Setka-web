@@ -96,7 +96,7 @@ function dimensions(svg,button){
  const pivotX=left+x+w/2,pivotY=top+y+h/2;
  return {W,H,w,h,pivotX,pivotY,topY:top-pivotY,bottomY:top+H-pivotY};
 }
-const VS=String.raw\`
+const VS=String.raw`
 precision highp float;
 attribute vec2 aPos;
 attribute vec2 aUV;
@@ -128,8 +128,8 @@ void main(){
  vec2 clip=pivotNDC*d+vec2(2.*world.x/uScreen.x,-2.*world.y/uScreen.y)*focal;
  float z=(far+near)/(far-near)*d-2.*far*near/(far-near);
  gl_Position=vec4(clip,z,d);
-}\`;
-const FS=String.raw\`
+}`;
+const FS=String.raw`
 precision highp float;
 uniform sampler2D uTex;
 uniform float uIsLotus,uLayer,uAngle,uDepth,uCycleFace;
@@ -160,7 +160,7 @@ void main(){
   if(vDepth<0.)discard;
  }
  gl_FragColor=c;
-}\`;
+}`;
 function renderer(canvas){
  let gl;
  try{gl=canvas.getContext("webgl",{alpha:true,depth:true,antialias:true,
