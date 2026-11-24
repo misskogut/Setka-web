@@ -157,20 +157,21 @@ test('Mega Bubble uses external elongated reflections, other preset remains unch
  assert.match(rendererCode,/keyStrip=exp/);
  assert.match(rendererCode,/fillStrip=exp/);
  assert.match(rendererCode,/keyAxis=normalize\(cross/);
- assert.match(experiment,/20261124-circular-seal-mega-bubble-smooth-necks-v5/);
+ assert.match(experiment,/20261124-circular-seal-mega-bubble-welded-foil-v6/);
 });
 
-test('smooth balloon necks compress the shell and Sh matches the other capitals',()=>{
+test('welded perimeter pleats follow every balloon outline including enclosed holes',()=>{
  const h=harness(),info=h.api.getInfo(),f=info.titleFoldStats;
- assert.equal(info.titleBalloonFolds,'smooth-neck-compression-v2');
+ assert.equal(info.titleBalloonFolds,'welded-perimeter-pleats-v3');
  assert.equal(f.length,13);
- assert.ok(f.slice(0,5).every(x=>x.depth>.35&&x.vertices>20),'each balloon has broad geometric constrictions');
- assert.ok(f.slice(5).every(x=>x.depth===0&&x.vertices===0),'lower title unaffected');
+ assert.ok(f.slice(0,5).every(x=>x.depth>.20&&x.vertices>20&&x.seamLoops>=1),'every balloon has perimeter folds');
+ assert.ok(f[2].seamLoops>=2,'В includes inner welded seams');
+ assert.ok(f.slice(5).every(x=>x.depth===0&&x.vertices===0&&x.seamLoops===0),'lower title unaffected');
  const avg=f.slice(0,4).reduce((sum,x)=>sum+x.height,0)/4;
  assert.ok(Math.abs(f[4].height/avg-1)<.09,'Sh cap height matches peers');
  assert.equal(f[4].yStretch,1.25);
- assert.match(rendererCode,/height\[i\]=baseHeight\*\(1-pinch\*fade\)/);
- assert.match(rendererCode,/d-=radius\*pinch\*\.46/);
- assert.doesNotMatch(rendererCode,/balloonCreases|across\/\.42|\.78\*clamp\(vAngle/);
+ assert.match(rendererCode,/balloonSeamLoops\(field,S\)/);
+ assert.match(rendererCode,/baseHeight\*inflate\*\(1-\.22\*pleat\)/);
+ assert.doesNotMatch(rendererCode,/balloonNecks|balloonCreases|latexNeck/);
  assert.ok(h.titleDraws.every(x=>x.finite&&x.count%3===0));
 });
