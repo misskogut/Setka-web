@@ -32,7 +32,7 @@ function shader(kind,src){
  return sh;
 }
 const vert="precision highp float;\nattribute vec3 aPosition;attribute vec3 aNormal;attribute float aMaterial;\nuniform mat4 uProjection;uniform float uFlip;uniform float uScale;\nvarying vec3 vN;varying float vAngle;\nvec3 rotX(vec3 p,float a){float c=cos(a),s=sin(a);return vec3(p.x,p.y*c-p.z*s,p.y*s+p.z*c);}\nvoid main(){\n vec3 p=aPosition*uScale;\n vec3 world=rotX(p,uFlip);\n vN=normalize(rotX(aNormal,uFlip));\n vAngle=aMaterial;\n gl_Position=uProjection*vec4(world.xy,world.z-1450.,1.);\n}";
-const frag="precision highp float;\nvarying vec3 vN;varying float vAngle;\nuniform float uTime;\nvoid main(){\n if(vAngle < -0.5){ gl_FragColor=vec4(.83,.68,.90, -vAngle*.82); return; }\n vec3 n=normalize(vN);\n vec3 light=normalize(vec3(-.52,.77,.95));\n vec3 specLight=normalize(vec3(-.30,.42,1.19));\n float lam=max(dot(n,light),0.);\n float rim=pow(1.-abs(n.z),2.4);\n float spec=pow(max(dot(n,specLight),0.),27.);\n float env=pow(abs(sin((n.x*.71+n.y*.23+n.z*.37)*10.8+uTime*.33)),13.)\n          +.38*pow(abs(sin((n.x*1.2+n.z*.13)*3.9+2.)),12.);\n float flick=.16*max(0.,sin(vAngle+uTime*.39));\n vec3 rgb=vec3(87.+127.*lam+115.*env+40.*spec+flick*30.,\n               37.+104.*lam+86.*env+37.*spec+flick*18.,\n               4.+45.*lam+28.*env+20.*spec+flick*4.);\n gl_FragColor=vec4(clamp(rgb/255.,0.,1.),1.);\n}";
+const frag="precision highp float;\nvarying vec3 vN;varying float vAngle;\nuniform float uTime;\nuniform float uTitlePass;\nvoid main(){\n if(uTitlePass > 0.5){ gl_FragColor=vec4(.83,.68,.90,clamp(-vAngle*.82,0.,1.)); return; }\n vec3 n=normalize(vN);\n vec3 light=normalize(vec3(-.52,.77,.95));\n vec3 specLight=normalize(vec3(-.30,.42,1.19));\n float lam=max(dot(n,light),0.);\n float rim=pow(1.-abs(n.z),2.4);\n float spec=pow(max(dot(n,specLight),0.),27.);\n float env=pow(abs(sin((n.x*.71+n.y*.23+n.z*.37)*10.8+uTime*.33)),13.)\n          +.38*pow(abs(sin((n.x*1.2+n.z*.13)*3.9+2.)),12.);\n float flick=.16*max(0.,sin(vAngle+uTime*.39));\n vec3 rgb=vec3(87.+127.*lam+115.*env+40.*spec+flick*30.,\n               37.+104.*lam+86.*env+37.*spec+flick*18.,\n               4.+45.*lam+28.*env+20.*spec+flick*4.);\n gl_FragColor=vec4(clamp(rgb/255.,0.,1.),1.);\n}";
 let prog=null,buf=null,total=0,stats=null;
 try{
  const v=shader(gl.VERTEX_SHADER,vert),f=shader(gl.FRAGMENT_SHADER,frag);
@@ -47,6 +47,7 @@ const U={projection:gl.getUniformLocation(prog,"uProjection"),
  flip:gl.getUniformLocation(prog,"uFlip"),
  scale:gl.getUniformLocation(prog,"uScale"),
  time:gl.getUniformLocation(prog,"uTime"),
+ titlePass:gl.getUniformLocation(prog,"uTitlePass"),
  motion:null};
 
 /* Port of the original approved #08 CPU isosurface renderer.
@@ -186,12 +187,15 @@ function drawTitle(){
  gl.bindBuffer(gl.ARRAY_BUFFER,titleBuffer);
  gl.bufferData(gl.ARRAY_BUFFER,data,gl.DYNAMIC_DRAW);
  bindMesh(titleBuffer);
+ // Explicit draw-pass selection: the honey facet phase can be negative too.
+ gl.uniform1f(U.titlePass,1);
  gl.enable(gl.BLEND);
- gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
+ gl.blendFuncSeparate(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA,gl.ONE,gl.ONE_MINUS_SRC_ALPHA);
  gl.depthMask(false);
  gl.drawArrays(gl.LINES,0,data.length/7);
  gl.depthMask(true);
  gl.disable(gl.BLEND);
+ gl.uniform1f(U.titlePass,0);
 }
 // All 5 moving lobes are resampled into ONE watertight isosurface.
 // No GPU position changes depend on separately shaded polygon normals.
@@ -315,6 +319,7 @@ function paint(){
  gl.uniform1f(U.flip,-angle*Math.PI/180);
  gl.uniform1f(U.scale,scale);
  gl.uniform1f(U.time,phase);
+ gl.uniform1f(U.titlePass,0);
 
  // First draw an invisible, infinitely thin card to the DEPTH BUFFER.
  // The metaball is rendered on every frame, including angle=180° and 90°;
