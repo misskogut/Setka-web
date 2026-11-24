@@ -203,32 +203,35 @@ function balloonSeamLoops(field,S){
  }
  return loops;
 }
-// Individually placed tension folds at inside turns of inflated foil.
- // [seam x, seam y, inward direction x/y, length, width, amplitude].
- // No periodic pattern, no repeated contour ribs, no pinched straight runs.
-const balloonTensionFolds={
- С:[[6.2,6.0,-.66,-.75,4.2,1.05,.16]],
- К:[[5.1,5.7,-.35,.94,4.4,1.05,.19],[13.1,10.6,-1,.04,4.8,1.12,.18],[5.4,14.6,-.30,-.95,3.6,.95,.15]],
- В:[[5.8,5.2,-1,-.18,3.6,.95,.15],[11.6,5.8,.98,.18,4.1,1.05,.17],[12.9,14.6,.94,.34,3.9,1.08,.15],[19.5,9.3,-.94,.34,4.2,1.10,.17]],
- И:[[5.2,10.3,-.58,.81,4.5,1.12,.19],[15.2,10.7,.57,-.82,4.5,1.10,.18]],
- Ш:[[6.3,16.2,-.50,.86,2.55,1.0,.085],[19.4,16.2,.50,.86,2.55,1.0,.085]]
+// Radial tension fans originate in the void inside each bend, not on
+// the outside perimeter. Each ray diverges from a shared centre.
+const radialTensionFans={
+ С:[[10,10,[-151,-132,-112],4.6,4.5,.18]],
+ К:[[15.3,10.5,[154,180,207],2.2,5.0,.19],[6.0,3.8,[67,95,120],1.3,3.6,.14],[6.0,16.5,[-120,-94,-68],1.3,3.1,.14]],
+ В:[[8.6,5.5,[-155,-115,-76,-36],.85,4.2,.19],[9.1,15.1,[28,66,109,150],1.1,4.0,.16]],
+ И:[[5.7,7.6,[64,95,128],2.0,4.3,.19],[14.4,13.4,[-116,-85,-52],2.0,4.3,.19]],
+ Ш:[[7,13.8,[65,91,119],2.35,4.2,.115],[19,13.8,[61,89,117],2.35,4.2,.115]]
 };
-function singleTensionFold(ch,x,y){
+function radialTensionFold(ch,x,y,inside){
  let dent=0,shoulder=0,active=false;
- for(const [cx,cy,dx,dy,length,width,amount] of balloonTensionFolds[ch]||[]){
-  const mag=Math.hypot(dx,dy),ux=dx/mag,uy=dy/mag;
-  const px=x-cx,py=y-cy,t=(px*ux+py*uy)/length;
-  if(t<=0||t>=1)continue;
-  const v=(px*(-uy)+py*ux)/width;
-  if(Math.abs(v)>2)continue;
-  // One asymmetric fold: broad at the seam, tapering to a soft point.
-  const rise=clamp(t/.19,0,1),fade=rise*rise*(3-2*rise)*(1-t)*(1-t);
-  const w=.78+.38*(1-t),a=(v-.36*t)/w;
-  const trough=Math.max(0,1-a*a),lip=Math.max(0,1-Math.pow((a-.95)/.85,2));
-  const d=amount*fade*trough*trough;
-  const r=amount*.26*fade*lip*lip;
-  dent=Math.max(dent,d);shoulder=Math.max(shoulder,r);
-  if(d>0||r>0)active=true;
+ const edge=clamp((inside-.23)/.85,0,1),edgeFade=edge*edge*(3-2*edge);
+ if(edgeFade===0)return {dent,shoulder,active};
+ for(const [cx,cy,angles,r0,length,amount] of radialTensionFans[ch]||[]){
+  const px=x-cx,py=y-cy,r=Math.hypot(px,py);
+  if(r<r0||r>r0+length||r<1e-6)continue;
+  const theta=Math.atan2(py,px);
+  for(let j=0;j<angles.length;j++){
+   const a=angles[j]*Math.PI/180,delta=Math.atan2(Math.sin(theta-a),Math.cos(theta-a));
+   const t=(r-r0)/(length*(1-.09*(j%2)));
+   if(t<=0||t>=1)continue;
+   const v=delta/(.115+.045*(1-t));
+   if(Math.abs(v)>1.9)continue;
+   const rise=clamp(t/.27,0,1),fade=rise*rise*(3-2*rise)*(1-t)*(1-t)*edgeFade;
+   const valley=Math.max(0,1-v*v),lip=Math.max(0,1-Math.pow((v-.94)/.8,2));
+   const d=amount*fade*valley*valley,h=amount*.22*fade*lip*lip;
+   dent=Math.max(dent,d);shoulder=Math.max(shoulder,h);
+   if(d>0||h>0)active=true;
+  }
  }
  return {dent,shoulder,active};
 }
@@ -236,7 +239,7 @@ function solidLetter(ch,upper,preset){
  const pixelScale=upper?1.5:1,S=Math.round(96*pixelScale),unit=4.275*pixelScale,scale=preset.size*.0135,k=upper?(ch==="Ш"?3.2:3.9):5,width=upper?(ch==="Ш"?26:19):14;
  const seg=strokeSegments((upper?megaPaths:bladePaths)[ch],k*.75*pixelScale,(64-width*k/2)*.75*pixelScale,(upper?64-10*k:23)*.75*pixelScale);
  const radius=(upper?7.6:2)*k*.75*pixelScale/2,field=new Float32Array(S*S),height=new Float32Array(S*S),creases=new Float32Array(S*S);
- let foldDepth=0,foldVertices=0,protectedLowerSamples=0,protectedLowerDent=0,straightSamples=0,straightDent=0;
+ let foldDepth=0,foldVertices=0,protectedLowerSamples=0,protectedLowerDent=0,straightSamples=0,straightDent=0,edgeFoldDepth=0;
  const yStretch=upper&&ch==="Ш"?1.25:1;
  let xmin=S,xmax=0,ymin=S,ymax=0,peak=1;
  const strokes=seg.map(([ax,ay,bx,by])=>{const len=Math.hypot(bx-ax,by-ay)||1;return{ax,ay,len,ux:(bx-ax)/len,uy:(by-ay)/len};});
@@ -271,7 +274,7 @@ function solidLetter(ch,upper,preset){
   const x=i%S,y=Math.floor(i/S);
   const gx=(x/(.75*pixelScale)-(64-width*k/2))/k;
   const gy=(y/(.75*pixelScale)-(64-10*k))/k;
-  const {dent,shoulder,active}=singleTensionFold(ch,gx,gy);
+  const {dent,shoulder,active}=radialTensionFold(ch,gx,gy,field[i]/(k*.75*pixelScale));
   height[i]=baseHeight*(1-dent+shoulder);
   // No raised seam band or textured shading around the perimeter.
   creases[i]=0;
@@ -280,6 +283,7 @@ function solidLetter(ch,upper,preset){
    protectedLowerSamples++;
    protectedLowerDent=Math.max(protectedLowerDent,Math.max(0,baseHeight-height[i])/unit*scale);
   }
+  if(field[i]/(k*.75*pixelScale)<=.23)edgeFoldDepth=Math.max(edgeFoldDepth,dent);
   foldDepth=Math.max(foldDepth,baseHeight*dent/unit*scale);
   if(dent>.015)foldVertices++;
  }
@@ -287,9 +291,22 @@ function solidLetter(ch,upper,preset){
  const cx=(xmin+xmax)/2,cy=(ymin+ymax)/2,front=[],back=[],read=(a,x,y)=>a[clamp(Math.round(y),0,S-1)*S+clamp(Math.round(x),0,S-1)];
  const sample=(x,y)=>({x,y,d:read(field,x,y),z:read(height,x,y)});
  const cut=(a,b)=>{const t=a.d/(a.d-b.d);return{x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t,d:0,z:0};};
+ const interp=(a,x,y)=>{
+  x=clamp(x,0,S-1);y=clamp(y,0,S-1);
+  const ix=Math.floor(x),iy=Math.floor(y),tx=x-ix,ty=y-iy,jx=Math.min(S-1,ix+1),jy=Math.min(S-1,iy+1);
+  return (a[iy*S+ix]*(1-tx)+a[iy*S+jx]*tx)*(1-ty)+(a[jy*S+ix]*(1-tx)+a[jy*S+jx]*tx)*ty;
+ };
  function vertex(q,sign){
  let nx=-(read(height,q.x+1,q.y)-read(height,q.x-1,q.y))*.5,ny=(read(height,q.x,q.y+1)-read(height,q.x,q.y-1))*.5,nz=sign/(preset.volume/100);
  if(q.z===0){nx=-(read(field,q.x+1,q.y)-read(field,q.x-1,q.y));ny=read(field,q.x,q.y+1)-read(field,q.x,q.y-1);nz=0;if(Math.hypot(nx,ny)<1e-6)nz=sign;}
+ if(upper){
+  const d=Math.max(0,interp(field,q.x,q.y)),r=1.3*pixelScale;
+  const fx=-(interp(field,q.x+r,q.y)-interp(field,q.x-r,q.y))/(2*r),fy=(interp(field,q.x,q.y+r)-interp(field,q.x,q.y-r))/(2*r);
+  const t=clamp(d/bevel,0,1),z=Math.sqrt(Math.max(1e-8,t*(2-t))),slope=half/bevel*(1-t);
+  const edgeMix=clamp(1-d/(3*pixelScale),0,1),w=edgeMix*edgeMix*(3-2*edgeMix);
+  const a=Math.hypot(nx,ny,nz)||1,b=Math.hypot(fx*slope,fy*slope,z/(preset.volume/100))||1;
+  nx=nx/a*(1-w)+fx*slope/b*w;ny=ny/a*(1-w)+fy*slope/b*w;nz=nz/a*(1-w)+sign*z/(preset.volume/100)/b*w;
+ }
  ny/=yStretch;
  const l=Math.hypot(nx,ny,nz)||1;
  return [(q.x-cx)/unit*scale,(cy-q.y)/unit*scale*yStretch,sign*q.z/unit*scale*preset.volume/100,nx/l,ny/l,nz/l,upper?read(creases,q.x,q.y):0];
@@ -300,7 +317,7 @@ function solidLetter(ch,upper,preset){
  const data=new Float32Array(back.concat(front)),buffer=gl.createBuffer();
  if(!data.length||!data.every(Number.isFinite))throw Error("Invalid solid title "+ch);
  gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW);
- return {buffer,count:data.length/7,width:Math.max(4,(xmax-xmin+1)/unit)*scale,depth:2*half/unit*scale*preset.volume/100,foldDepth,foldVertices,protectedLowerSamples,protectedLowerDent,straightSamples,straightDent,seamLoops:seamLoops.length,height:(ymax-ymin+1)/unit*scale*yStretch,yStretch};
+ return {buffer,count:data.length/7,width:Math.max(4,(xmax-xmin+1)/unit)*scale,depth:2*half/unit*scale*preset.volume/100,foldDepth,foldVertices,protectedLowerSamples,protectedLowerDent,straightSamples,straightDent,edgeFoldDepth,seamLoops:seamLoops.length,height:(ymax-ymin+1)/unit*scale*yStretch,yStretch};
 }
 const titleParts=[TITLE_PRESET.top,TITLE_PRESET.bottom].map((preset,i)=>{
  const entries=[...preset.text].map((ch,j)=>{const g=ch===" "?null:solidLetter(ch,i===0,preset);return {g,j,width:(g?g.width:6*preset.size*.0135)+preset.spacing*preset.size*.0135};});
@@ -541,7 +558,7 @@ card.addEventListener("pointerup",e=>endFluidPointer(e),{passive:true});
 card.addEventListener("pointercancel",e=>endFluidPointer(e,true),{passive:true});
 window.SETKA_SOLID_WORDMARK={
  render,
- getInfo:()=>({...stats,real3D:true,renderer:"WebGL original honey #08 live rebuilt",angle,active,rigid:true,continuous:true,metaball:true,faceted:true,globeDecorations:false,animatedFluid:true,liveRebuild:true,depthOcclusion:true,tapExcitation:true,excitationLevel:excitement,taps:tapCount,titleText:TITLE,titlePhase,titleVelocity,titleStyle:"circular-seal-mega-bubble-cyber-blade",titlePreset:TITLE_PRESET,titleSolidMeshes:true,titleJellyLighting:"world-space-latex-softboxes-v1",titleBalloonFolds:"individual-tension-folds-v5",titleFoldStats:titleParts.flat().map(e=>({depth:e.g.foldDepth,vertices:e.g.foldVertices,protectedLowerSamples:e.g.protectedLowerSamples,protectedLowerDent:e.g.protectedLowerDent,straightSamples:e.g.straightSamples,straightDent:e.g.straightDent,seamLoops:e.g.seamLoops,height:e.g.height,yStretch:e.g.yStretch})),titleMeshCounts:titleParts.flat().map(e=>e.g.count),titleMeshDepths:titleParts.flat().map(e=>e.g.depth),titleNeuralPulse:false}),
+ getInfo:()=>({...stats,real3D:true,renderer:"WebGL original honey #08 live rebuilt",angle,active,rigid:true,continuous:true,metaball:true,faceted:true,globeDecorations:false,animatedFluid:true,liveRebuild:true,depthOcclusion:true,tapExcitation:true,excitationLevel:excitement,taps:tapCount,titleText:TITLE,titlePhase,titleVelocity,titleStyle:"circular-seal-mega-bubble-cyber-blade",titlePreset:TITLE_PRESET,titleSolidMeshes:true,titleJellyLighting:"world-space-latex-softboxes-v1",titleBalloonFolds:"interior-radial-tension-v6",titleFoldStats:titleParts.flat().map(e=>({depth:e.g.foldDepth,vertices:e.g.foldVertices,protectedLowerSamples:e.g.protectedLowerSamples,protectedLowerDent:e.g.protectedLowerDent,straightSamples:e.g.straightSamples,straightDent:e.g.straightDent,edgeFoldDepth:e.g.edgeFoldDepth,seamLoops:e.g.seamLoops,height:e.g.height,yStretch:e.g.yStretch})),titleMeshCounts:titleParts.flat().map(e=>e.g.count),titleMeshDepths:titleParts.flat().map(e=>e.g.depth),titleNeuralPulse:false}),
  dispose(){
   disposed=true;active=false;stopAnimation();canvas.remove();
   gl.deleteBuffer(buf);gl.deleteBuffer(plateBuffer);for(const e of titleParts.flat())gl.deleteBuffer(e.g.buffer);gl.deleteProgram(prog);

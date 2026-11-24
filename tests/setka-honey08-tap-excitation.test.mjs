@@ -157,12 +157,12 @@ test('Mega Bubble uses external elongated reflections, other preset remains unch
  assert.match(rendererCode,/keyStrip=exp/);
  assert.match(rendererCode,/fillStrip=exp/);
  assert.match(rendererCode,/keyAxis=normalize\(cross/);
- assert.match(experiment,/20261124-circular-seal-mega-bubble-individual-folds-v9/);
+ assert.match(experiment,/20261124-circular-seal-mega-bubble-radial-interior-v10/);
 });
 
 test('localized balloon pleats preserve welded outlines including enclosed holes',()=>{
  const h=harness(),info=h.api.getInfo(),f=info.titleFoldStats;
- assert.equal(info.titleBalloonFolds,'individual-tension-folds-v5');
+ assert.equal(info.titleBalloonFolds,'interior-radial-tension-v6');
  assert.equal(f.length,13);
  assert.ok(f.slice(0,5).every(x=>x.depth>.035&&x.vertices>10&&x.seamLoops>=1),'every balloon has perimeter folds');
  assert.ok(f[2].seamLoops>=2,'В includes inner welded seams');
@@ -184,14 +184,23 @@ test('lower arms of C and Sh retain inflated height without disturbing other gly
   assert.ok(f[i].vertices>20&&f[i].seamLoops===1);
  }
  assert.ok(f.filter((_,i)=>i!==0&&i!==4).every(x=>x.protectedLowerSamples===0));
- assert.match(experiment,/20261124-circular-seal-mega-bubble-individual-folds-v9/);
+ assert.match(experiment,/20261124-circular-seal-mega-bubble-radial-interior-v10/);
 });
 
 test('straight balloon sections stay fully inflated and pleats are limited to bends',()=>{
  const h=harness(),f=h.api.getInfo().titleFoldStats;
  assert.ok(f.slice(0,5).every(x=>x.straightSamples>1000&&x.straightDent<1e-5));
  assert.ok(f.slice(5).every(x=>x.straightSamples===0));
- assert.match(rendererCode,/singleTensionFold\(ch,gx,gy\)/);
+ assert.match(rendererCode,/radialTensionFold\(ch,gx,gy,field\[i\]/);
  assert.doesNotMatch(rendererCode,/profile\.pleat|Math\.cos\(phase|balloonBendWeight|function seamProfile/);
- assert.match(experiment,/20261124-circular-seal-mega-bubble-individual-folds-v9/);
+ assert.match(experiment,/20261124-circular-seal-mega-bubble-radial-interior-v10/);
+});
+
+test('radial tension fans have common interior centres and no perimeter dent',()=>{
+ const h=harness(),f=h.api.getInfo().titleFoldStats;
+ assert.ok(f.slice(0,5).every(x=>x.edgeFoldDepth===0&&x.straightDent<1e-5));
+ assert.match(rendererCode,/theta=Math.atan2\(py,px\)/);
+ assert.match(rendererCode,/delta=Math.atan2\(Math.sin\(theta-a\),Math.cos\(theta-a\)\)/);
+ assert.doesNotMatch(rendererCode,/singleTensionFold|function seamProfile|balloonBendWeight/);
+ assert.match(experiment,/20261124-circular-seal-mega-bubble-radial-interior-v10/);
 });
