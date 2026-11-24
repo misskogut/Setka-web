@@ -32,7 +32,7 @@ function shader(kind,src){
  return sh;
 }
 const vert="precision highp float;\nattribute vec3 aPosition;attribute vec3 aNormal;attribute float aMaterial;\nuniform mat4 uProjection;uniform float uFlip,uScale,uTitlePass;\nuniform vec3 uTitleCenter,uTitleRight,uTitleUp;\nvarying vec3 vN,vP;varying float vAngle;\nvec3 rotX(vec3 p,float a){float c=cos(a),s=sin(a);return vec3(p.x,p.y*c-p.z*s,p.y*s+p.z*c);}\nvoid main(){\n vec3 p=aPosition,n=aNormal;\n if(uTitlePass>.5){p=uTitleCenter+uTitleRight*p.x+uTitleUp*p.y+vec3(0.,0.,p.z);n=uTitleRight*n.x+uTitleUp*n.y+vec3(0.,0.,n.z);}\n vec3 world=rotX(p*uScale,uFlip);\n vP=world;vN=normalize(rotX(n,uFlip));vAngle=aMaterial;\n gl_Position=uProjection*vec4(world.xy,world.z-1450.,1.);\n}";
-const frag="precision highp float;\nvarying vec3 vN,vP;varying float vAngle;\nuniform float uTime,uTitlePass,uTitleHue;\nvoid main(){\n if(uTitlePass>.5){\n vec3 n=normalize(vN),E=normalize(vec3(0.,0.,1450.)-vP);\n vec3 L=normalize(vec3(-372.,532.,845.)-vP),H=normalize(L+E);\n float nl=max(dot(n,L),0.),nh=max(dot(n,H),0.);\n float shine=pow(nh,77.5)*1.35,sharp=pow(nh,181.25)*.81;\n float fresnel=pow(1.-clamp(abs(dot(n,E)),0.,1.),3.);\n vec3 rgb;\n if(uTitlePass<1.5){\n vec3 green=vec3(.015,.85,.42),blue=vec3(.025,.46,.95),violet=vec3(.58,.045,.95);\n vec3 jelly=uTitleHue<.5?mix(green,blue,uTitleHue*2.):mix(blue,violet,(uTitleHue-.5)*2.);\n jelly=mix(vec3(.22,.53,.77),jelly,.85);\n // Glossy inflated latex: reflect two off-camera elongated studio softboxes.\n // Their positions are in world space, not in the rotating letter UVs.\n vec3 reflection=reflect(-E,n);\n vec3 keyAxis=normalize(cross(vec3(0.,1.,0.),L));\n vec3 keyUp=normalize(cross(L,keyAxis));\n float keyX=dot(reflection,keyAxis),keyY=dot(reflection,keyUp);\n float keyFacing=smoothstep(.68,.95,dot(reflection,L));\n float keyStrip=exp(-pow(abs(keyX/.105),2.)-pow(abs(keyY/.43),2.))*keyFacing;\n float keyHalo=exp(-pow(abs(keyX/.22),2.)-pow(abs(keyY/.56),2.))*keyFacing;\n vec3 fillLight=normalize(vec3(590.,110.,710.)-vP);\n vec3 fillAxis=normalize(cross(vec3(0.,1.,0.),fillLight));\n vec3 fillUp=normalize(cross(fillLight,fillAxis));\n float fillX=dot(reflection,fillAxis),fillY=dot(reflection,fillUp);\n float fillStrip=exp(-pow(abs(fillX/.075),2.)-pow(abs(fillY/.33),2.))*smoothstep(.72,.96,dot(reflection,fillLight));\n // High contrast body colour plus bright, narrow white reflections.\n rgb=jelly*(.16+.69*nl)+jelly*fresnel*.50;\n rgb+=keyHalo*vec3(.24,.28,.32)+keyStrip*vec3(1.10,1.12,1.16);\n rgb+=fillStrip*vec3(.60,.72,.87)+shine*vec3(.28,.32,.38)+sharp*.38;\n }else{\n vec3 refl=reflect(-E,n);\n vec3 spectrum=.58+.42*cos(6.283185*(refl.x*.45+refl.y*.3+vP.x*.008+uTime*.06+vec3(0.,.333,.667)));\n vec3 chrome=mix(vec3(.10,.12,.18),vec3(.96,.98,1.),smoothstep(.17,.83,.5+.5*sin(refl.y*9.+refl.x*2.)));\n rgb=chrome*(.55+.75*spectrum)+spectrum*.19+shine*.6+sharp*.3;\n }\n gl_FragColor=vec4(clamp(rgb,0.,1.),1.);return;\n }\n vec3 n=normalize(vN);\n vec3 light=normalize(vec3(-.52,.77,.95));\n vec3 specLight=normalize(vec3(-.30,.42,1.19));\n float lam=max(dot(n,light),0.);\n float rim=pow(1.-abs(n.z),2.4);\n float spec=pow(max(dot(n,specLight),0.),27.);\n float env=pow(abs(sin((n.x*.71+n.y*.23+n.z*.37)*10.8+uTime*.33)),13.)\n          +.38*pow(abs(sin((n.x*1.2+n.z*.13)*3.9+2.)),12.);\n float flick=.16*max(0.,sin(vAngle+uTime*.39));\n vec3 rgb=vec3(87.+127.*lam+115.*env+40.*spec+flick*30.,\n               37.+104.*lam+86.*env+37.*spec+flick*18.,\n               4.+45.*lam+28.*env+20.*spec+flick*4.);\n gl_FragColor=vec4(clamp(rgb/255.,0.,1.),1.);\n}";
+const frag="precision highp float;\nvarying vec3 vN,vP;varying float vAngle;\nuniform float uTime,uTitlePass,uTitleHue;\nvoid main(){\n if(uTitlePass>.5){\n vec3 n=normalize(vN),E=normalize(vec3(0.,0.,1450.)-vP);\n vec3 L=normalize(vec3(-372.,532.,845.)-vP),H=normalize(L+E);\n float nl=max(dot(n,L),0.),nh=max(dot(n,H),0.);\n float shine=pow(nh,77.5)*1.35,sharp=pow(nh,181.25)*.81;\n float fresnel=pow(1.-clamp(abs(dot(n,E)),0.,1.),3.);\n vec3 rgb;\n if(uTitlePass<1.5){\n vec3 green=vec3(.015,.85,.42),blue=vec3(.025,.46,.95),violet=vec3(.58,.045,.95);\n vec3 jelly=uTitleHue<.5?mix(green,blue,uTitleHue*2.):mix(blue,violet,(uTitleHue-.5)*2.);\n jelly=mix(vec3(.22,.53,.77),jelly,.85);\n // Glossy inflated latex: reflect two off-camera elongated studio softboxes.\n // Their positions are in world space, not in the rotating letter UVs.\n vec3 reflection=reflect(-E,n);\n vec3 keyAxis=normalize(cross(vec3(0.,1.,0.),L));\n vec3 keyUp=normalize(cross(L,keyAxis));\n float keyX=dot(reflection,keyAxis),keyY=dot(reflection,keyUp);\n float keyFacing=smoothstep(.68,.95,dot(reflection,L));\n float keyStrip=exp(-pow(abs(keyX/.105),2.)-pow(abs(keyY/.43),2.))*keyFacing;\n float keyHalo=exp(-pow(abs(keyX/.22),2.)-pow(abs(keyY/.56),2.))*keyFacing;\n vec3 fillLight=normalize(vec3(590.,110.,710.)-vP);\n vec3 fillAxis=normalize(cross(vec3(0.,1.,0.),fillLight));\n vec3 fillUp=normalize(cross(fillLight,fillAxis));\n float fillX=dot(reflection,fillAxis),fillY=dot(reflection,fillUp);\n float fillStrip=exp(-pow(abs(fillX/.075),2.)-pow(abs(fillY/.33),2.))*smoothstep(.72,.96,dot(reflection,fillLight));\n // High contrast body colour plus bright, narrow white reflections.\n rgb=(jelly*(.16+.69*nl)+jelly*fresnel*.50)*(1.-.78*clamp(vAngle,0.,.47));\n rgb+=keyHalo*vec3(.24,.28,.32)+keyStrip*vec3(1.10,1.12,1.16);\n rgb+=fillStrip*vec3(.60,.72,.87)+shine*vec3(.28,.32,.38)+sharp*.38;\n }else{\n vec3 refl=reflect(-E,n);\n vec3 spectrum=.58+.42*cos(6.283185*(refl.x*.45+refl.y*.3+vP.x*.008+uTime*.06+vec3(0.,.333,.667)));\n vec3 chrome=mix(vec3(.10,.12,.18),vec3(.96,.98,1.),smoothstep(.17,.83,.5+.5*sin(refl.y*9.+refl.x*2.)));\n rgb=chrome*(.55+.75*spectrum)+spectrum*.19+shine*.6+sharp*.3;\n }\n gl_FragColor=vec4(clamp(rgb,0.,1.),1.);return;\n }\n vec3 n=normalize(vN);\n vec3 light=normalize(vec3(-.52,.77,.95));\n vec3 specLight=normalize(vec3(-.30,.42,1.19));\n float lam=max(dot(n,light),0.);\n float rim=pow(1.-abs(n.z),2.4);\n float spec=pow(max(dot(n,specLight),0.),27.);\n float env=pow(abs(sin((n.x*.71+n.y*.23+n.z*.37)*10.8+uTime*.33)),13.)\n          +.38*pow(abs(sin((n.x*1.2+n.z*.13)*3.9+2.)),12.);\n float flick=.16*max(0.,sin(vAngle+uTime*.39));\n vec3 rgb=vec3(87.+127.*lam+115.*env+40.*spec+flick*30.,\n               37.+104.*lam+86.*env+37.*spec+flick*18.,\n               4.+45.*lam+28.*env+20.*spec+flick*4.);\n gl_FragColor=vec4(clamp(rgb/255.,0.,1.),1.);\n}";
 let prog=null,buf=null,total=0,stats=null;
 try{
  const v=shader(gl.VERTEX_SHADER,vert),f=shader(gl.FRAGMENT_SHADER,frag);
@@ -165,10 +165,36 @@ function strokeSegments(path,k,ox,oy){
  }else throw Error("Unknown title stroke "+cmd);
  }return out;
 }
+// Local compression folds in inflated latex, authored at the bends and junctions.
+// Each entry is [x,y,angle,length,compression], in the original glyph coordinates.
+// A small asymmetric fan of valleys and raised lips changes the actual closed mesh.
+const balloonCreases={
+ С:[[3.1,5.0,-.58,3.0,.31],[3.0,14.7,.58,3.2,.35]],
+ К:[[4.5,9.8,-.10,3.8,.43],[11.2,5.0,.85,2.7,.28],[11.3,15.2,-.85,2.8,.29]],
+ В:[[3.8,9.7,.12,3.8,.37],[14.2,7.4,-.60,2.8,.32],[14.8,13.1,.60,2.8,.34]],
+ И:[[3.1,16.8,-.61,3.2,.39],[17.0,4.2,-.61,3.2,.39]],
+ Ш:[[3.7,17.1,.75,3.1,.40],[13.0,18.8,1.12,3.0,.38],[22.3,17.1,-.75,3.1,.40]]
+};
+function latexFold(ch,x,y){
+ let depression=0,lip=0;
+ for(const [cx,cy,angle,length,amount] of balloonCreases[ch]||[]){
+  for(let j=-1;j<=1;j++){
+   const a=angle+j*.18,c=Math.cos(a),s=Math.sin(a);
+   const dx=x-cx,dy=y-cy,along=dx*c+dy*s;
+   const across=-dx*s+dy*c-j*1.13-.085*along*along;
+   const envelope=Math.exp(-Math.pow(along/(length*(j===0?1:.78)),4));
+   const strength=amount*(j===0?1:.64)*envelope;
+   depression+=strength*Math.exp(-Math.pow(across/.42,2));
+   lip+=strength*.38*Math.exp(-Math.pow((across-.67)/.44,2));
+  }
+ }
+ return {dent:Math.min(.47,depression),lip:Math.min(.18,lip)};
+}
 function solidLetter(ch,upper,preset){
  const S=96,unit=4.275,scale=preset.size*.0135,k=upper?(ch==="Ш"?3.2:3.9):5,width=upper?(ch==="Ш"?26:19):14;
  const seg=strokeSegments((upper?megaPaths:bladePaths)[ch],k*.75,(64-width*k/2)*.75,(upper?64-10*k:23)*.75);
- const radius=(upper?7.6:2)*k*.75/2,field=new Float32Array(S*S),height=new Float32Array(S*S);
+ const radius=(upper?7.6:2)*k*.75/2,field=new Float32Array(S*S),height=new Float32Array(S*S),creases=new Float32Array(S*S);
+ let foldDepth=0,foldVertices=0;
  let xmin=S,xmax=0,ymin=S,ymax=0,peak=1;
  const strokes=seg.map(([ax,ay,bx,by])=>{const len=Math.hypot(bx-ax,by-ay)||1;return{ax,ay,len,ux:(bx-ax)/len,uy:(by-ay)/len};});
  for(let y=0;y<S;y++)for(let x=0;x<S;x++){
@@ -178,7 +204,22 @@ function solidLetter(ch,upper,preset){
  field[y*S+x]=d;if(d>=0){xmin=Math.min(xmin,x);xmax=Math.max(xmax,x);ymin=Math.min(ymin,y);ymax=Math.max(ymax,y);peak=Math.max(peak,d);}
  }
  const half=upper?peak*1.15:Math.max(2.85,Math.min(6.75,peak*.8+2.25)),bevel=upper?peak:Math.max(1,peak*.45);
- for(let i=0;i<field.length;i++){const t=clamp(field[i]/bevel,0,1);height[i]=half*Math.sqrt(t*(2-t));}
+ for(let i=0;i<field.length;i++){
+ const t=clamp(field[i]/bevel,0,1),baseHeight=half*Math.sqrt(t*(2-t));
+ height[i]=baseHeight;
+ if(upper&&t>0){
+  const x=(i%S-(64-width*k/2)*.75)/(k*.75),y=(Math.floor(i/S)-(64-10*k)*.75)/(k*.75);
+  const {dent,lip}=latexFold(ch,x,y);
+  // Preserve the silhouette and closed front/back seam. Fold the skin inward
+  // only where it has thickness, with a raised shoulder next to each valley.
+  const fade=Math.min(1,t*3.5);
+  const delta=baseHeight*(lip-dent)*fade;
+  height[i]=Math.max(baseHeight*.45,baseHeight+delta);
+  creases[i]=dent*fade;
+  foldDepth=Math.max(foldDepth,(baseHeight-height[i])/unit*scale);
+  if(dent*fade>.08)foldVertices++;
+ }
+}
  const cx=(xmin+xmax)/2,cy=(ymin+ymax)/2,front=[],back=[],read=(a,x,y)=>a[clamp(Math.round(y),0,S-1)*S+clamp(Math.round(x),0,S-1)];
  const sample=(x,y)=>({x,y,d:read(field,x,y),z:read(height,x,y)});
  const cut=(a,b)=>{const t=a.d/(a.d-b.d);return{x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t,d:0,z:0};};
@@ -186,7 +227,7 @@ function solidLetter(ch,upper,preset){
  let nx=-(read(height,q.x+1,q.y)-read(height,q.x-1,q.y))*.5,ny=(read(height,q.x,q.y+1)-read(height,q.x,q.y-1))*.5,nz=sign/(preset.volume/100);
  if(q.z===0){nx=-(read(field,q.x+1,q.y)-read(field,q.x-1,q.y));ny=read(field,q.x,q.y+1)-read(field,q.x,q.y-1);nz=0;if(Math.hypot(nx,ny)<1e-6)nz=sign;}
  const l=Math.hypot(nx,ny,nz)||1;
- return [(q.x-cx)/unit*scale,(cy-q.y)/unit*scale,sign*q.z/unit*scale*preset.volume/100,nx/l,ny/l,nz/l,0];
+ return [(q.x-cx)/unit*scale,(cy-q.y)/unit*scale,sign*q.z/unit*scale*preset.volume/100,nx/l,ny/l,nz/l,upper?read(creases,q.x,q.y):0];
  }
  function tri(t){let p=[];for(let i=0;i<3;i++){const a=t[i],b=t[(i+1)%3];if(a.d>=0)p.push(a);if((a.d>=0)!==(b.d>=0))p.push(cut(a,b));}
  for(let i=1;i+1<p.length;i++){const q=[p[0],p[i],p[i+1]];for(const v of q)front.push(...vertex(v,1));for(const v of q.slice().reverse())back.push(...vertex(v,-1));}}
@@ -194,7 +235,7 @@ function solidLetter(ch,upper,preset){
  const data=new Float32Array(back.concat(front)),buffer=gl.createBuffer();
  if(!data.length||!data.every(Number.isFinite))throw Error("Invalid solid title "+ch);
  gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW);
- return {buffer,count:data.length/7,width:Math.max(4,(xmax-xmin+1)/unit)*scale,depth:2*half/unit*scale*preset.volume/100};
+ return {buffer,count:data.length/7,width:Math.max(4,(xmax-xmin+1)/unit)*scale,depth:2*half/unit*scale*preset.volume/100,foldDepth,foldVertices};
 }
 const titleParts=[TITLE_PRESET.top,TITLE_PRESET.bottom].map((preset,i)=>{
  const entries=[...preset.text].map((ch,j)=>{const g=ch===" "?null:solidLetter(ch,i===0,preset);return {g,j,width:(g?g.width:6*preset.size*.0135)+preset.spacing*preset.size*.0135};});
@@ -435,7 +476,7 @@ card.addEventListener("pointerup",e=>endFluidPointer(e),{passive:true});
 card.addEventListener("pointercancel",e=>endFluidPointer(e,true),{passive:true});
 window.SETKA_SOLID_WORDMARK={
  render,
- getInfo:()=>({...stats,real3D:true,renderer:"WebGL original honey #08 live rebuilt",angle,active,rigid:true,continuous:true,metaball:true,faceted:true,globeDecorations:false,animatedFluid:true,liveRebuild:true,depthOcclusion:true,tapExcitation:true,excitationLevel:excitement,taps:tapCount,titleText:TITLE,titlePhase,titleVelocity,titleStyle:"circular-seal-mega-bubble-cyber-blade",titlePreset:TITLE_PRESET,titleSolidMeshes:true,titleJellyLighting:"world-space-latex-softboxes-v1",titleMeshCounts:titleParts.flat().map(e=>e.g.count),titleMeshDepths:titleParts.flat().map(e=>e.g.depth),titleNeuralPulse:false}),
+ getInfo:()=>({...stats,real3D:true,renderer:"WebGL original honey #08 live rebuilt",angle,active,rigid:true,continuous:true,metaball:true,faceted:true,globeDecorations:false,animatedFluid:true,liveRebuild:true,depthOcclusion:true,tapExcitation:true,excitationLevel:excitement,taps:tapCount,titleText:TITLE,titlePhase,titleVelocity,titleStyle:"circular-seal-mega-bubble-cyber-blade",titlePreset:TITLE_PRESET,titleSolidMeshes:true,titleJellyLighting:"world-space-latex-softboxes-v1",titleBalloonFolds:"local-compression-mesh-v1",titleFoldStats:titleParts.flat().map(e=>({depth:e.g.foldDepth,vertices:e.g.foldVertices})),titleMeshCounts:titleParts.flat().map(e=>e.g.count),titleMeshDepths:titleParts.flat().map(e=>e.g.depth),titleNeuralPulse:false}),
  dispose(){
   disposed=true;active=false;stopAnimation();canvas.remove();
   gl.deleteBuffer(buf);gl.deleteBuffer(plateBuffer);for(const e of titleParts.flat())gl.deleteBuffer(e.g.buffer);gl.deleteProgram(prog);

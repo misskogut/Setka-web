@@ -157,5 +157,15 @@ test('Mega Bubble uses external elongated reflections, other preset remains unch
  assert.match(rendererCode,/keyStrip=exp/);
  assert.match(rendererCode,/fillStrip=exp/);
  assert.match(rendererCode,/keyAxis=normalize\(cross/);
- assert.match(experiment,/20261124-circular-seal-mega-bubble-latex-gloss-v3/);
+ assert.match(experiment,/20261124-circular-seal-mega-bubble-balloon-folds-v4/);
+});
+
+test('balloon folds physically depress every Mega Bubble glyph without changing Cyber Blade',()=>{
+ const h=harness(),info=h.api.getInfo(),f=info.titleFoldStats;
+ assert.equal(info.titleBalloonFolds,'local-compression-mesh-v1');
+ assert.equal(f.length,13);
+ assert.ok(f.slice(0,5).every(x=>x.depth>0.65&&x.vertices>20),'each balloon has visible geometric creases');
+ assert.ok(f.slice(5).every(x=>x.depth===0&&x.vertices===0),'lower title unaffected');
+ assert.match(rendererCode,/height\[i\]=Math\.max\(baseHeight\*\.45,baseHeight\+delta\)/);
+ assert.ok(h.titleDraws.every(x=>x.finite&&x.count%3===0));
 });
