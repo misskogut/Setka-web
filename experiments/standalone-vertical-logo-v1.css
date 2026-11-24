@@ -244,8 +244,8 @@ body.setka-vlogo-side #libraryScreen{pointer-events:none!important}
   transform:translate3d(0,-50%,1px);
   text-align:center;white-space:nowrap;
   font-family:system-ui,-apple-system,sans-serif;
-  font-size:8px;font-weight:200;line-height:1.2;
-  letter-spacing:3.2px;color:#e0cce9;opacity:.82;
+  font-size:8px;font-weight:300;line-height:1.2;
+  letter-spacing:3.2px;color:#e0cce9;opacity:.92;
   pointer-events:none;user-select:none;
   backface-visibility:hidden;-webkit-backface-visibility:hidden;
   z-index:5;

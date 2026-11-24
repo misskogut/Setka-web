@@ -12,9 +12,10 @@ function harness(){
  const handlers=new Map(), frames=[];
  const history=[],titleDraws=[],buffers=new Map();
  let titlePass=0,lastBuffer=null,bound=null,honeyBuffer=null,logoShift=0;
- const shifts=[];
+ const shifts=[],captionDraws=[],textureCalls=[];
  const gl=new Proxy({},{
   get(target,key){
+   if(key==='generateMipmap'||key==='pixelStorei'||key==='texParameteri'||key==='blendFuncSeparate')return (...args)=>textureCalls.push({key,args});
    if(key==='getShaderParameter'||key==='getProgramParameter')return ()=>true;
    if(key==='createShader'||key==='createProgram'||key==='createBuffer'||key==='createTexture')return ()=>({});
    if(key==='getAttribLocation')return ()=>0;
@@ -38,7 +39,7 @@ function harness(){
    handlers.get(type).push(fn);
   }
  };
- const ctx2d={measureText:()=>({width:5}),scale(){},fillText(){}};
+ const ctx2d={letterSpacing:'0px',fontKerning:'auto',measureText:s=>({width:s.length*40}),scale(){},fillText(s,x,y){captionDraws.push({s,x,y,font:this.font,spacing:this.letterSpacing});}};
  const canvas={style:{},setAttribute(){},getContext(kind){return kind==='2d'?ctx2d:gl},addEventListener(){},remove(){}};
  const window={innerWidth:390,innerHeight:820,devicePixelRatio:1,addEventListener(){}};
  const document={
@@ -66,7 +67,7 @@ function harness(){
   const next=frames.shift();
   if(next)next(clock);
  };
- return {send,advance,api,history,titleDraws,shifts};
+ return {send,advance,api,history,titleDraws,shifts,captionDraws,textureCalls};
 }
 
 test('tap on honey immediately increases zero-G excitement, repeated tap stacks',()=>{
@@ -232,4 +233,20 @@ test('flat caption shares the seal depth and card rotation but not seal orbit',(
  assert.match(rendererCode,/const depth=CAPTION.depth\+TITLE_PRESET.depth/);
  assert.match(rendererCode,/drawCaption\(f,scale\)/);
  assert.match(rendererCode,/texture2D\(uCaption,vCaptionUV\)/);
+});
+
+test('caption draws one high resolution line with mip filtering and unchanged 3D position',()=>{
+ const h=harness(),p=h.api.getInfo();
+ assert.equal(p.captionRasterDensity,8);
+ assert.equal(p.captionPlane.weight,300);assert.equal(p.captionPlane.opacity,.92);
+ assert.equal(p.captionPlane.depth,110);assert.equal(p.captionPlane.y,.94);
+ assert.equal(p.captionPlane.fontSize,8);assert.equal(p.captionPlane.spacing,3.2);
+ assert.equal(h.captionDraws.length,1);assert.equal(h.captionDraws[0].s,'АНТИСТРЕСС ТРЕКЕР');
+ assert.match(h.captionDraws[0].font,/300 64px/);
+ assert.equal(h.captionDraws[0].spacing,'25.6px');
+ assert.ok(h.textureCalls.some(x=>x.key==='generateMipmap'));
+ assert.ok(h.textureCalls.some(x=>x.key==='pixelStorei'&&x.args[1]===true));
+ assert.match(rendererCode,/gl.LINEAR_MIPMAP_LINEAR/);
+ assert.match(rendererCode,/gl.blendFuncSeparate\(gl.ONE,gl.ONE_MINUS_SRC_ALPHA/);
+ assert.match(experiment,/caption3d-crisp8/);
 });

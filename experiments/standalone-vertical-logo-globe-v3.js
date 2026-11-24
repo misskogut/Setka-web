@@ -140,7 +140,7 @@ const FLUID_REBUILD_MS=82;
 /* Selected circular seal: real solid letters, centred at the honey's z=110 plane. */
 const TITLE="СКВИШ ДЛЯ МОЗГА";
 const LOGO_Y=.45;
-const CAPTION=Object.freeze({text:"АНТИСТРЕСС ТРЕКЕР",y:.94,fontSize:8,spacing:3.2,weight:200,opacity:.82,depth:110});
+const CAPTION=Object.freeze({text:"АНТИСТРЕСС ТРЕКЕР",y:.94,fontSize:8,spacing:3.2,weight:300,opacity:.92,depth:110});
 const TITLE_PRESET=Object.freeze({
  layout:"circular-seal",depth:0,tilt:0,speed:22,clockwise:true,honeyMotion:150,honeySize:100,
  top:Object.freeze({text:"СКВИШ",font:"Mega Bubble",material:"colored-jelly",size:170,spacing:2,radius:154,rainbow:85,volume:100}),
@@ -335,24 +335,49 @@ function makeCaption(){
  try{
   const bitmap=document.createElement("canvas"),ctx=bitmap.getContext("2d");
   if(!ctx||!ctx.measureText)return null;
-  const density=4,font=CAPTION.weight+" "+CAPTION.fontSize+"px system-ui, -apple-system, sans-serif";
-  ctx.font=font;
-  const chars=Array.from(CAPTION.text),widths=chars.map(ch=>ctx.measureText(ch).width);
-  const width=widths.reduce((sum,x)=>sum+x,0)+CAPTION.spacing*(chars.length-1)+8;
-  bitmap.width=Math.ceil(width*density);bitmap.height=20*density;
-  ctx.scale(density,density);ctx.font=font;ctx.textBaseline="middle";
+  // Render the complete line at native high resolution, with kerning and
+  // tracking intact. Power-of-two dimensions allow WebGL 1 mip filtering.
+  const density=8,font=CAPTION.weight+" "+(CAPTION.fontSize*density)+"px system-ui, -apple-system, sans-serif";
+  const power2=n=>2**Math.ceil(Math.log2(Math.max(2,n)));
+  const tracking=CAPTION.spacing*density;
+  let line=CAPTION.text;
+  function configureText(){
+   ctx.font=font;
+   if("letterSpacing" in ctx)ctx.letterSpacing=tracking+"px";
+   if("fontKerning" in ctx)ctx.fontKerning="normal";
+  }
+  configureText();
+  if(!("letterSpacing" in ctx)){
+   // Older Canvas implementations: preserve a single text draw, approximating
+   // tracking with typographic spaces, without positioning glyphs individually.
+   const count=Array.from(line).length-1;
+   const target=ctx.measureText(line).width+tracking*count;
+   let best=line,error=Infinity;
+   for(const space of ["\u2009","\u2009\u200a","\u2009\u2009","\u2009\u2009\u200a","\u2002"]){
+    const candidate=Array.from(line).join(space),err=Math.abs(ctx.measureText(candidate).width-target);
+    if(err<error){best=candidate;error=err;}
+   }
+   line=best;
+  }
+  const width=ctx.measureText(line).width+8*density;
+  bitmap.width=power2(width);bitmap.height=power2(20*density);
+  configureText();ctx.textBaseline="middle";ctx.textAlign="center";
   ctx.fillStyle="rgba(224,204,233,"+CAPTION.opacity+")";
-  let x=4;
-  for(let i=0;i<chars.length;i++){ctx.fillText(chars[i],x,10);x+=widths[i]+CAPTION.spacing;}
+  ctx.fillText(line,bitmap.width/2,bitmap.height/2);
   const texture=gl.createTexture(),buffer=gl.createBuffer();
   gl.bindTexture(gl.TEXTURE_2D,texture);
-  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,false);
+  // Premultiplied texels avoid dark/transparent fringes on thin glyph strokes.
+  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,true);
   gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,bitmap);
-  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
+  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,false);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
-  return {texture,buffer,width:bitmap.width/density,height:20,key:""};
+  gl.generateMipmap(gl.TEXTURE_2D);
+  const anisotropy=gl.getExtension("EXT_texture_filter_anisotropic")||gl.getExtension("WEBKIT_EXT_texture_filter_anisotropic");
+  if(anisotropy)gl.texParameterf(gl.TEXTURE_2D,anisotropy.TEXTURE_MAX_ANISOTROPY_EXT,Math.min(8,gl.getParameter(anisotropy.MAX_TEXTURE_MAX_ANISOTROPY_EXT)||1));
+  return {texture,buffer,width:bitmap.width/density,height:bitmap.height/density,key:"",density};
  }catch(e){console.warn("[SETKA] flat caption fallback",e);return null}
 }
 caption=makeCaption();
@@ -375,7 +400,7 @@ function drawCaption(frame,scale){
  }
  gl.uniform1f(U.logoShift,0);gl.uniform1f(U.titlePass,3);
  gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,caption.texture);gl.uniform1i(U.caption,0);
- gl.enable(gl.BLEND);gl.blendFuncSeparate(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA,gl.ONE,gl.ONE_MINUS_SRC_ALPHA);
+ gl.enable(gl.BLEND);gl.blendFuncSeparate(gl.ONE,gl.ONE_MINUS_SRC_ALPHA,gl.ONE,gl.ONE_MINUS_SRC_ALPHA);
  gl.depthMask(false);bindMesh(caption.buffer);gl.drawArrays(gl.TRIANGLES,0,6);
  gl.depthMask(true);gl.disable(gl.BLEND);gl.uniform1f(U.titlePass,0);
 }
@@ -615,7 +640,7 @@ card.addEventListener("pointerup",e=>endFluidPointer(e),{passive:true});
 card.addEventListener("pointercancel",e=>endFluidPointer(e,true),{passive:true});
 window.SETKA_SOLID_WORDMARK={
  render,
- getInfo:()=>({...stats,real3D:true,renderer:"WebGL original honey #08 live rebuilt",angle,active,rigid:true,continuous:true,metaball:true,faceted:true,globeDecorations:false,animatedFluid:true,liveRebuild:true,depthOcclusion:true,tapExcitation:true,excitationLevel:excitement,taps:tapCount,titleText:TITLE,titlePhase,titleVelocity,titleStyle:"circular-seal-mega-bubble-cyber-blade",titlePreset:TITLE_PRESET,logoCardCenterY:LOGO_Y,captionPlane:CAPTION,captionWebGL:!!caption,titleSolidMeshes:true,titleJellyLighting:"world-space-latex-softboxes-v1",titleBalloonFolds:"interior-radial-tension-v6",titleFoldStats:titleParts.flat().map(e=>({depth:e.g.foldDepth,vertices:e.g.foldVertices,protectedLowerSamples:e.g.protectedLowerSamples,protectedLowerDent:e.g.protectedLowerDent,straightSamples:e.g.straightSamples,straightDent:e.g.straightDent,edgeFoldDepth:e.g.edgeFoldDepth,seamLoops:e.g.seamLoops,height:e.g.height,yStretch:e.g.yStretch})),titleMeshCounts:titleParts.flat().map(e=>e.g.count),titleMeshDepths:titleParts.flat().map(e=>e.g.depth),titleNeuralPulse:false}),
+ getInfo:()=>({...stats,real3D:true,renderer:"WebGL original honey #08 live rebuilt",angle,active,rigid:true,continuous:true,metaball:true,faceted:true,globeDecorations:false,animatedFluid:true,liveRebuild:true,depthOcclusion:true,tapExcitation:true,excitationLevel:excitement,taps:tapCount,titleText:TITLE,titlePhase,titleVelocity,titleStyle:"circular-seal-mega-bubble-cyber-blade",titlePreset:TITLE_PRESET,logoCardCenterY:LOGO_Y,captionPlane:CAPTION,captionWebGL:!!caption,captionRasterDensity:caption?.density||0,titleSolidMeshes:true,titleJellyLighting:"world-space-latex-softboxes-v1",titleBalloonFolds:"interior-radial-tension-v6",titleFoldStats:titleParts.flat().map(e=>({depth:e.g.foldDepth,vertices:e.g.foldVertices,protectedLowerSamples:e.g.protectedLowerSamples,protectedLowerDent:e.g.protectedLowerDent,straightSamples:e.g.straightSamples,straightDent:e.g.straightDent,edgeFoldDepth:e.g.edgeFoldDepth,seamLoops:e.g.seamLoops,height:e.g.height,yStretch:e.g.yStretch})),titleMeshCounts:titleParts.flat().map(e=>e.g.count),titleMeshDepths:titleParts.flat().map(e=>e.g.depth),titleNeuralPulse:false}),
  dispose(){
   disposed=true;active=false;stopAnimation();canvas.remove();
   if(caption){gl.deleteTexture(caption.texture);gl.deleteBuffer(caption.buffer);}
