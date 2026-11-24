@@ -117,6 +117,8 @@ if(iframe)iframe.addEventListener("load",()=>{
  rest();
 });
 if(typeof window.addEventListener==="function")window.addEventListener("pagehide",rest);
+// Install the native layer and ALMA stylesheet before the first gesture.
+if(back)ensurePortal();
 window.SETKA_CYCLE_LOTUS_AXIS={
  start,render,rest,geometry,
  getInfo:()=>{

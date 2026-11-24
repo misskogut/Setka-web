@@ -1,8 +1,12 @@
-name: Verify ALMA lotus WebGL on mobile
-# Heavy browser/GPU screenshot test is invoked only for targeted ALMA visual
-# diagnostics. Ordinary source pushes remain guarded by the lean Pages tests.
+name: Verify ALMA native lotus on mobile
+# Temporary targeted mobile Chromium/WebKit real DOM identity check. Restore
+# dispatch-only after diagnosis so regular pushes don't produce extra alerts.
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "experiments/standalone-cycle-lotus-direct-v1.js"
 
 permissions:
   contents: read
@@ -19,14 +23,14 @@ jobs:
           node-version: '22'
       - name: Install isolated Playwright diagnostic tools
         run: npm install --no-save --ignore-scripts playwright@1.64.1 pngjs
-      - name: Verify 3D lotus moves and paints pixels under mobile Chromium
+      - name: Verify original SVG moved into CSS 3D under mobile Chromium
         run: node tests/setka-cycle-lotus-browser-smoke.mjs
-      - name: Verify 3D lotus under mobile WebKit (iPhone engine)
+      - name: Verify original SVG and original interaction under mobile WebKit (iPhone engine)
         run: SETKA_BROWSER=webkit node tests/setka-cycle-lotus-browser-smoke.mjs
       - name: Save rendered lotus frame
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: alma-lotus-3d-mobile-frame
-          path: tests/visual-smoke/lotus-real-3d-*.png
+          path: tests/visual-smoke/lotus-native-3d-*.png
           if-no-files-found: ignore

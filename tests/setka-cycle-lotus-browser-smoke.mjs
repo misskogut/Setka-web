@@ -2,6 +2,7 @@
    is reparented into CSS 3D and then restored into the original React button. */
 import assert from "node:assert/strict";
 import {spawn} from "node:child_process";
+import {mkdirSync} from "node:fs";
 import {chromium,webkit} from "playwright";
 const port=48481,root="http://127.0.0.1:"+port;
 const engine=process.env.SETKA_BROWSER==="webkit"?webkit:chromium;
@@ -43,6 +44,8 @@ try{
  assert.equal(during.info.nativeOriginal,true);
  assert.equal(during.info.hasClone,false);
  assert.ok(Math.abs(during.info.cardYaw+during.info.counterYaw)<1e-4);
+ mkdirSync("tests/visual-smoke",{recursive:true});
+ await page.screenshot({path:"tests/visual-smoke/lotus-native-3d-"+(process.env.SETKA_BROWSER||"chromium")+".png"});
  await page.mouse.up();
  await page.waitForFunction(()=>window.SETKA_CYCLE_LOTUS_AXIS?.getInfo().turning===false,null,{timeout:25000});
  const rest=await page.evaluate(()=>{
