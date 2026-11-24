@@ -1,4 +1,4 @@
-name: Verify ALMA native lotus on mobile
+name: Verify original ALMA lotus on card flips
 # Heavy real-browser visual diagnostics remain manual-only after the
 # Chromium + iPhone WebKit original-SVG and click checks passed.
 # Ordinary source pushes do not trigger extra test emails.
@@ -20,9 +20,9 @@ jobs:
           node-version: '22'
       - name: Install isolated Playwright diagnostic tools
         run: npm install --no-save --ignore-scripts playwright@1.64.1 pngjs
-      - name: Verify original SVG moved into CSS 3D under mobile Chromium
+      - name: Verify original lotus remains in ALMA calendar on mobile Chromium
         run: node tests/setka-cycle-lotus-browser-smoke.mjs
-      - name: Verify original SVG and original interaction under mobile WebKit (iPhone engine)
+      - name: Verify original lotus stays in ALMA on mobile WebKit (iPhone engine)
         run: SETKA_BROWSER=webkit node tests/setka-cycle-lotus-browser-smoke.mjs
       - name: Save rendered lotus frame
         if: always()

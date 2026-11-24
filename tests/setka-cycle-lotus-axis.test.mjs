@@ -1,20 +1,27 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-const js=fs.readFileSync("experiments/standalone-cycle-lotus-gpu-volume-v20.js","utf8");
 const html=fs.readFileSync("standalone-v34-cycle-logo3d.html","utf8");
-test("one source SVG texture intersects REAL front, back and side surfaces in 3D",()=>{
- assert.match(js,/const cardDepth=190/);
- assert.match(js,/paint\(0,4,quad/);
- assert.match(js,/paint\(0,2,wall\)/);
- assert.match(js,/paint\(0,3,wall\)/);
- assert.match(js,/paint\(1,0,lotus\)/);
- assert.match(js,/paint\(1,1,lotus\)/);
- assert.match(js,/world=ry\(local,uAngle\)/);
- assert.match(js,/vDepth=aPos.x\*sin\(uAngle\)/);
- assert.match(js,/gl\.BLEND/);
- assert.match(js,/immersion=smoothstep\(0\.,90\.,-vDepth\)/,"optical surface crossing must be continuous");
- assert.match(js,/c\.rgb\*=mix\(1\.,mix\(\.84,\.50,depth\),immersion\)/);
- assert.doesNotMatch(js,/world\.x=aPos\.x\*chamberWidth|cloneNode\(true\).*appendChild/);
- assert.match(html,/standalone-cycle-lotus-gpu-volume-v20\.js/);
+const original=fs.readFileSync("experiments/alma-cycle-source/index.html","utf8");
+const logo=fs.readFileSync("experiments/standalone-vertical-logo-v1.js","utf8");
+const src=fs.readFileSync("experiments/standalone-cycle-lotus-gpu-volume-v20.js","utf8");
+
+test("original ALMA cycle lotus is kept in its own unmodified calendar iframe",()=>{
+ assert.match(html,/<aside class="setka-cycle-overlay" id="setkaCycleBack" hidden/);
+ assert.match(html,/<iframe title="Оригинальный календарь цикла ALMA" src="\.\/experiments\/alma-cycle-source\/index\.html\?v=20261121-inset-insights-c9d418" loading="eager"><\/iframe>/);
+ assert.match(original,/<div id="alma-cycle-root"><\/div>/);
+ assert.match(original,/dist\/cycle\.js/);
+ assert.doesNotMatch(html,/<script[^>]+(?:lotus-gpu-volume|lotus-direct|lotus-axis-v1)\.js/);
+ assert.doesNotMatch(html,/<link[^>]+standalone-cycle-lotus-axis-v1\.css/);
+ assert.doesNotMatch(html,/SETKA_CYCLE_LOTUS_AXIS|setkaCycleLotusTurn|setkaCycleLotusDirectPortal/);
+});
+
+test("the card itself still turns and is the only rotation affecting the lotus",()=>{
+ assert.match(html,/back\.style\.transform="perspective\(1450px\) rotateY\("/);
+ assert.match(html,/app\.style\.transform="perspective\(1450px\) rotateY\("/);
+ assert.match(html,/window\.SETKA_CYCLE_DOCK_ROTATION\?\.render\(angle\)/);
+ assert.match(html,/window\.SETKA_CYCLE_DOCK_ROTATION\?\.rest\(inCycle\)/);
+ assert.doesNotMatch(html,/lotus.*(?:cloneNode|rotateY|scaleX)|SETKA_CYCLE_LOTUS_AXIS/i);
+ assert.ok(src.includes("canvas.id=\"setkaCycleLotusTurn\""),"legacy experiment remains archived, but not loaded");
+ assert.ok(logo.length>100);
 });
