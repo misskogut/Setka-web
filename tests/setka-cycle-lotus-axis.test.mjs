@@ -54,7 +54,7 @@ test("physical card and lotus intersect, rather than mimicking depth with path s
  assert.equal(api.geometry(.5,1).submergedSide,"right");
  assert.equal(api.geometry(.75,-1).cardYaw,45);
  assert.equal(api.geometry(.75,-1).counterYaw,-45);
- assert.match(js,/holder\.style\.transform="rotateY\("/);
+ assert.match(js,/holder\.style\.transform=webkitWorld\?/);
  assert.match(js,/\(webkitWorld\?world:card\)\.appendChild\(portal\)/);
  assert.match(js,/holder\.style\.transform=webkitWorld/);
  assert.match(js,/volume\.style\.setProperty\("--cycle-inner-opacity"/);
