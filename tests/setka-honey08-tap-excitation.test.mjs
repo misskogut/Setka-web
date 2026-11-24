@@ -22,7 +22,7 @@ function harness(){
    if(key==='getUniformLocation')return (_,name)=>name;
    if(key==='uniform1f')return (name,value)=>{if(name==='uTitlePass')titlePass=value;if(name==='uLogoShift')logoShift=value};
    if(key==='bindBuffer')return (_,b)=>{bound=b;};
-   if(key==='drawArrays')return (mode,start,count)=>{shifts.push({pass:titlePass,count,shift:logoShift,data:titlePass===3?Array.from(buffers.get(bound)||[]):null});if(titlePass>0&&titlePass<3)titleDraws.push({count,pass:titlePass,finite:buffers.get(bound)?.every(Number.isFinite)});};
+   if(key==='drawArrays')return (mode,start,count)=>{shifts.push({pass:titlePass,count,shift:logoShift,start,data:titlePass>=3?Array.from(buffers.get(bound)||[]):null});if(titlePass>0&&titlePass<3)titleDraws.push({count,pass:titlePass,finite:buffers.get(bound)?.every(Number.isFinite)});};
    if(key==='bufferData')return (kind,value,usage)=>{
     lastBuffer=value;buffers.set(bound,value);if(!honeyBuffer&&value?.length>20000)honeyBuffer=bound;
     if(value?.length>20000 && bound===honeyBuffer)history.push({vertices:value.length/7,finite:Array.from(value).every(Number.isFinite)});
@@ -39,7 +39,7 @@ function harness(){
    handlers.get(type).push(fn);
   }
  };
- const ctx2d={letterSpacing:'0px',fontKerning:'auto',measureText:s=>({width:s.length*40}),scale(){},fillText(s,x,y){captionDraws.push({s,x,y,font:this.font,spacing:this.letterSpacing});}};
+ const ctx2d={letterSpacing:'0px',fontKerning:'auto',measureText:s=>({width:s.length*40}),scale(){},getImageData(x,y,w,h){const data=new Uint8ClampedArray(w*h*4);for(let j=80;j<125;j++)for(let i=100;i<120;i++)data[(j*w+i)*4+3]=235;return{data};},fillText(s,x,y){captionDraws.push({s,x,y,font:this.font,spacing:this.letterSpacing});}};
  const canvas={style:{},setAttribute(){},getContext(kind){return kind==='2d'?ctx2d:gl},addEventListener(){},remove(){}};
  const window={innerWidth:390,innerHeight:820,devicePixelRatio:1,addEventListener(){}};
  const document={
@@ -225,7 +225,7 @@ test('flat caption shares the seal depth and card rotation but not seal orbit',(
  assert.equal(p.captionPlane.y,.94);assert.equal(p.captionPlane.fontSize,8);
  const a=h.shifts.filter(x=>x.pass===3).slice(-1)[0];
  assert.equal(a.count,6);assert.equal(a.shift,0);
- assert.ok(a.data.filter((_,i)=>i%7===2).every(z=>z===110));
+ assert.ok(a.data.filter((_,i)=>i%7===2).every(z=>Math.abs(Math.abs(z-110)-1.2)<1e-5));
  const before=a.data.join(',');
  h.advance(100);h.api.render({visible:true,angle:65});
  const after=h.shifts.filter(x=>x.pass===3).slice(-1)[0];
@@ -249,4 +249,25 @@ test('caption draws one high resolution line with mip filtering and unchanged 3D
  assert.match(rendererCode,/gl.LINEAR_MIPMAP_LINEAR/);
  assert.match(rendererCode,/gl.blendFuncSeparate\(gl.ONE,gl.ONE_MINUS_SRC_ALPHA/);
  assert.match(experiment,/caption3d-crisp8/);
+});
+
+test('thin extruded caption has real glyph walls and a visible edge-on depth',()=>{
+ const h=harness(),info=h.api.getInfo();
+ assert.equal(info.captionPlane.thickness,2.4);
+ assert.ok(info.captionSideVertices>0);
+ const side=h.shifts.filter(x=>x.pass===4).slice(-1)[0];
+ assert.equal(side.count,info.captionSideVertices);
+ assert.ok(side.data.every(Number.isFinite));
+ const depths=side.data.filter((_,i)=>i%7===2);
+ assert.ok(Math.abs(Math.max(...depths)-Math.min(...depths)-2.4)<1e-5);
+ const before=h.shifts.filter(x=>x.pass===3).slice(-1)[0];
+ assert.equal(before.start,0);
+ h.api.render({visible:true,angle:90});
+ const edge=h.shifts.filter(x=>x.pass===4).slice(-1)[0];
+ assert.equal(edge.count,side.count);assert.equal(edge.data.join(','),side.data.join(','));
+ const after=h.shifts.filter(x=>x.pass===3).slice(-1)[0];
+ assert.equal(after.start,6);
+ assert.match(rendererCode,/captionContours\(ctx.getImageData/);
+ assert.match(rendererCode,/gl.drawArrays\(gl.TRIANGLES,0,caption.sideCount\)/);
+ assert.match(experiment,/thin-extrusion-v2/);
 });
