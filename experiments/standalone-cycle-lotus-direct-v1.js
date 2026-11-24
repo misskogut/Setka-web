@@ -49,6 +49,11 @@ function render(p,d=-1){
  if(volume)volume.style.visibility=g.frontFacing?"visible":"hidden";
  holder.style.transform="rotateY("+g.counterYaw.toFixed(5)+"deg)";
  holder.style.webkitTransform=holder.style.transform;
+ // Genuine translucent material of the CALENDAR FACE. Light from the
+ // buried original petals can pass through its depth; the SETKA front is
+ // still fully opaque and the original React SVG never changes shape.
+ const tilt=Math.abs(Math.sin(g.cardYaw*Math.PI/180));
+ back.style.opacity=(1-.64*tilt).toFixed(5);
  holder.dataset.cardYaw=g.cardYaw.toFixed(5);
  holder.dataset.counterYaw=g.counterYaw.toFixed(5);
  frames++;
@@ -64,6 +69,7 @@ function rest(){
  active=null;
  if(portal)portal.style.visibility="hidden";
  if(volume)volume.style.visibility="hidden";
+ back.style.removeProperty("opacity");
 }
 window.addEventListener("pagehide",rest);
 ensurePortal();
