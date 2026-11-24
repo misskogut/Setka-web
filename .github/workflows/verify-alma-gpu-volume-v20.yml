@@ -1,0 +1,31 @@
+name: Verify ALMA GPU volume v20 on mobile
+on:
+  push:
+    branches: [experiments/alma-gpu-card-depth-v20]
+    paths:
+      - "experiments/standalone-cycle-lotus-gpu-volume-v20.js"
+      - "tests/setka-cycle-lotus-gpu-browser-v20.mjs"
+      - ".github/workflows/verify-alma-gpu-volume-v20.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  webkit-volume:
+    runs-on: ubuntu-latest
+    container: mcr.microsoft.com/playwright:v1.64.1-noble
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts playwright@1.64.1 pngjs
+      - run: node --test tests/setka-cycle-lotus-gpu-volume-v20.test.mjs
+      - run: node tests/setka-cycle-lotus-gpu-browser-v20.mjs
+      - run: SETKA_BROWSER=webkit node tests/setka-cycle-lotus-gpu-browser-v20.mjs
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: alma-gpu-volume-v20-mobile
+          path: tests/visual-smoke/lotus-gpu-*.png
+          if-no-files-found: ignore

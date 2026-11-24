@@ -1,0 +1,18 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+const js=fs.readFileSync("experiments/standalone-cycle-lotus-gpu-volume-v20.js","utf8");
+const html=fs.readFileSync("standalone-v34-cycle-logo3d-gpu-v20.html","utf8");
+test("one source SVG texture intersects REAL front, back and side surfaces in 3D",()=>{
+ assert.match(js,/const cardDepth=190/);
+ assert.match(js,/paint\(0,4,quad/);
+ assert.match(js,/paint\(0,2,wall\)/);
+ assert.match(js,/paint\(0,3,wall\)/);
+ assert.match(js,/paint\(1,0,lotus\)/);
+ assert.match(js,/paint\(1,1,lotus\)/);
+ assert.match(js,/world=ry\(local,uAngle\)/);
+ assert.match(js,/vDepth=aPos.x\*sin\(uAngle\)/);
+ assert.match(js,/gl\.BLEND/);
+ assert.doesNotMatch(js,/world\.x=aPos\.x\*chamberWidth|cloneNode\(true\).*appendChild/);
+ assert.match(html,/standalone-cycle-lotus-gpu-volume-v20\.js/);
+});
