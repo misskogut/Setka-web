@@ -147,3 +147,15 @@ test('solid circular seal uses selected preset and preserves inertial drag',()=>
  assert.match(rendererCode,/110\+TITLE_PRESET\.depth/);
  assert.doesNotMatch(rendererCode,/gl\.drawArrays\(gl\.LINES/);
 });
+
+test('Mega Bubble uses external elongated reflections, other preset remains unchanged',()=>{
+ const h=harness(),p=h.api.getInfo().titlePreset;
+ assert.equal(h.api.getInfo().titleJellyLighting,'world-space-latex-softboxes-v1');
+ assert.equal(p.top.font,'Mega Bubble');assert.equal(p.top.volume,100);assert.equal(p.top.size,170);
+ assert.equal(p.bottom.material,'chrome-hologram');assert.equal(p.bottom.volume,300);
+ assert.match(rendererCode,/reflection=reflect\(-E,n\)/);
+ assert.match(rendererCode,/keyStrip=exp/);
+ assert.match(rendererCode,/fillStrip=exp/);
+ assert.match(rendererCode,/keyAxis=normalize\(cross/);
+ assert.match(experiment,/20261124-circular-seal-mega-bubble-latex-gloss-v2/);
+});
