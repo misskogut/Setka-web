@@ -1,0 +1,730 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#000000" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <!-- GitHub Pages deploy replaces this marker and publishes matching JSON.
+       The public SETKA link remains /Setka-web/standalone-v34.html forever. -->
+  <meta name="setka-release-build" content="development" />
+  <script>
+  (function(){
+    "use strict";
+    // A GitHub Pages edge or iPhone Safari may have cached an older HTML file.
+    // After load, check a cache-busted release manifest and refresh ONCE to
+    // the same path when it is stale, without interrupting a user interaction.
+    const revisionParam="__setka_refresh";
+    const canonical=new URL(location.href);
+    if(canonical.searchParams.has(revisionParam)){
+      // Keep shared links stable: remove ONLY our internal cache-buster.
+      canonical.searchParams.delete(revisionParam);
+      try{history.replaceState(history.state,"",canonical.pathname+canonical.search+canonical.hash)}catch(_){}
+      return;
+    }
+    let userInteracted=false;
+    for(const type of ["pointerdown","touchstart","keydown"]){
+      document.addEventListener(type,()=>{userInteracted=true},{capture:true,once:true,passive:true});
+    }
+    async function checkRelease(){
+      if(userInteracted||document.visibilityState!=="visible")return;
+      const build=document.querySelector('meta[name="setka-release-build"]')?.content||"";
+      if(!/^[0-9a-f]{40}$/.test(build))return;
+      try{
+        const endpoint=new URL("./standalone-release.json",location.href);
+        endpoint.searchParams.set("cb",String(Date.now()));
+        const response=await fetch(endpoint.toString(),{cache:"no-store",credentials:"same-origin"});
+        if(!response.ok)return;
+        const release=await response.json();
+        if(!/^[0-9a-f]{40}$/.test(release.build)||release.build===build
+          ||release.entry!=="standalone-v34.html")return;
+        // Never drop a note, a live pattern, microphone capture or a session.
+        if(userInteracted||document.visibilityState!=="visible"
+          ||document.querySelector("#gameScreen.active")
+          ||window.SetkaStandaloneV34?.getActiveSession?.())return;
+        const next=new URL(location.href);
+        next.searchParams.set(revisionParam,release.build.slice(0,12));
+        location.replace(next.toString());
+      }catch(_){/* Offline or an unavailable release manifest: keep this UI. */}
+    }
+    window.addEventListener("load",()=>setTimeout(checkRelease,250),{once:true});
+  })();
+  </script>
+  <title>SETKA · Три стороны · объёмный логотип</title>
+  <link rel="stylesheet" href="styles.css?v=41-grid-first-bw-color-dots-20261020" />
+  <link rel="stylesheet" href="experience-v2.css?v=44-align-saved-grid-20261106" />
+<link rel="stylesheet" href="standalone-sheets-v1.css?v=1.4.8">
+<link rel="stylesheet" href="./experiments/standalone-gameplay-overlays-v1.css?v=5a7c024c-original-fade-single-divider">
+<link rel="stylesheet" href="./experiments/standalone-gameplay-music-v1.css?v=ab51c417-small-top-controls">
+<link rel="stylesheet" href="./experiments/standalone-vertical-logo-v1.css?v=20261122-full-dock-flip">
+<link rel="stylesheet" href="./experiments/standalone-cycle-dock-rotation-v1.css?v=20261122-original-rotate-only">
+<link rel="stylesheet" href="./experiments/standalone-cycle-lotus-direct-v1.css?v=20261124-original-lotus-petal-hinge-v16">
+<link rel="stylesheet" href="./experiments/standalone-vertical-logo-globe-v3.css?v=20261123-honey08-original-live">
+<link rel="stylesheet" href="standalone-desktop-v1.css?v=1">
+<link rel="stylesheet" href="standalone-music-v1.css?v=15-ios-orbit-artifacts-fixed-20261107" />
+<link rel="stylesheet" href="standalone-music-lotus-reference-20261106.css?v=9-approved-original-rainbow" />
+<style id="setkaCycleExperimentCSS">
+/* The real SETKA #app stays in this top-level document, no 3D parent or iframe. */
+.setka-cycle-overlay{position:fixed;inset:0;z-index:120;background:#020105}
+.setka-cycle-overlay[hidden]{display:none!important}
+/* Limit the embedded ALMA viewport to the exact same card rectangle as
+   the external one-piece outline. The document may scroll INSIDE this iframe,
+   but can never paint over the dock or outside the card. */
+.setka-cycle-overlay > iframe{
+  display:block;
+  position:absolute;
+  top:var(--setka-cycle-card-top);
+  left:50%;
+  transform:translateX(-50%);
+  width:min(calc(100% - 28px),432px);
+  height:calc(100dvh - var(--setka-cycle-card-top) - var(--setka-cycle-card-bottom));
+  box-sizing:border-box;
+  border:0;
+  border-radius:24px;
+  background:#020105;
+  overflow:hidden;
+  -webkit-clip-path:inset(0 round 24px);
+  clip-path:inset(0 round 24px);
+}
+.setka-cycle-edge{position:fixed;z-index:130;top:0;bottom:0;width:24px;touch-action:none;-webkit-tap-highlight-color:transparent;cursor:ew-resize}
+.setka-cycle-edge.right{right:0}.setka-cycle-edge.left{left:0}
+/* Both unobtrusive edge gestures remain available on EITHER card face.
+   Game-mode rules below override them completely. */
+body.cycle-busy .setka-cycle-edge{pointer-events:none}
+
+/* Gesture zones unchanged; straight rounded frame with tiny arrows OUTSIDE its edges. */
+.setka-cycle-edge:focus-visible{outline:1px solid rgba(190,195,205,.35);outline-offset:-2px}
+#setkaCycleFrontFrame,#setkaCycleBackGuide{--setka-outline-color:rgba(190,195,205,.23)}
+.setka-card-frame-svg{position:absolute;inset:0;width:100%;height:100%;display:block;overflow:visible;pointer-events:none}
+.setka-card-frame-line,.setka-card-frame-arrows{fill:none;stroke:var(--setka-outline-color);stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.setka-card-frame-line{stroke-width:1}
+.setka-card-frame-arrows{stroke-width:1.35;opacity:.82}
+#setkaCycleBackGuide{position:fixed;top:var(--setka-cycle-card-top);bottom:var(--setka-cycle-card-bottom);left:50%;transform:translateX(-50%);width:min(calc(100% - 28px),432px);pointer-events:none;z-index:2;--setka-outline-color:rgba(170,110,210,.32)}
+
+/* UI polish: advance the preview grid 10px without changing tile geometry,
+   touch scrolling, 4-column count or the bottom dock. */
+#libraryScreen #allPatternsPanel,
+#libraryScreen #communityPanel,
+#libraryScreen #favoritesPanel{padding-top:22px!important}
+@media(max-width:767px){
+  #libraryScreen #allPatternsPanel,
+  #libraryScreen #communityPanel,
+  #libraryScreen #favoritesPanel{padding-top:18px!important}
+}
+
+/* Community: keep the original centered heading at safe-top + 108px,
+   put the four filter chips on their own line BELOW it, and lower only
+   the community squish thumbnails enough to leave clear breathing room.
+   The all-squishes/favorites baselines and tile dimensions never change. */
+#app #libraryScreen #st34CommunityModes{
+  position:absolute!important;
+  top:calc(var(--safe-top) + 145px)!important;
+  left:50%!important;
+  right:auto!important;
+  transform:translateX(-50%)!important;
+  width:max-content!important;
+  max-width:calc(100% - 28px)!important;
+  height:31px!important;
+  margin:0!important;
+  padding:0!important;
+  display:flex!important;
+  justify-content:center!important;
+  align-items:center!important;
+  flex-wrap:nowrap!important;
+  gap:5px!important;
+  z-index:30!important;
+  overflow-x:auto!important;
+  overflow-y:hidden!important;
+  scrollbar-width:none;
+  -webkit-overflow-scrolling:touch;
+  touch-action:pan-x;
+}
+#app #libraryScreen #st34CommunityModes.hidden{display:none!important}
+#app #libraryScreen #st34CommunityModes::-webkit-scrollbar{display:none}
+#app #libraryScreen #st34CommunityModes button{
+  flex:0 0 auto!important;
+  height:31px!important;
+  min-height:31px!important;
+  padding:0 8px!important;
+  font-size:9px!important;
+  white-space:nowrap!important;
+}
+/* library panel begins at safe-top +126px; +72px inset means the first
+   thumbnails start at +198px: 22px below the filter-row bottom (+176px). */
+#app #libraryScreen #communityPanel{padding-top:72px!important}
+#app #libraryScreen #communityPanel:has(> #st40CommunityNotes){
+  padding-top:18px!important;
+}
+@media(max-width:360px){
+  #app #libraryScreen #st34CommunityModes{
+    max-width:calc(100% - 20px)!important;
+    gap:3px!important;
+  }
+  #app #libraryScreen #st34CommunityModes button{
+    padding:0 6px!important;
+    font-size:8.5px!important;
+  }
+}
+
+/* A network/archival state is not a squish. Suppress the technical warning
+   completely so it does not occupy the first cell of the four-column grid.
+   Existing published cards and community filtering stay intact. */
+#app #libraryScreen #communityPanel #st40CommunityLoadError{
+  display:none!important;
+}
+
+/* Shared front/back card size; ALMA iframe uses the same 12px/84px geometry.
+   Draw the frame INSIDE native SETKA #app (never iframe the preview lifter).
+   The original dock #st34Nav is outside this frame and stays untouched. */
+:root{
+  --setka-cycle-card-top:12px;
+  --setka-cycle-card-bottom:calc(84px + env(safe-area-inset-bottom, 0px));
+  /* Logo reverse ends exactly where the front bottom dock ends. */
+  --setka-vlogo-card-bottom:calc(8px + env(safe-area-inset-bottom, 0px) + var(--setka-keyboard-inset,0px));
+}
+#setkaCycleFrontFrame{
+  position:fixed;
+  z-index:28;
+  top:var(--setka-cycle-card-top);
+  bottom:var(--setka-cycle-card-bottom);
+  left:50%;
+  width:min(calc(100% - 28px),432px);
+  transform:translateX(-50%);
+  pointer-events:none;
+  border:0;
+  border-radius:24px;
+  background:transparent;
+  box-shadow:none;
+
+  overflow:visible;
+}
+/* The catalog fallback can remain operational without its status
+   paragraph consuming space or cluttering the patterned front card. */
+#setkaCatalogStatus{display:none!important}
+
+/* The game is NOT a face of the card: pattern sessions never show a
+   card frame, edge hint, or edge-swipe capture area. */
+body:has(#gameScreen.active) #setkaCycleFrontFrame,
+body:has(#gameScreen.active) .setka-cycle-edge,
+body.setka-cycle-gameplay #setkaCycleFrontFrame,
+body.setka-cycle-gameplay .setka-cycle-edge{
+  display:none!important;
+  pointer-events:none!important;
+}
+
+/* Finger-controlled 3D card, active ONLY while swiping from a side edge. */
+body.cycle-flip-active #app,
+body.cycle-flip-active #setkaCycleBack {
+  -webkit-backface-visibility:hidden;
+  backface-visibility:hidden;
+  -webkit-transform-style:preserve-3d;
+  transform-style:preserve-3d;
+  transform-origin:center center;
+  will-change:transform;
+  pointer-events:none;
+}
+body.cycle-flip-active #setkaCycleBack[hidden]{display:block!important}
+body.cycle-flip-active #setkaCycleBack{pointer-events:none}
+</style>
+</head>
+<body>
+<main id="app">
+  <section id="libraryScreen" class="screen active" aria-label="Библиотека паттернов">
+    <div id="setkaCycleFrontFrame" aria-hidden="true"><svg class="setka-card-frame-svg" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" preserveAspectRatio="none"><path class="setka-card-frame-line"/><path class="setka-card-frame-arrows"/></svg></div>
+    <div class="library-pager" aria-label="Разделы библиотеки">
+      <button id="libraryPagerButton" class="pager-button active" type="button" aria-label="Исходные паттерны"><span class="pager-dot-mark"></span></button>
+      <button id="communityPagerButton" class="pager-button" type="button" aria-label="Библиотека сообщества"><span class="community-mark"><span></span><i></i></span></button>
+      <button id="favoritesPagerButton" class="pager-button" type="button" aria-label="Мои сохраненные конфигурации"><span class="pager-heart">♥</span></button>
+      <button id="setkaMusicPagerButton" class="pager-button" type="button" aria-label="Музыка">
+        <svg viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 17.8V5.4L20.5 3v12.5M9 7.3l11.5-2.4"/><ellipse cx="6.1" cy="18.2" rx="3.1" ry="2.1"/><ellipse cx="17.6" cy="16" rx="3.1" ry="2.1"/></svg>
+      </button>
+    </div>
+    <div id="libraryTitle" class="library-title">Сквиши</div>
+    <div id="librarySwipeArea" class="panel-wrap">
+      <div id="allPatternsPanel" class="pattern-panel" aria-label="Исходные паттерны"></div>
+      <div id="communityPanel" class="pattern-panel hidden-right" aria-label="Конфигурации сообщества"></div>
+      <div id="favoritesPanel" class="pattern-panel hidden-right" aria-label="Мои сохраненные конфигурации"></div>
+    </div>
+  </section>
+
+  <section id="gameScreen" class="screen" aria-label="Паттерн">
+    <canvas id="patternCanvas"></canvas>
+    <div class="game-ui">
+      <button id="favoriteButton" class="game-button" type="button" aria-label="Сохранить текущую конфигурацию">♡</button>
+      <button id="setkaGameMusicButton" class="game-button" type="button" aria-label="Быстро открыть музыку" aria-controls="setkaGameMusicSheet" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 17.8V5.4L20.5 3v12.5M9 7.3l11.5-2.4"/><ellipse cx="6.1" cy="18.2" rx="3.1" ry="2.1"/><ellipse cx="17.6" cy="16" rx="3.1" ry="2.1"/></svg></button>
+      <button id="libraryButton" class="game-button" type="button" aria-label="Вернуться назад"><svg viewBox="0 0 30 30" aria-hidden="true"><g fill="#fff"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="12" y="3" width="6" height="6" rx="1"/><rect x="21" y="3" width="6" height="6" rx="1"/><rect x="3" y="12" width="6" height="6" rx="1"/><rect x="12" y="12" width="6" height="6" rx="1"/><rect x="21" y="12" width="6" height="6" rx="1"/><rect x="3" y="21" width="6" height="6" rx="1"/><rect x="12" y="21" width="6" height="6" rx="1"/><rect x="21" y="21" width="6" height="6" rx="1"/></g></svg></button>
+      <button id="prevButton" class="side-arrow" type="button" aria-label="Предыдущий паттерн"><svg viewBox="0 0 30 60" aria-hidden="true"><path d="M23 6 L8 30 L23 54" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button id="nextButton" class="side-arrow" type="button" aria-label="Следующий паттерн"><svg viewBox="0 0 30 60" aria-hidden="true"><path d="M7 6 L22 30 L7 54" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <div id="modeLabel" class="mode-label"></div>
+      <section id="setkaGameMusicSheet" aria-label="Музыка SETKA во время сессии" aria-hidden="true">
+        <button id="setkaGameMusicGrip" class="sg-music-grip" type="button" aria-label="Потянуть для изменения высоты музыкальной карточки"></button>
+        <div class="sg-music-header"><h2>Музыка</h2></div>
+        <div id="setkaGameMusicContent" class="sg-music-content"><p id="setkaGameMusicLoading" class="sg-music-loading" hidden>Музыкальный каталог загружается…</p></div>
+      </section>
+      <div class="bottom-controls">
+        <button id="colorButton" class="round-control" type="button" aria-label="Следующий цветовой режим"><div id="colorDots" aria-hidden="true"></div><span class="droplet" aria-hidden="true"></span></button>
+        <button id="instructionsButton" class="round-control" type="button" aria-label="Инструкция по свайпам"><svg class="key-icon" viewBox="0 0 36 36" aria-hidden="true"><circle cx="12" cy="13" r="7" fill="none" stroke="#fff" stroke-width="2.5"/><path d="M17 18 L31 32 M25 26 L29 22 M21 22 L25 18" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      </div>
+      <div id="instructionsModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="instructionsTitle"><div class="instructions"><h2 id="instructionsTitle">Управление паттерном</h2><div class="gesture-group"><strong>1 палец</strong><div class="gesture-row"><span>Слева ↑↓</span><span>Количество щупалец: вверх больше, вниз меньше</span></div><div class="gesture-row"><span>Справа ↑↓</span><span>Размер кругов: вверх больше, вниз меньше</span></div><div class="gesture-row"><span>Сверху ←→</span><span>Толщина линий</span></div><div class="gesture-row"><span>Снизу ←→</span><span>Скорость движения</span></div></div><div class="gesture-group"><strong>2 пальца</strong><div class="gesture-row"><span>Слева ↑↓</span><span>Длина щупалец: вверх длиннее, вниз короче</span></div><div class="gesture-row"><span>Справа ↑↓</span><span>Плотность кругов: вверх плотнее, вниз реже</span></div><div class="gesture-row"><span>Снизу ←→</span><span>Скорость перелива цвета</span></div></div><button id="closeInstructionsButton" class="close-modal" type="button">Понятно</button></div></div>
+      <div id="toast" class="toast" aria-live="polite"></div>
+    </div>
+  </section>
+</main>
+<script src="standalone-pattern-registry-v1.js?v=1.2.1-transient-20261105"></script>
+<script>window.SetkaPatternRegistryV1.usePublicCatalog();</script>
+<script src="standalone-pattern-renderers-v1.js?v=3-grid-preview-aspect-20261021"></script>
+<script src="standalone-data-scope-v1.js?v=1"></script>
+<script src="standalone-auto-optimizer-v1.js?v=1.0.0-20261021"></script>
+<script src="standalone-panel-resize-v1.js?v=1"></script>
+<script src="app-v7-multipattern.js?v=1.7.2-bottom-sheet-live-previews-20261106"></script>
+<script src="standalone-pattern-plugins-v1.js?v=1.0.0-auto-renderers-20261020"></script>
+<script src="standalone-storage-v1.js?v=1.4.8"></script>
+<script src="standalone-core-v34.js?v=1.4.8-durable-storage"></script>
+<script src="standalone-inline-actions-v1.js?v=1.4.8"></script>
+<script src="standalone-runtime-v34.js?v=1.4.0-context"></script>
+<script src="standalone-favorites-repair-v34.js?v=46-unified-front-admin-1"></script>
+<script src="standalone-favorite-native-guard-v34.js?v=46-unified-front-admin-1"></script>
+<script src="standalone-multipattern-bridge-v34.js?v=1.4.0-catalog"></script>
+<!-- Legacy all-pattern info overlay removed: it always used tentacle-orbit. -->
+<script src="standalone-advanced-v34.js?v=1.3.0-no-demo"></script>
+<script src="standalone-analysis-v34.js?v=47-custom-config-personalization"></script>
+<script src="standalone-user-ui-v34.js?v=1.4.10-account-loading-20261020"></script>
+<script src="standalone-session-patterns-v34.js?v=46-unified-front-admin-1"></script>
+<script src="standalone-states-v34.js?v=1.4.9-account-loading-20261020"></script>
+<script src="standalone-state-timeline-v34.js?v=46-unified-front-admin-1"></script>
+<script src="standalone-session-states-v34.js?v=46-unified-front-admin-1"></script>
+<script src="standalone-explore-v34.js?v=46-unified-front-admin-1"></script>
+<script src="standalone-bootstrap-v34.js?v=46-unified-front-admin-1"></script>
+<script src="standalone-config-links-v34.js?v=46-unified-front-admin-1"></script>
+<script src="standalone-controls-v34.js?v=1.2.0-idempotent"></script>
+<script src="standalone-visual-cache-v40.js?v=50-dynamic-patterns-20261020"></script>
+<script src="standalone-privacy-egress-v40.js?v=46-unified-front-admin-1"></script>
+<script src="standalone-sync-v34.js?v=56-bot-data-isolation-20261112"></script>
+<script src="standalone-navigation-v34.js?v=1.2.0-sheet-scroll"></script>
+<script src="standalone-note-snapshot-fix-v34.js?v=registry-notes-legacy-safe-20261020"></script>
+<script src="standalone-public-visual-capsules-v40.js?v=1.4.8-text-notes"></script>
+<script src="standalone-tester-community-v34.js?v=live-and-inline-moderation-20261020"></script>
+<script src="standalone-privacy-contract-v40.js?v=46-unified-front-admin-1"></script>
+<script src="standalone-tester-cabinet-v40.js?v=1.5.5-server-acknowledged-status-20261021"></script>
+<script src="standalone-private-corpus-v40.js?v=1.5.3-account-ready-20261020"></script>
+<script src="standalone-personal-backup-v1.js?v=1-encrypted-user-owned-20261116"></script>
+<script src="standalone-guest-archive-v1.js?v=1.0.0"></script>
+<script src="standalone-guest-telemetry-v2.js?v=3-ignore-bot-20261112"></script>
+<script src="standalone-guest-journey-v3.js?v=5-ignore-bot-20261112"></script>
+<script src="standalone-account-journey-v1.js?v=3-ignore-bot-20261112"></script>
+<script src="standalone-account-exposure-v2.js?v=2-ignore-bot-20261112"></script>
+<script src="standalone-research-bridge-v40.js?v=1.4.0-exact-pulse"></script>
+<script src="standalone-community-cloud-v38.js?v=1.4.14-public-snapshot-20261115"></script>
+<script src="standalone-replay-capture-v1.js?v=1.3.0-research"></script>
+<script src="standalone-sheets-v1.js?v=1.4.8-note-drafts"></script>
+<script type="module" src="standalone-pulse-v1.mjs?v=1.4.0"></script>
+<script src="standalone-catalog-fallback-v1.js?v=20261114-only-on-error"></script>
+<script src="standalone-catalog-v1.js?v=1.4.2-only-on-error"></script>
+<script src="standalone-activity-v1.js?v=1.4.0"></script>
+<script src="standalone-audio-reactive-v4.js?v=4.3-generic-no-zoom-pumping-20261021"></script>
+<script src="standalone-pattern-key-v1.js?v=1.1.2-paired-20261105"></script>
+<script src="standalone-live-previews-v1.js?v=1.2.0-shared-performance-20261021"></script>
+<script type="module" src="standalone-music-v1.mjs?v=48-shared-gameplay-20261120"></script>
+
+<script id="setkaCycleSquishTitle">
+(function(){
+  "use strict";
+  /* User-facing vocabulary only, in this experimental build. Never
+     rewrite pattern IDs, registry names, stored notes, or user input. */
+  const forms=[
+    ["паттернами","сквишами"],["паттернов","сквишей"],
+    ["паттернам","сквишам"],["паттернах","сквишах"],
+    ["паттерном","сквишем"],["паттерны","сквиши"],
+    ["паттерне","сквише"],["паттерна","сквиша"],
+    ["паттерну","сквишу"],["паттерн","сквиш"]
+  ];
+  const dictionary=new Map(forms);
+  const rx=new RegExp(forms.map(pair=>pair[0]).join("|"),"giu");
+  const exclusions="script,style,noscript,textarea,input,[contenteditable],.st-note,.st34-note-text,.st37-public-card,.st34-note-message,.user-note";
+  function translate(value){
+    if(!value||!/паттерн/iu.test(value))return value;
+    return value.replace(rx,match=>{
+      const replacement=dictionary.get(match.toLowerCase())||match;
+      return match===match.toUpperCase()?replacement.toUpperCase():
+        match[0]===match[0].toUpperCase()?
+          replacement[0].toUpperCase()+replacement.slice(1):replacement;
+    });
+  }
+  function allow(el){
+    if(!el||el.closest(exclusions)){
+      // Standardized UI caption, but not the public user's note body.
+      return !!el?.closest(".st34-note-preview-label");
+    }
+    return true;
+  }
+  function updateText(node){
+    if(!node||!allow(node.parentElement))return;
+    const next=translate(node.nodeValue);
+    if(next!==node.nodeValue)node.nodeValue=next;
+  }
+  function updateAttributes(el){
+    if(!allow(el))return;
+    for(const attr of ["aria-label","title","placeholder"]){
+      if(!el.hasAttribute(attr))continue;
+      const old=el.getAttribute(attr),next=translate(old);
+      if(next!==old)el.setAttribute(attr,next);
+    }
+  }
+  function scan(node){
+    if(node.nodeType===3){updateText(node);return}
+    if(node.nodeType!==1||node.matches("script,style,noscript"))return;
+    if(!allow(node)&&!node.matches(".st37-public-card"))return;
+    updateAttributes(node);
+    const walker=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);
+    let textNode;
+    while((textNode=walker.nextNode()))updateText(textNode);
+    node.querySelectorAll("[aria-label],[title],[placeholder]").forEach(updateAttributes);
+  }
+  const observer=new MutationObserver(records=>{
+    for(const record of records){
+      if(record.type==="characterData")updateText(record.target);
+      else if(record.type==="attributes")updateAttributes(record.target);
+      else for(const added of record.addedNodes)scan(added);
+    }
+  });
+  scan(document.body);
+  observer.observe(document.body,{
+    subtree:true,childList:true,characterData:true,attributes:true,
+    attributeFilter:["aria-label","title","placeholder"]
+  });
+})();
+</script>
+
+<script src="./experiments/standalone-gameplay-overlays-v1.js?v=2-slide-and-grip-20261120"></script>
+<script src="./experiments/standalone-gameplay-music-v1.js?v=ed4b1e65-one-note"></script>
+<script src="./experiments/standalone-today-return-v1.js?v=51d5b8af-step-back"></script>
+
+<script src="./experiments/standalone-cycle-dock-rotation-v1.js?v=20261122-original-rotate-only"></script>
+<aside class="setka-cycle-overlay" id="setkaCycleBack" hidden aria-label="Календарь-лотос ALMA">
+  <iframe title="Оригинальный календарь цикла ALMA" src="./experiments/alma-cycle-source/index.html?v=20261121-inset-insights-c9d418" loading="eager"></iframe>
+  <div id="setkaCycleBackGuide" aria-hidden="true"><svg class="setka-card-frame-svg" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" preserveAspectRatio="none"><path class="setka-card-frame-line"/><path class="setka-card-frame-arrows"/></svg></div>
+</aside>
+<script src="./experiments/standalone-cycle-lotus-direct-v1.js?v=20261124-original-lotus-petal-hinge-v16"></script>
+<div id="setkaCycleOpen" class="setka-cycle-edge right" role="button" tabindex="0" aria-label="Повернуть карту с правого края"></div>
+<div id="setkaCycleReturn" class="setka-cycle-edge left" role="button" tabindex="0" aria-label="Повернуть карту с левого края"></div>
+<script>
+(function(){
+  "use strict";
+  // The native SETKA remains an untransformed top-level document at rest.
+  // Both edge gestures work on either card face. Gameplay is never captured.
+  const app=document.getElementById("app");
+  const back=document.getElementById("setkaCycleBack");
+  const libraryScreen=document.getElementById("libraryScreen");
+  const gameScreen=document.getElementById("gameScreen");
+  if(!app||!back||!libraryScreen||!gameScreen)return;
+
+  const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
+  const ease=t=>1-Math.pow(1-t,3);
+  const libraryVisible=()=>libraryScreen.classList.contains("active")&&!gameScreen.classList.contains("active");
+  const edgeIds=["setkaCycleOpen","setkaCycleReturn"];
+  const almaIframe=back.querySelector("iframe");
+  const backGuide=document.getElementById("setkaCycleBackGuide");
+  const frontFrame=document.getElementById("setkaCycleFrontFrame");
+  function outlinePaths(w,h){
+    // A normal rounded rectangle again: no protrusions in the card border.
+    const L=.5,R=w-.5,T=.5,B=h-.5,r=24,cy=h/2;
+    const d=[
+      "M "+(L+r)+" "+T,
+      "L "+(R-r)+" "+T,
+      "Q "+R+" "+T+" "+R+" "+(T+r),
+      "L "+R+" "+(B-r),
+      "Q "+R+" "+B+" "+(R-r)+" "+B,
+      "L "+(L+r)+" "+B,
+      "Q "+L+" "+B+" "+L+" "+(B-r),
+      "L "+L+" "+(T+r),
+      "Q "+L+" "+T+" "+(L+r)+" "+T,"Z"
+    ].join(" ");
+    // Tiny outward-only chevrons are in the screen margin,
+    // separated from the uninterrupted border by 4px+.
+    const arrows=[
+      "M "+(L-5)+" "+(cy-4.5)+" L "+(L-10)+" "+cy+" L "+(L-5)+" "+(cy+4.5),
+      "M "+(R+5)+" "+(cy-4.5)+" L "+(R+10)+" "+cy+" L "+(R+5)+" "+(cy+4.5)
+    ].join(" ");
+    return {d,arrows};
+  }
+  function renderOutlines(){
+    for(const el of [frontFrame,backGuide]){
+      if(!el||el.clientWidth<40||el.clientHeight<180)continue;
+      const svg=el.querySelector(".setka-card-frame-svg");
+      if(!svg)continue;
+      const w=el.clientWidth,h=el.clientHeight,p=outlinePaths(w,h);
+      svg.setAttribute("viewBox","0 0 "+w+" "+h);
+      svg.querySelector(".setka-card-frame-line").setAttribute("d",p.d);
+      svg.querySelector(".setka-card-frame-arrows").setAttribute("d",p.arrows);
+    }
+  }
+  if(typeof ResizeObserver==="function"){
+    const resizeObserver=new ResizeObserver(renderOutlines);
+    if(frontFrame)resizeObserver.observe(frontFrame);
+    if(backGuide)resizeObserver.observe(backGuide);
+  }
+  window.addEventListener("resize",renderOutlines,{passive:true});
+  renderOutlines();
+  requestAnimationFrame(renderOutlines);
+
+  // The ALMA source owns the cycle phase. Match its existing border color
+  // without changing ALMA content, dates or prediction logic.
+  function syncBackEarColor(){
+    try{
+      const hero=almaIframe?.contentDocument?.querySelector(".cycle-hero");
+      if(!hero||!backGuide)return;
+      const phase=almaIframe.contentWindow.getComputedStyle(hero).getPropertyValue("--cycle-color").trim();
+      if(phase)backGuide.style.setProperty("--setka-outline-color","color-mix(in srgb, "+phase+" 19%, rgba(255,255,255,.06))");
+    }catch(_){}
+  }
+  if(almaIframe){
+    almaIframe.addEventListener("load",()=>{
+      try{
+        const doc=almaIframe.contentDocument;
+        if(doc&&!doc.getElementById("setka-single-outline-style")){
+          const style=doc.createElement("style");
+          style.id="setka-single-outline-style";
+          style.textContent="#alma-cycle-root .cycle-hero{border-color:transparent!important;}";
+          doc.head.appendChild(style);
+        }
+      }catch(_){}
+      syncBackEarColor();
+      renderOutlines();
+      try{
+        const doc=almaIframe.contentDocument;
+        const root=doc.getElementById("alma-cycle-root");
+        if(root)new MutationObserver(syncBackEarColor).observe(root,{attributes:true,subtree:true,attributeFilter:["style","class"]});
+        doc.addEventListener("pointerup",syncBackEarColor,true);
+      }catch(_){}
+    });
+  }
+
+  let inCycle=false;
+  let progress=0;
+  let direction=-1; // -1: leftward rotation; +1: rightward rotation
+  let pointer=null;
+  let animationFrame=0;
+  let animating=false;
+  let animationToken=0;
+
+  function syncAvailability(){
+    const allowed=libraryVisible();
+    document.body.classList.toggle("setka-cycle-gameplay",!allowed);
+    for(const id of edgeIds){
+      const el=document.getElementById(id);
+      if(!el)continue;
+      el.tabIndex=allowed?0:-1;
+      el.setAttribute("aria-hidden",String(!allowed));
+    }
+  }
+
+  function setAtRest(cycle){
+    inCycle=!!cycle;
+    progress=inCycle?1:0;
+    document.body.classList.toggle("cycle-side",inCycle);
+    document.body.classList.remove("cycle-flip-active","cycle-busy");
+    window.SETKA_CYCLE_DOCK_ROTATION?.rest(inCycle);
+    window.SETKA_CYCLE_LOTUS_AXIS?.rest();
+    back.hidden=!inCycle;
+    back.inert=!inCycle;
+    if(inCycle)syncBackEarColor();
+    app.inert=inCycle;
+    app.style.visibility=inCycle?"hidden":"";
+    back.style.visibility="";
+    app.style.removeProperty("transform");
+    back.style.removeProperty("transform");
+    app.style.removeProperty("opacity");
+    back.style.removeProperty("opacity");
+    try{history.replaceState(null,"",location.pathname+location.search+(inCycle?"#cycle":""))}catch(_){}
+  }
+
+  function startVisual(){
+    back.hidden=false;
+    renderOutlines();
+    back.inert=true;
+    document.body.classList.add("cycle-flip-active");
+    window.SETKA_CYCLE_LOTUS_AXIS?.start();
+    // The dock never moves: only its five glyphs inherit the card's Y angle.
+    // Ensure both icon faces exist before the first swipe frame.
+    window.SETKA_CYCLE_DOCK_ROTATION?.render(direction*180*progress);
+    // Never show the reverse text before the card passes its edge.
+    const showFront=!inCycle;
+    app.style.visibility=showFront?"":"hidden";
+    app.style.opacity=showFront?"1":"0";
+    back.style.visibility=showFront?"hidden":"";
+    back.style.opacity=showFront?"0":"1";
+  }
+
+  function draw(p){
+    progress=clamp(p,0,1);
+    // Safari-safe: explicitly hide the non-facing surface, preventing
+    // mirrored text even when WebKit fails backface-visibility on an iframe.
+    const frontVisible=progress<.5;
+    app.style.visibility=frontVisible?"":"hidden";
+    app.style.opacity=frontVisible?"1":"0";
+    back.style.visibility=frontVisible?"hidden":"";
+    back.style.opacity=frontVisible?"0":"1";
+    const sign=direction;
+    const angle=sign*180*progress;
+    app.style.transform="perspective(1450px) rotateY("+angle+"deg)";
+    back.style.transform="perspective(1450px) rotateY("+(-sign*180*(1-progress))+"deg)";
+    window.SETKA_CYCLE_DOCK_ROTATION?.render(angle);
+    window.SETKA_CYCLE_LOTUS_AXIS?.render(progress,direction);
+  }
+
+  function cancelAnimation(){
+    animationToken++;
+    if(animationFrame)cancelAnimationFrame(animationFrame);
+    animationFrame=0;
+    animating=false;
+  }
+
+  function complete(target){
+    if(!libraryVisible()){cancelAnimation();setAtRest(false);syncAvailability();return;}
+    cancelAnimation();
+    const start=progress,end=target?1:0;
+    const dist=Math.abs(end-start);
+    if(dist<.001){setAtRest(target);return;}
+    animating=true;
+    document.body.classList.add("cycle-busy");
+    const token=animationToken;
+    const duration=240+420*dist;
+    let startTime=null;
+    function frame(t){
+      if(token!==animationToken)return;
+      if(!libraryVisible()){cancelAnimation();setAtRest(false);syncAvailability();return;}
+      if(startTime===null)startTime=t;
+      const a=clamp((t-startTime)/duration,0,1);
+      draw(start+(end-start)*ease(a));
+      if(a<1)animationFrame=requestAnimationFrame(frame);
+      else{animationFrame=0;animating=false;setAtRest(target);}
+    }
+    animationFrame=requestAnimationFrame(frame);
+  }
+
+  function pointerDown(event){
+    if(!libraryVisible()||animating||pointer)return;
+    if(event.pointerType==="mouse"&&event.button!==0)return;
+    pointer={
+      id:event.pointerId,
+      startX:event.clientX,
+      startY:event.clientY,
+      fromCycle:inCycle,
+      horizontal:false,
+      vertical:false
+    };
+    try{event.currentTarget.setPointerCapture(event.pointerId)}catch(_){}
+  }
+
+  function pointerMove(event){
+    if(!pointer||event.pointerId!==pointer.id)return;
+    if(!libraryVisible()){pointer=null;cancelAnimation();setAtRest(false);syncAvailability();return;}
+    const p=pointer,dx=event.clientX-p.startX,dy=event.clientY-p.startY;
+    if(!p.horizontal&&!p.vertical){
+      if(Math.abs(dy)>11&&Math.abs(dy)>Math.abs(dx)*1.2){p.vertical=true;return;}
+      if(Math.abs(dx)>12&&Math.abs(dx)>Math.abs(dy)*1.12){
+        p.horizontal=true;
+        // The visible surface must rotate in the SAME direction as the finger.
+        // Front (SETKA): visible angle = direction * 180 * progress.
+        // Back (cycle): visible angle = -direction * 180 * (1-progress).
+        // Since progress DECREASES on the return swipe, invert the sign there.
+        // Otherwise Safari shows the calendar turning opposite to the finger.
+        const fingerSign=dx>0?1:-1;
+        direction=p.fromCycle?-fingerSign:fingerSign;
+        cancelAnimation();startVisual();
+      }
+    }
+    if(p.vertical||!p.horizontal)return;
+    event.preventDefault();
+    const distance=Math.max(280,Math.min(innerWidth*.92,520));
+    const travel=Math.abs(dx)/distance;
+    draw(p.fromCycle?1-travel:travel);
+  }
+
+  function pointerEnd(event,cancelled){
+    if(!pointer||event.pointerId!==pointer.id)return;
+    const p=pointer;
+    pointer=null;
+    if(!libraryVisible()){cancelAnimation();setAtRest(false);syncAvailability();return;}
+    if(!p.horizontal||cancelled){
+      if(p.horizontal)complete(p.fromCycle);
+      return;
+    }
+    complete(progress>=.5);
+  }
+
+  function bindEdge(id){
+    const el=document.getElementById(id);
+    el.addEventListener("pointerdown",pointerDown);
+    el.addEventListener("pointermove",pointerMove,{passive:false});
+    el.addEventListener("pointerup",e=>pointerEnd(e,false));
+    el.addEventListener("pointercancel",e=>pointerEnd(e,true));
+    el.addEventListener("lostpointercapture",e=>pointerEnd(e,true));
+    el.addEventListener("keydown",e=>{
+      if((e.key==="Enter"||e.key===" ")&&!animating&&libraryVisible()){
+        e.preventDefault();
+        startVisual();draw(inCycle?1:0);complete(!inCycle);
+      }
+    });
+  }
+  for(const id of edgeIds)bindEdge(id);
+
+  function viewChanged(){
+    if(!libraryVisible()){
+      pointer=null;cancelAnimation();
+      if(inCycle||progress!==0)setAtRest(false);
+    }
+    syncAvailability();
+  }
+
+  window.addEventListener("setka:view",viewChanged);
+  new MutationObserver(viewChanged).observe(libraryScreen,{attributes:true,attributeFilter:["class"]});
+  new MutationObserver(viewChanged).observe(gameScreen,{attributes:true,attributeFilter:["class"]});
+  window.addEventListener("keydown",e=>{
+    if(e.key==="Escape"&&!animating&&inCycle&&libraryVisible()){
+      startVisual();draw(1);complete(false);
+    }
+  });
+
+  setAtRest(location.hash==="#cycle"&&libraryVisible());
+  syncAvailability();
+  window.SETKA_CYCLE_LAB={
+    flip:toCycle=>{
+      if(!libraryVisible()||animating||pointer||!!toCycle===inCycle)return;
+      startVisual();draw(inCycle?1:0);complete(!!toCycle);
+    },
+    getSide:()=>inCycle?"cycle":"setka",
+    getAngle:()=>Math.round(progress*180),
+    isAvailable:libraryVisible
+  };
+})();
+</script>
+
+
+<!-- Third face: real CSS 3D extrusion of the exact Russian title.
+     The default original front and cycle faces remain unmodified. -->
+<section id="setkaVerticalLogo" class="setka-vlogo" aria-label="Объёмный полигональный золотой сквиш SETKA" hidden>
+  <div id="setkaVerticalLogoCard" class="setka-vlogo-card" role="group" aria-label="Третья сторона карты SETKA">
+    <div class="setka-vlogo-space" role="img" aria-label="Объёмный золотой метабол с нерегулярными гранями">
+      <span class="setka-vlogo-crest" aria-hidden="true"></span>
+      <div id="setkaVerticalTitleObject" class="setka-vlogo-3d" aria-hidden="true">
+        <div class="setka-vlogo-line primary" id="setkaVerticalTitleOne"></div>
+        <div class="setka-vlogo-line secondary" id="setkaVerticalTitleTwo"></div>
+      </div>
+      <div class="setka-vlogo-shadow" aria-hidden="true"></div>
+    </div>
+    <span class="setka-vlogo-microcopy" aria-hidden="true">SETKA</span>
+  </div>
+</section>
+<button id="setkaVerticalGripTop" class="setka-vlogo-hotspot top" type="button" aria-label="Повернуть карту вертикально вверх">
+  <svg viewBox="0 0 16 10" aria-hidden="true"><path d="M2 2 L8 8 L14 2"/></svg>
+</button>
+<button id="setkaVerticalGripBottom" class="setka-vlogo-hotspot bottom" type="button" aria-label="Повернуть карту вертикально вниз">
+  <svg viewBox="0 0 16 10" aria-hidden="true"><path d="M2 2 L8 8 L14 2"/></svg>
+</button>
+<script src="./experiments/setka-metaball-mesh-v1.js?v=20261123-honey08-original-live"></script>
+<script src="./experiments/standalone-vertical-logo-globe-v3.js?v=20261123-honey08-tap-energy"></script>
+<script src="./experiments/standalone-vertical-logo-v1.js?v=20261122-dock-attached"></script>
+
+</body>
+</html>
