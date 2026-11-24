@@ -239,21 +239,28 @@ function radialTensionFold(ch,x,y,inside){
  return {dent,shoulder,active};
 }
 function solidLetter(ch,upper,preset){
- const pixelScale=upper?1.5:1,S=Math.round(96*pixelScale),unit=4.275*pixelScale,scale=preset.size*.0135,k=upper?(ch==="Ш"?3.2:3.9):5,width=upper?(ch==="Ш"?26:19):14;
+ const pixelScale=upper?1.5:2,S=Math.round(96*pixelScale),unit=4.275*pixelScale,scale=preset.size*.0135,k=upper?(ch==="Ш"?3.2:3.9):5,width=upper?(ch==="Ш"?26:19):14;
  const seg=strokeSegments((upper?megaPaths:bladePaths)[ch],k*.75*pixelScale,(64-width*k/2)*.75*pixelScale,(upper?64-10*k:23)*.75*pixelScale);
  const radius=(upper?7.6:2)*k*.75*pixelScale/2,field=new Float32Array(S*S),height=new Float32Array(S*S),creases=new Float32Array(S*S);
  let foldDepth=0,foldVertices=0,protectedLowerSamples=0,protectedLowerDent=0,straightSamples=0,straightDent=0,edgeFoldDepth=0;
  const yStretch=upper&&ch==="Ш"?1.25:1;
  let xmin=S,xmax=0,ymin=S,ymax=0,peak=1;
+ let refXmin=S,refXmax=0,refYmin=S,refYmax=0,refPeak=1;
  const strokes=seg.map(([ax,ay,bx,by])=>{const len=Math.hypot(bx-ax,by-ay)||1;return{ax,ay,len,ux:(bx-ax)/len,uy:(by-ay)/len};});
  for(let y=0;y<S;y++)for(let x=0;x<S;x++){
  let d=-1e4;for(const q of strokes){const dx=x-q.ax,dy=y-q.ay,t=dx*q.ux+dy*q.uy,side=Math.abs(-dx*q.uy+dy*q.ux);
  const a=upper?radius-Math.hypot(t-clamp(t,0,q.len),side):Math.min(radius-side,t+radius,q.len+radius-t);d=Math.max(d,a);}
 
  if(!x||!y||x===S-1||y===S-1)d=Math.min(-1,d);
- field[y*S+x]=d;if(d>=0){xmin=Math.min(xmin,x);xmax=Math.max(xmax,x);ymin=Math.min(ymin,y);ymax=Math.max(ymax,y);peak=Math.max(peak,d);}
+ field[y*S+x]=d;if(d>=0){xmin=Math.min(xmin,x);xmax=Math.max(xmax,x);ymin=Math.min(ymin,y);ymax=Math.max(ymax,y);peak=Math.max(peak,d);
+  if(!upper&&x%2===0&&y%2===0&&x<S-2&&y<S-2&&x>0&&y>0){refXmin=Math.min(refXmin,x);refXmax=Math.max(refXmax,x);refYmin=Math.min(refYmin,y);refYmax=Math.max(refYmax,y);refPeak=Math.max(refPeak,d);}
  }
- const half=upper?peak*1.15:Math.max(2.85,Math.min(6.75,peak*.8+2.25)),bevel=upper?peak:Math.max(1,peak*.45);
+ }
+ // Preserve the approved dimensions and depth on the old 96px reference
+ // grid; the finer grid improves only sampling, not size or letter spacing.
+ const half=upper?peak*1.15:pixelScale*Math.max(2.85,Math.min(6.75,refPeak/pixelScale*.8+2.25)),
+ bevel=upper?peak:pixelScale*Math.max(1,refPeak/pixelScale*.45);
+ if(!upper){xmin=refXmin;xmax=refXmax;ymin=refYmin;ymax=refYmax;}
  const seamLoops=upper?balloonSeamLoops(field,S):[];
  const base=new Float32Array(S*S);
  for(let i=0;i<field.length;i++){
@@ -302,6 +309,17 @@ function solidLetter(ch,upper,preset){
  function vertex(q,sign){
  let nx=-(read(height,q.x+1,q.y)-read(height,q.x-1,q.y))*.5,ny=(read(height,q.x,q.y+1)-read(height,q.x,q.y-1))*.5,nz=sign/(preset.volume/100);
  if(q.z===0){nx=-(read(field,q.x+1,q.y)-read(field,q.x-1,q.y));ny=read(field,q.x,q.y+1)-read(field,q.x,q.y-1);nz=0;if(Math.hypot(nx,ny)<1e-6)nz=sign;}
+ if(!upper){
+  // Differentiate the continuous signed distance, rather than rounding
+  // subpixel bevel vertices to the nearest cell. This removes periodic
+  // steps in the reflective normals along diagonal and straight strokes.
+  const d=Math.max(0,interp(field,q.x,q.y)),r=.8*pixelScale;
+  const gx=-(interp(field,q.x+r,q.y)-interp(field,q.x-r,q.y))/(2*r);
+  const gy=(interp(field,q.x,q.y+r)-interp(field,q.x,q.y-r))/(2*r);
+  const t=clamp(d/bevel,0,1),z=Math.sqrt(Math.max(1e-8,t*(2-t)));
+  const slope=half/bevel*(1-t);
+  nx=gx*slope;ny=gy*slope;nz=sign*z/(preset.volume/100);
+ }
  if(upper){
   const d=Math.max(0,interp(field,q.x,q.y)),r=1.3*pixelScale;
   const fx=-(interp(field,q.x+r,q.y)-interp(field,q.x-r,q.y))/(2*r),fy=(interp(field,q.x,q.y+r)-interp(field,q.x,q.y-r))/(2*r);
@@ -320,7 +338,7 @@ function solidLetter(ch,upper,preset){
  const data=new Float32Array(back.concat(front)),buffer=gl.createBuffer();
  if(!data.length||!data.every(Number.isFinite))throw Error("Invalid solid title "+ch);
  gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW);
- return {buffer,count:data.length/7,width:Math.max(4,(xmax-xmin+1)/unit)*scale,depth:2*half/unit*scale*preset.volume/100,foldDepth,foldVertices,protectedLowerSamples,protectedLowerDent,straightSamples,straightDent,edgeFoldDepth,seamLoops:seamLoops.length,height:(ymax-ymin+1)/unit*scale*yStretch,yStretch};
+ return {buffer,count:data.length/7,width:Math.max(4,(xmax-xmin+(upper?1:pixelScale))/unit)*scale,depth:2*half/unit*scale*preset.volume/100,foldDepth,foldVertices,protectedLowerSamples,protectedLowerDent,straightSamples,straightDent,edgeFoldDepth,seamLoops:seamLoops.length,height:(ymax-ymin+(upper?1:pixelScale))/unit*scale*yStretch,yStretch,pixelScale};
 }
 const titleParts=[TITLE_PRESET.top,TITLE_PRESET.bottom].map((preset,i)=>{
  const entries=[...preset.text].map((ch,j)=>{const g=ch===" "?null:solidLetter(ch,i===0,preset);return {g,j,width:(g?g.width:6*preset.size*.0135)+preset.spacing*preset.size*.0135};});
@@ -568,7 +586,11 @@ function resize(){
  // Add transparent overscan around the flat card so the planet can extend
  // past its edge while the user holds it at an intermediate rotation.
  const padX=72,padY=60,renderW=w+2*padX,renderH=h+2*padY;
- const dpr=Math.min(1.8,window.devicePixelRatio||1);
+ // Render on the native Retina grid where possible, with an explicit
+ // framebuffer budget so the fluid animation stays usable on phones.
+ const maxPixels=4200000;
+ const maxSide=gl.getParameter(gl.MAX_RENDERBUFFER_SIZE)||4096;
+ const dpr=Math.min(3,window.devicePixelRatio||1,Math.sqrt(maxPixels/(renderW*renderH)),maxSide/Math.max(renderW,renderH));
  const pw=Math.max(2,Math.round(renderW*dpr)),ph=Math.max(2,Math.round(renderH*dpr));
  if(canvas.width!==pw||canvas.height!==ph){
    canvas.style.width=renderW+"px";
@@ -576,6 +598,7 @@ function resize(){
    canvas.style.top="calc(var(--setka-cycle-card-top,12px) - "+padY+"px)";
    canvas.width=pw;canvas.height=ph;gl.viewport(0,0,pw,ph);
  }
+ stats.renderPixelRatio=dpr;stats.framebufferPixels=pw*ph;
  return{w,h,renderW,renderH,aspect:renderW/renderH};
 }
 function paint(){
@@ -693,7 +716,7 @@ card.addEventListener("pointerup",e=>endFluidPointer(e),{passive:true});
 card.addEventListener("pointercancel",e=>endFluidPointer(e,true),{passive:true});
 window.SETKA_SOLID_WORDMARK={
  render,
- getInfo:()=>({...stats,real3D:true,renderer:"WebGL original honey #08 live rebuilt",angle,active,rigid:true,continuous:true,metaball:true,faceted:true,globeDecorations:false,animatedFluid:true,liveRebuild:true,depthOcclusion:true,tapExcitation:true,excitationLevel:excitement,taps:tapCount,titleText:TITLE,titlePhase,titleVelocity,titleStyle:"circular-seal-mega-bubble-cyber-blade",titlePreset:TITLE_PRESET,logoCardCenterY:LOGO_Y,captionPlane:CAPTION,captionWebGL:!!caption,captionRasterDensity:caption?.density||0,captionSideVertices:caption?.sideCount||0,captionEdgeVisibility:captionEdgeVisibility(angle),titleSolidMeshes:true,titleJellyLighting:"world-space-latex-softboxes-v1",titleBalloonFolds:"interior-radial-tension-v6",titleFoldStats:titleParts.flat().map(e=>({depth:e.g.foldDepth,vertices:e.g.foldVertices,protectedLowerSamples:e.g.protectedLowerSamples,protectedLowerDent:e.g.protectedLowerDent,straightSamples:e.g.straightSamples,straightDent:e.g.straightDent,edgeFoldDepth:e.g.edgeFoldDepth,seamLoops:e.g.seamLoops,height:e.g.height,yStretch:e.g.yStretch})),titleMeshCounts:titleParts.flat().map(e=>e.g.count),titleMeshDepths:titleParts.flat().map(e=>e.g.depth),titleNeuralPulse:false}),
+ getInfo:()=>({...stats,real3D:true,renderer:"WebGL original honey #08 live rebuilt",angle,active,rigid:true,continuous:true,metaball:true,faceted:true,globeDecorations:false,animatedFluid:true,liveRebuild:true,depthOcclusion:true,tapExcitation:true,excitationLevel:excitement,taps:tapCount,titleText:TITLE,titlePhase,titleVelocity,titleStyle:"circular-seal-mega-bubble-cyber-blade",titlePreset:TITLE_PRESET,logoCardCenterY:LOGO_Y,captionPlane:CAPTION,captionWebGL:!!caption,captionRasterDensity:caption?.density||0,captionSideVertices:caption?.sideCount||0,captionEdgeVisibility:captionEdgeVisibility(angle),titleSolidMeshes:true,titleJellyLighting:"world-space-latex-softboxes-v1",titleBalloonFolds:"interior-radial-tension-v6",titleFoldStats:titleParts.flat().map(e=>({depth:e.g.foldDepth,vertices:e.g.foldVertices,protectedLowerSamples:e.g.protectedLowerSamples,protectedLowerDent:e.g.protectedLowerDent,straightSamples:e.g.straightSamples,straightDent:e.g.straightDent,edgeFoldDepth:e.g.edgeFoldDepth,seamLoops:e.g.seamLoops,height:e.g.height,yStretch:e.g.yStretch})),titleMeshCounts:titleParts.flat().map(e=>e.g.count),titleMeshDepths:titleParts.flat().map(e=>e.g.depth),titleMeshSampling:titleParts.flat().map(e=>e.g.pixelScale),titleNeuralPulse:false}),
  dispose(){
   disposed=true;active=false;stopAnimation();canvas.remove();
   if(caption){gl.deleteTexture(caption.texture);gl.deleteBuffer(caption.buffer);gl.deleteBuffer(caption.sideBuffer);}

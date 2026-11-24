@@ -7,7 +7,7 @@ const meshCode=fs.readFileSync('experiments/setka-metaball-mesh-v1.js','utf8');
 const rendererCode=fs.readFileSync('experiments/standalone-vertical-logo-globe-v3.js','utf8');
 const experiment=fs.readFileSync('standalone-v34-cycle-logo3d.html','utf8');
 
-function harness(){
+function harness(dpr=1){
  let clock=1000;
  const handlers=new Map(), frames=[];
  const history=[],titleDraws=[],buffers=new Map();
@@ -41,7 +41,7 @@ function harness(){
  };
  const ctx2d={letterSpacing:'0px',fontKerning:'auto',measureText:s=>({width:s.length*40}),scale(){},getImageData(x,y,w,h){const data=new Uint8ClampedArray(w*h*4);for(let j=80;j<125;j++)for(let i=100;i<120;i++)data[(j*w+i)*4+3]=235;return{data};},fillText(s,x,y){captionDraws.push({s,x,y,font:this.font,spacing:this.letterSpacing});}};
  const canvas={style:{},setAttribute(){},getContext(kind){return kind==='2d'?ctx2d:gl},addEventListener(){},remove(){}};
- const window={innerWidth:390,innerHeight:820,devicePixelRatio:1,addEventListener(){}};
+ const window={innerWidth:390,innerHeight:820,devicePixelRatio:dpr,addEventListener(){}};
  const document={
   body:{appendChild(){},classList:{add(){},remove(){}}},
   getElementById(id){return id==='setkaVerticalLogoCard'?card:null},
@@ -295,4 +295,17 @@ test('caption face stays clean at rest and thickness fades in smoothly on turnin
  assert.equal(h.shifts.filter(x=>x.pass===3).slice(-1)[0].data.join(','),rest);
  assert.ok(h.shifts.slice(n).every(x=>x.pass!==4));
  assert.match(rendererCode,/gl.depthFunc\(gl.LESS\)/);
+});
+
+test('Cyber Blade doubles mesh sampling and retains native Retina antialiasing within budget',()=>{
+ const h=harness(3),info=h.api.getInfo();
+ assert.ok(info.titleMeshSampling.slice(0,5).every(x=>x===1.5));
+ assert.ok(info.titleMeshSampling.slice(5).every(x=>x===2));
+ assert.ok(info.renderPixelRatio>2.8&&info.renderPixelRatio<=3);
+ assert.ok(info.framebufferPixels<=4205000);
+ assert.ok(info.titleMeshCounts.every(x=>x>0&&x%3===0));
+ assert.ok(h.titleDraws.every(x=>x.finite));
+ assert.match(rendererCode,/const t=clamp\(d\/bevel,0,1\),z=Math.sqrt/);
+ assert.match(rendererCode,/refPeak\/pixelScale/);
+ assert.match(experiment,/cyber-aa-v1/);
 });
