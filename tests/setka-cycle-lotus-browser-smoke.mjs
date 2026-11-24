@@ -76,4 +76,18 @@ try{
  assert.ok(reverse,"reverse swipe reuses the same original SVG");
  await page.mouse.up();
  await page.waitForFunction(()=>!window.SETKA_CYCLE_LOTUS_AXIS?.getInfo().turning,null,{timeout:25000});
+ // The same original React button must still open its native ALMA calendar
+ // after TWO cross-document adoptions. Merely restoring an SVG is not enough.
+ const clickReady=await page.evaluate(()=>{
+  const iframe=document.querySelector("#setkaCycleBack iframe");
+  const btn=iframe?.contentDocument?.querySelector(".cycle-lotus-button");
+  const same=btn?.querySelector("svg.cycle-lotus")===window.__setkaRealSVG;
+  if(!same)return false;
+  btn.click();
+  return true;
+ });
+ assert.ok(clickReady,"original ALMA button and SVG survive two rotations");
+ await page.waitForFunction(()=>
+  !!document.querySelector("#setkaCycleBack iframe")?.contentDocument?.querySelector(".sheet-layer"),
+  null,{timeout:7000});
 }finally{await browser?.close().catch(()=>{});server.kill("SIGTERM")}
