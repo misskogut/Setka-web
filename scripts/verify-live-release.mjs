@@ -4,7 +4,13 @@ import fs from 'node:fs';
 import {createHash} from 'node:crypto';
 const base=(process.env.SETKA_PUBLIC_BASE||'https://misskogut.github.io/Setka-web/').replace(/\/?$/,'/');
 const sha=(process.env.GITHUB_SHA||'').toLowerCase();
+const logoPage='standalone-v34-cycle-logo3d.html';
+const logoHtml=fs.readFileSync(logoPage,'utf8');
+const logoRenderer=logoHtml.match(/src="\.\/(experiments\/standalone-vertical-logo-globe-v3\.js\?[^"]+)"/)?.[1];
+if(!logoRenderer)throw Error('Missing versioned logo renderer');
 const checks=[
+ {path:logoPage,label:'Фронт трёхсторонней карточки SETKA',exact:true},
+ {path:logoRenderer.split('?')[0],urlPath:logoRenderer,label:'3D логотип — опубликованный версионированный рендерер',exact:true},
  {path:'standalone-v34.html',label:'Фронт'},
  {path:'standalone-research-admin-v1.html',label:'Исследовательская админка'},
  {path:'standalone-research-admin-copy-v6.html',label:'Копия админки V6'},
@@ -26,12 +32,13 @@ for(const check of checks){
  for(let attempt=1;attempt<=8;attempt++){
   result.attempts=attempt;
   try{
-   const url=new URL(check.path,base);url.searchParams.set('setka_smoke',sha||Date.now().toString());
+   const url=new URL(check.urlPath||check.path,base);if(!check.urlPath)url.searchParams.set('setka_smoke',sha||Date.now().toString());
    const response=await fetch(url,{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(12000)});
    if(!response.ok)throw Error('HTTP '+response.status);
    const body=await response.text();
    if(body.length<100)throw Error('Пустой или неполный ответ');
-   if(check.path.endsWith('.html')&&sha&&!body.includes(sha))throw Error('Сайт ещё отдаёт предыдущую сборку');
+   if(!check.exact&&check.path.endsWith('.html')&&sha&&!body.includes(sha))throw Error('Сайт ещё отдаёт предыдущую сборку');
+   if(check.exact&&digest(body)!==digest(fs.readFileSync(check.path,'utf8')))throw Error('Публичный файл отличается от сборки');
    if(check.path.endsWith('.json')){
     const data=JSON.parse(body);
     if(!Array.isArray(data.patterns))throw Error('Нет списка patterns');

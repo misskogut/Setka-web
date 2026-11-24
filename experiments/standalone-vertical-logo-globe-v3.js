@@ -31,8 +31,8 @@ function shader(kind,src){
  }
  return sh;
 }
-const vert="precision highp float;\nattribute vec3 aPosition;attribute vec3 aNormal;attribute float aMaterial;\nuniform mat4 uProjection;uniform float uFlip;uniform float uScale;\nvarying vec3 vN;varying float vAngle;\nvec3 rotX(vec3 p,float a){float c=cos(a),s=sin(a);return vec3(p.x,p.y*c-p.z*s,p.y*s+p.z*c);}\nvoid main(){\n vec3 p=aPosition*uScale;\n vec3 world=rotX(p,uFlip);\n vN=normalize(rotX(aNormal,uFlip));\n vAngle=aMaterial;\n gl_Position=uProjection*vec4(world.xy,world.z-1450.,1.);\n}";
-const frag="precision highp float;\nvarying vec3 vN;varying float vAngle;\nuniform float uTime;\nuniform float uTitlePass;\nvoid main(){\n if(uTitlePass > 0.5){ gl_FragColor=vec4(.83,.68,.90,clamp(-vAngle*.82,0.,1.)); return; }\n vec3 n=normalize(vN);\n vec3 light=normalize(vec3(-.52,.77,.95));\n vec3 specLight=normalize(vec3(-.30,.42,1.19));\n float lam=max(dot(n,light),0.);\n float rim=pow(1.-abs(n.z),2.4);\n float spec=pow(max(dot(n,specLight),0.),27.);\n float env=pow(abs(sin((n.x*.71+n.y*.23+n.z*.37)*10.8+uTime*.33)),13.)\n          +.38*pow(abs(sin((n.x*1.2+n.z*.13)*3.9+2.)),12.);\n float flick=.16*max(0.,sin(vAngle+uTime*.39));\n vec3 rgb=vec3(87.+127.*lam+115.*env+40.*spec+flick*30.,\n               37.+104.*lam+86.*env+37.*spec+flick*18.,\n               4.+45.*lam+28.*env+20.*spec+flick*4.);\n gl_FragColor=vec4(clamp(rgb/255.,0.,1.),1.);\n}";
+const vert="precision highp float;\nattribute vec3 aPosition;attribute vec3 aNormal;attribute float aMaterial;\nuniform mat4 uProjection;uniform float uFlip;uniform float uScale;uniform float uTitlePass;uniform vec2 uTitleViewport;\nvarying vec3 vN;varying float vAngle;\nvec3 rotX(vec3 p,float a){float c=cos(a),s=sin(a);return vec3(p.x,p.y*c-p.z*s,p.y*s+p.z*c);}\nvoid main(){\n vec3 p=aPosition*uScale;\n vec3 world=rotX(p,uFlip);\n vN=normalize(rotX(aNormal,uFlip));\n vAngle=aMaterial;\n gl_Position=uProjection*vec4(world.xy,world.z-1450.,1.);\n if(uTitlePass>.5){\n  vec3 end=rotX((aPosition+aNormal)*uScale,uFlip);\n  vec4 other=uProjection*vec4(end.xy,end.z-1450.,1.);\n  vec2 delta=(other.xy/other.w-gl_Position.xy/gl_Position.w)*uTitleViewport;\n  float len=length(delta);vec2 perp=len>.0001?vec2(-delta.y,delta.x)/len:vec2(0.,1.);\n  float side=sign(aMaterial);\n  gl_Position.xy+=perp*side*vec2(2./uTitleViewport.x,2./uTitleViewport.y)*3.8*gl_Position.w;\n  vN=vec3(side,0.,0.);vAngle=abs(aMaterial);\n }\n}";
+const frag="precision highp float;\nvarying vec3 vN;varying float vAngle;\nuniform float uTime;\nuniform float uTitlePass;\nvoid main(){\n if(uTitlePass > 0.5){\n  float channel=floor((vAngle-1.)*.5);\n  float distanceAlong=mod(vAngle-1.,2.);\n  float wave=fract(distanceAlong*3.-uTime*.48);\n  float pulse=exp(-pow((wave-.34)*8.,2.));\n  float edge=abs(vN.x);\n  float core=1.-smoothstep(.21,.43,edge);\n  float halo=exp(-edge*edge*5.5)*(1.-smoothstep(.77,1.,edge));\n  float weight=channel<.5?1.:(channel<1.5?.62:.74);\n  vec3 blue=mix(vec3(.27,.23,1.),vec3(.20,.90,1.),pulse);\n  vec3 hot=mix(vec3(.63,.79,1.),vec3(.98,1.,1.),pulse);\n  float alpha=weight*max(core*.97,halo*(.24+.24*pulse));\n  gl_FragColor=vec4(mix(blue,hot,core),alpha);return;\n }\n vec3 n=normalize(vN);\n vec3 light=normalize(vec3(-.52,.77,.95));\n vec3 specLight=normalize(vec3(-.30,.42,1.19));\n float lam=max(dot(n,light),0.);\n float rim=pow(1.-abs(n.z),2.4);\n float spec=pow(max(dot(n,specLight),0.),27.);\n float env=pow(abs(sin((n.x*.71+n.y*.23+n.z*.37)*10.8+uTime*.33)),13.)\n          +.38*pow(abs(sin((n.x*1.2+n.z*.13)*3.9+2.)),12.);\n float flick=.16*max(0.,sin(vAngle+uTime*.39));\n vec3 rgb=vec3(87.+127.*lam+115.*env+40.*spec+flick*30.,\n               37.+104.*lam+86.*env+37.*spec+flick*18.,\n               4.+45.*lam+28.*env+20.*spec+flick*4.);\n gl_FragColor=vec4(clamp(rgb/255.,0.,1.),1.);\n}";
 let prog=null,buf=null,total=0,stats=null;
 try{
  const v=shader(gl.VERTEX_SHADER,vert),f=shader(gl.FRAGMENT_SHADER,frag);
@@ -48,6 +48,7 @@ const U={projection:gl.getUniformLocation(prog,"uProjection"),
  scale:gl.getUniformLocation(prog,"uScale"),
  time:gl.getUniformLocation(prog,"uTime"),
  titlePass:gl.getUniformLocation(prog,"uTitlePass"),
+ titleViewport:gl.getUniformLocation(prog,"uTitleViewport"),
  motion:null};
 
 /* Port of the original approved #08 CPU isosurface renderer.
@@ -156,7 +157,8 @@ const contours={
 };
 const titleWidths={"Ш":14,"М":14,"А":14,"Д":14,"С":11," ":7};
 function titleGeometry(){
- const out=[],R=145,depth=99,tilt=.36,unit=1.35;
+ const out=[],segments=[],R=145,depth=99,tilt=.36,unit=1.35;
+ let travelled=0;
  const widths=[...TITLE].map(c=>titleWidths[c]||12);
  const span=widths.reduce((a,b)=>a+b+2,0)*unit;
  let cursor=-span/2;
@@ -166,7 +168,7 @@ function titleGeometry(){
   const pz=depth*cs-x*sn+z*cs;
   return [px*Math.cos(tilt)-y*Math.sin(tilt),px*Math.sin(tilt)+y*Math.cos(tilt)-18,110+pz];
  }
- function line(a,b,shade){for(const p of [a,b])out.push(...p,0,0,1,-shade)}
+ function line(a,b,channel,start,end){segments.push({a,b,channel,start,end})}
  [...TITLE].forEach((c,i)=>{
   const width=widths[i],theta=titlePhase+(cursor+width*unit/2)/R;
   cursor+=(width+2)*unit;
@@ -174,25 +176,42 @@ function titleGeometry(){
    const at=(p,z)=>point(theta,(p[0]-width/2)*unit,(8-p[1])*unit,z);
    for(let j=0;j<contour.length-1;j++){
     const a=contour[j],b=contour[j+1];
-    line(at(a,0),at(b,0),.94);
-    line(at(a,-3.2),at(b,-3.2),.53);
-    line(at(a,0),at(a,-3.2),.60);
+    const length=Math.hypot(b[0]-a[0],b[1]-a[1])*unit;
+    const start=travelled,end=travelled+length;
+    line(at(a,0),at(b,0),0,start,end);
+    line(at(a,-3.2),at(b,-3.2),1,start,end);
+    line(at(a,0),at(a,-3.2),2,start,start);
+    travelled=end;
    }
   }
  });
+ // Expand every 3D contour segment to a camera-facing ribbon. Unlike
+ // gl.lineWidth this is consistently thick on mobile Safari and desktop.
+ for(const {a,b,channel,start,end} of segments){
+  const delta=b.map((v,i)=>v-a[i]);
+  if(Math.hypot(...delta)<.0001)continue;
+  const t0=1+channel*2+start/Math.max(1,travelled)*.999;
+  const t1=1+channel*2+end/Math.max(1,travelled)*.999;
+  for(const [p,t,side] of [[a,t0,-1],[a,t0,1],[b,t1,-1],[b,t1,-1],[a,t0,1],[b,t1,1]])out.push(...p,...delta,t*side);
+ }
  return new Float32Array(out);
 }
 function drawTitle(){
  const data=titleGeometry();
  gl.bindBuffer(gl.ARRAY_BUFFER,titleBuffer);
- gl.bufferData(gl.ARRAY_BUFFER,data,gl.DYNAMIC_DRAW);
  bindMesh(titleBuffer);
  // Explicit draw-pass selection: the honey facet phase can be negative too.
  gl.uniform1f(U.titlePass,1);
  gl.enable(gl.BLEND);
  gl.blendFuncSeparate(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA,gl.ONE,gl.ONE_MINUS_SRC_ALPHA);
  gl.depthMask(false);
- gl.drawArrays(gl.LINES,0,data.length/7);
+ // Keep small chunks for mobile GPU uploads; each has whole triangles.
+ const chunk=6*7*200;
+ for(let i=0;i<data.length;i+=chunk){
+  const part=data.subarray(i,i+chunk);
+  gl.bufferData(gl.ARRAY_BUFFER,part,gl.DYNAMIC_DRAW);
+  gl.drawArrays(gl.TRIANGLES,0,part.length/7);
+ }
  gl.depthMask(true);
  gl.disable(gl.BLEND);
  gl.uniform1f(U.titlePass,0);
@@ -319,6 +338,7 @@ function paint(){
  gl.uniform1f(U.flip,-angle*Math.PI/180);
  gl.uniform1f(U.scale,scale);
  gl.uniform1f(U.time,phase);
+ gl.uniform2f(U.titleViewport,f.renderW,f.renderH);
  gl.uniform1f(U.titlePass,0);
 
  // First draw an invisible, infinitely thin card to the DEPTH BUFFER.
@@ -419,7 +439,7 @@ card.addEventListener("pointerup",e=>endFluidPointer(e),{passive:true});
 card.addEventListener("pointercancel",e=>endFluidPointer(e,true),{passive:true});
 window.SETKA_SOLID_WORDMARK={
  render,
- getInfo:()=>({...stats,real3D:true,renderer:"WebGL original honey #08 live rebuilt",angle,active,rigid:true,continuous:true,metaball:true,faceted:true,globeDecorations:false,animatedFluid:true,liveRebuild:true,depthOcclusion:true,tapExcitation:true,excitationLevel:excitement,taps:tapCount,titleText:TITLE,titlePhase,titleVelocity,titleStyle:"hollow-3d-contours"}),
+ getInfo:()=>({...stats,real3D:true,renderer:"WebGL original honey #08 live rebuilt",angle,active,rigid:true,continuous:true,metaball:true,faceted:true,globeDecorations:false,animatedFluid:true,liveRebuild:true,depthOcclusion:true,tapExcitation:true,excitationLevel:excitement,taps:tapCount,titleText:TITLE,titlePhase,titleVelocity,titleStyle:"electro-neon-contours",titleNeuralPulse:true}),
  dispose(){
   disposed=true;active=false;stopAnimation();canvas.remove();
   gl.deleteBuffer(buf);gl.deleteBuffer(plateBuffer);gl.deleteBuffer(titleBuffer);gl.deleteProgram(prog);
