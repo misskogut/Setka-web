@@ -1,0 +1,36 @@
+name: Experimental ALMA native React 3D lab (branch only)
+on:
+  push:
+    branches:
+      - "experiments/alma-native-root-3d-v20"
+    paths:
+      - "standalone-v34-cycle-native3d-v20.html"
+      - "experiments/standalone-cycle-native-depth-v20.js"
+      - "experiments/standalone-cycle-native-depth-v20.css"
+      - "tests/setka-alma-native-v20-browser-smoke.mjs"
+      - ".github/workflows/alma-native-depth-v20-lab.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native-webkit:
+    runs-on: ubuntu-latest
+    container: mcr.microsoft.com/playwright:v1.64.1-noble
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install test tools
+        run: npm install --no-save --ignore-scripts playwright@1.64.1 pngjs
+      - name: Chromium native 3D
+        run: node tests/setka-alma-native-v20-browser-smoke.mjs
+      - name: WebKit native 3D
+        run: SETKA_BROWSER=webkit node tests/setka-alma-native-v20-browser-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: alma-native-v20-screenshots
+          path: tests/visual-smoke/alma-native-v20-*.png
+          if-no-files-found: ignore

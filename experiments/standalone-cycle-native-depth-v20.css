@@ -1,0 +1,110 @@
+/* ALMA native React is not framed by an iframe. All scene nodes live in
+   one actual CSS 3D coordinate system. Keep the dock outside the scene. */
+#setkaCycle3DWorld{position:fixed;inset:0;z-index:120;pointer-events:none;
+ perspective:1450px;-webkit-perspective:1450px;
+ perspective-origin:50% 50%;-webkit-perspective-origin:50% 50%}
+#setkaCycle3DCard{position:absolute;inset:0;pointer-events:none;
+ transform-style:preserve-3d;-webkit-transform-style:preserve-3d;
+ transform-origin:50% 50%;-webkit-transform-origin:50% 50%}
+#setkaCycle3DCard > #setkaCycleBack{position:absolute;z-index:0!important;inset:0;
+ background:transparent!important;transform:translateZ(0px);
+ transform-style:preserve-3d;-webkit-transform-style:preserve-3d}
+#setkaCycleBack #alma-cycle-root{
+ position:absolute!important;left:50%!important;top:var(--setka-cycle-card-top)!important;
+ width:min(calc(100% - 28px),432px)!important;
+ height:calc(100dvh - var(--setka-cycle-card-top) - var(--setka-cycle-card-bottom))!important;
+ transform:translateX(-50%)!important;background:#020105;
+ border-radius:24px;pointer-events:auto!important;
+ overflow:hidden!important;font-family:Inter,ui-sans-serif,-apple-system,sans-serif;
+ color:#eeeaf1;
+ --page:#020105;--surface:rgba(13,9,18,.78);--surface-strong:#0b0810;
+ --text:#eeeaf1;--muted:#837b89;--quiet:#514b56;
+ --hairline:rgba(255,255,255,.075);
+}
+#alma-cycle-root .app-stage,#alma-cycle-root .phone-scene{
+ position:relative;width:100%!important;height:100%!important;
+ max-height:100%!important;min-height:0!important;overflow:hidden!important;
+ background:#020105;border:0!important;border-radius:24px!important;
+ box-shadow:none!important}
+#alma-cycle-root .phone-scene{overflow-x:hidden!important;overflow-y:auto!important;
+ -webkit-overflow-scrolling:touch;touch-action:pan-y}
+#alma-cycle-root .app-header,#alma-cycle-root .setka-demo-note{display:none!important}
+#alma-cycle-root .cycle-hero{border-color:transparent!important;
+ width:100%!important;min-height:100%!important;margin:12px 0 0!important;
+ height:100%!important;box-sizing:border-box!important}
+#alma-cycle-root .sheet-layer{position:fixed;inset:10px!important;
+ max-height:calc(100% - 20px);max-width:calc(100% - 20px);overflow:hidden;
+ border-radius:22px}
+#setkaCycleCardVolume{--cycle-depth:165px;position:absolute;pointer-events:none;
+ left:50%;top:var(--setka-cycle-card-top);bottom:var(--setka-cycle-card-bottom);
+ width:min(calc(100% - 28px),432px);
+ transform:translateX(-50%);transform-style:preserve-3d;
+ -webkit-transform-style:preserve-3d;visibility:hidden}
+#setkaCycleCardVolume .setka-cycle-depth-back{position:absolute;inset:0;
+ transform:translateZ(calc(-1 * var(--cycle-depth)));backface-visibility:visible;
+ border:1px solid rgba(170,100,210,.25);border-radius:24px;
+ background:rgba(9,3,15,.9)}
+#setkaCycleCardVolume .setka-cycle-depth-wall{position:absolute;top:0;bottom:0;
+ width:var(--cycle-depth);opacity:.75;pointer-events:none;
+ background:linear-gradient(90deg,rgba(18,7,25,.97),rgba(3,1,5,.95))}
+#setkaCycleCardVolume .setka-cycle-depth-wall.left{left:0;
+ transform-origin:left center;transform:rotateY(90deg)}
+#setkaCycleCardVolume .setka-cycle-depth-wall.right{right:0;
+ transform-origin:right center;transform:rotateY(-90deg)}
+#setkaCycle3DCard #setkaCycleLotusDirectPortal{z-index:2;
+ position:absolute!important;inset:0!important;pointer-events:none;
+ overflow:visible!important;transform-style:preserve-3d!important;
+ -webkit-transform-style:preserve-3d!important}
+#setkaCycleLotusDirectPortal .setka-cycle-lotus-direct-holder{
+ position:absolute;margin:0;padding:0;overflow:visible;pointer-events:none;
+ transform-origin:50% 50%;-webkit-transform-origin:50% 50%;
+ transform-style:preserve-3d!important;-webkit-transform-style:preserve-3d!important;
+ backface-visibility:visible;-webkit-backface-visibility:visible;
+ will-change:transform}
+#setkaCycleLotusDirectPortal svg.cycle-lotus{
+ display:block!important;width:100%!important;height:100%!important;max-width:none!important;
+ overflow:visible!important;transform:none!important}
+#setkaCycleLotusDirectPortal .lotus-aura{fill:url(#lotus-fill);opacity:.46}
+#setkaCycleLotusDirectPortal .lotus-pollen-field{pointer-events:none}
+#setkaCycleLotusDirectPortal .lotus-pollen{
+ fill:color-mix(in srgb,var(--cycle-color) 88%,white 12%);
+ opacity:.58;transform-box:fill-box;transform-origin:center;
+ animation:pollen-float var(--pollen-duration) ease-in-out var(--pollen-delay) infinite alternate;
+ transition:fill .28s ease
+}
+#setkaCycleLotusDirectPortal .lotus-pollen.pollen-1{opacity:.34;animation-direction:alternate-reverse}
+#setkaCycleLotusDirectPortal .lotus-pollen.pollen-2{opacity:.76}
+#setkaCycleLotusDirectPortal .lotus-pollen-field.is-foreground{opacity:.78}
+#setkaCycleLotusDirectPortal .lotus-bloom{isolation:isolate;transform-origin:190px 200px}
+#setkaCycleLotusDirectPortal .lotus-petal{
+ fill:#030107;stroke:color-mix(in srgb,var(--cycle-color) 86%,white 14%);
+ stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round;opacity:1;
+ transform:rotate(var(--petal-angle));transform-box:view-box;
+ transform-origin:190px 200px;will-change:transform;
+ transition-property:transform,stroke;transition-duration:.44s,.22s;
+ transition-timing-function:cubic-bezier(.2,.82,.24,1),ease
+}
+#setkaCycleLotusDirectPortal .lotus-petal.inner{filter:brightness(.94) saturate(1.05)}
+#setkaCycleLotusDirectPortal .lotus-petal.middle{filter:brightness(.82) saturate(.98)}
+#setkaCycleLotusDirectPortal .lotus-petal.outer{filter:brightness(.7) saturate(.92)}
+#setkaCycleLotusDirectPortal .lotus-petal.lotus-drop{stroke-width:1.9}
+#setkaCycleLotusDirectPortal .lotus-drop-shine{
+ fill:none;stroke:rgba(255,255,255,.48);stroke-width:1.1;
+ stroke-linecap:round;opacity:.2;
+ filter:drop-shadow(0 0 4px rgba(255,255,255,.28));
+ transition:opacity .45s ease
+}
+#setkaCycleLotusDirectPortal .lotus-day{
+ fill:#f8f1fa;font-size:37px;font-weight:360;
+ letter-spacing:-.05em;filter:drop-shadow(0 0 10px rgba(255,255,255,.18))
+}
+#setkaCycleLotusDirectPortal .lotus-day-label{
+ fill:color-mix(in srgb,var(--cycle-color) 42%,#777 58%);
+ font-size:7px;letter-spacing:.11em;text-transform:uppercase
+}
+@keyframes pollen-float{
+ 0%{transform:translate(0,5px) scale(.72);opacity:.18}
+ 38%{opacity:.82}
+ 100%{transform:translate(var(--pollen-x),var(--pollen-y)) scale(1.18);opacity:.5}
+}
+@keyframes drop-shimmer{50%{opacity:.22}}
