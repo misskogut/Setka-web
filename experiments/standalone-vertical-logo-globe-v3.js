@@ -203,14 +203,32 @@ function balloonSeamLoops(field,S){
  }
  return loops;
 }
+// Local tension gathers only at actual inside bends of the authored glyphs.
+// Coordinates correspond to sampled seam corners, not arbitrary face marks.
+const balloonBendZones={
+ С:[[5.0,6.7,4.0],[5.0,13.4,3.8]],
+ К:[[5.1,5.7,2.8],[13.1,10.6,3.1],[5.1,14.6,2.8]],
+ В:[[8.0,7.0,3.2],[14.5,10.0,3.5],[8.0,13.0,3.2]],
+ И:[[5.2,10.3,3.1],[15.2,10.7,3.1]],
+ Ш:[[6.7,14.8,3.7],[18.7,14.8,3.7]]
+};
+function balloonBendWeight(ch,x,y){
+ let weight=0;
+ for(const [cx,cy,r] of balloonBendZones[ch]||[]){
+  const d=Math.hypot(x-cx,y-cy)/r;
+  const t=clamp((1-d)/.62,0,1);
+  weight=Math.max(weight,t*t*(3-2*t));
+ }
+ return weight;
+}
 function seamProfile(loops,x,y,pixelScale,peak){
- let best=Infinity,arc=0,loop=null;
+ let best=Infinity,arc=0,loop=null,seamX=x,seamY=y;
  for(const l of loops)for(const q of l.edges){
   const dx=x-q.x,dy=y-q.y,t=clamp(dx*q.ux+dy*q.uy,0,q.len);
   const dist=(dx-t*q.ux)**2+(dy-t*q.uy)**2;
-  if(dist<best){best=dist;arc=q.arc+t;loop=l;}
+  if(dist<best){best=dist;arc=q.arc+t;loop=l;seamX=q.x+t*q.ux;seamY=q.y+t*q.uy;}
  }
- if(!loop)return {seam:0,pleat:0,inflate:1};
+ if(!loop)return {seam:0,pleat:0,inflate:1,seamX:x,seamY:y,distance:0};
  const d=Math.sqrt(best)/pixelScale;
  const smooth=(a,b,v)=>{const t=clamp((v-a)/(b-a),0,1);return t*t*(3-2*t);};
  // Welded flange is shallow and continuous. Ribs start at the seam, are
@@ -223,13 +241,13 @@ function seamProfile(loops,x,y,pixelScale,peak){
  const envelope=smooth(.6,1.9,d)*(1-smooth(3.0,Math.max(3.6,end),d));
  const modulation=.80+.20*Math.cos(phase*.125+Math.sin(phase*.0625));
  const pleat=envelope*modulation*(.5+.5*Math.cos(phase+.075*d));
- return {seam,pleat,inflate};
+ return {seam,pleat,inflate,seamX,seamY,distance:d};
 }
 function solidLetter(ch,upper,preset){
  const pixelScale=upper?1.5:1,S=Math.round(96*pixelScale),unit=4.275*pixelScale,scale=preset.size*.0135,k=upper?(ch==="Ш"?3.2:3.9):5,width=upper?(ch==="Ш"?26:19):14;
  const seg=strokeSegments((upper?megaPaths:bladePaths)[ch],k*.75*pixelScale,(64-width*k/2)*.75*pixelScale,(upper?64-10*k:23)*.75*pixelScale);
  const radius=(upper?7.6:2)*k*.75*pixelScale/2,field=new Float32Array(S*S),height=new Float32Array(S*S),creases=new Float32Array(S*S);
- let foldDepth=0,foldVertices=0,protectedLowerSamples=0,protectedLowerDent=0;
+ let foldDepth=0,foldVertices=0,protectedLowerSamples=0,protectedLowerDent=0,straightSamples=0,straightDent=0;
  const yStretch=upper&&ch==="Ш"?1.25:1;
  let xmin=S,xmax=0,ymin=S,ymax=0,peak=1;
  const strokes=seg.map(([ax,ay,bx,by])=>{const len=Math.hypot(bx-ax,by-ay)||1;return{ax,ay,len,ux:(bx-ax)/len,uy:(by-ay)/len};});
@@ -253,10 +271,21 @@ function solidLetter(ch,upper,preset){
    const protectGlyph=ch==="С"||ch==="Ш";
    const lower=protectGlyph?clamp(((y-ymin)/Math.max(1,ymax-ymin)-.43)/.17,0,1):0;
    const protection=lower*lower*(3-2*lower);
-   const seam=profile.seam,pleat=profile.pleat*(1-protection);
-   const inflate=profile.inflate+(1-profile.inflate)*protection;
+   const gx=(profile.seamX/(.75*pixelScale)-(64-width*k/2))/k;
+   const gy=(profile.seamY/(.75*pixelScale)-(64-10*k))/k;
+   const bend=balloonBendWeight(ch,gx,gy);
+   // No corrugation or reduction of inflated height outside bend windows.
+   // Keep lower С/Ш full except shallow edge gathers at their inner elbows.
+   const edgeOnly=clamp((4.8-profile.distance)/2.4,0,1);
+   const pleat=profile.pleat*bend*((1-protection)+.40*protection*edgeOnly);
+   const inflate=1-(1-profile.inflate)*bend*(1-protection);
+   const seam=profile.seam*.38;
    height[i]=baseHeight*inflate*(1-.22*pleat)+half*.055*seam;
-   if(protectGlyph&&protection===1){
+   if(bend===0){
+    straightSamples++;
+    straightDent=Math.max(straightDent,Math.max(0,baseHeight-height[i])/unit*scale);
+   }
+   if(protectGlyph&&protection===1&&(bend===0||edgeOnly===0)){
     protectedLowerSamples++;
     protectedLowerDent=Math.max(protectedLowerDent,Math.max(0,baseHeight-height[i])/unit*scale);
    }
@@ -282,7 +311,7 @@ function solidLetter(ch,upper,preset){
  const data=new Float32Array(back.concat(front)),buffer=gl.createBuffer();
  if(!data.length||!data.every(Number.isFinite))throw Error("Invalid solid title "+ch);
  gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW);
- return {buffer,count:data.length/7,width:Math.max(4,(xmax-xmin+1)/unit)*scale,depth:2*half/unit*scale*preset.volume/100,foldDepth,foldVertices,protectedLowerSamples,protectedLowerDent,seamLoops:seamLoops.length,height:(ymax-ymin+1)/unit*scale*yStretch,yStretch};
+ return {buffer,count:data.length/7,width:Math.max(4,(xmax-xmin+1)/unit)*scale,depth:2*half/unit*scale*preset.volume/100,foldDepth,foldVertices,protectedLowerSamples,protectedLowerDent,straightSamples,straightDent,seamLoops:seamLoops.length,height:(ymax-ymin+1)/unit*scale*yStretch,yStretch};
 }
 const titleParts=[TITLE_PRESET.top,TITLE_PRESET.bottom].map((preset,i)=>{
  const entries=[...preset.text].map((ch,j)=>{const g=ch===" "?null:solidLetter(ch,i===0,preset);return {g,j,width:(g?g.width:6*preset.size*.0135)+preset.spacing*preset.size*.0135};});
@@ -523,7 +552,7 @@ card.addEventListener("pointerup",e=>endFluidPointer(e),{passive:true});
 card.addEventListener("pointercancel",e=>endFluidPointer(e,true),{passive:true});
 window.SETKA_SOLID_WORDMARK={
  render,
- getInfo:()=>({...stats,real3D:true,renderer:"WebGL original honey #08 live rebuilt",angle,active,rigid:true,continuous:true,metaball:true,faceted:true,globeDecorations:false,animatedFluid:true,liveRebuild:true,depthOcclusion:true,tapExcitation:true,excitationLevel:excitement,taps:tapCount,titleText:TITLE,titlePhase,titleVelocity,titleStyle:"circular-seal-mega-bubble-cyber-blade",titlePreset:TITLE_PRESET,titleSolidMeshes:true,titleJellyLighting:"world-space-latex-softboxes-v1",titleBalloonFolds:"welded-perimeter-pleats-v3",titleFoldStats:titleParts.flat().map(e=>({depth:e.g.foldDepth,vertices:e.g.foldVertices,protectedLowerSamples:e.g.protectedLowerSamples,protectedLowerDent:e.g.protectedLowerDent,seamLoops:e.g.seamLoops,height:e.g.height,yStretch:e.g.yStretch})),titleMeshCounts:titleParts.flat().map(e=>e.g.count),titleMeshDepths:titleParts.flat().map(e=>e.g.depth),titleNeuralPulse:false}),
+ getInfo:()=>({...stats,real3D:true,renderer:"WebGL original honey #08 live rebuilt",angle,active,rigid:true,continuous:true,metaball:true,faceted:true,globeDecorations:false,animatedFluid:true,liveRebuild:true,depthOcclusion:true,tapExcitation:true,excitationLevel:excitement,taps:tapCount,titleText:TITLE,titlePhase,titleVelocity,titleStyle:"circular-seal-mega-bubble-cyber-blade",titlePreset:TITLE_PRESET,titleSolidMeshes:true,titleJellyLighting:"world-space-latex-softboxes-v1",titleBalloonFolds:"bend-localized-seam-pleats-v4",titleFoldStats:titleParts.flat().map(e=>({depth:e.g.foldDepth,vertices:e.g.foldVertices,protectedLowerSamples:e.g.protectedLowerSamples,protectedLowerDent:e.g.protectedLowerDent,straightSamples:e.g.straightSamples,straightDent:e.g.straightDent,seamLoops:e.g.seamLoops,height:e.g.height,yStretch:e.g.yStretch})),titleMeshCounts:titleParts.flat().map(e=>e.g.count),titleMeshDepths:titleParts.flat().map(e=>e.g.depth),titleNeuralPulse:false}),
  dispose(){
   disposed=true;active=false;stopAnimation();canvas.remove();
   gl.deleteBuffer(buf);gl.deleteBuffer(plateBuffer);for(const e of titleParts.flat())gl.deleteBuffer(e.g.buffer);gl.deleteProgram(prog);

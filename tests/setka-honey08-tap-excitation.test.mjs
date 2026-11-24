@@ -157,14 +157,14 @@ test('Mega Bubble uses external elongated reflections, other preset remains unch
  assert.match(rendererCode,/keyStrip=exp/);
  assert.match(rendererCode,/fillStrip=exp/);
  assert.match(rendererCode,/keyAxis=normalize\(cross/);
- assert.match(experiment,/20261124-circular-seal-mega-bubble-smooth-c-sh-v7/);
+ assert.match(experiment,/20261124-circular-seal-mega-bubble-bend-only-v8/);
 });
 
-test('welded perimeter pleats follow every balloon outline including enclosed holes',()=>{
+test('localized balloon pleats preserve welded outlines including enclosed holes',()=>{
  const h=harness(),info=h.api.getInfo(),f=info.titleFoldStats;
- assert.equal(info.titleBalloonFolds,'welded-perimeter-pleats-v3');
+ assert.equal(info.titleBalloonFolds,'bend-localized-seam-pleats-v4');
  assert.equal(f.length,13);
- assert.ok(f.slice(0,5).every(x=>x.depth>.20&&x.vertices>20&&x.seamLoops>=1),'every balloon has perimeter folds');
+ assert.ok(f.slice(0,5).every(x=>x.depth>.035&&x.vertices>10&&x.seamLoops>=1),'every balloon has perimeter folds');
  assert.ok(f[2].seamLoops>=2,'В includes inner welded seams');
  assert.ok(f.slice(5).every(x=>x.depth===0&&x.vertices===0&&x.seamLoops===0),'lower title unaffected');
  const avg=f.slice(0,4).reduce((sum,x)=>sum+x.height,0)/4;
@@ -184,5 +184,14 @@ test('lower arms of C and Sh retain inflated height without disturbing other gly
   assert.ok(f[i].vertices>20&&f[i].seamLoops===1);
  }
  assert.ok(f.filter((_,i)=>i!==0&&i!==4).every(x=>x.protectedLowerSamples===0));
- assert.match(experiment,/20261124-circular-seal-mega-bubble-smooth-c-sh-v7/);
+ assert.match(experiment,/20261124-circular-seal-mega-bubble-bend-only-v8/);
+});
+
+test('straight balloon sections stay fully inflated and pleats are limited to bends',()=>{
+ const h=harness(),f=h.api.getInfo().titleFoldStats;
+ assert.ok(f.slice(0,5).every(x=>x.straightSamples>1000&&x.straightDent<1e-5));
+ assert.ok(f.slice(5).every(x=>x.straightSamples===0));
+ assert.match(rendererCode,/balloonBendWeight\(ch,gx,gy\)/);
+ assert.match(rendererCode,/profile\.pleat\*bend/);
+ assert.match(experiment,/20261124-circular-seal-mega-bubble-bend-only-v8/);
 });
