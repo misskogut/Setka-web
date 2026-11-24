@@ -229,7 +229,7 @@ function solidLetter(ch,upper,preset){
  const pixelScale=upper?1.5:1,S=Math.round(96*pixelScale),unit=4.275*pixelScale,scale=preset.size*.0135,k=upper?(ch==="Ш"?3.2:3.9):5,width=upper?(ch==="Ш"?26:19):14;
  const seg=strokeSegments((upper?megaPaths:bladePaths)[ch],k*.75*pixelScale,(64-width*k/2)*.75*pixelScale,(upper?64-10*k:23)*.75*pixelScale);
  const radius=(upper?7.6:2)*k*.75*pixelScale/2,field=new Float32Array(S*S),height=new Float32Array(S*S),creases=new Float32Array(S*S);
- let foldDepth=0,foldVertices=0;
+ let foldDepth=0,foldVertices=0,protectedLowerSamples=0,protectedLowerDent=0;
  const yStretch=upper&&ch==="Ш"?1.25:1;
  let xmin=S,xmax=0,ymin=S,ymax=0,peak=1;
  const strokes=seg.map(([ax,ay,bx,by])=>{const len=Math.hypot(bx-ax,by-ay)||1;return{ax,ay,len,ux:(bx-ax)/len,uy:(by-ay)/len};});
@@ -246,8 +246,20 @@ function solidLetter(ch,upper,preset){
   const t=clamp(field[i]/bevel,0,1),baseHeight=half*Math.sqrt(t*(2-t));
   height[i]=baseHeight;
   if(upper&&t>0){
-   const {seam,pleat,inflate}=seamProfile(seamLoops,i%S,Math.floor(i/S),pixelScale,peak);
+   const y=Math.floor(i/S);
+   const profile=seamProfile(seamLoops,i%S,y,pixelScale,peak);
+   // Keep lower arms of С and Ш fully inflated on both faces.
+   // Fade protection in gradually; preserve the continuous contour seam.
+   const protectGlyph=ch==="С"||ch==="Ш";
+   const lower=protectGlyph?clamp(((y-ymin)/Math.max(1,ymax-ymin)-.43)/.17,0,1):0;
+   const protection=lower*lower*(3-2*lower);
+   const seam=profile.seam,pleat=profile.pleat*(1-protection);
+   const inflate=profile.inflate+(1-profile.inflate)*protection;
    height[i]=baseHeight*inflate*(1-.22*pleat)+half*.055*seam;
+   if(protectGlyph&&protection===1){
+    protectedLowerSamples++;
+    protectedLowerDent=Math.max(protectedLowerDent,Math.max(0,baseHeight-height[i])/unit*scale);
+   }
    creases[i]=seam;
    foldDepth=Math.max(foldDepth,baseHeight*inflate*.22*pleat/unit*scale);
    if(pleat>.12)foldVertices++;
@@ -270,7 +282,7 @@ function solidLetter(ch,upper,preset){
  const data=new Float32Array(back.concat(front)),buffer=gl.createBuffer();
  if(!data.length||!data.every(Number.isFinite))throw Error("Invalid solid title "+ch);
  gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW);
- return {buffer,count:data.length/7,width:Math.max(4,(xmax-xmin+1)/unit)*scale,depth:2*half/unit*scale*preset.volume/100,foldDepth,foldVertices,seamLoops:seamLoops.length,height:(ymax-ymin+1)/unit*scale*yStretch,yStretch};
+ return {buffer,count:data.length/7,width:Math.max(4,(xmax-xmin+1)/unit)*scale,depth:2*half/unit*scale*preset.volume/100,foldDepth,foldVertices,protectedLowerSamples,protectedLowerDent,seamLoops:seamLoops.length,height:(ymax-ymin+1)/unit*scale*yStretch,yStretch};
 }
 const titleParts=[TITLE_PRESET.top,TITLE_PRESET.bottom].map((preset,i)=>{
  const entries=[...preset.text].map((ch,j)=>{const g=ch===" "?null:solidLetter(ch,i===0,preset);return {g,j,width:(g?g.width:6*preset.size*.0135)+preset.spacing*preset.size*.0135};});
@@ -511,7 +523,7 @@ card.addEventListener("pointerup",e=>endFluidPointer(e),{passive:true});
 card.addEventListener("pointercancel",e=>endFluidPointer(e,true),{passive:true});
 window.SETKA_SOLID_WORDMARK={
  render,
- getInfo:()=>({...stats,real3D:true,renderer:"WebGL original honey #08 live rebuilt",angle,active,rigid:true,continuous:true,metaball:true,faceted:true,globeDecorations:false,animatedFluid:true,liveRebuild:true,depthOcclusion:true,tapExcitation:true,excitationLevel:excitement,taps:tapCount,titleText:TITLE,titlePhase,titleVelocity,titleStyle:"circular-seal-mega-bubble-cyber-blade",titlePreset:TITLE_PRESET,titleSolidMeshes:true,titleJellyLighting:"world-space-latex-softboxes-v1",titleBalloonFolds:"welded-perimeter-pleats-v3",titleFoldStats:titleParts.flat().map(e=>({depth:e.g.foldDepth,vertices:e.g.foldVertices,seamLoops:e.g.seamLoops,height:e.g.height,yStretch:e.g.yStretch})),titleMeshCounts:titleParts.flat().map(e=>e.g.count),titleMeshDepths:titleParts.flat().map(e=>e.g.depth),titleNeuralPulse:false}),
+ getInfo:()=>({...stats,real3D:true,renderer:"WebGL original honey #08 live rebuilt",angle,active,rigid:true,continuous:true,metaball:true,faceted:true,globeDecorations:false,animatedFluid:true,liveRebuild:true,depthOcclusion:true,tapExcitation:true,excitationLevel:excitement,taps:tapCount,titleText:TITLE,titlePhase,titleVelocity,titleStyle:"circular-seal-mega-bubble-cyber-blade",titlePreset:TITLE_PRESET,titleSolidMeshes:true,titleJellyLighting:"world-space-latex-softboxes-v1",titleBalloonFolds:"welded-perimeter-pleats-v3",titleFoldStats:titleParts.flat().map(e=>({depth:e.g.foldDepth,vertices:e.g.foldVertices,protectedLowerSamples:e.g.protectedLowerSamples,protectedLowerDent:e.g.protectedLowerDent,seamLoops:e.g.seamLoops,height:e.g.height,yStretch:e.g.yStretch})),titleMeshCounts:titleParts.flat().map(e=>e.g.count),titleMeshDepths:titleParts.flat().map(e=>e.g.depth),titleNeuralPulse:false}),
  dispose(){
   disposed=true;active=false;stopAnimation();canvas.remove();
   gl.deleteBuffer(buf);gl.deleteBuffer(plateBuffer);for(const e of titleParts.flat())gl.deleteBuffer(e.g.buffer);gl.deleteProgram(prog);

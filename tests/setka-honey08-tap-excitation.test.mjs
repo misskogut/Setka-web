@@ -157,7 +157,7 @@ test('Mega Bubble uses external elongated reflections, other preset remains unch
  assert.match(rendererCode,/keyStrip=exp/);
  assert.match(rendererCode,/fillStrip=exp/);
  assert.match(rendererCode,/keyAxis=normalize\(cross/);
- assert.match(experiment,/20261124-circular-seal-mega-bubble-welded-foil-v6/);
+ assert.match(experiment,/20261124-circular-seal-mega-bubble-smooth-c-sh-v7/);
 });
 
 test('welded perimeter pleats follow every balloon outline including enclosed holes',()=>{
@@ -174,4 +174,15 @@ test('welded perimeter pleats follow every balloon outline including enclosed ho
  assert.match(rendererCode,/baseHeight\*inflate\*\(1-\.22\*pleat\)/);
  assert.doesNotMatch(rendererCode,/balloonNecks|balloonCreases|latexNeck/);
  assert.ok(h.titleDraws.every(x=>x.finite&&x.count%3===0));
+});
+
+test('lower arms of C and Sh retain inflated height without disturbing other glyphs',()=>{
+ const h=harness(),f=h.api.getInfo().titleFoldStats;
+ for(const i of [0,4]){
+  assert.ok(f[i].protectedLowerSamples>100);
+  assert.ok(f[i].protectedLowerDent<1e-5);
+  assert.ok(f[i].vertices>20&&f[i].seamLoops===1);
+ }
+ assert.ok(f.filter((_,i)=>i!==0&&i!==4).every(x=>x.protectedLowerSamples===0));
+ assert.match(experiment,/20261124-circular-seal-mega-bubble-smooth-c-sh-v7/);
 });
