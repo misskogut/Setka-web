@@ -1,13 +1,9 @@
 name: Verify ALMA native lotus on mobile
-# Temporary targeted mobile Chromium/WebKit real DOM identity check. Restore
-# dispatch-only after diagnosis so regular pushes don't produce extra alerts.
+# Heavy real-browser visual diagnostics remain manual-only after the
+# Chromium + iPhone WebKit original-SVG and click checks passed.
+# Ordinary source pushes do not trigger extra test emails.
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - "experiments/standalone-cycle-lotus-direct-v1.js"
-      - "tests/setka-cycle-lotus-browser-smoke.mjs"
 
 permissions:
   contents: read
