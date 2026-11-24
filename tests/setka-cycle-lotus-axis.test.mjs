@@ -73,19 +73,36 @@ test("counter-rotating original native SVG stays viewer-facing in BOTH direction
  assert.equal(api.getInfo().portalVisible,"visible","ALMA owns the real 3D lotus");
  api.rest();
 });
+test("native lotus must fit inside the perspective-projected ALMA card in both rotations",()=>{
+ const {api}=fake();
+ const naturalWidth=390;
+ for(const cardWidth of [0,9,20,48,80,112,168,205,300,390]){
+  const scale=api.fitInsideCard(cardWidth,naturalWidth);
+  assert.ok(scale>=0&&scale<=1);
+  assert.ok(scale*naturalWidth<=Math.max(0,cardWidth-10)+.001,
+   "the SVG may not draw beyond its own card, even when edge-on");
+ }
+ assert.ok(api.fitInsideCard(90,390)<.25,
+  "the original flower must visibly contract as its card approaches edge-on");
+ assert.ok(api.fitInsideCard(390,390)>.95,
+  "the resting ALMA flower must keep its original proportions");
+});
+
 test("source uses original React SVG, never shader, clone, screen masks or material substitution",()=>{
  assert.match(js,/holder\.appendChild\(svg\)/);
  assert.match(js,/button\.appendChild\(svg\)/);
  assert.match(js,/portal\.appendChild\(holder\)/);
  assert.match(js,/document\.body\.appendChild\(portal\)/);
- assert.match(js,/worldYaw=g\.cardYaw\+g\.counterYaw/);
+ assert.match(js,/holder\.style\.transform="scaleX\("/);
+ assert.match(js,/const cardRect=back\.getBoundingClientRect\(\)/);
+ assert.match(js,/fitInsideCard\(cardRect\.width,active\.naturalWidth\)/);
  assert.match(js,/\.cycle-lotus-button/);
  assert.doesNotMatch(js,/attachShadow|shadowRoot/,"iPhone WebKit must not flatten the 3D chain");
  assert.match(js,/rotateY\(/);
  assert.doesNotMatch(js,/cloneNode|getContext\(["']webgl|createTexture|texture2D|new Image\(|createElement\(["']svg/);
  assert.doesNotMatch(css,/clip-path|mask:|canvas|opacity:0/);
- assert.match(host,/standalone-cycle-lotus-direct-v1.js\?v=20261124-original-lotus-world-axis-v11/);
- assert.match(host,/standalone-cycle-lotus-direct-v1.css\?v=20261124-original-lotus-world-axis-v11/);
+ assert.match(host,/standalone-cycle-lotus-direct-v1.js\?v=20261124-lotus-bound-to-cycle-card-v12/);
+ assert.match(host,/standalone-cycle-lotus-direct-v1.css\?v=20261124-lotus-bound-to-cycle-card-v12/);
  assert.doesNotMatch(host,/standalone-cycle-lotus-axis-v1\./);
  assert.doesNotMatch(canonical,/standalone-cycle-lotus-direct-v1/);
 });

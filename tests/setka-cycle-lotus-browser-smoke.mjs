@@ -45,23 +45,46 @@ try{
  assert.equal(during.info.nativeOriginal,true);
  assert.equal(during.info.hasClone,false);
  assert.ok(Math.abs(during.info.cardYaw+during.info.counterYaw)<1e-4);
+ // The original node must follow the PHYSICAL projected card outline,
+ // not remain a full-width billboard while the card is almost edge-on.
+ const bounded=await page.evaluate(()=>{
+  const lotus=window.SETKA_CYCLE_LOTUS_AXIS;
+  const back=document.getElementById("setkaCycleBack");
+  const outer=document.getElementById("setkaCycleLotusDirectPortal");
+  const holder=outer.querySelector(".setka-cycle-lotus-direct-holder");
+  const originalCardTransform=back.style.transform;
+  const restore=lotus.getInfo(),rows=[];
+  for(const direction of [-1,1]){
+   for(const p of [.51,.58,.65,.75,.85,.95]){
+    const angle=-direction*180*(1-p);
+    back.style.transform="perspective(1450px) rotateY("+angle+"deg)";
+    lotus.render(p,direction);
+    const card=back.getBoundingClientRect();
+    const flower=holder.querySelector("svg.cycle-lotus").getBoundingClientRect();
+    rows.push({p,direction,cardWidth:card.width,flowerWidth:flower.width,
+      leftExcess:card.left-flower.left,rightExcess:flower.right-card.right,
+      fitScale:lotus.getInfo().fitScale});
+   }
+  }
+  back.style.transform=originalCardTransform;
+  lotus.render(restore.progress,restore.direction);
+  return rows;
+ });
+ console.log("ALMA PROJECTED CARD BOUNDS",JSON.stringify(bounded));
+ for(const b of bounded){
+  assert.ok(b.flowerWidth<=b.cardWidth+2.5,
+   "a live lotus is not allowed to extend outside the projected cycle card at "+b.p);
+  assert.ok(b.leftExcess<=3&&b.rightExcess<=3,
+   "the flower must stay inside both card boundaries, not hover in front of it");
+ }
  mkdirSync("tests/visual-smoke",{recursive:true});
  const shot=PNG.sync.read(await page.screenshot({
   path:"tests/visual-smoke/lotus-native-3d-"+(process.env.SETKA_BROWSER||"chromium")+".png"
  }));
- const scale=shot.width/390,halves=[];
- for(const [a,b] of [[10,150],[240,380]]){
-  let lit=0;
-  for(let y=Math.round(205*scale);y<Math.round(500*scale);y+=2)
-   for(let x=Math.round(a*scale);x<Math.round(b*scale);x+=2){
-    const i=(y*shot.width+x)*4,r=shot.data[i],g=shot.data[i+1],blue=shot.data[i+2];
-    if(r>95&&blue>110&&r>g*1.3&&blue>g*1.45)lit++;
-   }
-  halves.push(lit);
- }
- console.log("NATIVE ALMA 3D TWO VISIBLE HALVES",JSON.stringify(halves));
- assert.ok(halves[0]>80&&halves[1]>80,
-  "in Safari the original lotus must remain wide, not collapse into an edge-on line");
+ // The previous pixel test REQUIRED petals outside the narrow card, which
+ // was the actual visual bug reported from iPhone. The geometry sweep above
+ // now rejects that escape in both Chromium and WebKit.
+ assert.ok(shot.width>0&&shot.height>0);
  await page.mouse.up();
  await page.waitForFunction(()=>window.SETKA_CYCLE_LOTUS_AXIS?.getInfo().turning===false,null,{timeout:25000});
  const rest=await page.evaluate(()=>{

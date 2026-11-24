@@ -12,6 +12,15 @@ const iframe=back?.querySelector("iframe");
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 let portal=null,holder=null,active=null,turning=false,progress=0,direction=-1,frames=0;
 let originalRef=null;
+const CARD_INSET_PX=5;
+function fitInsideCard(cardScreenWidth,svgNaturalWidth){
+ // Preserve the ONE original SVG and all its live children. Its horizontal
+ // projection must contract with the real perspective of its ALMA card.
+ // At edge-on the visible space approaches zero rather than a detached
+ // world-space billboard covering both sides of SETKA.
+ if(!Number.isFinite(cardScreenWidth)||!Number.isFinite(svgNaturalWidth)||svgNaturalWidth<=0)return 0;
+ return clamp((Math.max(0,cardScreenWidth)-2*CARD_INSET_PX)/svgNaturalWidth,0,1);
+}
 function geometry(p,d=-1){
  const progress=clamp(Number.isFinite(p)?p:0,0,1),direction=d>=0?1:-1;
  const cardYaw=progress===1?0:-direction*180*(1-progress);
@@ -62,7 +71,7 @@ function start(){
   if(color)portal.style.setProperty("--cycle-color",color.trim());
  }catch(_){}
  originalRef=svg;
- active={doc,button,svg};
+ active={doc,button,svg,naturalWidth:r.width,naturalHeight:r.height,fitScale:1};
  // Native adoption: this is the actual React SVG node, not a duplication.
  // Keep button in iframe for its original React click handler.
  holder.appendChild(svg);
@@ -77,13 +86,21 @@ function render(p,d=-1){
  // The back face must be hidden while the opaque SETKA/squish side
  // is toward the viewer. The original flower stays a single SVG node.
  portal.style.visibility=g.progress>=.5?"visible":"hidden";
- // Card theta and the original flower countertheta cancel in world space.
- // Safari sees the same real SVG outside the nested iframe compositor.
- const worldYaw=g.cardYaw+g.counterYaw;
- holder.style.transform="rotateY("+worldYaw.toFixed(4)+"deg)";
+ // iOS Safari cannot keep a true 3D SVG crossing the iframe compositor.
+ // Retain the live original SVG, but bind its SCREEN-SPACE X extent to the
+ // actual perspective-projected ALMA card on every gesture frame.
+ // This fixes the oversized billboard that pierced BOTH card boundaries.
+ const cardRect=back.getBoundingClientRect();
+ const centerX=cardRect.left+cardRect.width/2;
+ const fitScale=fitInsideCard(cardRect.width,active.naturalWidth);
+ holder.style.left=(centerX-active.naturalWidth/2)+"px";
+ holder.style.transform="scaleX("+fitScale.toFixed(6)+")";
  holder.style.webkitTransform=holder.style.transform;
+ active.fitScale=fitScale;
  holder.dataset.cardYaw=g.cardYaw.toFixed(4);
  holder.dataset.counterYaw=g.counterYaw.toFixed(4);
+ holder.dataset.fitScale=fitScale.toFixed(6);
+ holder.dataset.cardScreenWidth=cardRect.width.toFixed(3);
  frames++;
 }
 function rest(){
@@ -109,13 +126,14 @@ if(typeof window.addEventListener==="function")window.addEventListener("pagehide
 // Install the native 3D layer before the first gesture.
 if(back)ensurePortal();
 window.SETKA_CYCLE_LOTUS_AXIS={
- start,render,rest,geometry,
+ start,render,rest,geometry,fitInsideCard,
  getInfo:()=>{
   const state=geometry(progress,direction);
   return{...state,turning,hasSource:!!active||!!getOriginal(),ready:!!active||!!getOriginal(),
    real3D:true,nativeOriginal:true,hasClone:false,originalPreserved:!!originalRef,
    originalIn3D:!!active&&active.svg===originalRef&&active.svg.parentNode===holder,
    originalRestored:!active&&!!originalRef&&!!originalRef.closest(".cycle-lotus-button"),
+   fitScale:active?.fitScale??null,cardScreenWidth:active?back.getBoundingClientRect().width:null,
    frames,portalVisible:portal?.style.visibility||"hidden"};
  }
 };
