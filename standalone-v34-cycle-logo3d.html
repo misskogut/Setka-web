@@ -106,7 +106,7 @@ body.cycle-busy .setka-cycle-edge{pointer-events:none}
   position:fixed;
   left:50%;
   width:12px;
-  height:6px;
+  height:7px;
   display:block;
   transform:translateX(-50%);
   fill:none;
@@ -120,7 +120,7 @@ body.cycle-busy .setka-cycle-edge{pointer-events:none}
   z-index:40;
 }
 .setka-card-vertical-hint.top{top:max(1px,calc(var(--setka-cycle-card-top) - 11px))}
-.setka-card-vertical-hint.bottom{bottom:max(1px,calc(var(--setka-vlogo-card-bottom) - 8px))}
+.setka-card-vertical-hint.bottom{bottom:max(1px,calc(var(--setka-vlogo-card-bottom) - 11px))}
 #setkaVerticalLogo > .setka-card-vertical-hint{stroke:rgba(190,195,205,.25)}
 body.setka-vlogo-gameplay .setka-card-vertical-hint,
 body.setka-cycle-gameplay .setka-card-vertical-hint{display:none!important}
@@ -210,10 +210,14 @@ body.cycle-flip-active .setka-vlogo-hotspot{pointer-events:none}
    The original dock #st34Nav is outside this frame and stays untouched. */
 :root{
   --setka-cycle-card-top:12px;
-  --setka-cycle-card-bottom:calc(84px + env(safe-area-inset-bottom, 0px));
+  --setka-cycle-card-bottom:calc(84px + env(safe-area-inset-bottom, 0px) + 4px);
   /* Logo reverse ends exactly where the front bottom dock ends. */
-  --setka-vlogo-card-bottom:calc(8px + env(safe-area-inset-bottom, 0px) + var(--setka-keyboard-inset,0px));
+  --setka-vlogo-card-bottom:calc(8px + env(safe-area-inset-bottom, 0px) + 4px + var(--setka-keyboard-inset,0px));
 }
+/* Reserve the same 12px outside the bottom edge as at the top. Keep the
+   native dock and the logo reverse on the exact same bottom baseline. */
+body.setka-sheet-layout #st34Nav{bottom:calc(12px + env(safe-area-inset-bottom,0px))!important}
+body.setka-sheet-layout:has(input:focus:not([type="range"]):not([type="checkbox"]):not([type="radio"]), textarea:focus, [contenteditable="true"]:focus) #st34Nav{bottom:var(--setka-vlogo-card-bottom)!important}
 #setkaCycleFrontFrame{
   position:fixed;
   z-index:28;
@@ -302,8 +306,8 @@ body.cycle-flip-active #setkaCycleBack{pointer-events:none}
     </div>
   </section>
 
-  <svg class="setka-card-vertical-hint top" aria-hidden="true" focusable="false" viewBox="0 0 12 6"><path d="M1.5 5 L6 1 L10.5 5"/></svg>
-  <svg class="setka-card-vertical-hint bottom" aria-hidden="true" focusable="false" viewBox="0 0 12 6"><path d="M1.5 1 L6 5 L10.5 1"/></svg>
+  <svg class="setka-card-vertical-hint top" aria-hidden="true" focusable="false" viewBox="0 0 12 7"><path d="M1.5 6 L6 1 L10.5 6"/></svg>
+  <svg class="setka-card-vertical-hint bottom" aria-hidden="true" focusable="false" viewBox="0 0 12 7"><path d="M1.5 1 L6 6 L10.5 1"/></svg>
 </main>
 <script src="standalone-pattern-registry-v1.js?v=1.2.1-transient-20261105"></script>
 <script>window.SetkaPatternRegistryV1.usePublicCatalog();</script>
@@ -439,8 +443,8 @@ body.cycle-flip-active #setkaCycleBack{pointer-events:none}
   <iframe title="Оригинальный календарь цикла ALMA" src="./experiments/alma-cycle-source/index.html?v=20261121-inset-insights-c9d418" loading="eager"></iframe>
   <div id="setkaCycleBackGuide" aria-hidden="true"><svg class="setka-card-frame-svg" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" preserveAspectRatio="none"><path class="setka-card-frame-line"/><path class="setka-card-frame-arrows"/></svg></div>
 
-  <svg class="setka-card-vertical-hint top" aria-hidden="true" focusable="false" viewBox="0 0 12 6"><path d="M1.5 5 L6 1 L10.5 5"/></svg>
-  <svg class="setka-card-vertical-hint bottom" aria-hidden="true" focusable="false" viewBox="0 0 12 6"><path d="M1.5 1 L6 5 L10.5 1"/></svg>
+  <svg class="setka-card-vertical-hint top" aria-hidden="true" focusable="false" viewBox="0 0 12 7"><path d="M1.5 6 L6 1 L10.5 6"/></svg>
+  <svg class="setka-card-vertical-hint bottom" aria-hidden="true" focusable="false" viewBox="0 0 12 7"><path d="M1.5 1 L6 6 L10.5 1"/></svg>
 </aside>
 <div id="setkaCycleOpen" class="setka-cycle-edge right" role="button" tabindex="0" aria-label="Повернуть карту с правого края"></div>
 <div id="setkaCycleReturn" class="setka-cycle-edge left" role="button" tabindex="0" aria-label="Повернуть карту с левого края"></div>
@@ -750,8 +754,8 @@ body.cycle-flip-active #setkaCycleBack{pointer-events:none}
     <span class="setka-vlogo-microcopy" aria-hidden="true">SETKA</span>
   </div>
 
-  <svg class="setka-card-vertical-hint top" aria-hidden="true" focusable="false" viewBox="0 0 12 6"><path d="M1.5 5 L6 1 L10.5 5"/></svg>
-  <svg class="setka-card-vertical-hint bottom" aria-hidden="true" focusable="false" viewBox="0 0 12 6"><path d="M1.5 1 L6 5 L10.5 1"/></svg>
+  <svg class="setka-card-vertical-hint top" aria-hidden="true" focusable="false" viewBox="0 0 12 7"><path d="M1.5 6 L6 1 L10.5 6"/></svg>
+  <svg class="setka-card-vertical-hint bottom" aria-hidden="true" focusable="false" viewBox="0 0 12 7"><path d="M1.5 1 L6 6 L10.5 1"/></svg>
 </section>
 <button id="setkaVerticalGripTop" class="setka-vlogo-hotspot top" type="button" aria-label="Повернуть карту вертикально вверх">
   <svg viewBox="0 0 16 10" aria-hidden="true"><path d="M2 2 L8 8 L14 2"/></svg>
