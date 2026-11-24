@@ -1,5 +1,10 @@
 # SETKA APP · REGISTER OF PRODUCT RULES AND AUTOMATED GUARANTEES
 
+## APP-ALMA-WORLD-SPACE-ORIGINAL-NODE-20261124 · v11
+
+WebKit на настоящем браузерном тесте схлопывал оригинальный SVG при вложении в 3D-поворот карточки с iframe, и это было видно только по пикселям. Оригинальный SVG теперь временно перемещается из iframe в world-facing fixed DOM на общей Y-оси: `cardYaw+counterYaw=0`, узел остаётся единственным и живым, после свайпа возвращается в React. Браузерная проверка должна считать реально видимые лепестки слева и справа в Chrome/WebKit, а не только DOM identity. Отрисовка второго цветка, WebGL и имитация половинок запрещены.
+
+
 ## APP-ALMA-WEBKIT-REAL-3D-NO-SHADOW-20261124
 
 Прогон Chromium/WebKit первого CSS-3D-решения: физически исходный SVG переносился правильно, но WebKit сжимал его в линию, потому что nested ShadowRoot разрушал `preserve-3d`. В активной архитектуре нет Shadow DOM; SVG находится в light DOM календарной карточки, исходные классы и стили ALMA ограничены `#setkaCycleLotusDirectPortal`. По окончании оригинал возвращается в React-кнопку. Обязательный pixel smoke при почти ребёрном положении проверяет существенное число окрашенных пикселей по обе стороны оси на Chromium и WebKit. Отдельный ручной осмотр на настоящем iPhone всё ещё требуется.

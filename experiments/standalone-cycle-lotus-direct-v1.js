@@ -24,13 +24,13 @@ function ensurePortal(){
  portal=document.createElement("div");
  portal.id="setkaCycleLotusDirectPortal";
  portal.setAttribute("aria-hidden","true");
- portal.style.cssText="position:absolute;inset:0;z-index:30;overflow:visible;pointer-events:none;transform-style:preserve-3d;-webkit-transform-style:preserve-3d;visibility:hidden;";
- // WebKit flattens transform chains through a ShadowRoot. Keep the SAME SVG
- // in ordinary light DOM, with narrowly scoped original ALMA SVG styles.
+ portal.style.cssText="position:fixed;inset:0;z-index:125;overflow:visible;pointer-events:none;visibility:hidden;";
+ // Nested iframe transforms flatten under WebKit: render the SAME original
+ // node on the world axis in top-level light DOM, without copies.
  holder=document.createElement("div");
  holder.className="setka-cycle-lotus-direct-holder";
  portal.appendChild(holder);
- back.appendChild(portal);
+ document.body.appendChild(portal);
  return true;
 }
 function getOriginal(){
@@ -49,13 +49,13 @@ function start(){
  if(!found)return false;
  const {doc,button,svg}=found;
  const frame=iframe.getBoundingClientRect(),r=svg.getBoundingClientRect();
- const parent=back.getBoundingClientRect();
  if(!r.width||!r.height)return false;
- const x=frame.left+r.left-parent.left,y=frame.top+r.top-parent.top;
+ // The central Y hinge stays fixed while the card rotates.
+ const x=frame.left+r.left,y=frame.top+r.top;
  holder.style.left=x+"px";holder.style.top=y+"px";
  holder.style.width=r.width+"px";holder.style.height=r.height+"px";
  // Cycle colors are inherited in the original iframe; pass that ONE value
- // to the shadow layer so the native SVG gradients/pollen remain reactive.
+ // to the original SVG while it is temporarily in the world-facing layer.
  try{
   const hero=doc.querySelector(".cycle-hero");
   const color=iframe.contentWindow.getComputedStyle(hero).getPropertyValue("--cycle-color");
@@ -77,8 +77,10 @@ function render(p,d=-1){
  // The back face must be hidden while the opaque SETKA/squish side
  // is toward the viewer. The original flower stays a single SVG node.
  portal.style.visibility=g.progress>=.5?"visible":"hidden";
- // Parent ALMA card: +cardYaw. Native SVG: -cardYaw on its own hinge.
- holder.style.transform="rotateY("+g.counterYaw.toFixed(4)+"deg)";
+ // Card theta and the original flower countertheta cancel in world space.
+ // Safari sees the same real SVG outside the nested iframe compositor.
+ const worldYaw=g.cardYaw+g.counterYaw;
+ holder.style.transform="rotateY("+worldYaw.toFixed(4)+"deg)";
  holder.style.webkitTransform=holder.style.transform;
  holder.dataset.cardYaw=g.cardYaw.toFixed(4);
  holder.dataset.counterYaw=g.counterYaw.toFixed(4);

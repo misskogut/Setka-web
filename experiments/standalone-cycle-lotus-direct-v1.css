@@ -1,8 +1,7 @@
-/* The one live React ALMA SVG is moved to light DOM to retain WebKit
- * preserve-3d through the rotated cycle card. This is only its native style,
- * not a substitute graphic or a second lotus. */
+/* The original React ALMA SVG is temporarily on the shared world-facing
+ * Y axis outside iPhone Safari iframe compositing. No copies or redraws. */
 body.cycle-flip-active #setkaCycleBack,
-#setkaCycleBack #setkaCycleLotusDirectPortal{
+body.cycle-flip-active #setkaCycleLotusDirectPortal{
  overflow:visible!important;
  transform-style:preserve-3d!important;
  -webkit-transform-style:preserve-3d!important;

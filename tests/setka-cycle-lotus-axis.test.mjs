@@ -35,13 +35,14 @@ function fake(){
  iframe.addEventListener=()=>{};
  const back=element("aside");
  back.querySelector=q=>q==="iframe"?iframe:null;
- const document={createElement:element,getElementById:id=>id==="setkaCycleBack"?back:null};
+ const body=element("body");
+ const document={body,createElement:element,getElementById:id=>id==="setkaCycleBack"?back:null};
  const window={addEventListener(){}};
  vm.runInNewContext(js,{document,window,console,Math,Number},{filename:"standalone-cycle-lotus-direct-v1.js"});
- return{api:window.SETKA_CYCLE_LOTUS_AXIS,svg,button,back};
+ return{api:window.SETKA_CYCLE_LOTUS_AXIS,svg,button,back,body};
 }
 test("one original ALMA SVG is MOVED (not copied) and restored after both swipes",()=>{
- const{api,svg,button,back}=fake();
+ const{api,svg,button,back,body}=fake();
  assert.equal(button.querySelector("svg.cycle-lotus"),svg);
  assert.equal(api.start(),true);
  assert.equal(button.querySelector("svg.cycle-lotus"),null,"the source node is not duplicated");
@@ -56,7 +57,7 @@ test("one original ALMA SVG is MOVED (not copied) and restored after both swipes
  assert.equal(api.getInfo().originalIn3D,true);
  api.rest();
  assert.equal(button.querySelector("svg.cycle-lotus"),svg);
- assert.equal(back.children.filter(c=>c.id==="setkaCycleLotusDirectPortal").length,1);
+ assert.equal(body.children.filter(c=>c.id==="setkaCycleLotusDirectPortal").length,1);
 });
 test("counter-rotating original native SVG stays viewer-facing in BOTH directions",()=>{
  const{api}=fake();
@@ -76,13 +77,15 @@ test("source uses original React SVG, never shader, clone, screen masks or mater
  assert.match(js,/holder\.appendChild\(svg\)/);
  assert.match(js,/button\.appendChild\(svg\)/);
  assert.match(js,/portal\.appendChild\(holder\)/);
+ assert.match(js,/document\.body\.appendChild\(portal\)/);
+ assert.match(js,/worldYaw=g\.cardYaw\+g\.counterYaw/);
  assert.match(js,/\.cycle-lotus-button/);
  assert.doesNotMatch(js,/attachShadow|shadowRoot/,"iPhone WebKit must not flatten the 3D chain");
  assert.match(js,/rotateY\(/);
  assert.doesNotMatch(js,/cloneNode|getContext\(["']webgl|createTexture|texture2D|new Image\(|createElement\(["']svg/);
  assert.doesNotMatch(css,/clip-path|mask:|canvas|opacity:0/);
- assert.match(host,/standalone-cycle-lotus-direct-v1.js\?v=20261124-native-3d-one-svg-v10/);
- assert.match(host,/standalone-cycle-lotus-direct-v1.css\?v=20261124-native-3d-one-svg-v10/);
+ assert.match(host,/standalone-cycle-lotus-direct-v1.js\?v=20261124-original-lotus-world-axis-v11/);
+ assert.match(host,/standalone-cycle-lotus-direct-v1.css\?v=20261124-original-lotus-world-axis-v11/);
  assert.doesNotMatch(host,/standalone-cycle-lotus-axis-v1\./);
  assert.doesNotMatch(canonical,/standalone-cycle-lotus-direct-v1/);
 });
