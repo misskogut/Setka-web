@@ -58,6 +58,7 @@ function start(){
  const x=frame.left+r.left,y=frame.top+r.top;
  holder.style.left=x+"px";holder.style.top=y+"px";
  holder.style.width=r.width+"px";holder.style.height=r.height+"px";
+ holder.style.background="rgba(0,235,110,.50)"; // Temporary diagnostic: is CSS plane itself flattened?
  try{
   const hero=doc.querySelector(".cycle-hero");
   const color=iframe.contentWindow.getComputedStyle(hero).getPropertyValue("--cycle-color");
