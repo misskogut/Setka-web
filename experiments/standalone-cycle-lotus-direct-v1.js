@@ -71,7 +71,7 @@ function start(){
  }catch(_){}
  originalRef=svg;
  const petals=[...svg.querySelectorAll("path.lotus-petal")].map(path=>({
-  path,transform:path.style.transform,opacity:path.style.opacity
+  path,transform:path.style.transform,opacity:path.style.opacity,transition:path.style.transition
  }));
  active={doc,button,svg,naturalWidth:r.width,naturalHeight:r.height,petals,petalState:null};
  // Native adoption: this is the actual React SVG node, not a duplication.
@@ -100,6 +100,7 @@ function render(p,d=-1){
  holder.style.webkitTransform=holder.style.transform;
  for(const petal of active.petals){
   const isInner=petal.path.classList.contains(m.inwardSide);
+  petal.path.style.transition=isInner?"none":petal.transition;
   petal.path.style.transform=isInner?
    "scaleX("+m.innerWidth.toFixed(5)+") rotate(var(--petal-angle))":petal.transform;
   petal.path.style.opacity=isInner?m.innerLight.toFixed(5):petal.opacity;
@@ -121,6 +122,7 @@ function rest(){
  for(const petal of petals){
   petal.path.style.transform=petal.transform;
   petal.path.style.opacity=petal.opacity;
+  petal.path.style.transition=petal.transition;
  }
  // Return the SAME node to React's original button; React can resume
  // all interactions and live color/petal updates without any proxy.

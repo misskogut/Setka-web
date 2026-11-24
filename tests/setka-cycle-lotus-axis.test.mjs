@@ -99,6 +99,7 @@ test("real original ALMA left/right paths fold toward their own center and are r
  api.rest();
  assert.equal(left.style.transform,undefined);
  assert.equal(left.style.opacity,undefined);
+ assert.equal(left.style.transition,undefined);
  api.start();api.render(.75,1);
  assert.match(right.style.transform,/scaleX\(/);
  assert.equal(left.style.transform,undefined);
