@@ -67,6 +67,9 @@ function start(){
  active={doc,button,svg,naturalWidth:r.width,naturalHeight:r.height};
  // ADOPT this ONE original live React SVG node. There are no copies.
  holder.appendChild(svg);
+ // Diagnostic: remove the Safari iframe compositor from the shared 3D tree
+ // during the swipe, without destroying the React calendar.
+ if(iframe)iframe.style.visibility="hidden";
  portal.style.visibility="hidden";
  return true;
 }
@@ -107,6 +110,7 @@ function rest(){
   else if(svg.parentNode===holder)svg.remove();
  }catch(e){console.warn("[SETKA ALMA common 3D] restore",e)}
  active=null;
+ if(iframe)iframe.style.removeProperty("visibility");
  if(portal)portal.style.visibility="hidden";
  if(volume)volume.style.visibility="hidden";
  back.style.removeProperty("opacity");
