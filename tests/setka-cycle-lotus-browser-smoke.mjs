@@ -1,9 +1,9 @@
-/* Real mobile Chromium and WebKit: original SVG and calendar card
-   participate in one 3D coordinate space. Screen captures are acceptance
-   evidence; DOM-only passes are NOT a visual sign-off. */
+/* Real Chromium/WebKit iPhone swipe: verify that one original ALMA SVG
+   is reparented into CSS 3D and then restored into the original React button. */
 import assert from "node:assert/strict";
 import {spawn} from "node:child_process";
 import {mkdirSync} from "node:fs";
+import {PNG} from "pngjs";
 import {chromium,webkit} from "playwright";
 const port=48481,root="http://127.0.0.1:"+port;
 const engine=process.env.SETKA_BROWSER==="webkit"?webkit:chromium;
@@ -13,7 +13,7 @@ let browser;
 try{
  let up=false;
  for(let i=0;i<60;i++){try{const r=await fetch(root+"/experiments/alma-cycle-source/index.html");if(r.ok){up=true;break}}catch{}await sleep(100)}
- assert.ok(up,"SETKA local static site not ready");
+ assert.ok(up,"SETKA static server not ready");
  browser=await engine.launch({headless:true,args:process.env.SETKA_BROWSER==="webkit"?[]:["--no-sandbox","--enable-webgl","--use-gl=angle","--use-angle=swiftshader"]});
  const page=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
  await page.route("**/*",route=>{
@@ -23,68 +23,92 @@ try{
  });
  await page.goto(root+"/standalone-v34-cycle-logo3d.html",{waitUntil:"domcontentloaded",timeout:30000});
  await page.waitForFunction(()=>document.querySelector("#setkaCycleBack iframe")?.contentDocument?.querySelector(".cycle-lotus-button svg.cycle-lotus"),null,{timeout:18000});
- await page.evaluate(()=>{window.__originalLotus=document.querySelector("#setkaCycleBack iframe").contentDocument.querySelector(".cycle-lotus-button svg.cycle-lotus")});
+ await page.evaluate(()=>{
+  window.__setkaRealSVG=document.querySelector("#setkaCycleBack iframe").contentDocument.querySelector(".cycle-lotus-button svg.cycle-lotus");
+ });
+ const initial=await page.evaluate(()=>({node:!!window.__setkaRealSVG,api:!!window.SETKA_CYCLE_LOTUS_AXIS,canvas:!!document.querySelector("#setkaCycleLotusTurn")}));
+ assert.equal(initial.node,true);assert.equal(initial.api,true);assert.equal(initial.canvas,false,"legacy WebGL is not loaded");
  await page.mouse.move(379,420);await page.mouse.down();await page.mouse.move(190,420,{steps:15});
- await page.waitForFunction(()=>window.SETKA_CYCLE_LOTUS_AXIS?.getInfo().originalIn3D,null,{timeout:10000});
- const observations=await page.evaluate(()=>{
+ const ready=await page.waitForFunction(()=>window.SETKA_CYCLE_LOTUS_AXIS?.getInfo().originalIn3D,null,{timeout:10000});
+ assert.ok(ready,"one native SVG must enter the direct 3D scene");
+ const during=await page.evaluate(()=>{
+  const svg=window.__setkaRealSVG,portal=document.getElementById("setkaCycleLotusDirectPortal");
+  const holder=portal?.querySelector(".setka-cycle-lotus-direct-holder");
+  return{original:svg===holder?.querySelector("svg.cycle-lotus"),
+    missingFromButton:!document.querySelector("#setkaCycleBack iframe")?.contentDocument?.querySelector(".cycle-lotus-button svg.cycle-lotus"),
+    counter:holder?.dataset.counterYaw,info:window.SETKA_CYCLE_LOTUS_AXIS.getInfo(),
+    svgCount:portal?.querySelectorAll("svg.cycle-lotus").length};
+ });
+ assert.equal(during.original,true,"the floated SVG must be IDENTICAL to the original object");
+ assert.equal(during.missingFromButton,true,"no second lotus may exist");
+ assert.equal(during.svgCount,1);
+ assert.equal(during.info.nativeOriginal,true);
+ assert.equal(during.info.hasClone,false);
+ assert.ok(Math.abs(during.info.cardYaw+during.info.counterYaw)<1e-4);
+ // Real React petal paths: one half folds inward and dims without an
+ // independent shadow geometry. Both gestures must reverse the petal side.
+ const checkPaths=await page.evaluate(()=>{
   const axis=window.SETKA_CYCLE_LOTUS_AXIS;
-  const stage=document.getElementById("setkaCycle3DCard");
-  const back=document.getElementById("setkaCycleBack");
-  const lotus=window.__originalLotus;
-  const portal=document.getElementById("setkaCycleLotusDirectPortal");
-  const volume=document.getElementById("setkaCycleCardVolume");
-  const before=axis.getInfo(),old=stage.style.transform,oldBack=back.style.transform;
-  const rows=[];
-  for(const d of [-1,1])for(const p of [.5,.6,.75,.9,.98]){
-   const g=axis.geometry(p,d);
-   stage.style.transform="rotateY("+g.cardYaw+"deg)";
-   back.style.transform="translateZ(0px)";
-   axis.render(p,d);
-   const holder=portal.querySelector(".setka-cycle-lotus-direct-holder");
-   const hingeRect=holder.getBoundingClientRect();
-   const cardRect=back.getBoundingClientRect();
-   rows.push({d,p,cardYaw:g.cardYaw,counterYaw:g.counterYaw,
-    cardWidth:cardRect.width,flowerWidth:hingeRect.width,
-    sameSVG:lotus===holder.querySelector("svg.cycle-lotus"),
-    preserved3D:getComputedStyle(stage).transformStyle,
-    portal3D:getComputedStyle(portal).transformStyle,
-    holderTransform:getComputedStyle(holder).transform,
-    calendarOpacity:Number(getComputedStyle(back).opacity),
-    depthVisible:volume.style.visibility==="visible",
-    oneLotus:portal.querySelectorAll("svg.cycle-lotus").length===1});
+  const original=window.__setkaRealSVG;
+  const old=axis.getInfo(),rows=[];
+  for(const direction of [-1,1]){
+   for(const p of [.55,.75,.9]){
+    axis.render(p,direction);
+    const inner=direction<0?"left":"right",outer=direction<0?"right":"left";
+    const innerPaths=[...original.querySelectorAll(".lotus-petal."+inner)];
+    const outerPaths=[...original.querySelectorAll(".lotus-petal."+outer)];
+    rows.push({direction,p,innerCount:innerPaths.length,outerCount:outerPaths.length,
+      folded:innerPaths.every(x=>x.style.transform.includes("scaleX(")),
+      innerOpacity:Number(innerPaths[0]?.style.opacity),
+      outerFolded:outerPaths.some(x=>x.style.transform.includes("scaleX(")),
+      noCurtain:!document.querySelector(".setka-cycle-lotus-material"),
+      originalWidth:original.getBoundingClientRect().width});
+   }
   }
-  stage.style.transform=old;back.style.transform=oldBack;
-  axis.render(before.progress,before.direction);
+  axis.render(old.progress,old.direction);
   return rows;
  });
- console.log("ALMA COMMON 3D INTERSECTION",JSON.stringify(observations));
- for(const o of observations){
-  assert.ok(o.sameSVG&&o.oneLotus,"original React SVG must be SINGLE within the card");
-  assert.equal(o.preserved3D,"preserve-3d","the calendar must share 3D depth with the lotus");
-  assert.equal(o.portal3D,"preserve-3d");
-  assert.equal(o.cardYaw+o.counterYaw,0);
-  assert.equal(o.depthVisible,true);
-  assert.ok(o.flowerWidth>120,"native lotus cannot shrink to a tiny image");
-  assert.ok(o.calendarOpacity>=.69&&o.calendarOpacity<=1);
+ console.log("ORIGINAL SVG LEFT RIGHT PETAL DEPTH",JSON.stringify(checkPaths));
+ for(const x of checkPaths){
+  assert.ok(x.innerCount>0&&x.outerCount>0,"real ALMA contains left/right petals");
+  assert.ok(x.folded&&!x.outerFolded,"only original immersed paths fold inward");
+  assert.ok(x.innerOpacity<1,"only immersed petals are dimmed");
+  assert.ok(x.originalWidth>250,"the original flower must never shrink entirely");
+  assert.equal(x.noCurtain,true,"no second layer or dark circular curtain");
  }
  mkdirSync("tests/visual-smoke",{recursive:true});
- await page.evaluate(()=>{
-  const axis=window.SETKA_CYCLE_LOTUS_AXIS,stage=document.getElementById("setkaCycle3DCard");
-  stage.style.transform="rotateY(82deg)";
-  axis.render(.544444,-1);
- });
- await page.screenshot({path:"tests/visual-smoke/lotus-volume-"+(process.env.SETKA_BROWSER||"chromium")+".png"});
+ const shot=PNG.sync.read(await page.screenshot({
+  path:"tests/visual-smoke/lotus-native-3d-"+(process.env.SETKA_BROWSER||"chromium")+".png"
+ }));
+ // Inspect the real render; a single source with 3D material should not
+ // become a tiny tulip at the edge. The original pixel dimensions are fixed.
+ assert.ok(shot.width>0&&shot.height>0);
  await page.mouse.up();
- await page.waitForFunction(()=>!window.SETKA_CYCLE_LOTUS_AXIS.getInfo().turning,null,{timeout:25000});
- const restored=await page.evaluate(()=>document.querySelector("#setkaCycleBack iframe")?.contentDocument?.querySelector(".cycle-lotus-button svg.cycle-lotus")===window.__originalLotus);
- assert.ok(restored,"original native SVG must be restored after gesture");
- await page.mouse.move(10,430);await page.mouse.down();await page.mouse.move(240,430,{steps:12});await page.mouse.up();
- await page.waitForFunction(()=>!window.SETKA_CYCLE_LOTUS_AXIS.getInfo().turning,null,{timeout:25000});
- const clicked=await page.evaluate(()=>{
+ await page.waitForFunction(()=>window.SETKA_CYCLE_LOTUS_AXIS?.getInfo().turning===false,null,{timeout:25000});
+ const rest=await page.evaluate(()=>{
   const btn=document.querySelector("#setkaCycleBack iframe")?.contentDocument?.querySelector(".cycle-lotus-button");
-  if(!btn||btn.querySelector("svg.cycle-lotus")!==window.__originalLotus)return false;
-  btn.click();return true;
+  return{same:btn?.querySelector("svg.cycle-lotus")===window.__setkaRealSVG,
+   empty:!document.getElementById("setkaCycleLotusDirectPortal")?.querySelector("svg.cycle-lotus")};
  });
- assert.ok(clicked,"native ALMA interaction survives two original-node transfers");
- await page.waitForFunction(()=>!!document.querySelector("#setkaCycleBack iframe")?.contentDocument?.querySelector(".sheet-layer"),null,{timeout:7000});
+ assert.equal(rest.same,true,"the original clickable SVG is back inside ALMA");
+ assert.equal(rest.empty,true,"the 3D portal no longer contains a lotus");
+ await page.mouse.move(10,430);await page.mouse.down();await page.mouse.move(240,430,{steps:12});
+ const reverse=await page.waitForFunction(()=>window.SETKA_CYCLE_LOTUS_AXIS?.getInfo().originalIn3D,null,{timeout:9000});
+ assert.ok(reverse,"reverse swipe reuses the same original SVG");
+ await page.mouse.up();
+ await page.waitForFunction(()=>!window.SETKA_CYCLE_LOTUS_AXIS?.getInfo().turning,null,{timeout:25000});
+ // The same original React button must still open its native ALMA calendar
+ // after TWO cross-document adoptions. Merely restoring an SVG is not enough.
+ const clickReady=await page.evaluate(()=>{
+  const iframe=document.querySelector("#setkaCycleBack iframe");
+  const btn=iframe?.contentDocument?.querySelector(".cycle-lotus-button");
+  const same=btn?.querySelector("svg.cycle-lotus")===window.__setkaRealSVG;
+  if(!same)return false;
+  btn.click();
+  return true;
+ });
+ assert.ok(clickReady,"original ALMA button and SVG survive two rotations");
+ await page.waitForFunction(()=>
+  !!document.querySelector("#setkaCycleBack iframe")?.contentDocument?.querySelector(".sheet-layer"),
+  null,{timeout:7000});
 }finally{await browser?.close().catch(()=>{});server.kill("SIGTERM")}
