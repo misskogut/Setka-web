@@ -45,7 +45,7 @@
  border:1px solid rgba(170,100,210,.25);border-radius:24px;
  background:rgba(9,3,15,.9)}
 #setkaCycleCardVolume .setka-cycle-depth-wall{position:absolute;top:0;bottom:0;
- width:var(--cycle-depth);opacity:.75;pointer-events:none;
+ width:var(--cycle-depth);opacity:.58;pointer-events:none;
  background:linear-gradient(90deg,rgba(18,7,25,.97),rgba(3,1,5,.95))}
 #setkaCycleCardVolume .setka-cycle-depth-wall.left{left:0;
  transform-origin:left center;transform:rotateY(90deg)}

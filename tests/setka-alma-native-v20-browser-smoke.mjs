@@ -53,20 +53,38 @@ try{
  assert.ok(info.one&&info.original&&info.appStill&&info.hierarchy);
  assert.equal(info.preserve,"preserve-3d");
  mkdirSync("tests/visual-smoke",{recursive:true});
- const shot=await page.screenshot({path:"tests/visual-smoke/alma-native-v20-"+(process.env.SETKA_BROWSER||"chromium")+".png"});
- const png=PNG.sync.read(shot),mid=png.width/2;
- let left=0,right=0;
- for(let y=png.height*.23|0;y<png.height*.61;y+=2){
-  for(let x=15;x<png.width-15;x+=2){
-   const i=(y*png.width+x)*4,r=png.data[i],g=png.data[i+1],b=png.data[i+2];
-   if(r>80&&b>95&&r>g*1.35&&b>g*1.35){
-    if(x<mid-70)left++;
-    if(x>mid+70)right++;
+ const results=[];
+ // Both directions, same original SVG, asymmetric attenuation from the
+ // actual material (buried half is dim, exposed half remains bright).
+ for(const direction of [-1,1]){
+  const a=direction<0?82:-82;
+  const g=window.SETKA_CYCLE_LOTUS_AXIS;
+  await page.evaluate(([direction,angle])=>{
+   const card=document.getElementById("setkaCycle3DCard");
+   card.style.transform="rotateY("+angle+"deg)";
+   window.SETKA_CYCLE_LOTUS_AXIS.render(.544444,direction);
+  },[direction,a]);
+  const filename="tests/visual-smoke/alma-native-v20-"+(process.env.SETKA_BROWSER||"chromium")+"-"+(direction<0?"left":"right")+".png";
+  const shot=await page.screenshot({path:filename});
+  const png=PNG.sync.read(shot),mid=png.width/2;
+  let inner=0,outer=0;
+  for(let y=png.height*.25|0;y<png.height*.57;y+=2)
+   for(let x=15;x<png.width-15;x+=2){
+    const i=(y*png.width+x)*4,r=png.data[i],green=png.data[i+1],b=png.data[i+2];
+    const left=x<mid-70,right=x>mid+70;
+    if(!left&&!right)continue;
+    const dimPurple=r>32&&b>39&&r>green*1.3&&b>green*1.3;
+    const brightPurple=r>80&&b>95&&r>green*1.35&&b>green*1.35;
+    if((direction<0?left:right)&&dimPurple)inner++;
+    if((direction<0?right:left)&&brightPurple)outer++;
    }
-  }
+  results.push({direction,inner,outer,engine:process.env.SETKA_BROWSER||"chromium"});
  }
- console.log("ALMA native petals",JSON.stringify({left,right,engine:process.env.SETKA_BROWSER||"chromium",errors}));
- assert.ok(left>100&&right>100,"original lotus collapsed instead of real 3D counter-rotation");
+ console.log("ALMA native physical inner / outer petals",JSON.stringify({results,errors}));
+ for(const {direction,inner,outer} of results){
+  assert.ok(inner>130,"inside half must visibly transmit through the card material, gesture "+direction);
+  assert.ok(outer>140,"exposed original petals must remain bright, gesture "+direction);
+ }
  await page.mouse.up();
  await page.waitForFunction(()=>window.SETKA_CYCLE_LOTUS_AXIS?.getInfo().turning===false,null,{timeout:30000});
  assert.ok(await page.evaluate(()=>!!document.querySelector("#alma-cycle-root .cycle-lotus-button svg.cycle-lotus")));
