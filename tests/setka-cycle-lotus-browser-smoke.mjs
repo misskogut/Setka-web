@@ -91,7 +91,31 @@ try{
    }
   }
  console.log("LOTUS TRUE PETAL PIXELS",JSON.stringify({left,right,engine:process.env.SETKA_BROWSER||"chromium"}));
- assert.ok(left>80&&right>80,"webkit: original lotus MUST remain wide at the card edge, not collapse");
+ // The outward half (right for the left swipe) is bright; the immersed
+ // half must NOT spill out across the black space beyond the narrow card.
+ console.log("ALMA PHYSICAL WALL LEFT SWIPE",JSON.stringify({left,right}));
+ assert.ok(right>80,"the exposed half must remain a full-size original lotus");
+ assert.ok(left<right*.45,"the ALMA volume must occlude the immersed half outside the card");
+ // Reverse gesture mirrors the actual 3D side of the same card volume.
+ await page.evaluate(()=>{
+  const axis=window.SETKA_CYCLE_LOTUS_AXIS;
+  const stage=document.getElementById("setkaCycle3DCard");
+  stage.style.transform="rotateY(-82deg)";
+  axis.render(.544444,1);
+ });
+ const reverseShot=await page.screenshot({path:"tests/visual-smoke/lotus-volume-reverse-"+(process.env.SETKA_BROWSER||"chromium")+".png"});
+ const png2=PNG.sync.read(reverseShot);let reverseLeft=0,reverseRight=0;
+ for(let y=Math.round(png2.height*.22);y<Math.round(png2.height*.62);y+=2)
+  for(let x=20;x<png2.width-20;x+=2){
+   const i=(y*png2.width+x)*4,r=png2.data[i],g=png2.data[i+1],b=png2.data[i+2];
+   if(r>85&&b>100&&r>g*1.42&&b>g*1.42){
+    if(x<mid-75)reverseLeft++;
+    if(x>mid+75)reverseRight++;
+   }
+  }
+ console.log("ALMA PHYSICAL WALL RIGHT SWIPE",JSON.stringify({reverseLeft,reverseRight}));
+ assert.ok(reverseLeft>80,"opposite exposed half must remain full-size");
+ assert.ok(reverseRight<reverseLeft*.45,"immersed right half cannot pierce the opposite side");
  await page.mouse.up();
  await page.waitForFunction(()=>!window.SETKA_CYCLE_LOTUS_AXIS.getInfo().turning,null,{timeout:25000});
  const restored=await page.evaluate(()=>document.querySelector("#setkaCycleBack iframe")?.contentDocument?.querySelector(".cycle-lotus-button svg.cycle-lotus")===window.__originalLotus);
