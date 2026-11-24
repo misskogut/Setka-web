@@ -98,7 +98,7 @@ test("source uses original React SVG, never shader, clone, screen masks or mater
  assert.match(js,/fitInsideCard\(cardRect\.width,active\.naturalWidth\)/);
  assert.match(js,/\.cycle-lotus-button/);
  assert.doesNotMatch(js,/attachShadow|shadowRoot/,"iPhone WebKit must not flatten the 3D chain");
- assert.match(js,/rotateY\(/);
+ assert.match(js,/fitInsideCard\(/,"card-space horizontal projection follows native ALMA card");
  assert.doesNotMatch(js,/cloneNode|getContext\(["']webgl|createTexture|texture2D|new Image\(|createElement\(["']svg/);
  assert.doesNotMatch(css,/clip-path|mask:|canvas|opacity:0/);
  assert.match(host,/standalone-cycle-lotus-direct-v1.js\?v=20261124-lotus-bound-to-cycle-card-v12/);
