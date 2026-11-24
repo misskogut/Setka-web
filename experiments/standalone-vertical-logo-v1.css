@@ -22,9 +22,7 @@
   border:1px solid rgba(190,195,205,.25);
   border-radius:24px;
   background:
-    radial-gradient(ellipse 76% 35% at 50% 53%,rgba(141,51,208,.38),rgba(82,27,136,.19) 48%,transparent 88%),
-    radial-gradient(ellipse 110% 49% at 50% 72%,rgba(74,25,115,.28),transparent 80%),
-    linear-gradient(160deg,#06040a 0%,#030306 58%,#06030a 100%);
+    radial-gradient(ellipse 76% 35% at 50% 45%,rgba(141,51,208,.38),rgba(82,27,136,.19) 48%,transparent 88%),#050408;
   box-sizing:border-box;
   pointer-events:auto;
   display:flex;
@@ -39,24 +37,14 @@
   position:absolute;
   inset:0;
   border-radius:inherit;
-  box-shadow:inset 0 0 70px rgba(0,0,0,.38),inset 0 0 20px rgba(184,102,238,.04);
+  box-shadow:inset 0 0 70px rgba(0,0,0,.40);
   pointer-events:none;
   z-index:4;
 }
-.setka-vlogo-card::after{
-  content:"";
-  position:absolute;
-  left:8%;
-  right:8%;
-  top:20%;
-  bottom:17%;
-  background:radial-gradient(ellipse at center,rgba(166,78,239,.15),transparent 72%);
-  filter:blur(25px);
-  pointer-events:none;
-}
+.setka-vlogo-card::after{content:none;}
 .setka-vlogo-space{
   position:absolute;
-  inset:0;
+  inset:-10% 0 0;
   overflow:hidden;
   perspective:900px;
   display:grid;
@@ -249,4 +237,16 @@ body.setka-vlogo-side #libraryScreen{pointer-events:none!important}
 }
 @media(prefers-reduced-motion:reduce){
   .setka-vlogo-3d{transition:none!important}
+}
+/* Approved composition: flat lettering attached to the card, not the rotating seal. */
+.setka-vlogo-caption{
+  position:absolute;top:94%;left:0;right:0;
+  transform:translate3d(0,-50%,1px);
+  text-align:center;white-space:nowrap;
+  font-family:system-ui,-apple-system,sans-serif;
+  font-size:8px;font-weight:200;line-height:1.2;
+  letter-spacing:3.2px;color:#e0cce9;opacity:.82;
+  pointer-events:none;user-select:none;
+  backface-visibility:hidden;-webkit-backface-visibility:hidden;
+  z-index:5;
 }

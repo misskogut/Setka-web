@@ -11,16 +11,17 @@ function harness(){
  let clock=1000;
  const handlers=new Map(), frames=[];
  const history=[],titleDraws=[],buffers=new Map();
- let titlePass=0,lastBuffer=null,bound=null,honeyBuffer=null;
+ let titlePass=0,lastBuffer=null,bound=null,honeyBuffer=null,logoShift=0;
+ const shifts=[];
  const gl=new Proxy({},{
   get(target,key){
    if(key==='getShaderParameter'||key==='getProgramParameter')return ()=>true;
    if(key==='createShader'||key==='createProgram'||key==='createBuffer')return ()=>({});
    if(key==='getAttribLocation')return ()=>0;
    if(key==='getUniformLocation')return (_,name)=>name;
-   if(key==='uniform1f')return (name,value)=>{if(name==='uTitlePass')titlePass=value};
+   if(key==='uniform1f')return (name,value)=>{if(name==='uTitlePass')titlePass=value;if(name==='uLogoShift')logoShift=value};
    if(key==='bindBuffer')return (_,b)=>{bound=b;};
-   if(key==='drawArrays')return (mode,start,count)=>{if(titlePass>0)titleDraws.push({count,pass:titlePass,finite:buffers.get(bound)?.every(Number.isFinite)});};
+   if(key==='drawArrays')return (mode,start,count)=>{shifts.push({pass:titlePass,count,shift:logoShift});if(titlePass>0)titleDraws.push({count,pass:titlePass,finite:buffers.get(bound)?.every(Number.isFinite)});};
    if(key==='bufferData')return (kind,value,usage)=>{
     lastBuffer=value;buffers.set(bound,value);if(!honeyBuffer&&value?.length>20000)honeyBuffer=bound;
     if(value?.length>20000 && bound===honeyBuffer)history.push({vertices:value.length/7,finite:Array.from(value).every(Number.isFinite)});
@@ -56,7 +57,7 @@ function harness(){
  assert.ok(api,'live renderer should mount');
  api.render({visible:true,angle:0});
  const send=(type,options={})=>{
-  const e={pointerType:'touch',pointerId:7,clientX:195,clientY:360,...options};
+  const e={pointerType:'touch',pointerId:7,clientX:195,clientY:324,...options};
   for(const cb of handlers.get(type)||[])cb(e);
  };
  const advance=(ms)=>{
@@ -64,7 +65,7 @@ function harness(){
   const next=frames.shift();
   if(next)next(clock);
  };
- return {send,advance,api,history,titleDraws};
+ return {send,advance,api,history,titleDraws,shifts};
 }
 
 test('tap on honey immediately increases zero-G excitement, repeated tap stacks',()=>{
@@ -203,4 +204,15 @@ test('radial tension fans have common interior centres and no perimeter dent',()
  assert.match(rendererCode,/delta=Math.atan2\(Math.sin\(theta-a\),Math.cos\(theta-a\)\)/);
  assert.doesNotMatch(rendererCode,/singleTensionFold|function seamProfile|balloonBendWeight/);
  assert.match(experiment,/20261124-circular-seal-mega-bubble-radial-interior-v10/);
+});
+
+test('approved 45 percent logo offset moves honey and title but not the card depth plane',()=>{
+ const h=harness();
+ assert.equal(h.api.getInfo().logoCardCenterY,.45);
+ assert.ok(h.shifts.some(x=>x.count===6&&x.shift===0));
+ assert.ok(h.shifts.filter(x=>x.pass>0).every(x=>Math.abs(x.shift-36)<1e-6));
+ assert.ok(h.shifts.some(x=>x.pass===0&&x.count>5000&&Math.abs(x.shift-36)<1e-6));
+ h.send('pointerdown',{clientY:324});h.send('pointerup',{clientY:324});
+ assert.equal(h.api.getInfo().taps,1);
+ assert.match(rendererCode,/rotX\(p\*uScale\+vec3\(0\.,uLogoShift,0\.\),uFlip\)/);
 });
