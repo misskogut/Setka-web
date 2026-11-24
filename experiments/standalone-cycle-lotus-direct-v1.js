@@ -107,9 +107,10 @@ function render(p,d=-1){
  volume.style.height=active.naturalHeight+"px";
  volume.style.transformOrigin=m.inwardSide==="left"?"right center":"left center";
  volume.style.webkitTransformOrigin=volume.style.transformOrigin;
- volume.style.background=m.inwardSide==="left"?
-  "linear-gradient(to right,rgba(2,1,5,.96),rgba(2,1,5,.58))":
-  "linear-gradient(to left,rgba(2,1,5,.96),rgba(2,1,5,.58))";
+ // Translucent ALMA material is softly volumetric, not a rectangular
+ // black curtain pasted over the calendar or a second flower.
+ volume.style.borderRadius="50%";
+ volume.style.background="radial-gradient(ellipse 92% 88% at 50% 50%,rgba(2,1,5,.97) 0%,rgba(2,1,5,.78) 54%,rgba(2,1,5,.45) 73%,rgba(2,1,5,0) 100%)";
  volume.style.transform="perspective(1450px) rotateY("+m.materialAngle.toFixed(4)+"deg)";
  volume.style.webkitTransform=volume.style.transform;
  volume.style.visibility=m.materialOpacity?"visible":"hidden";

@@ -102,10 +102,12 @@ test("source uses original React SVG, never shader, clone, screen masks or mater
  assert.match(js,/\.cycle-lotus-button/);
  assert.doesNotMatch(js,/attachShadow|shadowRoot/,"iPhone WebKit must not flatten the 3D chain");
  assert.match(js,/function material\(/,"physical volume supplies native occlusion");
+ assert.match(js,/radial-gradient\(ellipse 92% 88%/,"material cannot be an opaque rectangular curtain");
+ assert.doesNotMatch(js,/linear-gradient\(to right,rgba\(2,1,5,.96\)/);
  assert.doesNotMatch(js,/cloneNode|getContext\(["']webgl|createTexture|texture2D|new Image\(|createElement\(["']svg/);
  assert.doesNotMatch(css,/clip-path|mask:|canvas|opacity:0/);
- assert.match(host,/standalone-cycle-lotus-direct-v1.js\?v=20261124-original-lotus-card-volume-v14/);
- assert.match(host,/standalone-cycle-lotus-direct-v1.css\?v=20261124-original-lotus-card-volume-v14/);
+ assert.match(host,/standalone-cycle-lotus-direct-v1.js\?v=20261124-original-lotus-soft-volume-v15/);
+ assert.match(host,/standalone-cycle-lotus-direct-v1.css\?v=20261124-original-lotus-soft-volume-v15/);
  assert.doesNotMatch(host,/standalone-cycle-lotus-axis-v1\./);
  assert.doesNotMatch(canonical,/standalone-cycle-lotus-direct-v1/);
 });
