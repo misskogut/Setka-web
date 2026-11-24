@@ -31,8 +31,8 @@ function shader(kind,src){
  }
  return sh;
 }
-const vert="precision highp float;\nattribute vec3 aPosition;attribute vec3 aNormal;attribute float aMaterial;\nuniform mat4 uProjection;uniform float uFlip;uniform float uScale;uniform float uTitlePass;uniform vec2 uTitleViewport;\nvarying vec3 vN;varying float vAngle;\nvec3 rotX(vec3 p,float a){float c=cos(a),s=sin(a);return vec3(p.x,p.y*c-p.z*s,p.y*s+p.z*c);}\nvoid main(){\n vec3 p=aPosition*uScale;\n vec3 world=rotX(p,uFlip);\n vN=normalize(rotX(aNormal,uFlip));\n vAngle=aMaterial;\n gl_Position=uProjection*vec4(world.xy,world.z-1450.,1.);\n if(uTitlePass>.5){\n  vec3 end=rotX((aPosition+aNormal)*uScale,uFlip);\n  vec4 other=uProjection*vec4(end.xy,end.z-1450.,1.);\n  vec2 delta=(other.xy/other.w-gl_Position.xy/gl_Position.w)*uTitleViewport;\n  float len=length(delta);vec2 perp=len>.0001?vec2(-delta.y,delta.x)/len:vec2(0.,1.);\n  float side=sign(aMaterial);\n  gl_Position.xy+=perp*side*vec2(2./uTitleViewport.x,2./uTitleViewport.y)*3.8*gl_Position.w;\n  vN=vec3(side,0.,0.);vAngle=abs(aMaterial);\n }\n}";
-const frag="precision highp float;\nvarying vec3 vN;varying float vAngle;\nuniform float uTime;\nuniform float uTitlePass;\nvoid main(){\n if(uTitlePass > 0.5){\n  float channel=floor((vAngle-1.)*.5);\n  float distanceAlong=mod(vAngle-1.,2.);\n  float wave=fract(distanceAlong*3.-uTime*.48);\n  float d=(wave-.34)*8.;float pulse=exp(-d*d);\n  float edge=abs(vN.x);\n  float core=1.-smoothstep(.21,.43,edge);\n  float halo=exp(-edge*edge*5.5)*(1.-smoothstep(.77,1.,edge));\n  float weight=channel<.5?1.:(channel<1.5?.62:.74);\n  vec3 blue=mix(vec3(.27,.23,1.),vec3(.20,.90,1.),pulse);\n  vec3 hot=mix(vec3(.63,.79,1.),vec3(.98,1.,1.),pulse);\n  float alpha=weight*max(core*.97,halo*(.24+.24*pulse));\n  gl_FragColor=vec4(mix(blue,hot,core),alpha);return;\n }\n vec3 n=normalize(vN);\n vec3 light=normalize(vec3(-.52,.77,.95));\n vec3 specLight=normalize(vec3(-.30,.42,1.19));\n float lam=max(dot(n,light),0.);\n float rim=pow(1.-abs(n.z),2.4);\n float spec=pow(max(dot(n,specLight),0.),27.);\n float env=pow(abs(sin((n.x*.71+n.y*.23+n.z*.37)*10.8+uTime*.33)),13.)\n          +.38*pow(abs(sin((n.x*1.2+n.z*.13)*3.9+2.)),12.);\n float flick=.16*max(0.,sin(vAngle+uTime*.39));\n vec3 rgb=vec3(87.+127.*lam+115.*env+40.*spec+flick*30.,\n               37.+104.*lam+86.*env+37.*spec+flick*18.,\n               4.+45.*lam+28.*env+20.*spec+flick*4.);\n gl_FragColor=vec4(clamp(rgb/255.,0.,1.),1.);\n}";
+const vert="precision highp float;\nattribute vec3 aPosition;attribute vec3 aNormal;attribute float aMaterial;\nuniform mat4 uProjection;uniform float uFlip;uniform float uScale;\nvarying vec3 vN;varying float vAngle;\nvec3 rotX(vec3 p,float a){float c=cos(a),s=sin(a);return vec3(p.x,p.y*c-p.z*s,p.y*s+p.z*c);}\nvoid main(){\n vec3 p=aPosition*uScale;\n vec3 world=rotX(p,uFlip);\n vN=normalize(rotX(aNormal,uFlip));\n vAngle=aMaterial;\n gl_Position=uProjection*vec4(world.xy,world.z-1450.,1.);\n}";
+const frag="precision highp float;\nvarying vec3 vN;varying float vAngle;\nuniform float uTime;\nuniform float uTitlePass;\nvoid main(){\n if(uTitlePass > 0.5){\n  float channel=floor(vAngle*.5);\n  float along=mod(vAngle,2.);\n  float wave=fract(along*3.-uTime*.48);\n  float d=(wave-.34)*6.;float pulse=exp(-d*d);\n  float iridescence=.5+.5*sin(along*20.-uTime*1.6+channel*.7);\n  vec3 violet=vec3(.83,.62,1.);\n  vec3 cyan=vec3(.58,.94,1.);\n  vec3 edge=mix(violet,cyan,iridescence);\n  vec3 rgb=mix(edge,vec3(1.,1.,1.),.24+.70*pulse);\n  float base=channel<.5?.98:(channel<1.5?.83:.90);\n  gl_FragColor=vec4(rgb,mix(base,1.,pulse));return;\n }\n vec3 n=normalize(vN);\n vec3 light=normalize(vec3(-.52,.77,.95));\n vec3 specLight=normalize(vec3(-.30,.42,1.19));\n float lam=max(dot(n,light),0.);\n float rim=pow(1.-abs(n.z),2.4);\n float spec=pow(max(dot(n,specLight),0.),27.);\n float env=pow(abs(sin((n.x*.71+n.y*.23+n.z*.37)*10.8+uTime*.33)),13.)\n          +.38*pow(abs(sin((n.x*1.2+n.z*.13)*3.9+2.)),12.);\n float flick=.16*max(0.,sin(vAngle+uTime*.39));\n vec3 rgb=vec3(87.+127.*lam+115.*env+40.*spec+flick*30.,\n               37.+104.*lam+86.*env+37.*spec+flick*18.,\n               4.+45.*lam+28.*env+20.*spec+flick*4.);\n gl_FragColor=vec4(clamp(rgb/255.,0.,1.),1.);\n}";
 let prog=null,buf=null,total=0,stats=null;
 try{
  const v=shader(gl.VERTEX_SHADER,vert),f=shader(gl.FRAGMENT_SHADER,frag);
@@ -48,7 +48,6 @@ const U={projection:gl.getUniformLocation(prog,"uProjection"),
  scale:gl.getUniformLocation(prog,"uScale"),
  time:gl.getUniformLocation(prog,"uTime"),
  titlePass:gl.getUniformLocation(prog,"uTitlePass"),
- titleViewport:gl.getUniformLocation(prog,"uTitleViewport"),
  motion:null};
 
 /* Port of the original approved #08 CPU isosurface renderer.
@@ -185,33 +184,26 @@ function titleGeometry(){
    }
   }
  });
- // Expand every 3D contour segment to a camera-facing ribbon. Unlike
- // gl.lineWidth this is consistently thick on mobile Safari and desktop.
+ // Original one-pixel line geometry, no ribbons, bloom or expansion.
+ // Only the material coordinate changes along the existing edge.
  for(const {a,b,channel,start,end} of segments){
-  const delta=b.map((v,i)=>v-a[i]);
-  if(Math.hypot(...delta)<.0001)continue;
-  const t0=1+channel*2+start/Math.max(1,travelled)*.999;
-  const t1=1+channel*2+end/Math.max(1,travelled)*.999;
-  for(const [p,t,side] of [[a,t0,-1],[a,t0,1],[b,t1,-1],[b,t1,-1],[a,t0,1],[b,t1,1]])out.push(...p,...delta,t*side);
+  const base=channel*2;
+  out.push(...a,0,0,1,base+start/Math.max(1,travelled)*.999);
+  out.push(...b,0,0,1,base+end/Math.max(1,travelled)*.999);
  }
  return new Float32Array(out);
 }
 function drawTitle(){
  const data=titleGeometry();
  gl.bindBuffer(gl.ARRAY_BUFFER,titleBuffer);
+ gl.bufferData(gl.ARRAY_BUFFER,data,gl.DYNAMIC_DRAW);
  bindMesh(titleBuffer);
  // Explicit draw-pass selection: the honey facet phase can be negative too.
  gl.uniform1f(U.titlePass,1);
  gl.enable(gl.BLEND);
  gl.blendFuncSeparate(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA,gl.ONE,gl.ONE_MINUS_SRC_ALPHA);
  gl.depthMask(false);
- // Keep small chunks for mobile GPU uploads; each has whole triangles.
- const chunk=6*7*200;
- for(let i=0;i<data.length;i+=chunk){
-  const part=data.subarray(i,i+chunk);
-  gl.bufferData(gl.ARRAY_BUFFER,part,gl.DYNAMIC_DRAW);
-  gl.drawArrays(gl.TRIANGLES,0,part.length/7);
- }
+ gl.drawArrays(gl.LINES,0,data.length/7);
  gl.depthMask(true);
  gl.disable(gl.BLEND);
  gl.uniform1f(U.titlePass,0);
@@ -338,7 +330,6 @@ function paint(){
  gl.uniform1f(U.flip,-angle*Math.PI/180);
  gl.uniform1f(U.scale,scale);
  gl.uniform1f(U.time,phase);
- gl.uniform2f(U.titleViewport,f.renderW,f.renderH);
  gl.uniform1f(U.titlePass,0);
 
  // First draw an invisible, infinitely thin card to the DEPTH BUFFER.
@@ -439,7 +430,7 @@ card.addEventListener("pointerup",e=>endFluidPointer(e),{passive:true});
 card.addEventListener("pointercancel",e=>endFluidPointer(e,true),{passive:true});
 window.SETKA_SOLID_WORDMARK={
  render,
- getInfo:()=>({...stats,real3D:true,renderer:"WebGL original honey #08 live rebuilt",angle,active,rigid:true,continuous:true,metaball:true,faceted:true,globeDecorations:false,animatedFluid:true,liveRebuild:true,depthOcclusion:true,tapExcitation:true,excitationLevel:excitement,taps:tapCount,titleText:TITLE,titlePhase,titleVelocity,titleStyle:"electro-neon-contours",titleNeuralPulse:true}),
+ getInfo:()=>({...stats,real3D:true,renderer:"WebGL original honey #08 live rebuilt",angle,active,rigid:true,continuous:true,metaball:true,faceted:true,globeDecorations:false,animatedFluid:true,liveRebuild:true,depthOcclusion:true,tapExcitation:true,excitationLevel:excitement,taps:tapCount,titleText:TITLE,titlePhase,titleVelocity,titleStyle:"thin-iridescent-contours",titleNeuralPulse:true}),
  dispose(){
   disposed=true;active=false;stopAnimation();canvas.remove();
   gl.deleteBuffer(buf);gl.deleteBuffer(plateBuffer);gl.deleteBuffer(titleBuffer);gl.deleteProgram(prog);

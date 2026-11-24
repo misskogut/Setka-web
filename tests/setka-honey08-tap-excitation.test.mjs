@@ -124,11 +124,11 @@ test('new tap version is loaded only in isolated 3D experiment',()=>{
  assert.ok(!canonical.includes('honey08-tap-energy'));
 });
 
- test('electric title uses finite triangle ribbons and preserves inertial drag, with separate material pass',()=>{
+ test('electric title uses original thin line geometry and preserves inertial drag, with separate material pass',()=>{
  const h=harness();
- assert.equal(h.api.getInfo().titleStyle,'electro-neon-contours');
+ assert.equal(h.api.getInfo().titleStyle,'thin-iridescent-contours');
  assert.ok(h.titleDraws.length>0);
- assert.ok(h.titleDraws.every(x=>x.count%6===0&&x.finite));
+ assert.ok(h.titleDraws.every(x=>x.count===1038&&x.finite));
  const start=h.api.getInfo().titlePhase;
  h.send('pointerdown',{clientX:65,clientY:350});
  h.advance(40);
@@ -141,5 +141,6 @@ test('new tap version is loaded only in isolated 3D experiment',()=>{
  assert.ok(h.api.getInfo().titlePhase>released.titlePhase);
  assert.match(rendererCode,/if\(uTitlePass > 0\.5\)/);
  assert.match(rendererCode,/float pulse=exp\(-d\*d\)/);
- assert.match(rendererCode,/gl\.uniform2f\(U\.titleViewport/);
+ assert.match(rendererCode,/gl\.drawArrays\(gl\.LINES,0,data\.length\/7\)/);
+ assert.doesNotMatch(rendererCode,/uTitleViewport|gl\.lineWidth\(/);
  });
