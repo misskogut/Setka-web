@@ -25,24 +25,11 @@ function ensurePortal(){
  portal.id="setkaCycleLotusDirectPortal";
  portal.setAttribute("aria-hidden","true");
  portal.style.cssText="position:absolute;inset:0;z-index:30;overflow:visible;pointer-events:none;transform-style:preserve-3d;-webkit-transform-style:preserve-3d;visibility:hidden;";
- const root=portal.attachShadow({mode:"open"});
- const css=document.createElement("link");
- css.rel="stylesheet";
- css.href="./experiments/alma-cycle-source/dist/alma.css?v=20261120-no-header-2";
- const rule=document.createElement("style");
- rule.textContent=`
- :host{display:block;overflow:visible;pointer-events:none;transform-style:preserve-3d;-webkit-transform-style:preserve-3d}
- .setka-cycle-lotus-direct-holder{position:absolute;margin:0;padding:0;overflow:visible;
-  pointer-events:none;transform-origin:50% 50%;-webkit-transform-origin:50% 50%;
-  transform-style:preserve-3d;-webkit-transform-style:preserve-3d;
-  backface-visibility:visible;-webkit-backface-visibility:visible;will-change:transform}
- svg.cycle-lotus{display:block!important;width:100%!important;height:100%!important;
-  overflow:visible!important;max-width:none!important;max-height:none!important;
-  transform:none!important;transition:none!important}
- `;
+ // WebKit flattens transform chains through a ShadowRoot. Keep the SAME SVG
+ // in ordinary light DOM, with narrowly scoped original ALMA SVG styles.
  holder=document.createElement("div");
  holder.className="setka-cycle-lotus-direct-holder";
- root.appendChild(css);root.appendChild(rule);root.appendChild(holder);
+ portal.appendChild(holder);
  back.appendChild(portal);
  return true;
 }
@@ -117,7 +104,7 @@ if(iframe)iframe.addEventListener("load",()=>{
  rest();
 });
 if(typeof window.addEventListener==="function")window.addEventListener("pagehide",rest);
-// Install the native layer and ALMA stylesheet before the first gesture.
+// Install the native 3D layer before the first gesture.
 if(back)ensurePortal();
 window.SETKA_CYCLE_LOTUS_AXIS={
  start,render,rest,geometry,

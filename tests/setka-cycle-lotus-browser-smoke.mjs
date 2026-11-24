@@ -3,6 +3,7 @@
 import assert from "node:assert/strict";
 import {spawn} from "node:child_process";
 import {mkdirSync} from "node:fs";
+import {PNG} from "pngjs";
 import {chromium,webkit} from "playwright";
 const port=48481,root="http://127.0.0.1:"+port;
 const engine=process.env.SETKA_BROWSER==="webkit"?webkit:chromium;
@@ -32,11 +33,11 @@ try{
  assert.ok(ready,"one native SVG must enter the direct 3D scene");
  const during=await page.evaluate(()=>{
   const svg=window.__setkaRealSVG,portal=document.getElementById("setkaCycleLotusDirectPortal");
-  const holder=portal?.shadowRoot?.querySelector(".setka-cycle-lotus-direct-holder");
+  const holder=portal?.querySelector(".setka-cycle-lotus-direct-holder");
   return{original:svg===holder?.querySelector("svg.cycle-lotus"),
     missingFromButton:!document.querySelector("#setkaCycleBack iframe")?.contentDocument?.querySelector(".cycle-lotus-button svg.cycle-lotus"),
     counter:holder?.dataset.counterYaw,info:window.SETKA_CYCLE_LOTUS_AXIS.getInfo(),
-    svgCount:portal?.shadowRoot?.querySelectorAll("svg.cycle-lotus").length};
+    svgCount:portal?.querySelectorAll("svg.cycle-lotus").length};
  });
  assert.equal(during.original,true,"the floated SVG must be IDENTICAL to the original object");
  assert.equal(during.missingFromButton,true,"no second lotus may exist");
@@ -45,13 +46,28 @@ try{
  assert.equal(during.info.hasClone,false);
  assert.ok(Math.abs(during.info.cardYaw+during.info.counterYaw)<1e-4);
  mkdirSync("tests/visual-smoke",{recursive:true});
- await page.screenshot({path:"tests/visual-smoke/lotus-native-3d-"+(process.env.SETKA_BROWSER||"chromium")+".png"});
+ const shot=PNG.sync.read(await page.screenshot({
+  path:"tests/visual-smoke/lotus-native-3d-"+(process.env.SETKA_BROWSER||"chromium")+".png"
+ }));
+ const scale=shot.width/390,halves=[];
+ for(const [a,b] of [[10,150],[240,380]]){
+  let lit=0;
+  for(let y=Math.round(205*scale);y<Math.round(500*scale);y+=2)
+   for(let x=Math.round(a*scale);x<Math.round(b*scale);x+=2){
+    const i=(y*shot.width+x)*4,r=shot.data[i],g=shot.data[i+1],blue=shot.data[i+2];
+    if(r>95&&blue>110&&r>g*1.3&&blue>g*1.45)lit++;
+   }
+  halves.push(lit);
+ }
+ console.log("NATIVE ALMA 3D TWO VISIBLE HALVES",JSON.stringify(halves));
+ assert.ok(halves[0]>80&&halves[1]>80,
+  "in Safari the original lotus must remain wide, not collapse into an edge-on line");
  await page.mouse.up();
  await page.waitForFunction(()=>window.SETKA_CYCLE_LOTUS_AXIS?.getInfo().turning===false,null,{timeout:25000});
  const rest=await page.evaluate(()=>{
   const btn=document.querySelector("#setkaCycleBack iframe")?.contentDocument?.querySelector(".cycle-lotus-button");
   return{same:btn?.querySelector("svg.cycle-lotus")===window.__setkaRealSVG,
-   empty:!document.getElementById("setkaCycleLotusDirectPortal")?.shadowRoot?.querySelector("svg.cycle-lotus")};
+   empty:!document.getElementById("setkaCycleLotusDirectPortal")?.querySelector("svg.cycle-lotus")};
  });
  assert.equal(rest.same,true,"the original clickable SVG is back inside ALMA");
  assert.equal(rest.empty,true,"the 3D portal no longer contains a lotus");

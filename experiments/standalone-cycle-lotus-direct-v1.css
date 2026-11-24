@@ -1,5 +1,6 @@
-/* Original ALMA SVG is adopted into a real CSS 3D plane during a swipe.
- * The calendar uses its single live element and native 3D transforms. */
+/* The one live React ALMA SVG is moved to light DOM to retain WebKit
+ * preserve-3d through the rotated cycle card. This is only its native style,
+ * not a substitute graphic or a second lotus. */
 body.cycle-flip-active #setkaCycleBack,
 #setkaCycleBack #setkaCycleLotusDirectPortal{
  overflow:visible!important;
@@ -7,8 +8,63 @@ body.cycle-flip-active #setkaCycleBack,
  -webkit-transform-style:preserve-3d!important;
 }
 #setkaCycleLotusDirectPortal{pointer-events:none!important;}
+#setkaCycleLotusDirectPortal .setka-cycle-lotus-direct-holder{
+ position:absolute;margin:0;padding:0;overflow:visible;pointer-events:none;
+ transform-style:preserve-3d;-webkit-transform-style:preserve-3d;
+ transform-origin:50% 50%;-webkit-transform-origin:50% 50%;
+ backface-visibility:visible;-webkit-backface-visibility:visible;
+ will-change:transform;
+}
+#setkaCycleLotusDirectPortal svg.cycle-lotus{
+ display:block!important;width:100%!important;height:100%!important;
+ max-width:none!important;max-height:none!important;
+ overflow:visible!important;transform:none!important;transition:none!important;
+}
+#setkaCycleLotusDirectPortal .lotus-aura{fill:url(#lotus-fill);opacity:.46}
+#setkaCycleLotusDirectPortal .lotus-pollen-field{pointer-events:none}
+#setkaCycleLotusDirectPortal .lotus-pollen{
+ fill:color-mix(in srgb,var(--cycle-color) 88%,white 12%);
+ opacity:.58;transform-box:fill-box;transform-origin:center;
+ animation:pollen-float var(--pollen-duration) ease-in-out var(--pollen-delay) infinite alternate;
+ transition:fill .28s ease
+}
+#setkaCycleLotusDirectPortal .lotus-pollen.pollen-1{opacity:.34;animation-direction:alternate-reverse}
+#setkaCycleLotusDirectPortal .lotus-pollen.pollen-2{opacity:.76}
+#setkaCycleLotusDirectPortal .lotus-pollen-field.is-foreground{opacity:.78}
+#setkaCycleLotusDirectPortal .lotus-bloom{isolation:isolate;transform-origin:190px 200px}
+#setkaCycleLotusDirectPortal .lotus-petal{
+ fill:#030107;stroke:color-mix(in srgb,var(--cycle-color) 86%,white 14%);
+ stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round;opacity:1;
+ transform:rotate(var(--petal-angle));transform-box:view-box;
+ transform-origin:190px 200px;will-change:transform;
+ transition-property:transform,stroke;transition-duration:.44s,.22s;
+ transition-timing-function:cubic-bezier(.2,.82,.24,1),ease
+}
+#setkaCycleLotusDirectPortal .lotus-petal.inner{filter:brightness(.94) saturate(1.05)}
+#setkaCycleLotusDirectPortal .lotus-petal.middle{filter:brightness(.82) saturate(.98)}
+#setkaCycleLotusDirectPortal .lotus-petal.outer{filter:brightness(.7) saturate(.92)}
+#setkaCycleLotusDirectPortal .lotus-petal.lotus-drop{stroke-width:1.9}
+#setkaCycleLotusDirectPortal .lotus-drop-shine{
+ fill:none;stroke:rgba(255,255,255,.48);stroke-width:1.1;
+ stroke-linecap:round;opacity:.2;
+ filter:drop-shadow(0 0 4px rgba(255,255,255,.28));
+ transition:opacity .45s ease
+}
+#setkaCycleLotusDirectPortal .lotus-day{
+ fill:#f8f1fa;font-size:37px;font-weight:360;
+ letter-spacing:-.05em;filter:drop-shadow(0 0 10px rgba(255,255,255,.18))
+}
+#setkaCycleLotusDirectPortal .lotus-day-label{
+ fill:color-mix(in srgb,var(--cycle-color) 42%,#777 58%);
+ font-size:7px;letter-spacing:.11em;text-transform:uppercase
+}
+@keyframes pollen-float{
+ 0%{transform:translate(0,5px) scale(.72);opacity:.18}
+ 38%{opacity:.82}
+ 100%{transform:translate(var(--pollen-x),var(--pollen-y)) scale(1.18);opacity:.5}
+}
+@keyframes drop-shimmer{50%{opacity:.22}}
 body:not(.cycle-flip-active) #setkaCycleLotusDirectPortal,
 body:has(#gameScreen.active) #setkaCycleLotusDirectPortal{
- visibility:hidden!important;
- pointer-events:none!important;
+ visibility:hidden!important;pointer-events:none!important;
 }

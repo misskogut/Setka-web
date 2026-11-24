@@ -75,8 +75,9 @@ test("counter-rotating original native SVG stays viewer-facing in BOTH direction
 test("source uses original React SVG, never shader, clone, screen masks or material substitution",()=>{
  assert.match(js,/holder\.appendChild\(svg\)/);
  assert.match(js,/button\.appendChild\(svg\)/);
- assert.match(js,/attachShadow/);
+ assert.match(js,/portal\.appendChild\(holder\)/);
  assert.match(js,/\.cycle-lotus-button/);
+ assert.doesNotMatch(js,/attachShadow|shadowRoot/,"iPhone WebKit must not flatten the 3D chain");
  assert.match(js,/rotateY\(/);
  assert.doesNotMatch(js,/cloneNode|getContext\(["']webgl|createTexture|texture2D|new Image\(|createElement\(["']svg/);
  assert.doesNotMatch(css,/clip-path|mask:|canvas|opacity:0/);
