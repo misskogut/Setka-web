@@ -59,7 +59,7 @@ function harness(dpr=1){
  assert.ok(api,'live renderer should mount');
  api.render({visible:true,angle:0});
  const send=(type,options={})=>{
-  const e={pointerType:'touch',pointerId:7,clientX:195,clientY:324,...options};
+  const e={pointerType:'touch',pointerId:7,clientX:195,clientY:309.6,...options};
   for(const cb of handlers.get(type)||[])cb(e);
  };
  const advance=(ms)=>{
@@ -208,13 +208,13 @@ test('radial tension fans have common interior centres and no perimeter dent',()
  assert.match(experiment,/20261124-circular-seal-mega-bubble-radial-interior-v10/);
 });
 
-test('approved 45 percent logo offset moves honey and title but not the card depth plane',()=>{
+test('approved 43 percent logo offset moves honey and title but not the card depth plane',()=>{
  const h=harness();
- assert.equal(h.api.getInfo().logoCardCenterY,.45);
+ assert.equal(h.api.getInfo().logoCardCenterY,.43);
  assert.ok(h.shifts.some(x=>x.count===6&&x.shift===0));
- assert.ok(h.shifts.filter(x=>x.pass>0&&x.pass<3).every(x=>Math.abs(x.shift-36)<1e-6));
- assert.ok(h.shifts.some(x=>x.pass===0&&x.count>5000&&Math.abs(x.shift-36)<1e-6));
- h.send('pointerdown',{clientY:324});h.send('pointerup',{clientY:324});
+ assert.ok(h.shifts.filter(x=>x.pass>0&&x.pass<3).every(x=>Math.abs(x.shift-50.4)<1e-6));
+ assert.ok(h.shifts.some(x=>x.pass===0&&x.count>5000&&Math.abs(x.shift-50.4)<1e-6));
+ h.send('pointerdown',{clientY:309.6});h.send('pointerup',{clientY:309.6});
  assert.equal(h.api.getInfo().taps,1);
  assert.match(rendererCode,/rotX\(p\*uScale\+vec3\(0\.,uLogoShift,0\.\),uFlip\)/);
 });
@@ -222,7 +222,7 @@ test('approved 45 percent logo offset moves honey and title but not the card dep
 test('flat caption shares the seal depth and card rotation but not seal orbit',()=>{
  const h=harness(),p=h.api.getInfo();
  assert.equal(p.captionWebGL,true);assert.equal(p.captionPlane.depth,110);
- assert.equal(p.captionPlane.y,.94);assert.equal(p.captionPlane.fontSize,8);
+ assert.equal(p.captionPlane.y,.90);assert.equal(p.captionPlane.fontSize,8);
  const a=h.shifts.filter(x=>x.pass===3).slice(-1)[0];
  assert.equal(a.count,6);assert.equal(a.shift,0);
  assert.ok(a.data.filter((_,i)=>i%7===2).every(z=>Math.abs(Math.abs(z-110)-1.2)<1e-5));
@@ -239,7 +239,7 @@ test('caption draws one high resolution line with mip filtering and unchanged 3D
  const h=harness(),p=h.api.getInfo();
  assert.equal(p.captionRasterDensity,8);
  assert.equal(p.captionPlane.weight,300);assert.equal(p.captionPlane.opacity,.92);
- assert.equal(p.captionPlane.depth,110);assert.equal(p.captionPlane.y,.94);
+ assert.equal(p.captionPlane.depth,110);assert.equal(p.captionPlane.y,.90);
  assert.equal(p.captionPlane.fontSize,8);assert.equal(p.captionPlane.spacing,3.2);
  assert.equal(h.captionDraws.length,1);assert.equal(h.captionDraws[0].s,'АНТИСТРЕСС ТРЕКЕР');
  assert.match(h.captionDraws[0].font,/300 64px/);
@@ -308,4 +308,20 @@ test('Cyber Blade doubles mesh sampling and retains native Retina antialiasing w
  assert.match(rendererCode,/const t=clamp\(d\/bevel,0,1\),z=Math.sqrt/);
  assert.match(rendererCode,/refPeak\/pixelScale/);
  assert.match(experiment,/cyber-aa-v1/);
+});
+
+test('balanced card retains caption depth and actual projected 90 percent placement',()=>{
+ const h=harness(),info=h.api.getInfo();
+ assert.equal(info.logoCardCenterY,.43);
+ assert.equal(info.captionPlane.y,.90);
+ assert.equal(info.captionPlane.thickness,2.4);
+ assert.equal(info.captionPlane.depth,110);
+ const a=h.shifts.filter(x=>x.pass===3).slice(-1)[0];
+ const ys=a.data.slice(0,42).filter((_,i)=>i%7===1);
+ const center=(Math.max(...ys)+Math.min(...ys))/2;
+ const scale=(390-34)/370;
+ const front=111.2;
+ const projectedY=.5-center*scale*1450/(1450-front*scale)/720;
+ assert.ok(Math.abs(projectedY-.90)<1e-6);
+ assert.match(experiment,/balance43-90/);
 });

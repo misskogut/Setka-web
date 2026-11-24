@@ -22,7 +22,7 @@
   border:1px solid rgba(190,195,205,.25);
   border-radius:24px;
   background:
-    radial-gradient(ellipse 76% 35% at 50% 45%,rgba(141,51,208,.38),rgba(82,27,136,.19) 48%,transparent 88%),#050408;
+    radial-gradient(ellipse 76% 35% at 50% 43%,rgba(141,51,208,.38),rgba(82,27,136,.19) 48%,transparent 88%),#050408;
   box-sizing:border-box;
   pointer-events:auto;
   display:flex;
@@ -44,7 +44,7 @@
 .setka-vlogo-card::after{content:none;}
 .setka-vlogo-space{
   position:absolute;
-  inset:-10% 0 0;
+  inset:-14% 0 0;
   overflow:hidden;
   perspective:900px;
   display:grid;
@@ -240,7 +240,7 @@ body.setka-vlogo-side #libraryScreen{pointer-events:none!important}
 }
 /* Approved composition: flat lettering attached to the card, not the rotating seal. */
 .setka-vlogo-caption{
-  position:absolute;top:94%;left:0;right:0;
+  position:absolute;top:90%;left:0;right:0;
   transform:translate3d(0,-50%,1px);
   text-align:center;white-space:nowrap;
   font-family:system-ui,-apple-system,sans-serif;

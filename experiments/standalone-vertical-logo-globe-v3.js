@@ -139,8 +139,8 @@ const clamp=(x,min,max)=>Math.max(min,Math.min(max,x));
 const FLUID_REBUILD_MS=82;
 /* Selected circular seal: real solid letters, centred at the honey's z=110 plane. */
 const TITLE="СКВИШ ДЛЯ МОЗГА";
-const LOGO_Y=.45;
-const CAPTION=Object.freeze({text:"АНТИСТРЕСС ТРЕКЕР",y:.94,fontSize:8,spacing:3.2,weight:300,opacity:.92,depth:110,thickness:2.4});
+const LOGO_Y=.43;
+const CAPTION=Object.freeze({text:"АНТИСТРЕСС ТРЕКЕР",y:.90,fontSize:8,spacing:3.2,weight:300,opacity:.92,depth:110,thickness:2.4});
 const TITLE_PRESET=Object.freeze({
  layout:"circular-seal",depth:0,tilt:0,speed:22,clockwise:true,honeyMotion:150,honeySize:100,
  top:Object.freeze({text:"СКВИШ",font:"Mega Bubble",material:"colored-jelly",size:170,spacing:2,radius:154,rainbow:85,volume:100}),

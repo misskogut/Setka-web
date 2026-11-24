@@ -176,15 +176,15 @@ test('logo spans the combined front-card-and-dock height but has no dock of its 
   assert.match(source, /renderSolid\(\{angle:direction\*180\*\(1-p\),visible:true\}\)/);
 });
 
-test('approved card has one centered halo and stationary thin caption at 94 percent',()=>{
+test('approved card has one centered halo and stationary thin caption at 90 percent',()=>{
  const bg=css.match(/\.setka-vlogo-card\s*\{([^}]+)\}/)[1];
  assert.equal((bg.match(/radial-gradient/g)||[]).length,1);
- assert.match(bg,/at 50% 45%,rgba\(141,51,208,\.38\)/);
+ assert.match(bg,/at 50% 43%,rgba\(141,51,208,\.38\)/);
  assert.match(css,/\.setka-vlogo-card::after\s*\{content:none;\}/);
- assert.match(css,/\.setka-vlogo-caption\s*\{[^}]*top:94%/);
+ assert.match(css,/\.setka-vlogo-caption\s*\{[^}]*top:90%/);
  assert.match(css,/\.setka-vlogo-caption\s*\{[^}]*font-size:8px;font-weight:300/);
  assert.match(css,/\.setka-vlogo-caption\s*\{[^}]*letter-spacing:3\.2px;color:#e0cce9;opacity:\.92/);
  assert.match(html,/<span class="setka-vlogo-caption">АНТИСТРЕСС ТРЕКЕР<\/span>/);
  assert.doesNotMatch(html,/<span class="setka-vlogo-microcopy"[^>]*>SETKA<\/span>/);
- assert.match(html,/standalone-vertical-logo-v1\.css\?v=20261124-card-layout-45-94-floating-crisp-v5/);
+ assert.match(html,/standalone-vertical-logo-v1\.css\?v=20261124-card-layout-43-90-v6/);
 });
