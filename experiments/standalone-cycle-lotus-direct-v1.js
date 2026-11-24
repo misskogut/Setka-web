@@ -17,7 +17,7 @@ function petalDepth(progress,direction=-1){
  const edge=Math.abs(Math.sin(g.cardYaw*Math.PI/180));
  // Recess the REAL original inner petal paths, never the whole flower.
  const inwardSide=g.emergingSide==="right"?"left":"right";
- return {...g,inwardSide,innerWidth:1-.64*edge,innerLight:1-.68*edge};
+ return {...g,inwardSide,innerWidth:Math.max(.36,1-.64*edge),innerLight:Math.max(.32,1-.68*edge)};
 }
 function geometry(p,d=-1){
  const progress=clamp(Number.isFinite(p)?p:0,0,1),direction=d>=0?1:-1;
