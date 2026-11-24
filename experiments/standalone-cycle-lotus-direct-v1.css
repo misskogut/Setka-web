@@ -1,3 +1,38 @@
+/* One true perspective stage contains BOTH the existing calendar iframe
+   surface and its one original native lotus SVG, intersecting in 3D. */
+#setkaCycle3DWorld{position:fixed;inset:0;z-index:120;pointer-events:none;
+ perspective:1450px;-webkit-perspective:1450px;perspective-origin:50% 50%;
+ -webkit-perspective-origin:50% 50%;}
+#setkaCycle3DCard{position:absolute;inset:0;pointer-events:none;
+ transform-style:preserve-3d;-webkit-transform-style:preserve-3d;
+ transform-origin:50% 50%;-webkit-transform-origin:50% 50%;}
+#setkaCycle3DCard > #setkaCycleBack{z-index:auto!important;position:absolute;
+ transform:translateZ(0px);-webkit-transform:translateZ(0px);
+ backface-visibility:hidden;-webkit-backface-visibility:hidden;}
+#setkaCycleCardVolume{--cycle-depth:180px;--cycle-inner-opacity:.88;
+ position:absolute;top:var(--setka-cycle-card-top);
+ bottom:var(--setka-cycle-card-bottom);left:50%;
+ width:min(calc(100% - 28px),432px);transform:translateX(-50%);
+ transform-style:preserve-3d;-webkit-transform-style:preserve-3d;
+ pointer-events:none;visibility:hidden;}
+#setkaCycleCardVolume .setka-cycle-depth-back{position:absolute;inset:0;
+ border-radius:24px;background:radial-gradient(ellipse at 50% 50%,
+ rgba(28,12,39,.48),rgba(2,1,5,.94) 65%);
+ opacity:var(--cycle-inner-opacity);transform:translateZ(calc(-1 * var(--cycle-depth)));
+ backface-visibility:hidden;-webkit-backface-visibility:hidden;}
+#setkaCycleCardVolume .setka-cycle-depth-wall{position:absolute;top:0;bottom:0;
+ width:var(--cycle-depth);opacity:.11;pointer-events:none;
+ background:linear-gradient(90deg,rgba(47,21,60,.42),rgba(2,1,5,.95));
+ backface-visibility:hidden;-webkit-backface-visibility:hidden;}
+#setkaCycleCardVolume .setka-cycle-depth-wall.left{left:0;
+ transform-origin:left center;transform:rotateY(90deg)}
+#setkaCycleCardVolume .setka-cycle-depth-wall.right{right:0;
+ transform-origin:right center;transform:rotateY(-90deg)}
+#setkaCycle3DCard #setkaCycleLotusDirectPortal{z-index:auto!important;
+ position:absolute!important;inset:0;pointer-events:none;
+ transform-style:preserve-3d!important;-webkit-transform-style:preserve-3d!important;
+ overflow:visible!important;}
+
 /* The original React ALMA SVG is temporarily on the shared world-facing
  * Y axis outside iPhone Safari iframe compositing. No copies or redraws. */
 body.cycle-flip-active #setkaCycleBack,
