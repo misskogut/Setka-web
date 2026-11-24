@@ -157,5 +157,5 @@ test('Mega Bubble uses external elongated reflections, other preset remains unch
  assert.match(rendererCode,/keyStrip=exp/);
  assert.match(rendererCode,/fillStrip=exp/);
  assert.match(rendererCode,/keyAxis=normalize\(cross/);
- assert.match(experiment,/20261124-circular-seal-mega-bubble-latex-gloss-v2/);
+ assert.match(experiment,/20261124-circular-seal-mega-bubble-latex-gloss-v3/);
 });
