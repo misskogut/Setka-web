@@ -92,6 +92,14 @@ try{
   }
  console.log("LOTUS TRUE PETAL PIXELS",JSON.stringify({left,right,engine:process.env.SETKA_BROWSER||"chromium"}));
  assert.ok(left>80&&right>80,"webkit: original lotus MUST remain wide at the card edge, not collapse");
+ // Diagonal frame is critical: depth must emerge gradually, not only
+ // at an exactly edge-on orientation.
+ await page.evaluate(()=>{
+  const a=window.SETKA_CYCLE_LOTUS_AXIS;
+  document.getElementById("setkaCycle3DCard").style.transform="rotateY(48deg)";
+  a.render(1-48/180,-1);
+ });
+ await page.screenshot({path:"tests/visual-smoke/lotus-volume-diagonal-"+(process.env.SETKA_BROWSER||"chromium")+".png"});
  await page.mouse.up();
  await page.waitForFunction(()=>!window.SETKA_CYCLE_LOTUS_AXIS.getInfo().turning,null,{timeout:25000});
  const restored=await page.evaluate(()=>document.querySelector("#setkaCycleBack iframe")?.contentDocument?.querySelector(".cycle-lotus-button svg.cycle-lotus")===window.__originalLotus);

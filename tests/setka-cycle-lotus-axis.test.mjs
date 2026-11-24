@@ -57,6 +57,8 @@ test("physical card and lotus intersect, rather than mimicking depth with path s
  assert.match(js,/holder\.style\.transform=webkitWorld\?/);
  assert.match(js,/\(webkitWorld\?world:card\)\.appendChild\(portal\)/);
  assert.match(js,/holder\.style\.transform=webkitWorld/);
+ assert.match(js,/world\.appendChild\(card\)/);
+ assert.match(css,/opacity:\.82;pointer-events:none/);
  assert.match(js,/volume\.style\.setProperty\("--cycle-inner-opacity"/);
  assert.doesNotMatch(js,/scaleX\(|petal\.path\.style\.transform|cloneNode|createElement\("svg"\)/);
  assert.match(css,/#setkaCycleCardVolume/);
@@ -65,6 +67,6 @@ test("physical card and lotus intersect, rather than mimicking depth with path s
  assert.match(host,/<div id="setkaCycle3DWorld"/);
  assert.match(host,/card3D\.style\.transform="rotateY\("/);
  assert.doesNotMatch(host,/back\.style\.transform="perspective\(1450px\)/);
- assert.match(host,/standalone-cycle-lotus-direct-v1.js\?v=20261124-alma-volume-webkit-axis-v18/);
+ assert.match(host,/standalone-cycle-lotus-direct-v1.js\?v=20261124-alma-card-physical-occlusion-v19/);
  assert.doesNotMatch(canonical,/setkaCycle3DCard/);
 });

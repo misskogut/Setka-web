@@ -18,12 +18,12 @@
  pointer-events:none;visibility:hidden;}
 #setkaCycleCardVolume .setka-cycle-depth-back{position:absolute;inset:0;
  border-radius:24px;background:radial-gradient(ellipse at 50% 50%,
- rgba(28,12,39,.48),rgba(2,1,5,.94) 65%);
+ rgba(19,8,30,.97),rgba(2,1,5,.98) 70%);
  opacity:var(--cycle-inner-opacity);transform:translateZ(calc(-1 * var(--cycle-depth)));
  backface-visibility:hidden;-webkit-backface-visibility:hidden;}
 #setkaCycleCardVolume .setka-cycle-depth-wall{position:absolute;top:0;bottom:0;
- width:var(--cycle-depth);opacity:.11;pointer-events:none;
- background:linear-gradient(90deg,rgba(47,21,60,.42),rgba(2,1,5,.95));
+ width:var(--cycle-depth);opacity:.82;pointer-events:none;
+ background:linear-gradient(90deg,rgba(13,5,23,.97),rgba(3,1,8,.91));
  backface-visibility:hidden;-webkit-backface-visibility:hidden;}
 #setkaCycleCardVolume .setka-cycle-depth-wall.left{left:0;
  transform-origin:left center;transform:rotateY(90deg)}

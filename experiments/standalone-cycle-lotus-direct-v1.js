@@ -39,7 +39,12 @@ function ensurePortal(){
  holder=document.createElement("div");
  holder.className="setka-cycle-lotus-direct-holder";
  portal.appendChild(holder);
- (webkitWorld?world:card).appendChild(portal);
+ if(webkitWorld){
+  // A single world plane for the untouched SVG, BEHIND the physical
+  // calendar/card volume, so the actual Z walls absorb the buried half.
+  world.appendChild(portal);
+  world.appendChild(card);
+ }else card.appendChild(portal);
  return true;
 }
 function getOriginal(){
