@@ -58,7 +58,7 @@
 <link rel="stylesheet" href="./experiments/standalone-gameplay-music-v1.css?v=ab51c417-small-top-controls">
 <link rel="stylesheet" href="./experiments/standalone-vertical-logo-v1.css?v=20261122-full-dock-flip">
 <link rel="stylesheet" href="./experiments/standalone-cycle-dock-rotation-v1.css?v=20261122-original-rotate-only">
-<link rel="stylesheet" href="./experiments/standalone-cycle-lotus-direct-v1.css?v=20261124-original-lotus-petal-hinge-v16">
+<link rel="stylesheet" href="./experiments/standalone-cycle-lotus-direct-v1.css?v=20261124-alma-volume-webkit-axis-v18">
 <link rel="stylesheet" href="./experiments/standalone-vertical-logo-globe-v3.css?v=20261123-honey08-original-live">
 <link rel="stylesheet" href="standalone-desktop-v1.css?v=1">
 <link rel="stylesheet" href="standalone-music-v1.css?v=15-ios-orbit-artifacts-fixed-20261107" />
@@ -400,11 +400,18 @@ body.cycle-flip-active #setkaCycleBack{pointer-events:none}
 <script src="./experiments/standalone-today-return-v1.js?v=51d5b8af-step-back"></script>
 
 <script src="./experiments/standalone-cycle-dock-rotation-v1.js?v=20261122-original-rotate-only"></script>
+<div id="setkaCycle3DWorld" aria-label="Объёмная карточка цикла"><div id="setkaCycle3DCard">
 <aside class="setka-cycle-overlay" id="setkaCycleBack" hidden aria-label="Календарь-лотос ALMA">
   <iframe title="Оригинальный календарь цикла ALMA" src="./experiments/alma-cycle-source/index.html?v=20261121-inset-insights-c9d418" loading="eager"></iframe>
   <div id="setkaCycleBackGuide" aria-hidden="true"><svg class="setka-card-frame-svg" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" preserveAspectRatio="none"><path class="setka-card-frame-line"/><path class="setka-card-frame-arrows"/></svg></div>
 </aside>
-<script src="./experiments/standalone-cycle-lotus-direct-v1.js?v=20261124-original-lotus-petal-hinge-v16"></script>
+<div id="setkaCycleCardVolume" aria-hidden="true">
+  <div class="setka-cycle-depth-back"></div>
+  <div class="setka-cycle-depth-wall left"></div>
+  <div class="setka-cycle-depth-wall right"></div>
+</div>
+</div></div>
+<script src="./experiments/standalone-cycle-lotus-direct-v1.js?v=20261124-alma-volume-webkit-axis-v18"></script>
 <div id="setkaCycleOpen" class="setka-cycle-edge right" role="button" tabindex="0" aria-label="Повернуть карту с правого края"></div>
 <div id="setkaCycleReturn" class="setka-cycle-edge left" role="button" tabindex="0" aria-label="Повернуть карту с левого края"></div>
 <script>
@@ -414,6 +421,7 @@ body.cycle-flip-active #setkaCycleBack{pointer-events:none}
   // Both edge gestures work on either card face. Gameplay is never captured.
   const app=document.getElementById("app");
   const back=document.getElementById("setkaCycleBack");
+  const card3D=document.getElementById("setkaCycle3DCard");
   const libraryScreen=document.getElementById("libraryScreen");
   const gameScreen=document.getElementById("gameScreen");
   if(!app||!back||!libraryScreen||!gameScreen)return;
@@ -533,6 +541,7 @@ body.cycle-flip-active #setkaCycleBack{pointer-events:none}
     back.style.visibility="";
     app.style.removeProperty("transform");
     back.style.removeProperty("transform");
+    card3D?.style.removeProperty("transform");
     app.style.removeProperty("opacity");
     back.style.removeProperty("opacity");
     try{history.replaceState(null,"",location.pathname+location.search+(inCycle?"#cycle":""))}catch(_){}
@@ -567,7 +576,11 @@ body.cycle-flip-active #setkaCycleBack{pointer-events:none}
     const sign=direction;
     const angle=sign*180*progress;
     app.style.transform="perspective(1450px) rotateY("+angle+"deg)";
-    back.style.transform="perspective(1450px) rotateY("+(-sign*180*(1-progress))+"deg)";
+    // ALMA and its ORIGINAL SVG now inhabit the same perspective 3D scene.
+    // Rotate the common volume, not the iframe independently.
+    const cycleYaw=-sign*180*(1-progress);
+    if(card3D)card3D.style.transform="rotateY("+cycleYaw+"deg)";
+    back.style.transform="translateZ(0px)";
     window.SETKA_CYCLE_DOCK_ROTATION?.render(angle);
     window.SETKA_CYCLE_LOTUS_AXIS?.render(progress,direction);
   }

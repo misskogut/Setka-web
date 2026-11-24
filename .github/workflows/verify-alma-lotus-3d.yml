@@ -4,6 +4,11 @@ name: Verify ALMA native lotus on mobile
 # Ordinary source pushes do not trigger extra test emails.
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "experiments/standalone-cycle-lotus-direct-v1.js"
+      - "tests/setka-cycle-lotus-browser-smoke.mjs"
 
 permissions:
   contents: read
@@ -29,5 +34,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: alma-lotus-3d-mobile-frame
-          path: tests/visual-smoke/lotus-native-3d-*.png
+          path: tests/visual-smoke/lotus-volume-*.png
           if-no-files-found: ignore
