@@ -175,3 +175,10 @@ test('logo spans the combined front-card-and-dock height but has no dock of its 
   assert.match(source, /const unrotatedHeight=card\.offsetHeight/);
   assert.match(source, /renderSolid\(\{angle:direction\*180\*\(1-p\),visible:true\}\)/);
 });
+
+test('brighter violet illumination belongs only to the logo card and is cache-busted',()=>{
+ assert.match(css,/\.setka-vlogo-card\s*\{[^}]*rgba\(141,51,208,\.38\)/);
+ assert.match(css,/\.setka-vlogo-card::after\s*\{[^}]*rgba\(166,78,239,\.15\)/);
+ assert.match(css,/linear-gradient\(160deg,#06040a 0%,#030306 58%,#06030a 100%\)/);
+ assert.match(html,/standalone-vertical-logo-v1\.css\?v=20261124-violet-halo-v2/);
+});
