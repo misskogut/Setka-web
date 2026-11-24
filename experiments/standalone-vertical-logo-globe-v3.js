@@ -32,7 +32,7 @@ function shader(kind,src){
  return sh;
 }
 const vert="precision highp float;\nattribute vec3 aPosition;attribute vec3 aNormal;attribute float aMaterial;\nuniform mat4 uProjection;uniform float uFlip,uScale,uTitlePass,uLogoShift;\nuniform vec3 uTitleCenter,uTitleRight,uTitleUp;\nvarying vec3 vN,vP;varying float vAngle;varying vec2 vCaptionUV;\nvec3 rotX(vec3 p,float a){float c=cos(a),s=sin(a);return vec3(p.x,p.y*c-p.z*s,p.y*s+p.z*c);}\nvoid main(){\n vec3 p=aPosition,n=aNormal;\n if(uTitlePass>.5&&uTitlePass<2.5){p=uTitleCenter+uTitleRight*p.x+uTitleUp*p.y+vec3(0.,0.,p.z);n=uTitleRight*n.x+uTitleUp*n.y+vec3(0.,0.,n.z);}\n vec3 world=rotX(p*uScale+vec3(0.,uLogoShift,0.),uFlip);\n vP=world;vN=normalize(rotX(n,uFlip));vAngle=aMaterial;vCaptionUV=aNormal.xy;\n gl_Position=uProjection*vec4(world.xy,world.z-1450.,1.);\n}";
-const frag="precision highp float;\nvarying vec3 vN,vP;varying float vAngle;varying vec2 vCaptionUV;\nuniform float uTime,uTitlePass,uTitleHue;\nuniform sampler2D uCaption;\nvoid main(){\n if(uTitlePass>3.5){gl_FragColor=vec4(vec3(.8784,.8,.9137)*.92,.92);return;}\n if(uTitlePass>2.5){vec4 ink=texture2D(uCaption,vCaptionUV);if(ink.a<.003)discard;gl_FragColor=ink;return;}\n if(uTitlePass>.5){\n vec3 n=normalize(vN),E=normalize(vec3(0.,0.,1450.)-vP);\n vec3 L=normalize(vec3(-372.,532.,845.)-vP),H=normalize(L+E);\n float nl=max(dot(n,L),0.),nh=max(dot(n,H),0.);\n float shine=pow(nh,77.5)*1.35,sharp=pow(nh,181.25)*.81;\n float fresnel=pow(1.-clamp(abs(dot(n,E)),0.,1.),3.);\n vec3 rgb;\n if(uTitlePass<1.5){\n vec3 green=vec3(.015,.85,.42),blue=vec3(.025,.46,.95),violet=vec3(.58,.045,.95);\n vec3 jelly=uTitleHue<.5?mix(green,blue,uTitleHue*2.):mix(blue,violet,(uTitleHue-.5)*2.);\n jelly=mix(vec3(.22,.53,.77),jelly,.85);\n // Glossy inflated latex: reflect two off-camera elongated studio softboxes.\n // Their positions are in world space, not in the rotating letter UVs.\n vec3 reflection=reflect(-E,n);\n vec3 keyAxis=normalize(cross(vec3(0.,1.,0.),L));\n vec3 keyUp=normalize(cross(L,keyAxis));\n float keyX=dot(reflection,keyAxis),keyY=dot(reflection,keyUp);\n float keyFacing=smoothstep(.68,.95,dot(reflection,L));\n float keyStrip=exp(-pow(abs(keyX/.105),2.)-pow(abs(keyY/.43),2.))*keyFacing;\n float keyHalo=exp(-pow(abs(keyX/.22),2.)-pow(abs(keyY/.56),2.))*keyFacing;\n vec3 fillLight=normalize(vec3(590.,110.,710.)-vP);\n vec3 fillAxis=normalize(cross(vec3(0.,1.,0.),fillLight));\n vec3 fillUp=normalize(cross(fillLight,fillAxis));\n float fillX=dot(reflection,fillAxis),fillY=dot(reflection,fillUp);\n float fillStrip=exp(-pow(abs(fillX/.075),2.)-pow(abs(fillY/.33),2.))*smoothstep(.72,.96,dot(reflection,fillLight));\n // High contrast body colour plus bright, narrow white reflections.\n rgb=jelly*(.16+.69*nl)+jelly*fresnel*.50;\n rgb=mix(rgb,jelly*(.38+.48*nl)+fresnel*.22,clamp(vAngle,0.,1.)*.55);\n rgb+=keyHalo*vec3(.24,.28,.32)+keyStrip*vec3(1.10,1.12,1.16);\n rgb+=fillStrip*vec3(.60,.72,.87)+shine*vec3(.28,.32,.38)+sharp*.38;\n }else{\n vec3 refl=reflect(-E,n);\n vec3 spectrum=.58+.42*cos(6.283185*(refl.x*.45+refl.y*.3+vP.x*.008+uTime*.06+vec3(0.,.333,.667)));\n vec3 chrome=mix(vec3(.10,.12,.18),vec3(.96,.98,1.),smoothstep(.17,.83,.5+.5*sin(refl.y*9.+refl.x*2.)));\n rgb=chrome*(.55+.75*spectrum)+spectrum*.19+shine*.6+sharp*.3;\n }\n gl_FragColor=vec4(clamp(rgb,0.,1.),1.);return;\n }\n vec3 n=normalize(vN);\n vec3 light=normalize(vec3(-.52,.77,.95));\n vec3 specLight=normalize(vec3(-.30,.42,1.19));\n float lam=max(dot(n,light),0.);\n float rim=pow(1.-abs(n.z),2.4);\n float spec=pow(max(dot(n,specLight),0.),27.);\n float env=pow(abs(sin((n.x*.71+n.y*.23+n.z*.37)*10.8+uTime*.33)),13.)\n          +.38*pow(abs(sin((n.x*1.2+n.z*.13)*3.9+2.)),12.);\n float flick=.16*max(0.,sin(vAngle+uTime*.39));\n vec3 rgb=vec3(87.+127.*lam+115.*env+40.*spec+flick*30.,\n               37.+104.*lam+86.*env+37.*spec+flick*18.,\n               4.+45.*lam+28.*env+20.*spec+flick*4.);\n gl_FragColor=vec4(clamp(rgb/255.,0.,1.),1.);\n}";
+const frag="precision highp float;\nvarying vec3 vN,vP;varying float vAngle;varying vec2 vCaptionUV;\nuniform float uTime,uTitlePass,uTitleHue;\nuniform sampler2D uCaption;uniform float uCaptionEdgeAlpha;\nvoid main(){\n if(uTitlePass>3.5){gl_FragColor=vec4(vec3(.8784,.8,.9137)*uCaptionEdgeAlpha,uCaptionEdgeAlpha);return;}\n if(uTitlePass>2.5){vec4 ink=texture2D(uCaption,vCaptionUV);if(ink.a<.003)discard;gl_FragColor=ink;return;}\n if(uTitlePass>.5){\n vec3 n=normalize(vN),E=normalize(vec3(0.,0.,1450.)-vP);\n vec3 L=normalize(vec3(-372.,532.,845.)-vP),H=normalize(L+E);\n float nl=max(dot(n,L),0.),nh=max(dot(n,H),0.);\n float shine=pow(nh,77.5)*1.35,sharp=pow(nh,181.25)*.81;\n float fresnel=pow(1.-clamp(abs(dot(n,E)),0.,1.),3.);\n vec3 rgb;\n if(uTitlePass<1.5){\n vec3 green=vec3(.015,.85,.42),blue=vec3(.025,.46,.95),violet=vec3(.58,.045,.95);\n vec3 jelly=uTitleHue<.5?mix(green,blue,uTitleHue*2.):mix(blue,violet,(uTitleHue-.5)*2.);\n jelly=mix(vec3(.22,.53,.77),jelly,.85);\n // Glossy inflated latex: reflect two off-camera elongated studio softboxes.\n // Their positions are in world space, not in the rotating letter UVs.\n vec3 reflection=reflect(-E,n);\n vec3 keyAxis=normalize(cross(vec3(0.,1.,0.),L));\n vec3 keyUp=normalize(cross(L,keyAxis));\n float keyX=dot(reflection,keyAxis),keyY=dot(reflection,keyUp);\n float keyFacing=smoothstep(.68,.95,dot(reflection,L));\n float keyStrip=exp(-pow(abs(keyX/.105),2.)-pow(abs(keyY/.43),2.))*keyFacing;\n float keyHalo=exp(-pow(abs(keyX/.22),2.)-pow(abs(keyY/.56),2.))*keyFacing;\n vec3 fillLight=normalize(vec3(590.,110.,710.)-vP);\n vec3 fillAxis=normalize(cross(vec3(0.,1.,0.),fillLight));\n vec3 fillUp=normalize(cross(fillLight,fillAxis));\n float fillX=dot(reflection,fillAxis),fillY=dot(reflection,fillUp);\n float fillStrip=exp(-pow(abs(fillX/.075),2.)-pow(abs(fillY/.33),2.))*smoothstep(.72,.96,dot(reflection,fillLight));\n // High contrast body colour plus bright, narrow white reflections.\n rgb=jelly*(.16+.69*nl)+jelly*fresnel*.50;\n rgb=mix(rgb,jelly*(.38+.48*nl)+fresnel*.22,clamp(vAngle,0.,1.)*.55);\n rgb+=keyHalo*vec3(.24,.28,.32)+keyStrip*vec3(1.10,1.12,1.16);\n rgb+=fillStrip*vec3(.60,.72,.87)+shine*vec3(.28,.32,.38)+sharp*.38;\n }else{\n vec3 refl=reflect(-E,n);\n vec3 spectrum=.58+.42*cos(6.283185*(refl.x*.45+refl.y*.3+vP.x*.008+uTime*.06+vec3(0.,.333,.667)));\n vec3 chrome=mix(vec3(.10,.12,.18),vec3(.96,.98,1.),smoothstep(.17,.83,.5+.5*sin(refl.y*9.+refl.x*2.)));\n rgb=chrome*(.55+.75*spectrum)+spectrum*.19+shine*.6+sharp*.3;\n }\n gl_FragColor=vec4(clamp(rgb,0.,1.),1.);return;\n }\n vec3 n=normalize(vN);\n vec3 light=normalize(vec3(-.52,.77,.95));\n vec3 specLight=normalize(vec3(-.30,.42,1.19));\n float lam=max(dot(n,light),0.);\n float rim=pow(1.-abs(n.z),2.4);\n float spec=pow(max(dot(n,specLight),0.),27.);\n float env=pow(abs(sin((n.x*.71+n.y*.23+n.z*.37)*10.8+uTime*.33)),13.)\n          +.38*pow(abs(sin((n.x*1.2+n.z*.13)*3.9+2.)),12.);\n float flick=.16*max(0.,sin(vAngle+uTime*.39));\n vec3 rgb=vec3(87.+127.*lam+115.*env+40.*spec+flick*30.,\n               37.+104.*lam+86.*env+37.*spec+flick*18.,\n               4.+45.*lam+28.*env+20.*spec+flick*4.);\n gl_FragColor=vec4(clamp(rgb/255.,0.,1.),1.);\n}";
 let prog=null,buf=null,total=0,stats=null;
 try{
  const v=shader(gl.VERTEX_SHADER,vert),f=shader(gl.FRAGMENT_SHADER,frag);
@@ -48,7 +48,7 @@ const U={projection:gl.getUniformLocation(prog,"uProjection"),
  scale:gl.getUniformLocation(prog,"uScale"),
  logoShift:gl.getUniformLocation(prog,"uLogoShift"),
  time:gl.getUniformLocation(prog,"uTime"),
- titlePass:gl.getUniformLocation(prog,"uTitlePass"),caption:gl.getUniformLocation(prog,"uCaption"),
+ titlePass:gl.getUniformLocation(prog,"uTitlePass"),caption:gl.getUniformLocation(prog,"uCaption"),captionEdgeAlpha:gl.getUniformLocation(prog,"uCaptionEdgeAlpha"),
  titleCenter:gl.getUniformLocation(prog,"uTitleCenter"),titleRight:gl.getUniformLocation(prog,"uTitleRight"),titleUp:gl.getUniformLocation(prog,"uTitleUp"),titleHue:gl.getUniformLocation(prog,"uTitleHue"),
  motion:null};
 
@@ -405,6 +405,15 @@ function makeCaption(){
 }
 caption=makeCaption();
 if(caption)document.body.classList.add("setka-vlogo-caption-webgl");
+// At rest the camera is off-axis relative to the low caption. Unfiltered
+// contour walls projected across its tiny strokes cause double edges.
+// Keep the clean antialiased face at near-frontal angles, reveal the true
+// extrusion continuously as the card turns toward its edge.
+function captionEdgeVisibility(degrees){
+ const s=Math.abs(Math.sin(degrees*Math.PI/180));
+ const a=clamp((s-Math.sin(12*Math.PI/180))/(Math.sin(38*Math.PI/180)-Math.sin(12*Math.PI/180)),0,1);
+ return a*a*(3-2*a);
+}
 function drawCaption(frame,scale){
  if(!caption)return;
  // Same front-facing size and screen position, with a tiny real Z thickness.
@@ -433,14 +442,19 @@ function drawCaption(frame,scale){
  }
  gl.uniform1f(U.logoShift,0);
  gl.enable(gl.BLEND);gl.blendFuncSeparate(gl.ONE,gl.ONE_MINUS_SRC_ALPHA,gl.ONE,gl.ONE_MINUS_SRC_ALPHA);
- // Solid thin letter edges remain visible even with the card exactly edge-on.
- gl.uniform1f(U.titlePass,4);gl.depthMask(true);
- bindMesh(caption.sideBuffer);gl.drawArrays(gl.TRIANGLES,0,caption.sideCount);
+ // Paint the selected face first, establishing its depth. Do not let
+ // side walls overwrite antialiased strokes at the resting angle.
  gl.uniform1f(U.titlePass,3);
  gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,caption.texture);gl.uniform1i(U.caption,0);
- // Draw only the camera-facing sheet, so overlapping alpha cannot thicken text.
  const frontFacing=1450*Math.cos(angle*Math.PI/180)>depth*scale;
- gl.depthMask(false);bindMesh(caption.buffer);gl.drawArrays(gl.TRIANGLES,frontFacing?0:6,6);
+ gl.depthMask(true);bindMesh(caption.buffer);gl.drawArrays(gl.TRIANGLES,frontFacing?0:6,6);
+ const edgeAlpha=CAPTION.opacity*captionEdgeVisibility(angle);
+ if(edgeAlpha>.003){
+  gl.uniform1f(U.titlePass,4);gl.uniform1f(U.captionEdgeAlpha,edgeAlpha);
+  gl.depthFunc(gl.LESS);
+  bindMesh(caption.sideBuffer);gl.drawArrays(gl.TRIANGLES,0,caption.sideCount);
+  gl.depthFunc(gl.LEQUAL);
+ }
  gl.depthMask(true);gl.disable(gl.BLEND);gl.uniform1f(U.titlePass,0);
 }
 function drawTitle(){
@@ -679,7 +693,7 @@ card.addEventListener("pointerup",e=>endFluidPointer(e),{passive:true});
 card.addEventListener("pointercancel",e=>endFluidPointer(e,true),{passive:true});
 window.SETKA_SOLID_WORDMARK={
  render,
- getInfo:()=>({...stats,real3D:true,renderer:"WebGL original honey #08 live rebuilt",angle,active,rigid:true,continuous:true,metaball:true,faceted:true,globeDecorations:false,animatedFluid:true,liveRebuild:true,depthOcclusion:true,tapExcitation:true,excitationLevel:excitement,taps:tapCount,titleText:TITLE,titlePhase,titleVelocity,titleStyle:"circular-seal-mega-bubble-cyber-blade",titlePreset:TITLE_PRESET,logoCardCenterY:LOGO_Y,captionPlane:CAPTION,captionWebGL:!!caption,captionRasterDensity:caption?.density||0,captionSideVertices:caption?.sideCount||0,titleSolidMeshes:true,titleJellyLighting:"world-space-latex-softboxes-v1",titleBalloonFolds:"interior-radial-tension-v6",titleFoldStats:titleParts.flat().map(e=>({depth:e.g.foldDepth,vertices:e.g.foldVertices,protectedLowerSamples:e.g.protectedLowerSamples,protectedLowerDent:e.g.protectedLowerDent,straightSamples:e.g.straightSamples,straightDent:e.g.straightDent,edgeFoldDepth:e.g.edgeFoldDepth,seamLoops:e.g.seamLoops,height:e.g.height,yStretch:e.g.yStretch})),titleMeshCounts:titleParts.flat().map(e=>e.g.count),titleMeshDepths:titleParts.flat().map(e=>e.g.depth),titleNeuralPulse:false}),
+ getInfo:()=>({...stats,real3D:true,renderer:"WebGL original honey #08 live rebuilt",angle,active,rigid:true,continuous:true,metaball:true,faceted:true,globeDecorations:false,animatedFluid:true,liveRebuild:true,depthOcclusion:true,tapExcitation:true,excitationLevel:excitement,taps:tapCount,titleText:TITLE,titlePhase,titleVelocity,titleStyle:"circular-seal-mega-bubble-cyber-blade",titlePreset:TITLE_PRESET,logoCardCenterY:LOGO_Y,captionPlane:CAPTION,captionWebGL:!!caption,captionRasterDensity:caption?.density||0,captionSideVertices:caption?.sideCount||0,captionEdgeVisibility:captionEdgeVisibility(angle),titleSolidMeshes:true,titleJellyLighting:"world-space-latex-softboxes-v1",titleBalloonFolds:"interior-radial-tension-v6",titleFoldStats:titleParts.flat().map(e=>({depth:e.g.foldDepth,vertices:e.g.foldVertices,protectedLowerSamples:e.g.protectedLowerSamples,protectedLowerDent:e.g.protectedLowerDent,straightSamples:e.g.straightSamples,straightDent:e.g.straightDent,edgeFoldDepth:e.g.edgeFoldDepth,seamLoops:e.g.seamLoops,height:e.g.height,yStretch:e.g.yStretch})),titleMeshCounts:titleParts.flat().map(e=>e.g.count),titleMeshDepths:titleParts.flat().map(e=>e.g.depth),titleNeuralPulse:false}),
  dispose(){
   disposed=true;active=false;stopAnimation();canvas.remove();
   if(caption){gl.deleteTexture(caption.texture);gl.deleteBuffer(caption.buffer);gl.deleteBuffer(caption.sideBuffer);}
