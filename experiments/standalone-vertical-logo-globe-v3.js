@@ -2,7 +2,7 @@
 "use strict";
 /*
   SETKA #08 — faceted liquid gold 3D metaball, mounted above the black card.
-  No globe, orbital rings or orbit lettering. One watertight irregular
+  No globe or orbital grid. Independent wireframe title circles one watertight irregular
   tetrahedral surface; its individual face normals and facet palettes survive
   3D rotation and aperiodic zero-gravity deformation. CSS fallback on WebGL loss.
 */
@@ -32,7 +32,7 @@ function shader(kind,src){
  return sh;
 }
 const vert="precision highp float;\nattribute vec3 aPosition;attribute vec3 aNormal;attribute float aMaterial;\nuniform mat4 uProjection;uniform float uFlip;uniform float uScale;\nvarying vec3 vN;varying float vAngle;\nvec3 rotX(vec3 p,float a){float c=cos(a),s=sin(a);return vec3(p.x,p.y*c-p.z*s,p.y*s+p.z*c);}\nvoid main(){\n vec3 p=aPosition*uScale;\n vec3 world=rotX(p,uFlip);\n vN=normalize(rotX(aNormal,uFlip));\n vAngle=aMaterial;\n gl_Position=uProjection*vec4(world.xy,world.z-1450.,1.);\n}";
-const frag="precision highp float;\nvarying vec3 vN;varying float vAngle;\nuniform float uTime;\nvoid main(){\n vec3 n=normalize(vN);\n vec3 light=normalize(vec3(-.52,.77,.95));\n vec3 specLight=normalize(vec3(-.30,.42,1.19));\n float lam=max(dot(n,light),0.);\n float rim=pow(1.-abs(n.z),2.4);\n float spec=pow(max(dot(n,specLight),0.),27.);\n float env=pow(abs(sin((n.x*.71+n.y*.23+n.z*.37)*10.8+uTime*.33)),13.)\n          +.38*pow(abs(sin((n.x*1.2+n.z*.13)*3.9+2.)),12.);\n float flick=.16*max(0.,sin(vAngle+uTime*.39));\n vec3 rgb=vec3(87.+127.*lam+115.*env+40.*spec+flick*30.,\n               37.+104.*lam+86.*env+37.*spec+flick*18.,\n               4.+45.*lam+28.*env+20.*spec+flick*4.);\n gl_FragColor=vec4(clamp(rgb/255.,0.,1.),1.);\n}";
+const frag="precision highp float;\nvarying vec3 vN;varying float vAngle;\nuniform float uTime;\nvoid main(){\n if(vAngle < -0.5){ gl_FragColor=vec4(.83,.68,.90, -vAngle*.82); return; }\n vec3 n=normalize(vN);\n vec3 light=normalize(vec3(-.52,.77,.95));\n vec3 specLight=normalize(vec3(-.30,.42,1.19));\n float lam=max(dot(n,light),0.);\n float rim=pow(1.-abs(n.z),2.4);\n float spec=pow(max(dot(n,specLight),0.),27.);\n float env=pow(abs(sin((n.x*.71+n.y*.23+n.z*.37)*10.8+uTime*.33)),13.)\n          +.38*pow(abs(sin((n.x*1.2+n.z*.13)*3.9+2.)),12.);\n float flick=.16*max(0.,sin(vAngle+uTime*.39));\n vec3 rgb=vec3(87.+127.*lam+115.*env+40.*spec+flick*30.,\n               37.+104.*lam+86.*env+37.*spec+flick*18.,\n               4.+45.*lam+28.*env+20.*spec+flick*4.);\n gl_FragColor=vec4(clamp(rgb/255.,0.,1.),1.);\n}";
 let prog=null,buf=null,total=0,stats=null;
 try{
  const v=shader(gl.VERTEX_SHADER,vert),f=shader(gl.FRAGMENT_SHADER,frag);
@@ -131,8 +131,68 @@ const movers=ORIGINAL.map(h=>({
 let phase=0,loopId=0,lastStep=0,lastPaint=0,lastMesh=0;
 let press=0,pressGoal=0,contact=[0,0],activeTouch=null;
 let excitement=0,tapCount=0;
+let titlePhase=0,titleVelocity=.12,titleDrag=null;
+const titleBuffer=gl.createBuffer();
 const clamp=(x,min,max)=>Math.max(min,Math.min(max,x));
 const FLUID_REBUILD_MS=82;
+/* Thin, hollow Cyrillic capitals: front/back outline with short connecting
+   edges. One phrase on a closed, tilted 3D path, no repeated copies. */
+const TITLE="СКВИШ ДЛЯ МОЗГА";
+const contours={
+ "С":[[[9,1],[3,1],[1,3],[1,13],[3,15],[9,15],[9,13],[4,13],[3,12],[3,4],[4,3],[9,3],[9,1]]],
+ "К":[[[1,1],[3,1],[3,7],[8,1],[11,1],[5,8],[11,15],[8,15],[3,9],[3,15],[1,15],[1,1]]],
+ "В":[[[1,1],[7,1],[10,3],[10,6],[8,8],[11,10],[11,13],[8,15],[1,15],[1,1]],[[3,3],[7,3],[8,4],[8,6],[7,7],[3,7],[3,3]],[[3,9],[7,9],[9,10],[9,12],[7,13],[3,13],[3,9]]],
+ "И":[[[1,1],[3,1],[3,11],[9,1],[11,1],[11,15],[9,15],[9,5],[3,15],[1,15],[1,1]]],
+ "Ш":[[[1,1],[3,1],[3,13],[6,13],[6,1],[8,1],[8,13],[11,13],[11,1],[13,1],[13,15],[1,15],[1,1]]],
+ "Д":[[[1,13],[3,13],[5,1],[11,1],[11,13],[13,13],[13,17],[11,17],[11,15],[3,15],[3,17],[1,17],[1,13]],[[5,13],[9,13],[9,3],[7,3],[5,13]]],
+ "Л":[[[0,15],[3,1],[11,1],[11,15],[9,15],[9,3],[5,3],[2,15],[0,15]]],
+ "Я":[[[11,1],[4,1],[1,3],[1,7],[4,9],[0,15],[3,15],[7,9],[9,9],[9,15],[11,15],[11,1]],[[9,3],[4,3],[3,4],[3,6],[4,7],[9,7],[9,3]]],
+ "М":[[[1,15],[1,1],[3,1],[7,8],[11,1],[13,1],[13,15],[11,15],[11,5],[7,11],[3,5],[3,15],[1,15]]],
+ "О":[[[3,1],[9,1],[11,3],[11,13],[9,15],[3,15],[1,13],[1,3],[3,1]],[[4,3],[8,3],[9,4],[9,12],[8,13],[4,13],[3,12],[3,4],[4,3]]],
+ "З":[[[1,1],[8,1],[11,3],[11,6],[9,8],[11,10],[11,13],[8,15],[1,15],[1,13],[7,13],[9,12],[9,10],[7,9],[4,9],[4,7],[7,7],[9,6],[9,4],[7,3],[1,3],[1,1]]],
+ "Г":[[[1,1],[11,1],[11,3],[3,3],[3,15],[1,15],[1,1]]],
+ "А":[[[0,15],[5,1],[8,1],[13,15],[10,15],[9,11],[4,11],[3,15],[0,15]],[[5,9],[8,9],[6.5,4],[5,9]]]
+};
+const titleWidths={"Ш":14,"М":14,"А":14,"Д":14,"С":11," ":7};
+function titleGeometry(){
+ const out=[],R=145,depth=99,tilt=.36,unit=1.35;
+ const widths=[...TITLE].map(c=>titleWidths[c]||12);
+ const span=widths.reduce((a,b)=>a+b+2,0)*unit;
+ let cursor=-span/2;
+ function point(theta,x,y,z){
+  const sn=Math.sin(theta),cs=Math.cos(theta);
+  const px=R*sn+x*cs+z*sn;
+  const pz=depth*cs-x*sn+z*cs;
+  return [px*Math.cos(tilt)-y*Math.sin(tilt),px*Math.sin(tilt)+y*Math.cos(tilt)-18,110+pz];
+ }
+ function line(a,b,shade){for(const p of [a,b])out.push(...p,0,0,1,-shade)}
+ [...TITLE].forEach((c,i)=>{
+  const width=widths[i],theta=titlePhase+(cursor+width*unit/2)/R;
+  cursor+=(width+2)*unit;
+  for(const contour of contours[c]||[]){
+   const at=(p,z)=>point(theta,(p[0]-width/2)*unit,(8-p[1])*unit,z);
+   for(let j=0;j<contour.length-1;j++){
+    const a=contour[j],b=contour[j+1];
+    line(at(a,0),at(b,0),.94);
+    line(at(a,-3.2),at(b,-3.2),.53);
+    line(at(a,0),at(a,-3.2),.60);
+   }
+  }
+ });
+ return new Float32Array(out);
+}
+function drawTitle(){
+ const data=titleGeometry();
+ gl.bindBuffer(gl.ARRAY_BUFFER,titleBuffer);
+ gl.bufferData(gl.ARRAY_BUFFER,data,gl.DYNAMIC_DRAW);
+ bindMesh(titleBuffer);
+ gl.enable(gl.BLEND);
+ gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
+ gl.depthMask(false);
+ gl.drawArrays(gl.LINES,0,data.length/7);
+ gl.depthMask(true);
+ gl.disable(gl.BLEND);
+}
 // All 5 moving lobes are resampled into ONE watertight isosurface.
 // No GPU position changes depend on separately shaded polygon normals.
 function refreshFluid(){
@@ -179,6 +239,7 @@ function animate(now){
  if(!active||lost||disposed)return;
  const dt=lastStep?Math.min(.05,(now-lastStep)/1000):.016;
  lastStep=now;phase+=dt;
+ if(!titleDrag?.horizontal){titleVelocity+=(.12-titleVelocity)*(1-Math.exp(-dt*1.25));titlePhase=(titlePhase+titleVelocity*dt)%(Math.PI*2);}
  // The baseline is unchanged; a tap temporarily multiplies movement energy.
  const boost=excitement;
  excitement*=Math.exp(-dt*.61);
@@ -215,7 +276,7 @@ function animate(now){
 function startAnimation(){if(!loopId&&active&&!lost&&!disposed)loopId=requestAnimationFrame(animate)}
 function stopAnimation(){
  if(loopId){cancelAnimationFrame(loopId);loopId=0}
- lastStep=0;lastMesh=0;pressGoal=0;activeTouch=null;
+ lastStep=0;lastMesh=0;pressGoal=0;activeTouch=null;titleDrag=null;
 }
 function projection(frame){
  const D=1450,near=.5,far=3800,f=2*D/frame.renderH,nf=1/(near-far);
@@ -267,6 +328,7 @@ function paint(){
  gl.colorMask(true,true,true,true);
  bindMesh(buf);
  gl.drawArrays(gl.TRIANGLES,0,total);
+ drawTitle();
 }
 function render(opts={}){
  if(disposed||lost)return;
@@ -294,6 +356,33 @@ function fluidPointerXY(e){
  return [(e.clientX-frame.left-frame.width/2)/k,
          -(e.clientY-frame.top-frame.height/2)/k];
 }
+/* Horizontal swipes turn the title belt; vertical swipes still belong to
+   the card. Keep the existing honey pointer listeners independent. */
+card.addEventListener("pointerdown",e=>{
+ if(!active||lost||disposed||Math.abs(angle%360)>12||(e.pointerType==="mouse"&&e.button!==0))return;
+ titleDrag={id:e.pointerId,x:e.clientX,y:e.clientY,lastX:e.clientX,lastT:performance.now(),horizontal:false,vertical:false};
+},{passive:true});
+card.addEventListener("pointermove",e=>{
+ const p=titleDrag;if(!p||p.id!==e.pointerId||p.vertical)return;
+ const dx=e.clientX-p.x,dy=e.clientY-p.y;
+ if(!p.horizontal){
+  if(Math.abs(dy)>11&&Math.abs(dy)>Math.abs(dx)*1.1){p.vertical=true;return}
+  if(Math.abs(dx)<11||Math.abs(dx)<Math.abs(dy)*1.3)return;
+  p.horizontal=true;
+ }
+ const t=performance.now(),delta=(e.clientX-p.lastX)/Math.max(80,(card.offsetWidth||360)*.37);
+ titlePhase=(titlePhase+delta)%(Math.PI*2);
+ titleVelocity=clamp(delta/Math.max(.012,(t-p.lastT)/1000),-6,6);
+ p.lastX=e.clientX;p.lastT=t;
+},{passive:true});
+function endTitle(e){
+ if(titleDrag?.id!==e.pointerId)return;
+ if(titleDrag.horizontal&&performance.now()-titleDrag.lastT>110)titleVelocity=0;
+ titleDrag=null;
+}
+card.addEventListener("pointerup",endTitle,{passive:true});
+card.addEventListener("pointercancel",endTitle,{passive:true});
+card.addEventListener("lostpointercapture",endTitle,{passive:true});
 card.addEventListener("pointerdown",e=>{
  if(!active||lost||disposed||(e.pointerType==="mouse"&&e.button!==0))return;
  const p=fluidPointerXY(e);
@@ -325,10 +414,10 @@ card.addEventListener("pointerup",e=>endFluidPointer(e),{passive:true});
 card.addEventListener("pointercancel",e=>endFluidPointer(e,true),{passive:true});
 window.SETKA_SOLID_WORDMARK={
  render,
- getInfo:()=>({...stats,real3D:true,renderer:"WebGL original honey #08 live rebuilt",angle,active,rigid:true,continuous:true,metaball:true,faceted:true,globeDecorations:false,animatedFluid:true,liveRebuild:true,depthOcclusion:true,tapExcitation:true,excitationLevel:excitement,taps:tapCount}),
+ getInfo:()=>({...stats,real3D:true,renderer:"WebGL original honey #08 live rebuilt",angle,active,rigid:true,continuous:true,metaball:true,faceted:true,globeDecorations:false,animatedFluid:true,liveRebuild:true,depthOcclusion:true,tapExcitation:true,excitationLevel:excitement,taps:tapCount,titleText:TITLE,titlePhase,titleVelocity,titleStyle:"hollow-3d-contours"}),
  dispose(){
   disposed=true;active=false;stopAnimation();canvas.remove();
-  gl.deleteBuffer(buf);gl.deleteBuffer(plateBuffer);gl.deleteProgram(prog);
+  gl.deleteBuffer(buf);gl.deleteBuffer(plateBuffer);gl.deleteBuffer(titleBuffer);gl.deleteProgram(prog);
   document.body.classList.remove("setka-vlogo-webgl");
  }
 };
