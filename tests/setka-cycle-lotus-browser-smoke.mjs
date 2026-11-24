@@ -45,51 +45,43 @@ try{
  assert.equal(during.info.nativeOriginal,true);
  assert.equal(during.info.hasClone,false);
  assert.ok(Math.abs(during.info.cardYaw+during.info.counterYaw)<1e-4);
- // The original node must follow the PHYSICAL projected card outline,
- // not remain a full-width billboard while the card is almost edge-on.
- const bounded=await page.evaluate(()=>{
+ // The flower is ONE original full-size SVG; the ALMA card's interior,
+ // not a scaling trick, rotates over only the submerged half.
+ const volumetric=await page.evaluate(()=>{
   const lotus=window.SETKA_CYCLE_LOTUS_AXIS;
   const back=document.getElementById("setkaCycleBack");
-  const outer=document.getElementById("setkaCycleLotusDirectPortal");
-  const holder=outer.querySelector(".setka-cycle-lotus-direct-holder");
-  const originalCardTransform=back.style.transform;
+  const port=document.getElementById("setkaCycleLotusDirectPortal");
+  const flower=port.querySelector("svg.cycle-lotus"),material=port.querySelector(".setka-cycle-lotus-material");
   const restore=lotus.getInfo(),rows=[];
   for(const direction of [-1,1]){
-   for(const p of [.51,.58,.65,.75,.85,.95]){
+   for(const p of [.5,.6,.75,.85,.95]){
     const angle=-direction*180*(1-p);
     back.style.transform="perspective(1450px) rotateY("+angle+"deg)";
     lotus.render(p,direction);
-    const card=back.getBoundingClientRect();
-    const flower=holder.querySelector("svg.cycle-lotus").getBoundingClientRect();
-    const info=lotus.getInfo();
-    rows.push({p,direction,cardWidth:card.width,flowerWidth:flower.width,
-      leftExcess:card.left-flower.left,rightExcess:flower.right-card.right,
-      fitScale:info.fitScale,originalAspect:info.originalAspectRatio,
-      projectedAspect:flower.height/Math.max(.01,flower.width)});
+    rows.push({p,direction,width:flower.getBoundingClientRect().width,
+      height:flower.getBoundingClientRect().height,
+      inward:material.dataset.inwardSide,
+      angle:Number(material.dataset.materialAngle),
+      volumeVisible:material.style.visibility==="visible"});
    }
   }
-  back.style.transform=originalCardTransform;
+  back.style.transform="perspective(1450px) rotateY("+restore.cardYaw+"deg)";
   lotus.render(restore.progress,restore.direction);
   return rows;
  });
- console.log("ALMA PROJECTED CARD BOUNDS",JSON.stringify(bounded));
- for(const b of bounded){
-  assert.ok(b.flowerWidth<=b.cardWidth+2.5,
-   "a live lotus is not allowed to extend outside the projected cycle card at "+b.p);
-  assert.ok(b.leftExcess<=3&&b.rightExcess<=3,
-   "the flower must stay inside both card boundaries, not hover in front of it");
-  if(b.flowerWidth>2){
-   assert.ok(Math.abs(b.originalAspect-b.projectedAspect)<.04,
-    "the real original lotus must keep its petal proportions in BOTH browsers");
-  }
+ console.log("ORIGINAL LOTUS / ALMA VOLUMETRIC MATERIAL",JSON.stringify(volumetric));
+ for(const x of volumetric){
+  assert.ok(x.width>250&&x.height>200,"original lotus must not become a miniature");
+  assert.equal(x.inward,x.direction<0?"left":"right");
+  assert.ok(Math.abs(x.angle)<=90);
+  assert.equal(x.volumeVisible,true);
  }
  mkdirSync("tests/visual-smoke",{recursive:true});
  const shot=PNG.sync.read(await page.screenshot({
   path:"tests/visual-smoke/lotus-native-3d-"+(process.env.SETKA_BROWSER||"chromium")+".png"
  }));
- // The previous pixel test REQUIRED petals outside the narrow card, which
- // was the actual visual bug reported from iPhone. The geometry sweep above
- // now rejects that escape in both Chromium and WebKit.
+ // Inspect the real render; a single source with 3D material should not
+ // become a tiny tulip at the edge. The original pixel dimensions are fixed.
  assert.ok(shot.width>0&&shot.height>0);
  await page.mouse.up();
  await page.waitForFunction(()=>window.SETKA_CYCLE_LOTUS_AXIS?.getInfo().turning===false,null,{timeout:25000});

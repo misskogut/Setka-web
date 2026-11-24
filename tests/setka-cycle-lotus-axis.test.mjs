@@ -73,19 +73,22 @@ test("counter-rotating original native SVG stays viewer-facing in BOTH direction
  assert.equal(api.getInfo().portalVisible,"visible","ALMA owns the real 3D lotus");
  api.rest();
 });
-test("native lotus must fit inside the perspective-projected ALMA card in both rotations",()=>{
+test("single original lotus remains full size while the ALMA volume turns",()=>{
  const {api}=fake();
- const naturalWidth=390;
- for(const cardWidth of [0,9,20,48,80,112,168,205,300,390]){
-  const scale=api.fitInsideCard(cardWidth,naturalWidth);
-  assert.ok(scale>=0&&scale<=1);
-  assert.ok(scale*naturalWidth<=Math.max(0,cardWidth-10)+.001,
-   "the SVG may not draw beyond its own card, even when edge-on");
+ for(const d of [-1,1]){
+  for(const p of [.5,.6,.75,.9,1]){
+   const m=api.material(p,d);
+   assert.equal(m.cardYaw+m.counterYaw,0);
+   assert.equal(m.inwardSide,d<0?"left":"right");
+   assert.ok(Math.abs(m.materialAngle)<=90);
+   assert.equal(m.materialOpacity,1);
+  }
  }
- assert.ok(api.fitInsideCard(90,390)<.25,
-  "the original flower must visibly contract as its card approaches edge-on");
- assert.ok(api.fitInsideCard(390,390)>.95,
-  "the resting ALMA flower must keep its original proportions");
+ api.start();api.render(.75,-1);
+ assert.equal(api.getInfo().materialSide,"left");
+ assert.equal(api.getInfo().materialVisible,true);
+ api.rest();
+ assert.equal(api.getInfo().materialVisible,false);
 });
 
 test("source uses original React SVG, never shader, clone, screen masks or material substitution",()=>{
@@ -93,16 +96,16 @@ test("source uses original React SVG, never shader, clone, screen masks or mater
  assert.match(js,/button\.appendChild\(svg\)/);
  assert.match(js,/portal\.appendChild\(holder\)/);
  assert.match(js,/document\.body\.appendChild\(portal\)/);
- assert.match(js,/holder\.style\.transform="scale\("/);
- assert.match(js,/const cardRect=back\.getBoundingClientRect\(\)/);
- assert.match(js,/fitInsideCard\(cardRect\.width,active\.naturalWidth\)/);
+ assert.match(js,/volume\.style\.transform="perspective\(1450px\) rotateY\("/);
+ assert.match(js,/holder\.style\.transform="rotateY\(0deg\)"/);
+ assert.doesNotMatch(js,/holder\.style\.transform="scale\(/,"original flower may never be miniaturized");
  assert.match(js,/\.cycle-lotus-button/);
  assert.doesNotMatch(js,/attachShadow|shadowRoot/,"iPhone WebKit must not flatten the 3D chain");
- assert.match(js,/fitInsideCard\(/,"card-space horizontal projection follows native ALMA card");
+ assert.match(js,/function material\(/,"physical volume supplies native occlusion");
  assert.doesNotMatch(js,/cloneNode|getContext\(["']webgl|createTexture|texture2D|new Image\(|createElement\(["']svg/);
  assert.doesNotMatch(css,/clip-path|mask:|canvas|opacity:0/);
- assert.match(host,/standalone-cycle-lotus-direct-v1.js\?v=20261124-lotus-proportional-card-fit-v13/);
- assert.match(host,/standalone-cycle-lotus-direct-v1.css\?v=20261124-lotus-proportional-card-fit-v13/);
+ assert.match(host,/standalone-cycle-lotus-direct-v1.js\?v=20261124-original-lotus-card-volume-v14/);
+ assert.match(host,/standalone-cycle-lotus-direct-v1.css\?v=20261124-original-lotus-card-volume-v14/);
  assert.doesNotMatch(host,/standalone-cycle-lotus-axis-v1\./);
  assert.doesNotMatch(canonical,/standalone-cycle-lotus-direct-v1/);
 });
