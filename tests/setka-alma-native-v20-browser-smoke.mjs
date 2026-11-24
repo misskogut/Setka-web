@@ -58,7 +58,6 @@ try{
  // actual material (buried half is dim, exposed half remains bright).
  for(const direction of [-1,1]){
   const a=direction<0?82:-82;
-  const g=window.SETKA_CYCLE_LOTUS_AXIS;
   await page.evaluate(([direction,angle])=>{
    const card=document.getElementById("setkaCycle3DCard");
    card.style.transform="rotateY("+angle+"deg)";
