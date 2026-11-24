@@ -186,5 +186,5 @@ test('approved card has one centered halo and stationary thin caption at 94 perc
  assert.match(css,/\.setka-vlogo-caption\s*\{[^}]*letter-spacing:3\.2px;color:#e0cce9;opacity:\.82/);
  assert.match(html,/<span class="setka-vlogo-caption">АНТИСТРЕСС ТРЕКЕР<\/span>/);
  assert.doesNotMatch(html,/<span class="setka-vlogo-microcopy"[^>]*>SETKA<\/span>/);
- assert.match(html,/standalone-vertical-logo-v1\.css\?v=20261124-card-layout-45-94-v3/);
+ assert.match(html,/standalone-vertical-logo-v1\.css\?v=20261124-card-layout-45-94-floating-v4/);
 });

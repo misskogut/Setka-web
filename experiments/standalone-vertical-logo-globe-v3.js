@@ -31,8 +31,8 @@ function shader(kind,src){
  }
  return sh;
 }
-const vert="precision highp float;\nattribute vec3 aPosition;attribute vec3 aNormal;attribute float aMaterial;\nuniform mat4 uProjection;uniform float uFlip,uScale,uTitlePass,uLogoShift;\nuniform vec3 uTitleCenter,uTitleRight,uTitleUp;\nvarying vec3 vN,vP;varying float vAngle;\nvec3 rotX(vec3 p,float a){float c=cos(a),s=sin(a);return vec3(p.x,p.y*c-p.z*s,p.y*s+p.z*c);}\nvoid main(){\n vec3 p=aPosition,n=aNormal;\n if(uTitlePass>.5){p=uTitleCenter+uTitleRight*p.x+uTitleUp*p.y+vec3(0.,0.,p.z);n=uTitleRight*n.x+uTitleUp*n.y+vec3(0.,0.,n.z);}\n vec3 world=rotX(p*uScale+vec3(0.,uLogoShift,0.),uFlip);\n vP=world;vN=normalize(rotX(n,uFlip));vAngle=aMaterial;\n gl_Position=uProjection*vec4(world.xy,world.z-1450.,1.);\n}";
-const frag="precision highp float;\nvarying vec3 vN,vP;varying float vAngle;\nuniform float uTime,uTitlePass,uTitleHue;\nvoid main(){\n if(uTitlePass>.5){\n vec3 n=normalize(vN),E=normalize(vec3(0.,0.,1450.)-vP);\n vec3 L=normalize(vec3(-372.,532.,845.)-vP),H=normalize(L+E);\n float nl=max(dot(n,L),0.),nh=max(dot(n,H),0.);\n float shine=pow(nh,77.5)*1.35,sharp=pow(nh,181.25)*.81;\n float fresnel=pow(1.-clamp(abs(dot(n,E)),0.,1.),3.);\n vec3 rgb;\n if(uTitlePass<1.5){\n vec3 green=vec3(.015,.85,.42),blue=vec3(.025,.46,.95),violet=vec3(.58,.045,.95);\n vec3 jelly=uTitleHue<.5?mix(green,blue,uTitleHue*2.):mix(blue,violet,(uTitleHue-.5)*2.);\n jelly=mix(vec3(.22,.53,.77),jelly,.85);\n // Glossy inflated latex: reflect two off-camera elongated studio softboxes.\n // Their positions are in world space, not in the rotating letter UVs.\n vec3 reflection=reflect(-E,n);\n vec3 keyAxis=normalize(cross(vec3(0.,1.,0.),L));\n vec3 keyUp=normalize(cross(L,keyAxis));\n float keyX=dot(reflection,keyAxis),keyY=dot(reflection,keyUp);\n float keyFacing=smoothstep(.68,.95,dot(reflection,L));\n float keyStrip=exp(-pow(abs(keyX/.105),2.)-pow(abs(keyY/.43),2.))*keyFacing;\n float keyHalo=exp(-pow(abs(keyX/.22),2.)-pow(abs(keyY/.56),2.))*keyFacing;\n vec3 fillLight=normalize(vec3(590.,110.,710.)-vP);\n vec3 fillAxis=normalize(cross(vec3(0.,1.,0.),fillLight));\n vec3 fillUp=normalize(cross(fillLight,fillAxis));\n float fillX=dot(reflection,fillAxis),fillY=dot(reflection,fillUp);\n float fillStrip=exp(-pow(abs(fillX/.075),2.)-pow(abs(fillY/.33),2.))*smoothstep(.72,.96,dot(reflection,fillLight));\n // High contrast body colour plus bright, narrow white reflections.\n rgb=jelly*(.16+.69*nl)+jelly*fresnel*.50;\n rgb=mix(rgb,jelly*(.38+.48*nl)+fresnel*.22,clamp(vAngle,0.,1.)*.55);\n rgb+=keyHalo*vec3(.24,.28,.32)+keyStrip*vec3(1.10,1.12,1.16);\n rgb+=fillStrip*vec3(.60,.72,.87)+shine*vec3(.28,.32,.38)+sharp*.38;\n }else{\n vec3 refl=reflect(-E,n);\n vec3 spectrum=.58+.42*cos(6.283185*(refl.x*.45+refl.y*.3+vP.x*.008+uTime*.06+vec3(0.,.333,.667)));\n vec3 chrome=mix(vec3(.10,.12,.18),vec3(.96,.98,1.),smoothstep(.17,.83,.5+.5*sin(refl.y*9.+refl.x*2.)));\n rgb=chrome*(.55+.75*spectrum)+spectrum*.19+shine*.6+sharp*.3;\n }\n gl_FragColor=vec4(clamp(rgb,0.,1.),1.);return;\n }\n vec3 n=normalize(vN);\n vec3 light=normalize(vec3(-.52,.77,.95));\n vec3 specLight=normalize(vec3(-.30,.42,1.19));\n float lam=max(dot(n,light),0.);\n float rim=pow(1.-abs(n.z),2.4);\n float spec=pow(max(dot(n,specLight),0.),27.);\n float env=pow(abs(sin((n.x*.71+n.y*.23+n.z*.37)*10.8+uTime*.33)),13.)\n          +.38*pow(abs(sin((n.x*1.2+n.z*.13)*3.9+2.)),12.);\n float flick=.16*max(0.,sin(vAngle+uTime*.39));\n vec3 rgb=vec3(87.+127.*lam+115.*env+40.*spec+flick*30.,\n               37.+104.*lam+86.*env+37.*spec+flick*18.,\n               4.+45.*lam+28.*env+20.*spec+flick*4.);\n gl_FragColor=vec4(clamp(rgb/255.,0.,1.),1.);\n}";
+const vert="precision highp float;\nattribute vec3 aPosition;attribute vec3 aNormal;attribute float aMaterial;\nuniform mat4 uProjection;uniform float uFlip,uScale,uTitlePass,uLogoShift;\nuniform vec3 uTitleCenter,uTitleRight,uTitleUp;\nvarying vec3 vN,vP;varying float vAngle;varying vec2 vCaptionUV;\nvec3 rotX(vec3 p,float a){float c=cos(a),s=sin(a);return vec3(p.x,p.y*c-p.z*s,p.y*s+p.z*c);}\nvoid main(){\n vec3 p=aPosition,n=aNormal;\n if(uTitlePass>.5&&uTitlePass<2.5){p=uTitleCenter+uTitleRight*p.x+uTitleUp*p.y+vec3(0.,0.,p.z);n=uTitleRight*n.x+uTitleUp*n.y+vec3(0.,0.,n.z);}\n vec3 world=rotX(p*uScale+vec3(0.,uLogoShift,0.),uFlip);\n vP=world;vN=normalize(rotX(n,uFlip));vAngle=aMaterial;vCaptionUV=aNormal.xy;\n gl_Position=uProjection*vec4(world.xy,world.z-1450.,1.);\n}";
+const frag="precision highp float;\nvarying vec3 vN,vP;varying float vAngle;varying vec2 vCaptionUV;\nuniform float uTime,uTitlePass,uTitleHue;\nuniform sampler2D uCaption;\nvoid main(){\n if(uTitlePass>2.5){vec4 ink=texture2D(uCaption,vCaptionUV);if(ink.a<.003)discard;gl_FragColor=ink;return;}\n if(uTitlePass>.5){\n vec3 n=normalize(vN),E=normalize(vec3(0.,0.,1450.)-vP);\n vec3 L=normalize(vec3(-372.,532.,845.)-vP),H=normalize(L+E);\n float nl=max(dot(n,L),0.),nh=max(dot(n,H),0.);\n float shine=pow(nh,77.5)*1.35,sharp=pow(nh,181.25)*.81;\n float fresnel=pow(1.-clamp(abs(dot(n,E)),0.,1.),3.);\n vec3 rgb;\n if(uTitlePass<1.5){\n vec3 green=vec3(.015,.85,.42),blue=vec3(.025,.46,.95),violet=vec3(.58,.045,.95);\n vec3 jelly=uTitleHue<.5?mix(green,blue,uTitleHue*2.):mix(blue,violet,(uTitleHue-.5)*2.);\n jelly=mix(vec3(.22,.53,.77),jelly,.85);\n // Glossy inflated latex: reflect two off-camera elongated studio softboxes.\n // Their positions are in world space, not in the rotating letter UVs.\n vec3 reflection=reflect(-E,n);\n vec3 keyAxis=normalize(cross(vec3(0.,1.,0.),L));\n vec3 keyUp=normalize(cross(L,keyAxis));\n float keyX=dot(reflection,keyAxis),keyY=dot(reflection,keyUp);\n float keyFacing=smoothstep(.68,.95,dot(reflection,L));\n float keyStrip=exp(-pow(abs(keyX/.105),2.)-pow(abs(keyY/.43),2.))*keyFacing;\n float keyHalo=exp(-pow(abs(keyX/.22),2.)-pow(abs(keyY/.56),2.))*keyFacing;\n vec3 fillLight=normalize(vec3(590.,110.,710.)-vP);\n vec3 fillAxis=normalize(cross(vec3(0.,1.,0.),fillLight));\n vec3 fillUp=normalize(cross(fillLight,fillAxis));\n float fillX=dot(reflection,fillAxis),fillY=dot(reflection,fillUp);\n float fillStrip=exp(-pow(abs(fillX/.075),2.)-pow(abs(fillY/.33),2.))*smoothstep(.72,.96,dot(reflection,fillLight));\n // High contrast body colour plus bright, narrow white reflections.\n rgb=jelly*(.16+.69*nl)+jelly*fresnel*.50;\n rgb=mix(rgb,jelly*(.38+.48*nl)+fresnel*.22,clamp(vAngle,0.,1.)*.55);\n rgb+=keyHalo*vec3(.24,.28,.32)+keyStrip*vec3(1.10,1.12,1.16);\n rgb+=fillStrip*vec3(.60,.72,.87)+shine*vec3(.28,.32,.38)+sharp*.38;\n }else{\n vec3 refl=reflect(-E,n);\n vec3 spectrum=.58+.42*cos(6.283185*(refl.x*.45+refl.y*.3+vP.x*.008+uTime*.06+vec3(0.,.333,.667)));\n vec3 chrome=mix(vec3(.10,.12,.18),vec3(.96,.98,1.),smoothstep(.17,.83,.5+.5*sin(refl.y*9.+refl.x*2.)));\n rgb=chrome*(.55+.75*spectrum)+spectrum*.19+shine*.6+sharp*.3;\n }\n gl_FragColor=vec4(clamp(rgb,0.,1.),1.);return;\n }\n vec3 n=normalize(vN);\n vec3 light=normalize(vec3(-.52,.77,.95));\n vec3 specLight=normalize(vec3(-.30,.42,1.19));\n float lam=max(dot(n,light),0.);\n float rim=pow(1.-abs(n.z),2.4);\n float spec=pow(max(dot(n,specLight),0.),27.);\n float env=pow(abs(sin((n.x*.71+n.y*.23+n.z*.37)*10.8+uTime*.33)),13.)\n          +.38*pow(abs(sin((n.x*1.2+n.z*.13)*3.9+2.)),12.);\n float flick=.16*max(0.,sin(vAngle+uTime*.39));\n vec3 rgb=vec3(87.+127.*lam+115.*env+40.*spec+flick*30.,\n               37.+104.*lam+86.*env+37.*spec+flick*18.,\n               4.+45.*lam+28.*env+20.*spec+flick*4.);\n gl_FragColor=vec4(clamp(rgb/255.,0.,1.),1.);\n}";
 let prog=null,buf=null,total=0,stats=null;
 try{
  const v=shader(gl.VERTEX_SHADER,vert),f=shader(gl.FRAGMENT_SHADER,frag);
@@ -48,7 +48,7 @@ const U={projection:gl.getUniformLocation(prog,"uProjection"),
  scale:gl.getUniformLocation(prog,"uScale"),
  logoShift:gl.getUniformLocation(prog,"uLogoShift"),
  time:gl.getUniformLocation(prog,"uTime"),
- titlePass:gl.getUniformLocation(prog,"uTitlePass"),
+ titlePass:gl.getUniformLocation(prog,"uTitlePass"),caption:gl.getUniformLocation(prog,"uCaption"),
  titleCenter:gl.getUniformLocation(prog,"uTitleCenter"),titleRight:gl.getUniformLocation(prog,"uTitleRight"),titleUp:gl.getUniformLocation(prog,"uTitleUp"),titleHue:gl.getUniformLocation(prog,"uTitleHue"),
  motion:null};
 
@@ -140,6 +140,7 @@ const FLUID_REBUILD_MS=82;
 /* Selected circular seal: real solid letters, centred at the honey's z=110 plane. */
 const TITLE="СКВИШ ДЛЯ МОЗГА";
 const LOGO_Y=.45;
+const CAPTION=Object.freeze({text:"АНТИСТРЕСС ТРЕКЕР",y:.94,fontSize:8,spacing:3.2,weight:200,opacity:.82,depth:110});
 const TITLE_PRESET=Object.freeze({
  layout:"circular-seal",depth:0,tilt:0,speed:22,clockwise:true,honeyMotion:150,honeySize:100,
  top:Object.freeze({text:"СКВИШ",font:"Mega Bubble",material:"colored-jelly",size:170,spacing:2,radius:154,rainbow:85,volume:100}),
@@ -327,6 +328,57 @@ const titleParts=[TITLE_PRESET.top,TITLE_PRESET.bottom].map((preset,i)=>{
  let cursor=-total/2;
  return entries.map(e=>{const offset=(i===0?Math.PI/2:-Math.PI/2)+(i===0?-1:1)*(cursor+e.width/2)/total*span;cursor+=e.width;return {...e,offset,preset,upper:i===0};}).filter(e=>e.g);
 });
+// A single transparent text plane in the same 3D scene as the seal.
+ // The texture has no thickness or lighting, and never follows titlePhase.
+let caption=null;
+function makeCaption(){
+ try{
+  const bitmap=document.createElement("canvas"),ctx=bitmap.getContext("2d");
+  if(!ctx||!ctx.measureText)return null;
+  const density=4,font=CAPTION.weight+" "+CAPTION.fontSize+"px system-ui, -apple-system, sans-serif";
+  ctx.font=font;
+  const chars=Array.from(CAPTION.text),widths=chars.map(ch=>ctx.measureText(ch).width);
+  const width=widths.reduce((sum,x)=>sum+x,0)+CAPTION.spacing*(chars.length-1)+8;
+  bitmap.width=Math.ceil(width*density);bitmap.height=20*density;
+  ctx.scale(density,density);ctx.font=font;ctx.textBaseline="middle";
+  ctx.fillStyle="rgba(224,204,233,"+CAPTION.opacity+")";
+  let x=4;
+  for(let i=0;i<chars.length;i++){ctx.fillText(chars[i],x,10);x+=widths[i]+CAPTION.spacing;}
+  const texture=gl.createTexture(),buffer=gl.createBuffer();
+  gl.bindTexture(gl.TEXTURE_2D,texture);
+  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,false);
+  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,bitmap);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+  return {texture,buffer,width:bitmap.width/density,height:20,key:""};
+ }catch(e){console.warn("[SETKA] flat caption fallback",e);return null}
+}
+caption=makeCaption();
+if(caption)document.body.classList.add("setka-vlogo-caption-webgl");
+function drawCaption(frame,scale){
+ if(!caption)return;
+ // Match the approved 94% screen position and 8px font at rest despite
+ // perspective. At intermediate angles the physical plane rotates with card.
+ const depth=CAPTION.depth+TITLE_PRESET.depth;
+ const factor=(1450-depth*scale)/1450/scale;
+ const y=(.5-CAPTION.y)*frame.h*factor,x=caption.width*.5*factor,hh=caption.height*.5*factor;
+ const key=[frame.h,scale].join(":");
+ if(caption.key!==key){
+  const v=[[-x,y+hh,0,0],[x,y+hh,1,0],[x,y-hh,1,1],[-x,y-hh,0,1]];
+  const data=[];
+  for(const i of [0,3,2,0,2,1]){const p=v[i];data.push(p[0],p[1],depth,p[2],p[3],0,0);}
+  gl.bindBuffer(gl.ARRAY_BUFFER,caption.buffer);
+  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(data),gl.STATIC_DRAW);
+  caption.key=key;
+ }
+ gl.uniform1f(U.logoShift,0);gl.uniform1f(U.titlePass,3);
+ gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,caption.texture);gl.uniform1i(U.caption,0);
+ gl.enable(gl.BLEND);gl.blendFuncSeparate(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA,gl.ONE,gl.ONE_MINUS_SRC_ALPHA);
+ gl.depthMask(false);bindMesh(caption.buffer);gl.drawArrays(gl.TRIANGLES,0,6);
+ gl.depthMask(true);gl.disable(gl.BLEND);gl.uniform1f(U.titlePass,0);
+}
 function drawTitle(){
  gl.disable(gl.BLEND);gl.depthMask(true);
  for(const entries of titleParts)for(const e of entries){
@@ -477,6 +529,7 @@ function paint(){
  bindMesh(buf);
  gl.drawArrays(gl.TRIANGLES,0,total);
  drawTitle();
+ drawCaption(f,scale);
 }
 function render(opts={}){
  if(disposed||lost)return;
@@ -488,7 +541,7 @@ function render(opts={}){
 }
 canvas.addEventListener("webglcontextlost",e=>{
  e.preventDefault();lost=true;active=false;stopAnimation();
- canvas.style.display="none";document.body.classList.remove("setka-vlogo-webgl");
+ canvas.style.display="none";document.body.classList.remove("setka-vlogo-webgl","setka-vlogo-caption-webgl");
 });
 canvas.addEventListener("webglcontextrestored",()=>location.reload());
 window.addEventListener("resize",()=>{if(active)paint()},{passive:true});
@@ -562,11 +615,12 @@ card.addEventListener("pointerup",e=>endFluidPointer(e),{passive:true});
 card.addEventListener("pointercancel",e=>endFluidPointer(e,true),{passive:true});
 window.SETKA_SOLID_WORDMARK={
  render,
- getInfo:()=>({...stats,real3D:true,renderer:"WebGL original honey #08 live rebuilt",angle,active,rigid:true,continuous:true,metaball:true,faceted:true,globeDecorations:false,animatedFluid:true,liveRebuild:true,depthOcclusion:true,tapExcitation:true,excitationLevel:excitement,taps:tapCount,titleText:TITLE,titlePhase,titleVelocity,titleStyle:"circular-seal-mega-bubble-cyber-blade",titlePreset:TITLE_PRESET,logoCardCenterY:LOGO_Y,titleSolidMeshes:true,titleJellyLighting:"world-space-latex-softboxes-v1",titleBalloonFolds:"interior-radial-tension-v6",titleFoldStats:titleParts.flat().map(e=>({depth:e.g.foldDepth,vertices:e.g.foldVertices,protectedLowerSamples:e.g.protectedLowerSamples,protectedLowerDent:e.g.protectedLowerDent,straightSamples:e.g.straightSamples,straightDent:e.g.straightDent,edgeFoldDepth:e.g.edgeFoldDepth,seamLoops:e.g.seamLoops,height:e.g.height,yStretch:e.g.yStretch})),titleMeshCounts:titleParts.flat().map(e=>e.g.count),titleMeshDepths:titleParts.flat().map(e=>e.g.depth),titleNeuralPulse:false}),
+ getInfo:()=>({...stats,real3D:true,renderer:"WebGL original honey #08 live rebuilt",angle,active,rigid:true,continuous:true,metaball:true,faceted:true,globeDecorations:false,animatedFluid:true,liveRebuild:true,depthOcclusion:true,tapExcitation:true,excitationLevel:excitement,taps:tapCount,titleText:TITLE,titlePhase,titleVelocity,titleStyle:"circular-seal-mega-bubble-cyber-blade",titlePreset:TITLE_PRESET,logoCardCenterY:LOGO_Y,captionPlane:CAPTION,captionWebGL:!!caption,titleSolidMeshes:true,titleJellyLighting:"world-space-latex-softboxes-v1",titleBalloonFolds:"interior-radial-tension-v6",titleFoldStats:titleParts.flat().map(e=>({depth:e.g.foldDepth,vertices:e.g.foldVertices,protectedLowerSamples:e.g.protectedLowerSamples,protectedLowerDent:e.g.protectedLowerDent,straightSamples:e.g.straightSamples,straightDent:e.g.straightDent,edgeFoldDepth:e.g.edgeFoldDepth,seamLoops:e.g.seamLoops,height:e.g.height,yStretch:e.g.yStretch})),titleMeshCounts:titleParts.flat().map(e=>e.g.count),titleMeshDepths:titleParts.flat().map(e=>e.g.depth),titleNeuralPulse:false}),
  dispose(){
   disposed=true;active=false;stopAnimation();canvas.remove();
+  if(caption){gl.deleteTexture(caption.texture);gl.deleteBuffer(caption.buffer);}
   gl.deleteBuffer(buf);gl.deleteBuffer(plateBuffer);for(const e of titleParts.flat())gl.deleteBuffer(e.g.buffer);gl.deleteProgram(prog);
-  document.body.classList.remove("setka-vlogo-webgl");
+  document.body.classList.remove("setka-vlogo-webgl","setka-vlogo-caption-webgl");
  }
 };
 document.body.classList.add("setka-vlogo-webgl");

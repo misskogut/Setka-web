@@ -250,3 +250,6 @@ body.setka-vlogo-side #libraryScreen{pointer-events:none!important}
   backface-visibility:hidden;-webkit-backface-visibility:hidden;
   z-index:5;
 }
+
+/* Keep the DOM text accessible and available when WebGL is unavailable. */
+body.setka-vlogo-caption-webgl .setka-vlogo-caption{opacity:0!important;}

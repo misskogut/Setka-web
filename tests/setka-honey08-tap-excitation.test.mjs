@@ -16,12 +16,12 @@ function harness(){
  const gl=new Proxy({},{
   get(target,key){
    if(key==='getShaderParameter'||key==='getProgramParameter')return ()=>true;
-   if(key==='createShader'||key==='createProgram'||key==='createBuffer')return ()=>({});
+   if(key==='createShader'||key==='createProgram'||key==='createBuffer'||key==='createTexture')return ()=>({});
    if(key==='getAttribLocation')return ()=>0;
    if(key==='getUniformLocation')return (_,name)=>name;
    if(key==='uniform1f')return (name,value)=>{if(name==='uTitlePass')titlePass=value;if(name==='uLogoShift')logoShift=value};
    if(key==='bindBuffer')return (_,b)=>{bound=b;};
-   if(key==='drawArrays')return (mode,start,count)=>{shifts.push({pass:titlePass,count,shift:logoShift});if(titlePass>0)titleDraws.push({count,pass:titlePass,finite:buffers.get(bound)?.every(Number.isFinite)});};
+   if(key==='drawArrays')return (mode,start,count)=>{shifts.push({pass:titlePass,count,shift:logoShift,data:titlePass===3?Array.from(buffers.get(bound)||[]):null});if(titlePass>0&&titlePass<3)titleDraws.push({count,pass:titlePass,finite:buffers.get(bound)?.every(Number.isFinite)});};
    if(key==='bufferData')return (kind,value,usage)=>{
     lastBuffer=value;buffers.set(bound,value);if(!honeyBuffer&&value?.length>20000)honeyBuffer=bound;
     if(value?.length>20000 && bound===honeyBuffer)history.push({vertices:value.length/7,finite:Array.from(value).every(Number.isFinite)});
@@ -38,7 +38,8 @@ function harness(){
    handlers.get(type).push(fn);
   }
  };
- const canvas={style:{},setAttribute(){},getContext(){return gl},addEventListener(){},remove(){}};
+ const ctx2d={measureText:()=>({width:5}),scale(){},fillText(){}};
+ const canvas={style:{},setAttribute(){},getContext(kind){return kind==='2d'?ctx2d:gl},addEventListener(){},remove(){}};
  const window={innerWidth:390,innerHeight:820,devicePixelRatio:1,addEventListener(){}};
  const document={
   body:{appendChild(){},classList:{add(){},remove(){}}},
@@ -210,9 +211,25 @@ test('approved 45 percent logo offset moves honey and title but not the card dep
  const h=harness();
  assert.equal(h.api.getInfo().logoCardCenterY,.45);
  assert.ok(h.shifts.some(x=>x.count===6&&x.shift===0));
- assert.ok(h.shifts.filter(x=>x.pass>0).every(x=>Math.abs(x.shift-36)<1e-6));
+ assert.ok(h.shifts.filter(x=>x.pass>0&&x.pass<3).every(x=>Math.abs(x.shift-36)<1e-6));
  assert.ok(h.shifts.some(x=>x.pass===0&&x.count>5000&&Math.abs(x.shift-36)<1e-6));
  h.send('pointerdown',{clientY:324});h.send('pointerup',{clientY:324});
  assert.equal(h.api.getInfo().taps,1);
  assert.match(rendererCode,/rotX\(p\*uScale\+vec3\(0\.,uLogoShift,0\.\),uFlip\)/);
+});
+
+test('flat caption shares the seal depth and card rotation but not seal orbit',()=>{
+ const h=harness(),p=h.api.getInfo();
+ assert.equal(p.captionWebGL,true);assert.equal(p.captionPlane.depth,110);
+ assert.equal(p.captionPlane.y,.94);assert.equal(p.captionPlane.fontSize,8);
+ const a=h.shifts.filter(x=>x.pass===3).slice(-1)[0];
+ assert.equal(a.count,6);assert.equal(a.shift,0);
+ assert.ok(a.data.filter((_,i)=>i%7===2).every(z=>z===110));
+ const before=a.data.join(',');
+ h.advance(100);h.api.render({visible:true,angle:65});
+ const after=h.shifts.filter(x=>x.pass===3).slice(-1)[0];
+ assert.equal(after.data.join(','),before);
+ assert.match(rendererCode,/const depth=CAPTION.depth\+TITLE_PRESET.depth/);
+ assert.match(rendererCode,/drawCaption\(f,scale\)/);
+ assert.match(rendererCode,/texture2D\(uCaption,vCaptionUV\)/);
 });
