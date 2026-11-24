@@ -23,6 +23,12 @@ function fake(){
   nodes.set(name+"-"+nodes.size,e);return e;
  }
  const svg=element("svg"),button=element("button"),hero=element("hero");
+ const left=element("path"),right=element("path"),center=element("path");
+ left.classList={contains(x){return x==="left"}};
+ right.classList={contains(x){return x==="right"}};
+ center.classList={contains(x){return x==="center"}};
+ svg.appendChild(left);svg.appendChild(right);svg.appendChild(center);
+ svg.querySelectorAll=q=>q==="path.lotus-petal"?[left,right,center]:[];
  button.appendChild(svg);
  const doc={querySelector(q){
   if(q===".cycle-lotus-button")return button;
@@ -73,22 +79,31 @@ test("counter-rotating original native SVG stays viewer-facing in BOTH direction
  assert.equal(api.getInfo().portalVisible,"visible","ALMA owns the real 3D lotus");
  api.rest();
 });
-test("single original lotus remains full size while the ALMA volume turns",()=>{
- const {api}=fake();
+test("real original ALMA left/right paths fold toward their own center and are restored",()=>{
+ const {api,svg}=fake();
  for(const d of [-1,1]){
   for(const p of [.5,.6,.75,.9,1]){
-   const m=api.material(p,d);
+   const m=api.petalDepth(p,d);
    assert.equal(m.cardYaw+m.counterYaw,0);
    assert.equal(m.inwardSide,d<0?"left":"right");
-   assert.ok(Math.abs(m.materialAngle)<=90);
-   assert.equal(m.materialOpacity,1);
+   assert.ok(m.innerWidth>=.36&&m.innerWidth<=1);
+   assert.ok(m.innerLight>=.32&&m.innerLight<=1);
   }
  }
  api.start();api.render(.75,-1);
- assert.equal(api.getInfo().materialSide,"left");
- assert.equal(api.getInfo().materialVisible,true);
+ const [left,right]=svg.querySelectorAll("path.lotus-petal");
+ assert.match(left.style.transform,/scaleX\(/);
+ assert.ok(Number(left.style.opacity)<1);
+ assert.equal(right.style.transform,undefined);
+ assert.equal(api.getInfo().originalPetalCount,3);
  api.rest();
- assert.equal(api.getInfo().materialVisible,false);
+ assert.equal(left.style.transform,undefined);
+ assert.equal(left.style.opacity,undefined);
+ api.start();api.render(.75,1);
+ assert.match(right.style.transform,/scaleX\(/);
+ assert.equal(left.style.transform,undefined);
+ api.rest();
+ assert.equal(right.style.transform,undefined);
 });
 
 test("source uses original React SVG, never shader, clone, screen masks or material substitution",()=>{
@@ -96,18 +111,19 @@ test("source uses original React SVG, never shader, clone, screen masks or mater
  assert.match(js,/button\.appendChild\(svg\)/);
  assert.match(js,/portal\.appendChild\(holder\)/);
  assert.match(js,/document\.body\.appendChild\(portal\)/);
- assert.match(js,/volume\.style\.transform="perspective\(1450px\) rotateY\("/);
+ assert.match(js,/petal\.path\.style\.transform=isInner/);
  assert.match(js,/holder\.style\.transform="rotateY\(0deg\)"/);
- assert.doesNotMatch(js,/holder\.style\.transform="scale\(/,"original flower may never be miniaturized");
+ assert.match(js,/svg\.querySelectorAll\("path\.lotus-petal"\)/);
+ assert.doesNotMatch(js,/createElement\("div"\);\s*volume=/);
+ assert.doesNotMatch(js,/holder\.style\.transform="scale\(/);
  assert.match(js,/\.cycle-lotus-button/);
  assert.doesNotMatch(js,/attachShadow|shadowRoot/,"iPhone WebKit must not flatten the 3D chain");
- assert.match(js,/function material\(/,"physical volume supplies native occlusion");
- assert.match(js,/radial-gradient\(ellipse 92% 88%/,"material cannot be an opaque rectangular curtain");
- assert.doesNotMatch(js,/linear-gradient\(to right,rgba\(2,1,5,.96\)/);
+ assert.match(js,/function petalDepth\(/,"native left/right petals encode the depth");
+ assert.doesNotMatch(js,/radial-gradient\(ellipse/,"no 2D shadow curtain over the calendar");
  assert.doesNotMatch(js,/cloneNode|getContext\(["']webgl|createTexture|texture2D|new Image\(|createElement\(["']svg/);
  assert.doesNotMatch(css,/clip-path|mask:|canvas|opacity:0/);
- assert.match(host,/standalone-cycle-lotus-direct-v1.js\?v=20261124-original-lotus-soft-volume-v15/);
- assert.match(host,/standalone-cycle-lotus-direct-v1.css\?v=20261124-original-lotus-soft-volume-v15/);
+ assert.match(host,/standalone-cycle-lotus-direct-v1.js\?v=20261124-original-lotus-petal-hinge-v16/);
+ assert.match(host,/standalone-cycle-lotus-direct-v1.css\?v=20261124-original-lotus-petal-hinge-v16/);
  assert.doesNotMatch(host,/standalone-cycle-lotus-axis-v1\./);
  assert.doesNotMatch(canonical,/standalone-cycle-lotus-direct-v1/);
 });

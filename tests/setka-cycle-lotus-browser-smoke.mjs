@@ -45,36 +45,36 @@ try{
  assert.equal(during.info.nativeOriginal,true);
  assert.equal(during.info.hasClone,false);
  assert.ok(Math.abs(during.info.cardYaw+during.info.counterYaw)<1e-4);
- // The flower is ONE original full-size SVG; the ALMA card's interior,
- // not a scaling trick, rotates over only the submerged half.
- const volumetric=await page.evaluate(()=>{
-  const lotus=window.SETKA_CYCLE_LOTUS_AXIS;
-  const back=document.getElementById("setkaCycleBack");
-  const port=document.getElementById("setkaCycleLotusDirectPortal");
-  const flower=port.querySelector("svg.cycle-lotus"),material=port.querySelector(".setka-cycle-lotus-material");
-  const restore=lotus.getInfo(),rows=[];
+ // Real React petal paths: one half folds inward and dims without an
+ // independent shadow geometry. Both gestures must reverse the petal side.
+ const checkPaths=await page.evaluate(()=>{
+  const axis=window.SETKA_CYCLE_LOTUS_AXIS;
+  const original=window.__setkaRealSVG;
+  const old=axis.getInfo(),rows=[];
   for(const direction of [-1,1]){
-   for(const p of [.5,.6,.75,.85,.95]){
-    const angle=-direction*180*(1-p);
-    back.style.transform="perspective(1450px) rotateY("+angle+"deg)";
-    lotus.render(p,direction);
-    rows.push({p,direction,width:flower.getBoundingClientRect().width,
-      height:flower.getBoundingClientRect().height,
-      inward:material.dataset.inwardSide,
-      angle:Number(material.dataset.materialAngle),
-      volumeVisible:material.style.visibility==="visible"});
+   for(const p of [.55,.75,.9]){
+    axis.render(p,direction);
+    const inner=direction<0?"left":"right",outer=direction<0?"right":"left";
+    const innerPaths=[...original.querySelectorAll(".lotus-petal."+inner)];
+    const outerPaths=[...original.querySelectorAll(".lotus-petal."+outer)];
+    rows.push({direction,p,innerCount:innerPaths.length,outerCount:outerPaths.length,
+      folded:innerPaths.every(x=>x.style.transform.includes("scaleX(")),
+      innerOpacity:Number(innerPaths[0]?.style.opacity),
+      outerFolded:outerPaths.some(x=>x.style.transform.includes("scaleX(")),
+      noCurtain:!document.querySelector(".setka-cycle-lotus-material"),
+      originalWidth:original.getBoundingClientRect().width});
    }
   }
-  back.style.transform="perspective(1450px) rotateY("+restore.cardYaw+"deg)";
-  lotus.render(restore.progress,restore.direction);
+  axis.render(old.progress,old.direction);
   return rows;
  });
- console.log("ORIGINAL LOTUS / ALMA VOLUMETRIC MATERIAL",JSON.stringify(volumetric));
- for(const x of volumetric){
-  assert.ok(x.width>250&&x.height>200,"original lotus must not become a miniature");
-  assert.equal(x.inward,x.direction<0?"left":"right");
-  assert.ok(Math.abs(x.angle)<=90);
-  assert.equal(x.volumeVisible,true);
+ console.log("ORIGINAL SVG LEFT RIGHT PETAL DEPTH",JSON.stringify(checkPaths));
+ for(const x of checkPaths){
+  assert.ok(x.innerCount>0&&x.outerCount>0,"real ALMA contains left/right petals");
+  assert.ok(x.folded&&!x.outerFolded,"only original immersed paths fold inward");
+  assert.ok(x.innerOpacity<1,"only immersed petals are dimmed");
+  assert.ok(x.originalWidth>250,"the original flower must never shrink entirely");
+  assert.equal(x.noCurtain,true,"no second layer or dark circular curtain");
  }
  mkdirSync("tests/visual-smoke",{recursive:true});
  const shot=PNG.sync.read(await page.screenshot({
