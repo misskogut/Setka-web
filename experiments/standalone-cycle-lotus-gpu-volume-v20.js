@@ -154,8 +154,12 @@ void main(){
   // artificial 2D crop or a duplicate petal drawing.
   float depth=clamp(-vDepth/uDepth,0.,1.);
   if(depth>=.999)discard;
-  c.rgb*=mix(.80,.44,depth);
-  c.a*=.82*exp(-.7*depth);
+  // Smooth optical density at the physical face. At zero immersion
+  // color and alpha equal the exposed SVG exactly, avoiding the vertical
+  // discontinuity through the original central petal and cycle day.
+  float immersion=smoothstep(0.,90.,-vDepth);
+  c.rgb*=mix(1.,mix(.84,.50,depth),immersion);
+  c.a*=mix(1.,.85*exp(-.7*depth),immersion);
  }else{
   if(vDepth<0.)discard;
  }

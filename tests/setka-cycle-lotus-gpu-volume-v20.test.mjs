@@ -13,6 +13,8 @@ test("one source SVG texture intersects REAL front, back and side surfaces in 3D
  assert.match(js,/world=ry\(local,uAngle\)/);
  assert.match(js,/vDepth=aPos.x\*sin\(uAngle\)/);
  assert.match(js,/gl\.BLEND/);
+ assert.match(js,/immersion=smoothstep\(0\.,90\.,-vDepth\)/,"optical surface crossing must be continuous");
+ assert.match(js,/c\.rgb\*=mix\(1\.,mix\(\.84,\.50,depth\),immersion\)/);
  assert.doesNotMatch(js,/world\.x=aPos\.x\*chamberWidth|cloneNode\(true\).*appendChild/);
  assert.match(html,/standalone-cycle-lotus-gpu-volume-v20\.js/);
 });
