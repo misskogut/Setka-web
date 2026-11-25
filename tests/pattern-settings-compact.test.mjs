@@ -73,3 +73,11 @@ test("paired settings retain their original two-column layout with one gesture c
  assert.match(code,/end\.after\(popup\)/);
  assert.match(code,/line\.append\(input,gestureButton\);box\.append\(title,line\)/);
 });
+
+test("paired controls retain the original full-width native slider beneath its title",()=>{
+ assert.match(code,/line\.className="sk-setting-row sk-slider-only"/);
+ assert.match(code,/line\.append\(title,gestureButton\);box\.append\(line,input\)/);
+ assert.match(code,/column-gap:15px;align-items:start/);
+ assert.match(code,/\.sk-setting>\.sk-range\{display:block;width:100%;margin:9px 0 3px;height:auto\}/);
+ assert.doesNotMatch(code,/\.sk-paired-grid\{column-gap:12px/);
+});
