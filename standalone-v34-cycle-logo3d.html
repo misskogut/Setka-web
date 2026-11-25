@@ -47,13 +47,16 @@
       ]).finally(()=>clearTimeout(timeout))
       :Promise.resolve(null);
     const cover=()=>document.getElementById("setkaBootCover");
-    function showRetry(message){
-      const panel=cover();if(!panel)return;
-      const label=panel.querySelector(".setka-boot-label"),retry=panel.querySelector("button");
-      label.textContent=message;label.style.letterSpacing="normal";label.style.opacity="1";
-      retry.hidden=false;retry.onclick=()=>{const next=new URL(location.href);next.searchParams.set(revisionParam,Date.now().toString(36));location.replace(next.toString())};
+    let revealed=false,settleTimer=0;
+    function reveal(){
+      if(revealed)return;
+      revealed=true;
+      clearTimeout(watchdog);clearTimeout(settleTimer);
+      root.removeAttribute("data-setka-boot");cover()?.remove();
+      window.dispatchEvent(new Event("setka:first-paint-ready"));
     }
-    const watchdog=setTimeout(()=>showRetry("SETKA ещё загружается"),12000);
+    // A visual readiness check must never permanently lock the application.
+    const watchdog=setTimeout(reveal,12000);
     function finalUIReady(){
       const nav=document.getElementById("st34Nav");
       if(!window.SetkaApp||!window.SetkaStandaloneV34||!window.__SETKA_SHEET_LAYOUT_V1__||!document.body?.classList.contains("setka-sheet-layout"))return false;
@@ -63,17 +66,20 @@
     }
     async function firstPaint(){
       const release=await releaseCheck;
+      if(revealed)return;
       if(release&&release.build!==build&&!document.querySelector("#gameScreen.active")&&!window.SetkaStandaloneV34?.getActiveSession?.()){
         const next=new URL(location.href);next.searchParams.set(revisionParam,release.build.slice(0,12));
         clearTimeout(watchdog);location.replace(next.toString());return;
       }
-      // All synchronous and deferred UI initializers have completed by this frame.
-      requestAnimationFrame(()=>{
-        clearTimeout(watchdog);
-        if(!finalUIReady()){showRetry("Не удалось загрузить интерфейс SETKA");return}
-        root.removeAttribute("data-setka-boot");cover()?.remove();
-        window.dispatchEvent(new Event("setka:first-paint-ready"));
-      });
+      // Wait briefly for late initializers, but fail open even if an optional
+      // module never reports readiness. The app owns its own error handling.
+      settleTimer=setTimeout(reveal,1600);
+      function check(){
+        if(revealed)return;
+        if(finalUIReady())reveal();
+        else requestAnimationFrame(check);
+      }
+      requestAnimationFrame(check);
     }
     if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",firstPaint,{once:true});
     else firstPaint();
