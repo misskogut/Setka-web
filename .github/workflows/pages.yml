@@ -7,6 +7,9 @@ on:
     # Do not run the full SETKA application release gate for these files alone.
     paths-ignore:
       - "experiments/new-year-squish-2027/**"
+      - "experiments/prismatic-flower-logo/**"
+      - ".github/workflows/verify-prismatic-flower.yml"
+      - ".github/workflows/pages-squish.yml"
   workflow_dispatch:
 
 permissions:

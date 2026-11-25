@@ -1,0 +1,17 @@
+{
+  "name": "setka-prismatic-flower-laboratory",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node --test qa/geometry.test.mjs",
+    "test:browser": "node qa/browser.mjs"
+  },
+  "devDependencies": {
+    "three": "0.187.0",
+    "esbuild": "0.27.0",
+    "playwright": "1.62.1",
+    "pngjs": "7.0.0"
+  }
+}

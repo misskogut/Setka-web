@@ -1,7 +1,7 @@
 import * as T from 'three';
 import {MarchingCubes} from 'three/addons/objects/MarchingCubes.js';
 import {mergeVertices} from 'three/addons/utils/BufferGeometryUtils.js';
-import font from './glyphs.json';
+import font from './glyphs.json' with {type:'json'};
 
 function line(points){return points}
 function curve(commands){const p=new T.Path();for(const c of commands)p[c[0]](...c.slice(1));return p.getPoints(50).map(v=>[v.x,v.y])}

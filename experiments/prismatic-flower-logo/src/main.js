@@ -66,6 +66,7 @@ function init(){
  $('pause').setAttribute('aria-pressed',String(paused));$('pause').textContent=paused?'Продолжить':'Пауза';
  if(params.has('clean')||capture)setClean(true);
  window.addEventListener('pagehide',()=>{disposed=true;renderer.dispose();composer.dispose();environment.dispose()},{once:true});
+ window.addEventListener('pageshow',e=>{if(e.persisted)location.reload()});
  canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();lost=true;showError(new Error('Графический контекст прерван. Перезагрузите страницу, чтобы продолжить.'))});
  canvas.addEventListener('webglcontextrestored',()=>location.reload());
  document.addEventListener('visibilitychange',()=>{lastTime=performance.now()});
@@ -95,7 +96,7 @@ function addInterior(){
  const lilac=amber.clone();lilac.color.set('#bca0ff');lilac.emissive.set('#5026a7');lilac.emissiveIntensity=.15;lilac.metalness=.45;
  const flower=new T.Group();flower.position.z=.48;inner.add(flower);flower.name='volumetric-flower-core';
  for(let i=0;i<5;i++){
-  const leaf=new T.Mesh(leafGeometry(i===0?.78:.91,.22,i%2?.05:-.12),i%2?amber:lilac);
+  const leaf=new T.Mesh(leafGeometry(i===0?.78:.91,.22,i%2?.05:-.12),i===3?lilac:amber);
   leaf.rotation.z=i*Math.PI*2/5+.02;leaf.rotation.y=(i%2?1:-1)*.1;flower.add(leaf);
   // Thin real luminous vein, embedded in each petal.
   const vein=[];for(let j=0;j<=32;j++){const u=j/32;vein.push(new T.Vector3(0,u*.79,.015+.10*Math.sin(Math.PI*u)))}
@@ -207,14 +208,15 @@ function resize(){
 function syncAngle(){state.angle=angle;$('angle').value=String(((angle+180)%360+360)%360-180);$('angleValue').value=Math.round(angle)+'°'}
 function frame(now){
  if(disposed)return;requestAnimationFrame(frame);if(lost||document.hidden){lastTime=now;return}
- const dt=Math.min((now-lastTime)/1000,.035);lastTime=now;
+ const rawDt=(now-lastTime)/1000,dt=Math.min(rawDt,.035);lastTime=now;
  if(!paused||gesture?.kind==='squish'||body.energy>.00001){if(!paused)clockTime+=dt;body.update(Math.min(dt,1/60),clockTime,elasticity)}
  if(!gesture&&Math.abs(targetAngle-angle)>.001){angle+=(targetAngle-angle)*(1-Math.exp(-dt*8));if(Math.abs(targetAngle-angle)<.025)angle=targetAngle;syncAngle()}
  card.rotation.set(axis==='x'?-T.MathUtils.degToRad(angle):0,axis==='y'?T.MathUtils.degToRad(angle):0,0);
  excitation*=Math.exp(-dt*1.8);inner.rotation.z=.012*Math.sin(clockTime*.4);inner.scale.setScalar(1+.006*Math.sin(clockTime*1.1));
  if(waveGeom&&!paused){const p=waveGeom.attributes.position.array;for(let i=0;i<p.length;i+=3){const x=waveBase[i],v=((i/3)%32)/31*2-1;p[i+1]=.16+Math.sin(x*3-clockTime*.55)*(.19+v*.14)+v*.24;p[i+2]=.15+Math.cos(x*2.3+clockTime*.35)*.05*(1-v*v)}waveGeom.attributes.position.needsUpdate=true}
  composer.render();state.frames=++frameCount;state.angle=angle;state.energy=body.energy;state.triangles=renderer.info.render.triangles;state.drawCalls=renderer.info.render.calls;
- if(frameCount>15){frameSum+=dt*1000;measurementFrames++;if(measurementFrames===90){state.meanFrameMs=Math.round(frameSum/measurementFrames*10)/10;if(quality==='auto'&&state.meanFrameMs>29&&pixelRatio>1.1){renderer.setPixelRatio(1.1);composer.setPixelRatio(1.1);state.pixelRatio=1.1}frameSum=0;measurementFrames=0}}
+ if(frameCount%15===0)canvas.dataset.diagnostics=JSON.stringify(state);
+ if(frameCount>15){frameSum+=rawDt*1000;measurementFrames++;if(measurementFrames===90){state.meanFrameMs=Math.round(frameSum/measurementFrames*10)/10;if(quality==='auto'&&state.meanFrameMs>29&&pixelRatio>1.1){renderer.setPixelRatio(1.1);composer.setPixelRatio(1.1);state.pixelRatio=1.1}frameSum=0;measurementFrames=0}}
 }
 function showError(e){console.error(e);$('loading').hidden=true;$('error').hidden=false;$('error').textContent='Не удалось запустить 3D-сцену: '+e.message}
 try{init()}catch(e){showError(e)}

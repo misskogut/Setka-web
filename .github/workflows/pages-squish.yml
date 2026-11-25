@@ -1,10 +1,11 @@
-name: Publish SETKA New Year squish experiments
+name: Publish isolated SETKA experiments
 
 on:
   push:
     branches: ["main"]
     paths:
       - "experiments/new-year-squish-2027/**"
+      - "experiments/prismatic-flower-logo/**"
       - ".github/workflows/pages-squish.yml"
   workflow_dispatch:
 
@@ -40,6 +41,8 @@ jobs:
           test -s experiments/new-year-squish-2027/v4.html
           test -s experiments/new-year-squish-2027/v5.html
           test -s experiments/new-year-squish-2027/v6.html
+          test -s experiments/prismatic-flower-logo/index.html
+          node --check experiments/prismatic-flower-logo/app.js
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload complete site including experimental pages

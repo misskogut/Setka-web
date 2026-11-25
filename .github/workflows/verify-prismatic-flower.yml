@@ -1,0 +1,41 @@
+name: Verify isolated prismatic flower logo
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'experiments/prismatic-flower-logo/**'
+      - '.github/workflows/verify-prismatic-flower.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  geometry-and-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    defaults:
+      run:
+        working-directory: experiments/prismatic-flower-logo
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Serve isolated experiment and verify rendered frames and pointer physics
+        env:
+          FLOWER_BROWSER: ${{ matrix.browser }}
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/flower-server.log 2>&1 &
+          npm run test:browser
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: prismatic-flower-${{ matrix.browser }}
+          path: experiments/prismatic-flower-logo/qa/output/
