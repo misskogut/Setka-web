@@ -8,10 +8,10 @@
   const scene=document.querySelector("#alma-cycle-root .phone-scene");if(!scene)return;
   if(!panel||!panel.isConnected){
    panel=document.createElement("section");panel.setAttribute("aria-label","Синхронизация цикла с SETKA");
-   panel.style.cssText="margin:16px 12px 24px;padding:14px;border:1px solid rgba(180,154,200,.25);border-radius:15px;font:12px/1.5 system-ui;color:#c8b8d1;background:rgba(8,4,12,.72)";
+   panel.className="alma-cycle-sync-panel";
    const heading=document.createElement("strong");heading.textContent="Мой цикл · SETKA";panel.append(heading);
    const status=document.createElement("p");status.dataset.cycleStatus="1";status.setAttribute("role","status");panel.append(status);
-   function button(key,label,fn){const b=document.createElement("button");b.type="button";b.dataset.cycleControl=key;b.textContent=label;b.style.cssText="display:block;width:100%;margin:8px 0 0;padding:10px;border:1px solid rgba(180,154,200,.38);border-radius:10px;background:transparent;color:inherit;font:inherit";b.onclick=()=>{try{fn();update()}catch(e){status.textContent="Не удалось сохранить изменения на устройстве."}};panel.append(b)}
+   function button(key,label,fn){const b=document.createElement("button");b.type="button";b.dataset.cycleControl=key;b.textContent=label;b.onclick=()=>{try{fn();update()}catch(e){status.textContent="Не удалось сохранить изменения на устройстве."}};panel.append(b)}
    button("legacy","Перенести прежнюю историю",()=>{if(confirm("Перенести прежние локальные записи ALMA в текущий профиль SETKA? Подтверди, что это твои данные. Перенос заполнит отсутствующие разделы."))api()?.importLegacy()});
    button("guest","Перенести историю с гостевого профиля",()=>{if(confirm("Подтверди, что гостевая история принадлежит тебе. Перенос заполнит отсутствующие разделы."))api()?.importGuest()});
    button("share","Подключить синхронизацию",()=>{const a=api(),s=a?.status();if(!s)return;

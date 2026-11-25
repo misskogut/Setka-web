@@ -8,7 +8,7 @@ const src=fs.readFileSync("experiments/standalone-cycle-lotus-gpu-volume-v20.js"
 
 test("original ALMA cycle lotus is kept in its identity-linked calendar iframe",()=>{
  assert.match(html,/<aside class="setka-cycle-overlay" id="setkaCycleBack" hidden/);
- assert.match(html,/<iframe title="Оригинальный календарь цикла ALMA" src="\.\/experiments\/alma-cycle-source\/index\.html\?v=20261125-cycle-linked-v1&amp;setka_link=1" loading="eager"><\/iframe>/);
+ assert.match(html,/<iframe title="Оригинальный календарь цикла ALMA" src="\.\/experiments\/alma-cycle-source\/index\.html\?v=20261125-cycle-linked-lotus-theme-v1&amp;setka_link=1" loading="eager"><\/iframe>/);
  assert.match(original,/<div id="alma-cycle-root"[^>]*><\/div>/);
  assert.match(original,/dist\/cycle\.js/);
  assert.doesNotMatch(html,/<script[^>]+(?:lotus-gpu-volume|lotus-direct|lotus-axis-v1)\.js/);

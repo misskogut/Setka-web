@@ -22,7 +22,7 @@ const grammar=(number,one,few,many)=>{const n=Math.abs(number)%100,r=n%10;return
 const daysLabel=n=>n+" "+grammar(n,"день","дня","дней");
 const esc=x=>String(x??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
 let holder=null,scene=null;
-let view="overview",selected=null,editStart=null,showAll=false,oldScroll=0,lastSignature="",lastHeroColor="";
+let view="overview",selected=null,editStart=null,showAll=false,oldScroll=0,lastSignature="",lastHeroColor="",themeScene=null,themeHero=null,themeObserver=null;
 let openEditor=false;
 
 function validRecord(row){
@@ -107,8 +107,19 @@ function model(){
 }
 function colorSync(){
  const hero=scene?.querySelector(".cycle-hero");
- const color=hero&&getComputedStyle(hero).getPropertyValue("--cycle-color").trim();
- if(color&&color!==lastHeroColor){holder.style.setProperty("--cycle-insights-color",color);lastHeroColor=color}
+ if(!hero)return;
+ if(hero!==themeHero){
+   themeObserver?.disconnect();
+   themeHero=hero;
+   themeObserver=new MutationObserver(colorSync);
+   themeObserver.observe(hero,{attributes:true,attributeFilter:["style","class"]});
+ }
+ const color=getComputedStyle(hero).getPropertyValue("--cycle-color").trim();
+ if(color&&(color!==lastHeroColor||scene!==themeScene)){
+   // Put the theme on the common ancestor, not the history card alone.
+   scene.style.setProperty("--cycle-insights-color",color);
+   lastHeroColor=color;themeScene=scene;
+ }
 }
 function lineDots(r,expanded=false){
  // Completed cycles show observed length. The current cycle shows only
@@ -311,6 +322,7 @@ function mount(){
  if(!next||!next.querySelector(".cycle-hero"))return false;
  scene=next;
  scene.classList.add("alma-history-scroll");
+ colorSync();
  if(!holder){
    holder=document.createElement("section");
    holder.className="alma-cycle-insights";
@@ -327,6 +339,7 @@ let attempts=0;
 const interval=setInterval(()=>{
  if(!mount()&&attempts++>100){clearInterval(interval);return}
  if(!holder)return;
+ colorSync(); // Theme changes must not wait for the editor to close.
  if(view==="edit")return; // Do not erase an in-progress entry.
  const next=signature();
  if(next!==lastSignature)render();
