@@ -1,7 +1,9 @@
 (()=>{
  "use strict";
  if(window.SetkaNoteDictationV1)return;
- let active=null;
+ let active=null,noticeAccepted=false;
+ const noticeKey="setka-note-dictation-notice-v1";
+ try{noticeAccepted=window.localStorage?.getItem(noticeKey)==="1"}catch(_){}
  const mounted=new WeakMap();
  const fallback="В этом браузере голосовой ввод недоступен. Используй микрофон на системной клавиатуре, если он есть.";
  function appendText(field,text){
@@ -19,8 +21,7 @@
   const mic=document.createElement("button");mic.type="button";mic.className="st-note-mic";
   mic.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11v1a7 7 0 0 0 14 0v-1M12 19v3m-3 0h6"/></svg>';
   const hint=document.createElement("p");hint.className="st-note-mic-status";hint.setAttribute("role","status");
-  const notice=document.createElement("p");notice.className="st-note-mic-notice";notice.textContent="Речь распознаёт браузер; аудио может обрабатываться его сервисом. SETKA сохраняет только текст заметки.";
-  wrap.appendChild(mic);wrap.after(hint,notice);
+  wrap.appendChild(mic);wrap.after(hint);
   const paint=(phase,message="")=>{
    mic.dataset.phase=phase;mic.setAttribute("aria-pressed",String(phase!=="idle"));
    const label=phase==="idle"?"Диктовать заметку":phase==="stopping"?"Завершение диктовки":"Остановить диктовку";
@@ -57,6 +58,12 @@
    const Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;
    if(!Recognition){paint("idle",fallback);field.focus();return}
    if(save?.disabled)return;
+   // Explain audio processing once, only when the person chooses dictation.
+   // The note editor itself remains free of permanent technical notices.
+   if(!noticeAccepted){
+    if(!window.confirm("Включить голосовой ввод? Аудио может обрабатываться сервисом распознавания речи браузера. SETKA сохраняет только текст."))return;
+    noticeAccepted=true;try{window.localStorage?.setItem(noticeKey,"1")}catch(_){}
+   }
    let rec;try{rec=new Recognition()}catch(_){paint("idle",fallback);return}
    rec.lang="ru-RU";rec.continuous=true;rec.interimResults=true;rec.maxAlternatives=1;
    const session={controller,rec,done:new Set(),stopping:false,timer:0,pendingSave:false};

@@ -5,5 +5,5 @@
 #st34Layer .st-note-mic svg{width:20px;height:20px;display:block}
 #st34Layer .st-note-mic[data-phase]:not([data-phase="idle"]){color:#ff8894;border-color:#e67985;background:#28161a}
 #st34Layer .st-note-mic:focus-visible{outline:2px solid #fff;outline-offset:2px}
-#st34Layer .st-note-mic-status,#st34Layer .st-note-mic-notice{font-size:10px;line-height:1.4;color:#a4a4a4;margin:4px 0 8px;overflow-wrap:anywhere}
+#st34Layer .st-note-mic-status{font-size:10px;line-height:1.4;color:#a4a4a4;margin:4px 0 8px;overflow-wrap:anywhere}
 #st34Layer .st-note-mic-status:empty{display:none}

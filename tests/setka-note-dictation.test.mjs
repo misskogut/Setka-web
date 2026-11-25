@@ -7,7 +7,7 @@ function harness({withForm=false}={}){
  const el=()=>({dataset:{},children:[],value:'',maxLength:5000,isConnected:true,attrs:{},setAttribute(k,v){this.attrs[k]=v},appendChild(x){this.children.push(x);x.parentNode=this},insertBefore(x){this.appendChild(x)},after(){},closest(){return null},addEventListener(){},dispatchEvent(){},focus(){}});
  const listeners={},instances=[],timers=new Map();let timerId=0,saves=0,savedText=null;
  class Recognition{constructor(){instances.push(this)}start(){this.onstart()}stop(){this.stopped=true}abort(){this.aborted=true}}
- const window={SpeechRecognition:Recognition,addEventListener:(k,v)=>listeners[k]=v};
+ const window={SpeechRecognition:Recognition,confirm:()=>true,addEventListener:(k,v)=>listeners[k]=v};
  const document={createElement:el,getElementById:()=>null,addEventListener(){},hidden:false};
  vm.runInNewContext(source,{window,document,Event:class{},setTimeout:cb=>{timers.set(++timerId,cb);return timerId},clearTimeout:id=>timers.delete(id)});
  const field=el(),save=el(),form=el();el().appendChild(field);
@@ -41,7 +41,7 @@ test('unsupported browser and text limit are safe',()=>{
 });
 test('both note composers and both main fronts include dictation',()=>{
  for(const p of ['standalone-core-v34.js','standalone-user-ui-v34.js'])assert.match(fs.readFileSync(p,'utf8'),/SetkaNoteDictationV1\?\.attach\(/);
- for(const p of ['standalone-v34.html','standalone-v34-cycle-logo3d.html'])assert.match(fs.readFileSync(p,'utf8'),/<script\s+src="standalone-note-dictation-v1\.js\?(?:v=2|content=[a-f0-9]{20})"><\/script>/);
+ for(const p of ['standalone-v34.html','standalone-v34-cycle-logo3d.html'])assert.match(fs.readFileSync(p,'utf8'),/<script\s+src="standalone-note-dictation-v1\.js\?(?:v=3|content=[a-f0-9]{20})"><\/script>/);
 });
 test('one Save click waits for final speech then saves exactly once in both editors',()=>{
  for(const withForm of [false,true]){
@@ -65,4 +65,12 @@ test('empty recognition does not create a blank note',()=>{
 });
 test('form submit also queues a single save',()=>{
  const h=harness({withForm:true});h.field.value='текст';h.mic.onclick();h.submit();assert.equal(h.saves,0);h.instances[0].onend();assert.equal(h.saves,1);
+});
+
+test('technical audio notice is shown only on first microphone activation',()=>{
+ const h=harness();let prompts=0;h.window.confirm=()=>{prompts++;return false};
+ h.mic.onclick();assert.equal(prompts,1);assert.equal(h.instances.length,0);
+ h.window.confirm=()=>{prompts++;return true};h.mic.onclick();assert.equal(prompts,2);h.instances[0].onend();
+ h.mic.onclick();assert.equal(prompts,2);assert.equal(h.instances.length,2);
+ assert.equal(source.includes('st-note-mic-notice'),false);
 });
