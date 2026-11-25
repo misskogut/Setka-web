@@ -157,6 +157,7 @@ function openInGame(host){
  const library=$("libraryScreen");
  if(root.parentElement===library&&visible){
   library.classList.remove("setka-music-open");
+  window.dispatchEvent(new Event("setka:music-library-visibility"));
   patternPanels.hidden=false;patternPanels.style.display="";
   note?.classList.remove("active");
   if(title?.textContent==="Музыка")title.textContent="Сквиши";
@@ -181,6 +182,7 @@ function openMusic(){
  if(gameHost)closeInGame();
  visible=true;root.parentElement?.classList.add("setka-music-open");patternPanels.hidden=true;patternPanels.style.display="none";root.hidden=false;
  title.textContent="Музыка";
+ window.dispatchEvent(new Event("setka:music-library-visibility"));
  for(const b of document.querySelectorAll(".library-pager .pager-button"))b.classList.toggle("active",b===note);
  catalogRetryCount=0;clearTimeout(catalogRetryTimer);catalogRetryTimer=null;
  redraw();reload();
@@ -189,6 +191,7 @@ function hideMusic(){
  if(gameHost||!visible)return;
  visible=false;clearTimeout(catalogRetryTimer);catalogRetryTimer=null;root.parentElement?.classList.remove("setka-music-open");root.hidden=true;patternPanels.hidden=false;patternPanels.style.display="";
  note.classList.remove("active");
+ window.dispatchEvent(new Event("setka:music-library-visibility"));
 }
 function install(){
  // Music is a permanent fourth library destination, including ordinary URLs.

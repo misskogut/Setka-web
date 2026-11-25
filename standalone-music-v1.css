@@ -7,6 +7,9 @@
  -webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;
  -webkit-mask-size:contain;mask-size:contain}
 #libraryScreen.setka-music-open #libraryTitle{visibility:hidden!important}
+/* Community filters are outside the pattern panel. The experimental shell
+   forces display:flex, so this rule must win even during async refresh. */
+#app #libraryScreen.setka-music-open #st34CommunityModes{display:none!important;pointer-events:none!important}
 #libraryScreen.setka-music-open #setkaMusicPagerButton{color:#fff!important}
 #libraryScreen.setka-music-open .library-pager .pager-button{opacity:.25!important;filter:none!important}
 #libraryScreen.setka-music-open #setkaMusicPagerButton{opacity:1!important;filter:none!important}

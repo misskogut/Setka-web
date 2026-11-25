@@ -55,8 +55,21 @@ try{
  assert.equal(await page.locator("#setkaMusicPagerButton").count(),1,"the music tab must exist on the default URL, no ?music=1");
  assert.equal(await page.locator("#setkaMusicPagerButton").isVisible(),true,"visible fourth tab on the normal SETKA home");
  assert.equal(await page.locator(".library-pager .pager-button").count(),4,"four permanent upper tabs");
+ await page.locator("#communityPagerButton").click();
+ await page.locator("#st34CommunityModes").waitFor({state:"visible"});
  await page.locator("#setkaMusicPagerButton").click();
  await page.locator(".sm-track").first().waitFor();
+ await page.locator("#st34CommunityModes").waitFor({state:"hidden"});
+ await page.evaluate(()=>window.dispatchEvent(new Event("setka:catalog-updated")));
+ await page.evaluate(()=>window.dispatchEvent(new CustomEvent("setka:library-page",{detail:{page:"community"}})));
+ assert.equal(await page.locator("#st34CommunityModes").isVisible(),false);
+ assert.deepEqual(await page.locator(".library-pager .pager-button.active").evaluateAll(nodes=>nodes.map(n=>n.id)),["setkaMusicPagerButton"]);
+ await page.locator("#communityPagerButton").click();
+ await page.locator("#st34CommunityModes").waitFor({state:"visible"});
+ assert.equal(await page.locator("#setkaMusicPage").isVisible(),false);
+ await page.locator("#setkaMusicPagerButton").click();
+ await page.locator(".sm-track").first().waitFor();
+ assert.equal(await page.locator("#st34CommunityModes").isVisible(),false);
  const topGlow=await page.evaluate(()=>{
   const note=document.querySelector("#setkaMusicPagerButton");
   const adjacent=document.querySelector("#libraryPagerButton");

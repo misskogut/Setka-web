@@ -141,3 +141,19 @@ test("music admin supports persistent soft delete and restore without rewriting 
  assert.match(sql,/revoke all.*anon, authenticated/);
  assert.doesNotMatch(edge,/setka_music_tracks_v1","DELETE".*hide-icon/s,"icon removal must never delete tracks");
 });
+
+test("music owns the visible navigation even during background community refresh",()=>{
+ const css=readFileSync(new URL("../standalone-music-v1.css",import.meta.url),"utf8");
+ const advanced=readFileSync(new URL("../standalone-advanced-v34.js",import.meta.url),"utf8");
+ const music=readFileSync(new URL("../standalone-music-v1.mjs",import.meta.url),"utf8");
+ const app=readFileSync(new URL("../app-v7-multipattern.js",import.meta.url),"utf8");
+ assert.match(css,/#app #libraryScreen\.setka-music-open #st34CommunityModes\{display:none!important;pointer-events:none!important\}/);
+ assert.match(advanced,/page!=="community"\|\|document\.getElementById\("libraryScreen"\)\?\.classList\.contains\("setka-music-open"\)/);
+ assert.match(music,/setka:music-library-visibility/);
+ const code=app.slice(app.indexOf("  function setLibraryPage("),app.indexOf("  function emptyPanel("));
+ const names=["all","community","favorites"],active=new Map(),element=name=>({classList:{toggle:(key,value)=>active.set(name+":"+key,value),contains:()=>true}});
+ let musicOpen=true;const screen={classList:{contains:()=>musicOpen}},title={textContent:"Музыка"};
+ const setPage=new Function("PAGE_ORDER","allPatternsPanel","communityPanel","favoritesPanel","libraryPagerButton","communityPagerButton","favoritesPagerButton","libraryScreen","libraryTitle","emit","syncLibraryPreviews","let activeLibraryPage;"+code+";return setLibraryPage")(names,...names.map(element),...names.map(x=>element(x+"Button")),screen,title,()=>{},()=>{});
+ setPage("community",true);assert.equal(title.textContent,"Музыка");assert.equal(active.get("communityButton:active"),false);
+ musicOpen=false;setPage("community");assert.equal(title.textContent,"Сообщество");assert.equal(active.get("communityButton:active"),true);
+});
