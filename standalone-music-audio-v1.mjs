@@ -276,7 +276,7 @@ export class SetkaMusicMixer {
    state.gain.gain.setTargetAtTime(outputLevel,now,.045);
   }
   if(!this.clock)this.clock=setInterval(()=>this.tick(),40);
-  this.changed(state.nativeOnly&&releaseDirect?"Резервный трек воспроизводится обычным стерео без 3D-орбиты.":undefined);
+  this.changed();
  }
  // Advance a deck independently of orbital motion: even a static sound loops.
  advanceLoop(state,force=false){

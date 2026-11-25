@@ -34,9 +34,8 @@
   panel.append(fragment);
  }
  function decorate(){
-  const R=window.SetkaPatternRegistryV1;let status=document.getElementById("setkaCatalogStatus");
-  if(!status){status=document.createElement("p");status.id="setkaCatalogStatus";status.setAttribute("role","status");status.style.cssText="text-align:center;color:#aaa;font:12px Arial";document.getElementById("libraryTitle")?.insertAdjacentElement("afterend",status)}
-  status.textContent=lastStatus?.ok?(!S.getPatterns().length?"Опубликованных паттернов пока нет":""):R.publicationRevision()<0?(lastStatus?"Каталог недоступен. Повторите при восстановлении связи.":"Проверяем доступные паттерны…"):"Каталог не обновлён: показана последняя подтверждённая версия";
+  // Catalogue source and refresh diagnostics stay internal; no status banner in the library.
+  document.getElementById("setkaCatalogStatus")?.remove();
   const info=seenInfo();
   document.querySelectorAll('.pattern-tile[data-kind="base"]').forEach(tile=>{
    const badge=tile.querySelector('.setka-new-pattern');

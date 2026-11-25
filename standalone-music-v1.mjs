@@ -1,7 +1,7 @@
 import {iconSvg} from "./standalone-music-icons-v1.mjs?v=8-restored-pre-master-20261107";
 import {selectedMusicCategorySVG} from "./standalone-music-approved-icons-v1.mjs?v=nature-optical-size-20261106";
 import {uiIconHTML,assetIconMask,UI_ICON_IDS} from "./standalone-music-ui-icons-v2.mjs?v=4-exact-approved-vector-20261106";
-import {SetkaMusicMixer} from "./standalone-music-audio-v1.mjs?v=18-native-release-fallback-20261115";
+import {SetkaMusicMixer} from "./standalone-music-audio-v1.mjs?v=19-clean-ui";
 import {createOrbitUI} from "./standalone-music-orbits-reference-20261106.mjs?v=15-orbit-centerline-bounds-20261107";
 const API="https://gfchgaphzhxufwdhrcis.supabase.co/functions/v1/setka-music-v1";
 const $=id=>document.getElementById(id);
@@ -42,7 +42,8 @@ function redrawCatalog(){
  display.sort((a,b)=>(priority.get(a.id)??1e9)-(priority.get(b.id)??1e9));
  if(!display.length){
   const e=document.createElement("p");e.className="sm-empty";
-  e.textContent=status?"":tracks.length?"В этой категории пока нет звуков.":"Музыка ещё не загружена через админку.";
+  e.textContent=status?"":tracks.length?"В этой категории пока нет звуков.":"Пока нет музыки.";
+  if(!e.textContent)return;
   grid.append(e);return;
  }
  for(const track of display){
@@ -129,7 +130,7 @@ async function reload(){
   }
   categories=d.categories;tracks=d.tracks.filter(t=>t.id&&t.audio_url);globalOrder=d.global_order||{track_ids:[]};
   musicSnapshotActive=usingSnapshot;
-  status=usingSnapshot?"Резервная музыка: показана последняя подтверждённая версия. Некоторые функции 3D могут быть недоступны без сервера.":"";
+  status="";
   catalogRetryCount=0;clearTimeout(catalogRetryTimer);catalogRetryTimer=null;
   for(const key of UI_ICON_IDS)delete uiIcons[key];
   for(const item of Array.isArray(d.ui_icons)?d.ui_icons:[]){
@@ -141,7 +142,7 @@ async function reload(){
   const allowed=new Set(tracks.map(t=>t.id));
   for(const id of [...mixer.items.keys()])if(!allowed.has(id))mixer.remove(id);
  }catch(_){
-  status="Сейчас не удалось загрузить музыкальный каталог.";
+  status=tracks.length?"":"Не удалось загрузить музыку. Попробуйте ещё раз.";
   if(visible&&catalogRetryCount<3){
    const delay=[1200,3500,8500][catalogRetryCount++];
    clearTimeout(catalogRetryTimer);
