@@ -13,7 +13,7 @@ const mobile=matchMedia('(max-width: 650px)').matches;
 const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let paused=capture||reduce,clockTime=0,angle=Number(params.get('angle')||0),targetAngle=angle,axis=params.get('axis')==='y'?'y':'x';
 let quality='auto',elasticity=65,excitation=0,lost=false,disposed=false,frameCount=0,dirty=true;
-let renderer,composer,bloom,scene,camera,card,body,shell,inner,letterMaterial,environment;
+let renderer,composer,bloom,scene,camera,card,body,shell,inner,letterMaterial,environment,backGroup;
 const state={ready:false,version:'prismatic-flower-2',angle,axis,frames:0,meanFrameMs:null,pressed:false,energy:0,vertices:0,triangles:0,deviceTest:'browser-only'};
 
 function envMap(){
@@ -52,7 +52,7 @@ function init(){
  const fill=new T.DirectionalLight(0x9dbbff,.7);fill.position.set(3,2,4);scene.add(fill);
  const rim=new T.DirectionalLight(0xffad50,1.6);rim.position.set(-2,-3,2);scene.add(rim);
  card=new T.Group();scene.add(card);
- const plate=new T.Mesh(new RoundedBoxGeometry(6.25,7.0,.07,4,.17),new T.MeshStandardMaterial({color:0x08050e,metalness:.15,roughness:.6}));plate.name='opaque-card';card.add(plate);
+ const plate=new T.Mesh(new RoundedBoxGeometry(6.25,7.0,.07,4,.17),new T.MeshStandardMaterial({color:0x020104,metalness:0,roughness:.9,envMapIntensity:.02}));plate.name='opaque-card';card.add(plate);
  const bgmat=new T.ShaderMaterial({depthWrite:true,vertexShader:'varying vec2 vUv; void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',fragmentShader:`varying vec2 vUv;
   void main(){vec2 p=(vUv-.5)*vec2(6.2,7.);float a=exp(-dot(p*vec2(.7,.65),p*vec2(.7,.65)));float b=exp(-dot((p-vec2(0.,-2.9))*vec2(1.5,8.),(p-vec2(0.,-2.9))*vec2(1.5,8.)));gl_FragColor=vec4(vec3(.006,.0015,.012)+a*vec3(.022,.003,.032)+b*vec3(.15,.032,.065),1.);}`});
  const panel=new T.Mesh(new T.PlaneGeometry(6.19,6.92),bgmat);panel.position.z=.036;card.add(panel);
@@ -61,7 +61,7 @@ function init(){
  state.vertices=body.vertexCount;
  state.shellTriangles=body.geometry.index.count/3;
  addInterior();addTypography();addOrbit();addWave();addBack();
- const rt=new T.WebGLRenderTarget(1,1,{type:T.HalfFloatType,samples:mobile?2:4});
+ const rt=new T.WebGLRenderTarget(1,1,{type:T.HalfFloatType,samples:4});
  composer=new EffectComposer(renderer,rt);composer.addPass(new RenderPass(scene,camera));
  bloom=new UnrealBloomPass(new T.Vector2(1,1),.24,.45,1.5);composer.addPass(bloom);composer.addPass(new OutputPass());
  resize();new ResizeObserver(resize).observe(stage);
@@ -157,7 +157,7 @@ function addWave(){
  const points=new T.Points(waveGeom,mat);points.name='spatial-particle-wave';card.add(points);
 }
 function addBack(){
- const group=new T.Group();group.rotation.y=Math.PI;group.position.z=-.043;card.add(group);
+ const group=backGroup=new T.Group();group.rotation.set(axis==='x'?Math.PI:0,axis==='y'?Math.PI:0,0);group.position.z=-.043;card.add(group);
  const mat=new T.MeshStandardMaterial({color:0xbaa4d2,metalness:.3,roughness:.45});
  const label=placeText('SETKA',{height:.35,spacing:.12,depth:.02,material:mat});group.add(label);
  const torus=new T.Mesh(new T.TorusGeometry(.65,.007,6,100),mat);torus.position.y=1;group.add(torus);
@@ -191,7 +191,7 @@ function bindInteractions(){
  $('settings').onclick=()=>{const open=$('panel').hidden;$('panel').hidden=!open;$('settings').setAttribute('aria-expanded',String(open));document.body.classList.toggle('panel-open',open)};
  $('angle').oninput=e=>{angle=targetAngle=Number(e.target.value);syncAngle()};
  for(const b of document.querySelectorAll('[data-angle]'))b.onclick=()=>{angle=targetAngle=Number(b.dataset.angle);syncAngle()};
- $('axis').onclick=()=>{axis=axis==='x'?'y':'x';$('axis').textContent=axis==='x'?'Ось: вертикальный оборот':'Ось: горизонтальный оборот';state.axis=axis};
+ $('axis').onclick=()=>{dirty=true;axis=axis==='x'?'y':'x';$('axis').textContent=axis==='x'?'Ось: вертикальный оборот':'Ось: горизонтальный оборот';state.axis=axis};
  $('elasticity').oninput=e=>elasticity=Number(e.target.value);
  $('optics').oninput=e=>{shell.material.ior=Number(e.target.value)/100;dirty=true};
  $('light').oninput=e=>{renderer.toneMappingExposure=Number(e.target.value)/100;dirty=true};
@@ -214,8 +214,9 @@ function frame(now){
  const rawDt=(now-lastTime)/1000,dt=Math.min(rawDt,.035);lastTime=now;
  if(paused&&!gesture&&body.energy<.00001&&Math.abs(targetAngle-angle)<.001&&frameCount>8&&!dirty)return;
  if(!paused||gesture?.kind==='squish'||body.energy>.00001){if(!paused)clockTime+=dt;let remaining=Math.min(rawDt,.10);while(remaining>.00001){const step=Math.min(remaining,1/60);body.update(step,clockTime,elasticity);remaining-=step}}
- if(!gesture&&Math.abs(targetAngle-angle)>.001){angle+=(targetAngle-angle)*(1-Math.exp(-dt*8));if(Math.abs(targetAngle-angle)<.025)angle=targetAngle;syncAngle()}
+ if(!gesture&&Math.abs(targetAngle-angle)>.001){angle+=(targetAngle-angle)*(1-Math.exp(-Math.min(rawDt,.1)*8));if(Math.abs(targetAngle-angle)<.025)angle=targetAngle;syncAngle()}
  card.rotation.set(axis==='x'?-T.MathUtils.degToRad(angle):0,axis==='y'?T.MathUtils.degToRad(angle):0,0);
+ backGroup.rotation.set(axis==='x'?Math.PI:0,axis==='y'?Math.PI:0,0);
  excitation*=Math.exp(-dt*1.8);inner.rotation.z=.012*Math.sin(clockTime*.4);inner.scale.setScalar(1+.006*Math.sin(clockTime*1.1));
  if(waveGeom&&!paused){const p=waveGeom.attributes.position.array;for(let i=0;i<p.length;i+=3){const x=waveBase[i],v=((i/3)%32)/31*2-1;p[i+1]=.16+Math.sin(x*3-clockTime*.55)*(.19+v*.14)+v*.24;p[i+2]=.15+Math.cos(x*2.3+clockTime*.35)*.05*(1-v*v)}waveGeom.attributes.position.needsUpdate=true}
  renderer.info.reset();composer.render();dirty=false;state.frames=++frameCount;state.angle=angle;state.energy=body.energy;state.triangles=renderer.info.render.triangles;state.drawCalls=renderer.info.render.calls;

@@ -28,11 +28,21 @@ jobs:
       - run: npm test
       - run: npm run build
       - run: npx playwright install --with-deps ${{ matrix.browser }}
-      - name: Serve isolated experiment and verify rendered frames and pointer physics
+      - name: Capture reference portrait before interaction tests
         env:
           FLOWER_BROWSER: ${{ matrix.browser }}
         run: |
           python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/flower-server.log 2>&1 &
+          node qa/portrait.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: prismatic-portrait-${{ matrix.browser }}
+          path: experiments/prismatic-flower-logo/qa/output/
+      - name: Serve isolated experiment and verify rendered frames and pointer physics
+        env:
+          FLOWER_BROWSER: ${{ matrix.browser }}
+        run: |
           npm run test:browser
       - uses: actions/upload-artifact@v4
         if: always()
