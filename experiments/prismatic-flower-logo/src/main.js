@@ -5,7 +5,7 @@ import {RenderPass} from 'three/addons/postprocessing/RenderPass.js';
 import {UnrealBloomPass} from 'three/addons/postprocessing/UnrealBloomPass.js';
 import {OutputPass} from 'three/addons/postprocessing/OutputPass.js';
 import {makeSoftBody} from './soft-body.js';
-import {balloonGlyph,vectorGlyph,placeText} from './type.js';
+import {balloonGlyph,vectorGlyph,placeText,fuseStaticType} from './type.js';
 
 const $=id=>document.getElementById(id),stage=$('stage'),canvas=$('scene');
 const params=new URLSearchParams(location.search),capture=params.has('capture');
@@ -140,6 +140,7 @@ function addTypography(){
  const subtitle=new T.Group();subtitle.name='solid-curved-subtitle';card.add(subtitle);
  const text='ДЛЯМОЗГА',positions=[-1.65,-1.18,-.72,-.18,.34,.84,1.31,1.77];
  [...text].forEach((ch,i)=>{const x=positions[i],m=vectorGlyph(ch,.30,.033,typeMat);m.position.set(x,-2.23+.12*x*x,.105);m.rotation.z=x*.15;subtitle.add(m)});
+ fuseStaticType(subtitle);
  const caption=placeText('АНТИСТРЕСС ТРЕКЕР',{height:.12,spacing:.052,depth:.016,material:typeMat});caption.position.set(0,-2.70,.09);caption.name='solid-tracker-caption';card.add(caption);
  for(const sign of [-1,1]){const bar=new T.Mesh(new T.CylinderGeometry(.002,.002,.62,8),typeMat);bar.rotation.z=Math.PI/2;bar.position.set(sign*2.05,-2.70,.10);card.add(bar)}
  state.typography={title:'closed-isosurfaces',subtitle:'beveled-font-outlines',caption:'beveled-font-outlines',cssTextShadows:false};

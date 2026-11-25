@@ -1,6 +1,6 @@
 import * as T from 'three';
 import {MarchingCubes} from 'three/addons/objects/MarchingCubes.js';
-import {mergeVertices} from 'three/addons/utils/BufferGeometryUtils.js';
+import {mergeVertices,mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import font from './glyphs.json' with {type:'json'};
 
 function line(points){return points}
@@ -49,8 +49,17 @@ export function vectorGlyph(ch,height,depth,material){
  return new T.Mesh(geo,material);
 }
 export function placeText(text,{height=.12,spacing=.06,depth=.025,material}={}){
+ material??=new T.MeshStandardMaterial();
  const group=new T.Group();const chars=[];let cursor=0;
  for(const ch of text){if(ch===' '){cursor+=height*.6+spacing;continue}const mesh=vectorGlyph(ch,height,depth,material);mesh.geometry.computeBoundingBox();const w=mesh.geometry.boundingBox.max.x-mesh.geometry.boundingBox.min.x;mesh.position.x=cursor+w/2;cursor+=w+spacing;chars.push(mesh);group.add(mesh)}
  for(const m of chars)m.position.x-=(cursor-spacing)/2;
+ fuseStaticType(group);
  return group;
+}
+export function fuseStaticType(group){
+ const parts=group.children.filter(m=>m.isMesh);if(parts.length<2)return;
+ const material=parts[0].material;if(parts.some(m=>m.material!==material))throw Error('Typography batch requires a shared material');
+ const geometries=parts.map(m=>{m.updateMatrix();return m.geometry.clone().applyMatrix4(m.matrix)});
+ const merged=mergeGeometries(geometries,false);for(const g of geometries)g.dispose();for(const p of parts)p.geometry.dispose();
+ group.clear();const mesh=new T.Mesh(merged,material);mesh.name='batched-solid-type';group.add(mesh);
 }

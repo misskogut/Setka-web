@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {makeSoftBody} from '../src/soft-body.js';
-import {balloonGlyph,vectorGlyph} from '../src/type.js';
+import {balloonGlyph,vectorGlyph,placeText} from '../src/type.js';
 
 test('closed shell has outward normals and exactly two faces per edge',()=>{
  const b=makeSoftBody(),p=b.geometry.attributes.position.array,n=b.geometry.attributes.normal.array,ix=b.geometry.index.array,edges=new Map();let outward=0;
@@ -25,4 +25,8 @@ test('balloon letters contain volume, smooth outward normals and valid triangles
 });
 test('all small Cyrillic and Latin characters are actual beveled extrusions',()=>{
  for(const ch of new Set('ДЛЯМОЗГААНТИСТРЕСЕКРSETKA')){const m=vectorGlyph(ch,.3,.03);m.geometry.computeBoundingBox();assert.ok(m.geometry.attributes.position.count>20,ch);assert.ok(m.geometry.boundingBox.max.z-m.geometry.boundingBox.min.z>.03,ch)}
+});
+test('static captions batch draw calls while preserving their complete three-dimensional bounds',()=>{
+ const group=placeText('АНТИСТРЕСС ТРЕКЕР',{height:.12,spacing:.052,depth:.016});assert.equal(group.children.length,1);
+ const g=group.children[0].geometry;g.computeBoundingBox();assert.ok(g.boundingBox.max.x-g.boundingBox.min.x>2);assert.ok(g.boundingBox.max.z-g.boundingBox.min.z>.016);assert.ok(g.attributes.position.count>500);
 });
