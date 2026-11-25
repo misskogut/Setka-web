@@ -92,7 +92,7 @@ jobs:
       - name: Verify all pattern sliders, start-view patches and pointer lifecycle
         run: node --test tests/pattern-integration-gate.test.mjs
       - name: Verify account-bound ALMA cycle integration
-        run: node --test tests/setka-cycle-account-link.test.mjs tests/setka-cycle-theme.test.mjs tests/setka-notes-feed.test.mjs
+        run: node --test tests/setka-cycle-account-link.test.mjs tests/setka-cycle-theme.test.mjs tests/setka-notes-feed.test.mjs tests/setka-note-dictation.test.mjs
       - name: Verify frontend, admin and server catalog parity
         run: node --test tests/setka-front-admin-parity.test.mjs
       - name: Verify warm-start caching and per-renderer asset invalidation

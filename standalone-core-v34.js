@@ -198,6 +198,7 @@
       recordEvent("note_create",{noteId:note.id,state:st});hideLayer();updateGameControls();
     };
     b.append(sb,status);
+    window.SetkaNoteDictationV1?.attach(ta,sb);
   }
   noteBtn.onclick=noteComposer;
 

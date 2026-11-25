@@ -1,0 +1,9 @@
+
+#st34Layer .st-note-dictation{position:relative;width:100%;min-width:0}
+#st34Layer .st-note-dictation textarea{display:block;box-sizing:border-box;width:100%;padding-right:52px}
+#st34Layer .st-note-mic{position:absolute;right:8px;bottom:9px;width:38px;height:38px;padding:0;border:1px solid rgba(255,255,255,.22);border-radius:50%;background:#171717;color:#d5d5d5;display:grid;place-items:center;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+#st34Layer .st-note-mic svg{width:20px;height:20px;display:block}
+#st34Layer .st-note-mic[data-phase]:not([data-phase="idle"]){color:#ff8894;border-color:#e67985;background:#28161a}
+#st34Layer .st-note-mic:focus-visible{outline:2px solid #fff;outline-offset:2px}
+#st34Layer .st-note-mic-status,#st34Layer .st-note-mic-notice{font-size:10px;line-height:1.4;color:#a4a4a4;margin:4px 0 8px;overflow-wrap:anywhere}
+#st34Layer .st-note-mic-status:empty{display:none}

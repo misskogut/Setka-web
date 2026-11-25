@@ -155,6 +155,7 @@
     form.innerHTML='<label for="stPlainNoteText">Новая заметка</label><textarea id="stPlainNoteText" class="st-textarea" placeholder="Что хочется записать?" required maxlength="5000"></textarea><div class="st-row"><button type="submit" class="st-primary">Сохранить заметку</button></div>';
     b.appendChild(form);let note=null;
     const field=form.querySelector("textarea"),submit=form.querySelector('[type="submit"]');
+    window.SetkaNoteDictationV1?.attach(field,submit);
     // No autofocus on opening: the full feed remains visible, keyboard only on tap.
     form.onsubmit=async e=>{
       e.preventDefault();const text=field.value.trim();if(!text){C.inlineStatus(form,"Напиши текст заметки.");return}
