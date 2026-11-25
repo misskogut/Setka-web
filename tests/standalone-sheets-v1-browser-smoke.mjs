@@ -38,6 +38,24 @@ try{
   await tab('today').click();await card.waitFor({state:'visible'});
   await tab('notes').click();assert.match(await card.innerText(),/Заметки/);
   const plain=card.locator('#stPlainNoteText');await plain.waitFor();assert.equal(await plain.evaluate(el=>document.activeElement===el),false);
+  assert.equal(await card.getByRole('button',{name:'Написать заметку',exact:true}).count(),0);
+  await plain.focus();
+  await page.evaluate(()=>{
+    Object.defineProperties(visualViewport,{height:{configurable:true,value:340},offsetTop:{configurable:true,value:64}});
+    visualViewport.dispatchEvent(new Event('resize'));
+  });
+  await page.waitForFunction(()=>{
+    const layer=document.querySelector('#st34Layer');
+    const form=layer.querySelector('.st-note-editor-inline').getBoundingClientRect();
+    const view=layer.querySelector('.st-wrap').getBoundingClientRect();
+    return layer.classList.contains('st-note-keyboard')&&form.top>=view.top&&form.bottom<=Math.min(view.bottom,404);
+  });
+  assert.equal(await dock.isVisible(),false);
+  await page.evaluate(()=>{
+    delete visualViewport.height;delete visualViewport.offsetTop;
+    visualViewport.dispatchEvent(new Event('resize'));
+  });
+  await dock.waitFor({state:'visible'});
   const fixtures=[{id:'feed-new',text:'Новая запись',observedAt:'2026-01-03T12:00:00Z',noteType:'text'},{id:'feed-old',text:'Старая запись',observedAt:'2026-01-01T12:00:00Z',noteType:'text'},{id:'feed-middle',text:'Средняя запись',observedAt:'2026-01-02T12:00:00Z',noteType:'text'}];
   await page.evaluate(rows=>{const C=window.SetkaStandaloneV34;C.getData().notes.push(...rows);C.refreshNotesFeed()},fixtures);
   const feed=card.locator('#stNotesFeed');

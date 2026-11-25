@@ -33,7 +33,7 @@
       const active=opened&&button.dataset.p===page;
       button.classList.toggle('active',active);button.setAttribute('aria-expanded',String(active));
     }
-    C.updateGameControls();
+    C.updateGameControls();viewport();
   }
   function queueSync(){if(frame)return;frame=requestAnimationFrame(()=>{frame=0;sync()})}
   function saveDraft(){
@@ -111,9 +111,22 @@
   });
   function viewport(){
     const v=window.visualViewport,height=v?.height||innerHeight,offset=v?.offsetTop||0;
+    const inset=Math.max(0,innerHeight-height-offset);
     document.body.style.setProperty('--setka-visible-height',`${height}px`);
-    document.body.style.setProperty('--setka-keyboard-inset',`${Math.max(0,innerHeight-height-offset)}px`);
+    document.body.style.setProperty('--setka-keyboard-inset',`${inset}px`);
+    const composer=visible()&&wrap.querySelector('.st-note-editor-inline');
+    const editing=composer&&innerHeight-height>100&&
+      (composer.contains(document.activeElement)||layer.classList.contains('st-note-keyboard'));
+    const wasEditing=layer.classList.contains('st-note-keyboard');
+    layer.classList.toggle('st-note-keyboard',Boolean(editing));
+    if(!editing)return;
+    layer.style.setProperty('--st-note-viewport-top',`${offset}px`);
+    const form=composer.getBoundingClientRect(),view=wrap.getBoundingClientRect();
+    if(!wasEditing||form.top<view.top||form.bottom>view.bottom){
+      wrap.scrollTop+=form.top-view.top-6;
+    }
   }
+  wrap.addEventListener('focusin',viewport);
   window.visualViewport?.addEventListener('resize',viewport);window.visualViewport?.addEventListener('scroll',viewport);window.addEventListener('resize',viewport);
-  window.__SETKA_SHEET_LAYOUT_V1__={version:'1.3.0',close,activate};viewport();sync();
+  window.__SETKA_SHEET_LAYOUT_V1__={version:'1.3.0',close,activate};sync();
 })();

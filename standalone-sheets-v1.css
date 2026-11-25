@@ -164,3 +164,20 @@ body.setka-sheet-layout #st34Nav {
 body.setka-sheet-layout:has(input:focus:not([type="range"]):not([type="checkbox"]):not([type="radio"]), textarea:focus, [contenteditable="true"]:focus) #st34Nav {
   bottom: calc(8px + env(safe-area-inset-bottom, 0px) + var(--setka-keyboard-inset, 0px)) !important;
 }
+
+/* During note entry, fit the sheet to the visual viewport above the keyboard. */
+body.setka-sheet-layout:has(#st34Layer.st-note-keyboard) #st34Nav {
+  display: none !important;
+}
+body.setka-sheet-layout #st34Layer.st-note-keyboard {
+  --setka-sheet-max: max(0px, calc(var(--setka-visible-height) - 24px));
+  top: calc(var(--st-note-viewport-top) + 8px);
+  bottom: auto;
+  height: var(--setka-sheet-max) !important;
+  box-sizing: border-box;
+}
+body.setka-sheet-layout #st34Layer.st-note-keyboard .st-note-editor-inline textarea {
+  height: clamp(48px, calc(var(--setka-visible-height) - 155px), 106px);
+  min-height: 0;
+  resize: none;
+}
