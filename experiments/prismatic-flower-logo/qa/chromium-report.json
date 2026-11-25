@@ -1,0 +1,298 @@
+{
+  "engine": "chromium",
+  "realIPhone": false,
+  "angles": [
+    {
+      "angle": 0,
+      "brightPixels": 104113,
+      "stats": {
+        "ready": true,
+        "version": "prismatic-flower-3",
+        "angle": 0,
+        "axis": "x",
+        "frames": 5,
+        "meanFrameMs": null,
+        "pressed": false,
+        "energy": 0,
+        "vertices": 6554,
+        "triangles": 224182,
+        "deviceTest": "browser-only",
+        "shellTriangles": 13104,
+        "bubbles": 27,
+        "interiorGeometry": true,
+        "typography": {
+          "title": "closed-isosurfaces",
+          "subtitle": "beveled-font-outlines",
+          "caption": "beveled-font-outlines",
+          "cssTextShadows": false
+        },
+        "resolution": [
+          600,
+          700
+        ],
+        "pixelRatio": 1,
+        "renderer": "WebKit WebGL",
+        "material": {
+          "transmission": 0.985,
+          "ior": 1.47,
+          "dispersion": 0.62,
+          "screenSpaceRefraction": true,
+          "opticalDepth": "radial-near-core-approximation",
+          "pathTracing": false
+        },
+        "drawCalls": 89
+      }
+    },
+    {
+      "angle": 30,
+      "brightPixels": 89392,
+      "stats": {
+        "ready": true,
+        "version": "prismatic-flower-3",
+        "angle": 30,
+        "axis": "x",
+        "frames": 4,
+        "meanFrameMs": null,
+        "pressed": false,
+        "energy": 0,
+        "vertices": 6554,
+        "triangles": 224182,
+        "deviceTest": "browser-only",
+        "shellTriangles": 13104,
+        "bubbles": 27,
+        "interiorGeometry": true,
+        "typography": {
+          "title": "closed-isosurfaces",
+          "subtitle": "beveled-font-outlines",
+          "caption": "beveled-font-outlines",
+          "cssTextShadows": false
+        },
+        "resolution": [
+          600,
+          700
+        ],
+        "pixelRatio": 1,
+        "renderer": "WebKit WebGL",
+        "material": {
+          "transmission": 0.985,
+          "ior": 1.47,
+          "dispersion": 0.62,
+          "screenSpaceRefraction": true,
+          "opticalDepth": "radial-near-core-approximation",
+          "pathTracing": false
+        },
+        "drawCalls": 89
+      }
+    },
+    {
+      "angle": 60,
+      "brightPixels": 43359,
+      "stats": {
+        "ready": true,
+        "version": "prismatic-flower-3",
+        "angle": 60,
+        "axis": "x",
+        "frames": 4,
+        "meanFrameMs": null,
+        "pressed": false,
+        "energy": 0,
+        "vertices": 6554,
+        "triangles": 224182,
+        "deviceTest": "browser-only",
+        "shellTriangles": 13104,
+        "bubbles": 27,
+        "interiorGeometry": true,
+        "typography": {
+          "title": "closed-isosurfaces",
+          "subtitle": "beveled-font-outlines",
+          "caption": "beveled-font-outlines",
+          "cssTextShadows": false
+        },
+        "resolution": [
+          600,
+          700
+        ],
+        "pixelRatio": 1,
+        "renderer": "WebKit WebGL",
+        "material": {
+          "transmission": 0.985,
+          "ior": 1.47,
+          "dispersion": 0.62,
+          "screenSpaceRefraction": true,
+          "opticalDepth": "radial-near-core-approximation",
+          "pathTracing": false
+        },
+        "drawCalls": 89
+      }
+    },
+    {
+      "angle": 90,
+      "brightPixels": 27502,
+      "stats": {
+        "ready": true,
+        "version": "prismatic-flower-3",
+        "angle": 90,
+        "axis": "x",
+        "frames": 5,
+        "meanFrameMs": null,
+        "pressed": false,
+        "energy": 0,
+        "vertices": 6554,
+        "triangles": 224182,
+        "deviceTest": "browser-only",
+        "shellTriangles": 13104,
+        "bubbles": 27,
+        "interiorGeometry": true,
+        "typography": {
+          "title": "closed-isosurfaces",
+          "subtitle": "beveled-font-outlines",
+          "caption": "beveled-font-outlines",
+          "cssTextShadows": false
+        },
+        "resolution": [
+          600,
+          700
+        ],
+        "pixelRatio": 1,
+        "renderer": "WebKit WebGL",
+        "material": {
+          "transmission": 0.985,
+          "ior": 1.47,
+          "dispersion": 0.62,
+          "screenSpaceRefraction": true,
+          "opticalDepth": "radial-near-core-approximation",
+          "pathTracing": false
+        },
+        "drawCalls": 89
+      }
+    },
+    {
+      "angle": 120,
+      "brightPixels": 1497,
+      "stats": {
+        "ready": true,
+        "version": "prismatic-flower-3",
+        "angle": 120,
+        "axis": "x",
+        "frames": 4,
+        "meanFrameMs": null,
+        "pressed": false,
+        "energy": 0,
+        "vertices": 6554,
+        "triangles": 224182,
+        "deviceTest": "browser-only",
+        "shellTriangles": 13104,
+        "bubbles": 27,
+        "interiorGeometry": true,
+        "typography": {
+          "title": "closed-isosurfaces",
+          "subtitle": "beveled-font-outlines",
+          "caption": "beveled-font-outlines",
+          "cssTextShadows": false
+        },
+        "resolution": [
+          600,
+          700
+        ],
+        "pixelRatio": 1,
+        "renderer": "WebKit WebGL",
+        "material": {
+          "transmission": 0.985,
+          "ior": 1.47,
+          "dispersion": 0.62,
+          "screenSpaceRefraction": true,
+          "opticalDepth": "radial-near-core-approximation",
+          "pathTracing": false
+        },
+        "drawCalls": 89
+      }
+    },
+    {
+      "angle": 180,
+      "brightPixels": 1829,
+      "stats": {
+        "ready": true,
+        "version": "prismatic-flower-3",
+        "angle": 180,
+        "axis": "x",
+        "frames": 4,
+        "meanFrameMs": null,
+        "pressed": false,
+        "energy": 0,
+        "vertices": 6554,
+        "triangles": 224182,
+        "deviceTest": "browser-only",
+        "shellTriangles": 13104,
+        "bubbles": 27,
+        "interiorGeometry": true,
+        "typography": {
+          "title": "closed-isosurfaces",
+          "subtitle": "beveled-font-outlines",
+          "caption": "beveled-font-outlines",
+          "cssTextShadows": false
+        },
+        "resolution": [
+          600,
+          700
+        ],
+        "pixelRatio": 1,
+        "renderer": "WebKit WebGL",
+        "material": {
+          "transmission": 0.985,
+          "ior": 1.47,
+          "dispersion": 0.62,
+          "screenSpaceRefraction": true,
+          "opticalDepth": "radial-near-core-approximation",
+          "pathTracing": false
+        },
+        "drawCalls": 89
+      }
+    }
+  ],
+  "errors": [],
+  "holdEnergy": 0.08120059985027046,
+  "release": true,
+  "swipe": true,
+  "mobileViewport": {
+    "width": 390,
+    "height": 844,
+    "stats": {
+      "ready": true,
+      "version": "prismatic-flower-3",
+      "angle": 0,
+      "axis": "x",
+      "frames": 9,
+      "meanFrameMs": null,
+      "pressed": false,
+      "energy": 0,
+      "vertices": 6554,
+      "triangles": 224182,
+      "deviceTest": "browser-only",
+      "shellTriangles": 13104,
+      "bubbles": 27,
+      "interiorGeometry": true,
+      "typography": {
+        "title": "closed-isosurfaces",
+        "subtitle": "beveled-font-outlines",
+        "caption": "beveled-font-outlines",
+        "cssTextShadows": false
+      },
+      "resolution": [
+        390,
+        844
+      ],
+      "pixelRatio": 1,
+      "renderer": "WebKit WebGL",
+      "material": {
+        "transmission": 0.985,
+        "ior": 1.47,
+        "dispersion": 0.62,
+        "screenSpaceRefraction": true,
+        "opticalDepth": "radial-near-core-approximation",
+        "pathTracing": false
+      },
+      "drawCalls": 89
+    }
+  },
+  "pass": true
+}
