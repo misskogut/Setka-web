@@ -33,5 +33,5 @@ test('unsupported browser and text limit are safe',()=>{
 });
 test('both note composers and both main fronts include dictation',()=>{
  for(const p of ['standalone-core-v34.js','standalone-user-ui-v34.js'])assert.match(fs.readFileSync(p,'utf8'),/SetkaNoteDictationV1\?\.attach\(/);
- for(const p of ['standalone-v34.html','standalone-v34-cycle-logo3d.html'])assert.match(fs.readFileSync(p,'utf8'),/standalone-note-dictation-v1\.js\?v=1/);
+ for(const p of ['standalone-v34.html','standalone-v34-cycle-logo3d.html'])assert.match(fs.readFileSync(p,'utf8'),/<script\s+src="standalone-note-dictation-v1\.js\?(?:v=1|content=[a-f0-9]{20})"><\/script>/);
 });
