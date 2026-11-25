@@ -34,3 +34,19 @@ test('keyboard follows the focused existing note rather than the new composer',(
  document.activeElement={closest:()=>newForm};viewport();assert.ok(wrap.scrollTop<364);
  window.visualViewport.height=844;viewport();assert.equal(classes.has('st-note-keyboard'),false);
 });
+
+test('note state links reuse canonical observations without duplicate records',()=>{
+ const code=fs.readFileSync('standalone-states-v34.js','utf8');
+ const helpers=code.slice(code.indexOf('  function linkedStateRows('),code.indexOf('  C.linkedNoteStates='));
+ const {linkedStateRows,linkedNotesFor,attachStateToNote}=new Function(helpers+';return {linkedStateRows,linkedNotesFor,attachStateToNote}')();
+ const d={symptoms:[],checkins:[],notes:[]},n={id:'n',observedAt:'2026-01-01T00:00:00Z',text:'test'};d.notes.push(n);let seq=0;const id=p=>p+(++seq),clock='2026-01-02T00:00:00Z';
+ const choice={name:'Усталость',intensity:6},check=attachStateToNote(d,n,choice,clock,id,0);
+ assert.equal(check.observedAt,n.observedAt);assert.equal(d.checkins.length,1);assert.deepEqual(n.stateCheckinIds,[check.id]);
+ assert.equal(attachStateToNote(d,n,choice,clock,id,0).id,check.id);assert.equal(d.checkins.length,1);
+ assert.equal(linkedStateRows(d,n)[0].check.intensity,6);assert.equal(linkedNotesFor(d,check.symptomId)[0].note.id,n.id);
+ assert.equal(attachStateToNote(d,n,{name:'Усталость',intensity:11},clock,id,0),null);
+ const later={id:'n2',observedAt:'2026-02-01T00:00:00Z'};attachStateToNote(d,later,{name:'Усталость',intensity:9},clock,id,0);
+ const earlier={id:'n3',observedAt:'2025-12-01T00:00:00Z'};attachStateToNote(d,earlier,{name:'Усталость',intensity:2},clock,id,0);
+ assert.equal(d.symptoms[0].lastIntensity,9);
+ d.notes=[];assert.equal(linkedNotesFor(d,check.symptomId).length,0);assert.equal(d.checkins.length,3);
+});

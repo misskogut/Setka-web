@@ -140,6 +140,18 @@
     head.innerHTML=`<div class="st34-note-text">${esc(n.text)}</div>${context.length?`<div class="st34-note-meta">${esc(context.join(" · "))}</div>`:""}`;
     noteActions(card,head,n);
     card.appendChild(head);
+    if(C.noteStatePicker){
+      const chips=document.createElement("div");chips.className="st34-note-state-chips";
+      const row=()=>C.getData().notes.find(x=>String(x.id)===String(n.id))||n;
+      const draw=()=>{chips.replaceChildren();for(const {state,check} of C.linkedNoteStates(row()))chips.appendChild(C.noteStateChip(state.name,check.intensity))};
+      draw();card.appendChild(chips);
+      if(n.id)C.noteStatePicker(card,async choice=>{
+        const current=C.getData().notes.find(x=>String(x.id)===String(n.id));if(!current)return false;
+        const check=C.attachStateToNote(current,choice);if(!check)return false;
+        const immediate=C.save();if(!immediate&&C.whenSaved&&!await C.whenSaved()){C.inlineStatus(card,"Не удалось сохранить состояние. Попробуй ещё раз.","error");return false}
+        draw();window.dispatchEvent(new CustomEvent("setka:v34-sync-request"));return true;
+      },()=>C.linkedNoteStates(row()).map(x=>x.state.name));
+    }
     if(replay?.config&&!replay.unavailable){
       const open=document.createElement("button");open.type="button";open.className="st34-note-preview-button";open.setAttribute("aria-label","Открыть паттерн в момент заметки");
       const canvas=document.createElement("canvas");canvas.className="st34-note-preview";canvas.width=720;canvas.height=500;open.appendChild(canvas);
@@ -191,7 +203,7 @@
 
   // Refresh just the timeline, never the editor or its in-flight save.
   function refreshNotesFeed(){
-    const list=document.querySelector("#st34Layer #stNotesFeed");if(!list||list.querySelector(".st34-note-edit")||document.getElementById("st34NoteDeleteConfirm"))return;
+    const list=document.querySelector("#st34Layer #stNotesFeed");if(!list||list.querySelector(".st34-note-edit,.st34-note-state-picker.open")||document.getElementById("st34NoteDeleteConfirm"))return;
     const phase=window.__SETKA_PRIVATE_CORPUS_V40__?.status?.()?.loadState;
     const pending=list.closest("#stBody")?.querySelector(".st-note-editor")?.dataset.pendingNoteId;
     const notes=chronologicalNotes(C.getData().notes).filter(n=>String(n.id)!==pending);
@@ -214,6 +226,10 @@
     b.appendChild(form);let note=null;
     const field=form.querySelector("textarea"),submit=form.querySelector('[type="submit"]');
     window.SetkaNoteDictationV1?.attach(field,submit);
+    const draftStates=new Map(),draftChips=document.createElement("div");draftChips.className="st34-note-state-chips";
+    const drawDraft=()=>{draftChips.replaceChildren();for(const [key,choice] of draftStates){const chip=C.noteStateChip(choice.name,choice.intensity),remove=document.createElement("button");remove.type="button";remove.setAttribute("aria-label","Убрать "+choice.name);remove.textContent="×";remove.onclick=()=>{if(note)return;draftStates.delete(key);drawDraft()};chip.appendChild(remove);draftChips.appendChild(chip)}};
+    const actions=form.querySelector(".st-row");form.insertBefore(draftChips,actions);
+    if(C.noteStatePicker){const picker=C.noteStatePicker(form,choice=>{draftStates.set(choice.name.toLowerCase(),choice);drawDraft();return true},()=>[...draftStates.values()].map(x=>x.name));form.insertBefore(picker,actions)}
     // No autofocus on opening: the full feed remains visible, keyboard only on tap.
     form.onsubmit=async e=>{
       e.preventDefault();const text=field.value.trim();if(!text){C.inlineStatus(form,"Напиши текст заметки.");return}
@@ -221,11 +237,12 @@
       const d=C.getData();
       if(!note){const now=new Date().toISOString();note={id:C.id("note"),noteType:"text",text,observedAt:now,updatedAt:now,localOffsetMinutes:C.localOffset(),phase:"standalone",sessionId:null,sessionElapsedMs:null,requestKey:null,patternId:null,patternVersion:null,sourceType:"personal_note",sourceId:null,communityId:null,configHash:null,config:null,frame:null,state:null};d.notes.push(note)}
       else{note.text=text;note.updatedAt=new Date().toISOString();const row=d.notes.find(n=>n.id===note.id);if(row)Object.assign(row,note);else d.notes.push(note)}
+      for(const choice of draftStates.values())C.attachStateToNote?.(note,choice);
       form.dataset.pendingNoteId=String(note.id);
       C.save();C.inlineStatus(form,"Сохраняем заметку…");
       const saved=C.whenSaved?await C.whenSaved():true;window.dispatchEvent(new CustomEvent("setka:v34-sync-request"));
       if(saved){
-        const id=note.id;note=null;delete form.dataset.pendingNoteId;field.value="";field.blur();
+        const id=note.id;note=null;delete form.dataset.pendingNoteId;draftStates.clear();drawDraft();field.value="";field.blur();
         C.recordEvent("note_create",{noteId:id,noteType:"text",patternId:null,state:null},false);
         C.inlineStatus(form,"Заметка сохранена.");
         refreshNotesFeed();

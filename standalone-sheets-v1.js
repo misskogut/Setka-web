@@ -117,7 +117,7 @@
     const inset=Math.max(0,innerHeight-height-offset);
     document.body.style.setProperty('--setka-visible-height',`${height}px`);
     document.body.style.setProperty('--setka-keyboard-inset',`${inset}px`);
-    const focused=document.activeElement?.closest?.('.st34-note-edit,.st-note-editor-inline');
+    const focused=document.activeElement?.closest?.('.st34-note-edit,.st-note-editor-inline,.st34-state-note-field');
     if(focused&&wrap.contains(focused))keyboardForm=focused;
     const keyboardOpen=visible()&&innerHeight-height>100;
     if(!keyboardOpen||!keyboardForm||!wrap.contains(keyboardForm)){

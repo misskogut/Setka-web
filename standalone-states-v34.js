@@ -28,6 +28,12 @@
     .st34-states-sync{font-size:11px;line-height:1.5;color:rgba(255,255,255,.55);padding:9px 2px 13px;display:flex;align-items:center;gap:12px;justify-content:space-between}
     .st34-states-sync button{flex:0 0 auto;border:1px solid rgba(255,255,255,.22);color:#fff;background:#090909;padding:9px 12px;border-radius:18px;font-size:11px;min-height:38px}
     .st34-states-sync button:disabled{opacity:.5}
+    .st34-note-state-picker{margin:8px 0}.st34-note-state-add{background:transparent;color:#aaa;border:1px dashed rgba(255,255,255,.23);border-radius:18px;min-height:35px;padding:7px 12px;font-size:12px;text-align:left}
+    .st34-note-state-panel{border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:12px;margin-top:9px;background:#0c0c0c}.st34-note-state-panel[hidden],.st34-note-state-intensity[hidden],.st34-state-note-field[hidden]{display:none!important}
+    .st34-note-state-panel .st34-state-preset[aria-pressed=true]{background:#ddd;color:#111;border-color:#ddd}.st34-note-state-intensity{display:grid;gap:8px;text-align:center}.st34-note-state-intensity input{width:100%;min-width:0}.st34-note-state-apply{min-height:38px;border:1px solid #444;border-radius:18px;color:#eee;background:#222}
+    .st34-note-state-chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.st34-note-state-chips:empty{display:none}.st34-note-state-chip{display:inline-flex;align-items:center;gap:6px;color:#ddd;border:1px solid rgba(255,255,255,.19);border-radius:16px;padding:6px 10px;font-size:11px;line-height:1.4}.st34-note-state-chip button{border:0;background:transparent;color:#aaa;padding:0 2px;font-size:17px;line-height:1}
+    .st34-state-note-toggle{display:block;margin:12px 0 4px;background:none;border:1px dashed rgba(255,255,255,.22);border-radius:18px;color:#aaa;padding:8px 13px;font-size:12px}.st34-state-note-field{margin-top:10px;display:grid;gap:6px}.st34-state-note-field textarea{width:100%;box-sizing:border-box;min-height:86px;font-size:16px;resize:vertical}
+    .st34-linked-notes{margin:12px 0 4px;display:grid;gap:7px}.st34-linked-notes-title{color:#888;font-size:10px;margin-bottom:5px}.st34-linked-note{padding:10px 12px;border-left:2px solid #777;background:#111;border-radius:10px}.st34-linked-note-meta{font-size:10px;color:#aaa;margin-bottom:5px}.st34-linked-note-text{font-size:13px;color:#ddd;white-space:pre-wrap;overflow-wrap:anywhere}
   `;
   document.head.appendChild(style);
 
@@ -97,6 +103,66 @@
     return true;
   }
 
+  // Notes refer to canonical state check-ins by ID, never copied values.
+  function linkedStateRows(d,n){
+    const ids=new Set(Array.isArray(n?.stateCheckinIds)?n.stateCheckinIds.map(String):[]);
+    return (d.checkins||[]).filter(x=>ids.has(String(x.id))).map(check=>({check,state:(d.symptoms||[]).find(s=>s.id===check.symptomId)})).filter(x=>x.state);
+  }
+  function linkedNotesFor(d,stateId){
+    const checks=new Map((d.checkins||[]).filter(x=>x.symptomId===stateId).map(x=>[String(x.id),x]));
+    return (d.notes||[]).flatMap(note=>(Array.isArray(note.stateCheckinIds)?[...new Set(note.stateCheckinIds.map(String))]:[]).filter(id=>checks.has(id)).map(id=>({note,check:checks.get(id)}))).sort((a,b)=>Date.parse(b.check.observedAt)-Date.parse(a.check.observedAt));
+  }
+  function attachStateToNote(d,n,choice,clock,id,offset){
+    const name=String(choice.name||"").trim(),v=Number(choice.intensity);
+    if(!name||!Number.isInteger(v)||v<0||v>10)return null;
+    let state=(d.symptoms||[]).find(x=>x.id===choice.stateId||x.name?.toLowerCase()===name.toLowerCase());
+    if(!state){state={id:id("sym"),name,active:true,lastIntensity:0,createdAt:clock,updatedAt:clock};d.symptoms.push(state)}
+    const old=linkedStateRows(d,n).find(x=>x.state.id===state.id);if(old)return old.check;
+    const at=Number.isFinite(Date.parse(n.observedAt))?n.observedAt:clock;
+    const latest=(d.checkins||[]).filter(x=>x.symptomId===state.id).reduce((max,x)=>Math.max(max,Date.parse(x.observedAt)||0),0);
+    const check={id:id("check"),symptomId:state.id,sessionId:null,phase:"standalone",intensity:v,observedAt:at,localOffsetMinutes:n.localOffsetMinutes??offset};
+    d.checkins.push(check);n.stateCheckinIds=[...(Array.isArray(n.stateCheckinIds)?n.stateCheckinIds:[]),check.id];
+    n.updatedAt=clock;
+    if(Date.parse(at)>=latest){state.lastIntensity=v;state.updatedAt=clock}
+    return check;
+  }
+  C.linkedNoteStates=n=>linkedStateRows(data(),n);
+  C.attachStateToNote=(n,choice)=>attachStateToNote(data(),n,choice,new Date(Math.max(Date.now(),(Date.parse(n.updatedAt)||0)+1)).toISOString(),C.id,C.localOffset());
+  C.noteStatePicker=(parent,onChoose,excluded=()=>[])=>{
+    const root=document.createElement("div");root.className="st34-note-state-picker";
+    const toggle=document.createElement("button");toggle.type="button";toggle.className="st34-note-state-add";toggle.textContent="+ Добавить состояние";toggle.setAttribute("aria-expanded","false");
+    const panel=document.createElement("div");panel.className="st34-note-state-panel";panel.hidden=true;
+    const caption=document.createElement("div");caption.className="st34-linked-notes-title";caption.textContent="На момент заметки";
+    const choices=document.createElement("div");choices.className="st34-state-preset-row";
+    const intensity=document.createElement("div");intensity.className="st34-note-state-intensity";intensity.hidden=true;
+    const value=document.createElement("span"),slider=document.createElement("input");slider.type="range";slider.min=0;slider.max=10;slider.step=1;slider.setAttribute("aria-label","Интенсивность состояния");slider.oninput=()=>value.textContent=slider.value+"/10";
+    const add=document.createElement("button");add.type="button";add.className="st34-note-state-apply";add.textContent="Добавить";let selected=null;
+    function renderChoices(){
+      choices.replaceChildren();selected=null;intensity.hidden=true;
+      const current=activeStates(),skip=new Set(excluded().map(x=>x.toLowerCase()));
+      const options=[...current.map(s=>({name:s.name,stateId:s.id,intensity:Number(s.lastIntensity)||0})),...PRESETS.filter(name=>!current.some(s=>s.name.toLowerCase()===name.toLowerCase())).map(name=>({name,intensity:5}))].filter(o=>!skip.has(o.name.toLowerCase()));
+      for(const option of options){const b=document.createElement("button");b.type="button";b.className="st34-state-preset";b.textContent=option.name;b.setAttribute("aria-pressed","false");b.onclick=()=>{selected=option;for(const x of choices.children)x.setAttribute("aria-pressed",String(x===b));slider.value=Math.max(0,Math.min(10,option.intensity));value.textContent=slider.value+"/10";intensity.hidden=false};choices.appendChild(b)}
+      if(!options.length){const hint=document.createElement("span");hint.textContent="Все состояния уже добавлены";choices.appendChild(hint)}
+    }
+    function setOpen(open){root.classList.toggle("open",open);panel.hidden=!open;toggle.setAttribute("aria-expanded",String(open));if(open)renderChoices()}
+    toggle.onclick=()=>setOpen(panel.hidden);
+    add.onclick=async()=>{if(!selected||add.disabled)return;add.disabled=true;try{if(await onChoose({...selected,intensity:Number(slider.value)})!==false)setOpen(false)}finally{add.disabled=false}};
+    intensity.append(value,slider,add);panel.append(caption,choices,intensity);root.append(toggle,panel);parent.appendChild(root);return root;
+  };
+  C.noteStateChip=(name,v)=>{const chip=document.createElement("span");chip.className="st34-note-state-chip";chip.textContent=name+" · "+v+"/10";return chip};
+  function linkedNoteBlock(parent,rows,limit=Infinity){
+    if(!rows.length)return;
+    const box=document.createElement("div");box.className="st34-linked-notes";
+    const h=document.createElement("div");h.className="st34-linked-notes-title";h.textContent=limit===1?"Связанная заметка":"Заметки к отметкам";box.appendChild(h);
+    for(const {note,check} of rows.slice(0,limit)){
+      const item=document.createElement("div");item.className="st34-linked-note";
+      const meta=document.createElement("div");meta.className="st34-linked-note-meta";meta.textContent=dt(check.observedAt)+" · "+check.intensity+"/10";
+      const text=document.createElement("div");text.className="st34-linked-note-text";text.textContent=note.text||"";
+      item.append(meta,text);box.appendChild(item);
+    }
+    parent.appendChild(box);
+  }
+
   function trendObservation(pts){
     if(pts.length<3)return{title:"Пока мало отметок",body:"Добавь ещё несколько значений — тогда появится понятный тренд за выбранный период."};
     const vals=pts.map(x=>Number(x.intensity)).filter(Number.isFinite);if(vals.length<3)return{title:"Пока мало отметок",body:"Нужно ещё немного данных, чтобы сравнить изменение."};
@@ -147,7 +213,27 @@
     const editor=document.createElement("div");editor.className="st34-mark-editor";
     const value=document.createElement("div");value.className="st34-mark-value";value.textContent=`${latest}/10`;editor.appendChild(value);
     const slider=document.createElement("input");slider.type="range";slider.min=0;slider.max=10;slider.step=1;slider.value=latest;slider.oninput=()=>value.textContent=`${slider.value}/10`;editor.appendChild(slider);
-    const save=document.createElement("button");save.className="st34-mark-save";save.textContent="Сохранить отметку";save.onclick=()=>{const v=Number(slider.value),now=new Date().toISOString();s.lastIntensity=v;s.updatedAt=now;data().checkins.push({id:C.id("check"),symptomId:s.id,sessionId:null,phase:"standalone",intensity:v,observedAt:now,localOffsetMinutes:C.localOffset()});C.save();C.recordEvent?.("symptom_checkin",{symptomId:s.id,intensity:v},false);requestStateSync();showStates(range)};editor.appendChild(save);card.appendChild(editor);return editor;
+    const toggle=document.createElement("button");toggle.type="button";toggle.className="st34-state-note-toggle";toggle.textContent="+ Добавить заметку";toggle.setAttribute("aria-expanded","false");
+    const noteField=document.createElement("div");noteField.className="st34-state-note-field";noteField.hidden=true;
+    const ta=document.createElement("textarea");ta.className="st-textarea";ta.placeholder="Что ты замечаешь?";ta.setAttribute("aria-label","Заметка к состоянию");ta.maxLength=5000;noteField.appendChild(ta);
+    toggle.onclick=()=>{noteField.hidden=!noteField.hidden;toggle.setAttribute("aria-expanded",String(!noteField.hidden));if(!noteField.hidden)ta.focus({preventScroll:true})};
+    const save=document.createElement("button");save.type="button";save.className="st34-mark-save";save.textContent="Сохранить отметку";
+    let check=null,note=null;
+    save.onclick=async()=>{
+      if(save.disabled)return;save.disabled=true;
+      const d=data(),v=Number(slider.value),now=new Date().toISOString(),text=ta.value.trim();
+      if(!check){check={id:C.id("check"),symptomId:s.id,sessionId:null,phase:"standalone",intensity:v,observedAt:now,localOffsetMinutes:C.localOffset()};d.checkins.push(check)}
+      else{check.intensity=v;check.updatedAt=now;const old=d.checkins.find(x=>x.id===check.id);if(old)Object.assign(old,check);else d.checkins.push(check)}
+      const state=d.symptoms.find(x=>x.id===s.id);if(state){state.lastIntensity=v;state.updatedAt=now}
+      if(text||note){
+        if(!note){note={id:C.id("note"),noteType:"text",text,observedAt:check.observedAt,updatedAt:now,localOffsetMinutes:C.localOffset(),phase:"standalone",sessionId:null,sessionElapsedMs:null,requestKey:null,patternId:null,patternVersion:null,sourceType:"personal_note",sourceId:null,communityId:null,configHash:null,config:null,frame:null,state:null,stateCheckinIds:[check.id]};d.notes.push(note)}
+        else{note.text=text||note.text;note.updatedAt=now;const old=d.notes.find(x=>x.id===note.id);if(old)Object.assign(old,note);else d.notes.push(note)}
+      }
+      const immediate=C.save();if(!immediate&&C.whenSaved&&!await C.whenSaved()){C.inlineStatus(editor,"Не удалось сохранить отметку. Попробуй ещё раз.","error");save.disabled=false;return}
+      C.recordEvent?.("symptom_checkin",{symptomId:s.id,intensity:v},false);if(note)C.recordEvent?.("note_create",{noteId:note.id,noteType:"text",patternId:null,state:null},false);
+      requestStateSync();if(editor.isConnected)showStates(range);
+    };
+    editor.append(toggle,noteField,save);card.appendChild(editor);return editor;
   }
 
   function renderStateCard(parent,s,range){
@@ -157,11 +243,13 @@
 
     const actions=document.createElement("div");actions.className="st34-state-actions";actions.innerHTML='<button class="st34-mark-btn">+ Отметить сейчас</button><button class="st34-details-btn">Подробнее</button>';card.appendChild(actions);
     const editor=markEditor(card,s,latest,range);
+    const linked=linkedNotesFor(data(),s.id);linkedNoteBlock(card,linked,1);
 
     const details=document.createElement("div");details.className="st34-state-details";if(expandedStateId===s.id)details.classList.add("open");
     periods(details,s);
     const summary=document.createElement("div");summary.className="st34-state-summary";summary.innerHTML=`<strong>${esc(trend.title)}</strong><span>${esc(trend.body)}</span>`;details.appendChild(summary);
     if(pts.length)details.appendChild(drawGraph(pts));
+    if(linked.length>1)linkedNoteBlock(details,linked.slice(1));
     const obs=document.createElement("div");obs.className="st34-setka-observation";obs.innerHTML=`<div class="eyebrow">SETKA И ЭТО СОСТОЯНИЕ</div><strong>${esc(setka.title)}</strong><p>${esc(setka.body)}</p>`;details.appendChild(obs);card.appendChild(details);
 
     const markBtn=actions.querySelector(".st34-mark-btn"),detailsBtn=actions.querySelector(".st34-details-btn");
@@ -215,7 +303,7 @@
   // repaint it with restored states rather than leaving the initial empty UI.
   for(const event of ["setka:v40-private-corpus-restored","setka:v40-private-corpus-load","setka:states-restored"])window.addEventListener(event,()=>{
     const layer=document.getElementById("st34Layer");
-    if(layer&&!layer.classList.contains("hidden")&&layer.querySelector(".st-title")?.textContent?.trim()==="Состояния")
+    if(layer&&!layer.classList.contains("hidden")&&!layer.querySelector(".st34-mark-editor.open")&&layer.querySelector(".st-title")?.textContent?.trim()==="Состояния")
       showStates(currentRange);
   });
   for(const event of ["setka:v40-private-corpus","setka:local-storage"])window.addEventListener(event,()=>{
