@@ -108,6 +108,7 @@ style.textContent+=`
 @media(max-width:340px){#st34KeySheet .sk-paired-grid{column-gap:9px}#st34KeySheet .sk-paired-grid .sk-setting-row.sk-slider-only .sk-label{font-size:11px}}
 `;
 style.textContent+="\n#st34KeySheet .sk-setting{padding:10px 0}\n#st34KeySheet .sk-label{display:block;font-size:13px;font-weight:500;line-height:1.4;margin-bottom:5px}\n#st34KeySheet .sk-setting-row.sk-bind-row{display:flex;align-items:center;gap:10px}\n#st34KeySheet .sk-bind-row .sk-range{flex:1;min-width:0;width:0;margin:0;height:28px}\n#st34KeySheet .sk-bind-btn{display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;gap:4px;min-height:30px;padding:4px 6px;border:1px solid #383838;border-radius:8px;background:#232323;color:#ddd;font-size:10px;white-space:nowrap}\n#st34KeySheet .sk-bind-btn[aria-expanded=true]{background:#3a3a3a}\n#st34KeySheet .sk-bind-btn svg,#st34KeySheet .sk-gesture-mark svg{width:15px;height:15px;flex:none}\n#st34KeySheet .sk-bind-btn svg:last-child{width:11px;height:11px}\n#st34KeySheet .sk-gesture-popup{background:#1a1a1a;border:1px solid #383838;border-radius:13px;padding:9px;margin:7px 0 2px}\n#st34KeySheet .sk-gesture-head{display:flex;align-items:center;justify-content:space-between;gap:10px;color:#ddd;font-size:12px;font-weight:600;padding:2px 4px 8px}\n#st34KeySheet .sk-info{width:22px;height:22px;flex:none;border:1px solid #aaa;border-radius:50%;background:transparent;color:#eee;padding:0;display:grid;place-items:center;font:600 13px/1 system-ui}\n#st34KeySheet .sk-gesture-option{display:flex;width:100%;align-items:center;gap:8px;text-align:left;border:0;border-radius:7px;background:transparent;color:#eee;padding:6px 4px;min-height:30px;font-size:11px}\n#st34KeySheet .sk-gesture-option[aria-pressed=true]{background:#333}\n#st34KeySheet .sk-gesture-option:nth-child(6),#st34KeySheet .sk-gesture-option:nth-child(10){border-top:1px solid #333}\n#st34KeySheet .sk-gesture-mark{display:flex;align-items:center;gap:5px;min-width:104px;white-space:nowrap}\n#st34KeySheet .sk-gesture-used{flex:1;color:#aaa;font-size:10px;overflow-wrap:anywhere}\n#st34KeySheet .sk-gesture-check svg{width:14px;height:14px}\n#st34KeySheet .sk-gesture-sub{font-size:11px;font-weight:600;color:#ddd;margin:8px 3px}\n#st34KeySheet .sk-gesture-diagrams{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}\n#st34KeySheet .sk-gesture-diagrams div{text-align:center;color:#bbb;font-size:10px}\n#st34KeySheet .sk-gesture-diagrams svg{width:100%;max-width:64px;display:block;margin:0 auto 3px}\n#st34KeySheet .sk-pinch-help{display:flex;align-items:center;gap:12px;margin-top:10px;border-top:1px solid #333;padding-top:8px;font-size:12px}\n#st34KeySheet .sk-pinch-help svg{width:45px;height:68px;flex:none}\n#st34KeySheet .sk-pinch-help p,#st34KeySheet .sk-gesture-note{color:#aaa;font-size:11px;line-height:1.45;margin:5px 0}\n";
+style.textContent+="\n#st34KeySheet .sk-paired-grid{column-gap:12px;align-items:stretch}\n#st34KeySheet .sk-paired-grid .sk-setting{display:flex;flex-direction:column;justify-content:flex-end;padding:9px 0;min-width:0}\n#st34KeySheet .sk-paired-grid .sk-label{font-size:11.5px;line-height:1.35;flex:1;overflow-wrap:anywhere;margin-bottom:5px}\n#st34KeySheet .sk-paired-grid .sk-bind-row{gap:5px}\n#st34KeySheet .sk-paired-grid .sk-bind-row .sk-range{flex:1 1 0;min-width:0;width:0;margin:0;height:28px}\n#st34KeySheet .sk-paired-grid .sk-bind-btn{font-size:9.5px;gap:2px;padding:3px 4px;min-height:28px}\n#st34KeySheet .sk-paired-grid .sk-bind-btn svg{width:12px;height:12px}\n#st34KeySheet .sk-paired-grid .sk-bind-btn svg:last-child{display:none}\n#st34KeySheet .sk-paired-grid .sk-gesture-popup{grid-column:1/-1;min-width:0;margin:2px 0 4px}\n#st34KeySheet.sk-adjusting .sk-paired-grid .sk-gesture-popup{opacity:.015;pointer-events:none}\n@media(max-width:340px){\n #st34KeySheet .sk-paired-grid{column-gap:8px}\n #st34KeySheet .sk-paired-grid .sk-bind-row{gap:3px}\n #st34KeySheet .sk-paired-grid .sk-bind-btn{padding:3px;gap:1px;font-size:9px}\n}\n";
 document.head.appendChild(style);
 const backdrop=document.createElement("div");backdrop.id="st34KeyBackdrop";
 const sheet=document.createElement("section");sheet.id="st34KeySheet";
@@ -189,7 +190,13 @@ function showGestureHelp(popup,showMenu){
 function toggleGesture(box,button,k){
  if(openedGesture===button){closeGesture();return}
  closeGesture();openedGesture=button;button.setAttribute("aria-expanded","true");
- const popup=document.createElement("div");popup.className="sk-gesture-popup";gesturePopup=popup;box.append(popup);
+ const popup=document.createElement("div");popup.className="sk-gesture-popup";gesturePopup=popup;
+ const parent=box.parentElement;
+ if(parent?.classList.contains("sk-paired-grid")){
+   const cells=Array.from(parent.children).filter(el=>el.classList.contains("sk-setting"));
+   const index=cells.indexOf(box),end=cells[Math.min(cells.length-1,index+(index%2===0?1:0))]||box;
+   end.after(popup);
+ }else box.append(popup);
  function showMenu(){
    popup.replaceChildren();
    const head=document.createElement("div");head.className="sk-gesture-head";head.textContent="Назначить жест";
@@ -213,6 +220,9 @@ function rebuild(){
  const state=App.getState?.()||{},id=state.patternId;
  currentPattern=id;
  const list=sheet.querySelector(".sk-scroll");list.replaceChildren();entries=[];
+ const paired=registry?.supports?.(id,"pairedSettings")===true;
+ const controlContainer=paired?document.createElement("div"):list;
+ if(paired){controlContainer.className="sk-paired-grid";list.append(controlContainer)}
  for(const [label,k,min,max,step,gesture,fingers,help] of maps[id]||[]){
    const kind=gesture==="Тап"?"tap":"slider";
    const box=document.createElement("div");box.className="sk-setting";
@@ -243,7 +253,7 @@ function rebuild(){
      });
      box.append(add);
    }
-   list.append(box);
+   controlContainer.append(box);
    entries.push({k,min,max,input,label,gestureButton});
  }
  // Optional explanations remain hidden until requested. The ordinary settings

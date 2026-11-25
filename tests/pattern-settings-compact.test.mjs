@@ -62,3 +62,14 @@ test("gesture bindings preserve factory behavior, resolve conflicts, route moves
  assert.equal(b.apply("x",c,b.snapshot("x",c),{...input,sx:50,sy:185,dx:20,dy:0,fingers:2,pinch:1}).c,70);
  b.reset("x");assert.equal(b.snapshot("x",c),null);
 });
+
+
+test("paired settings retain their original two-column layout with one gesture control per slider",()=>{
+ assert.match(code,/registry\?\.supports\?\.\(id,"pairedSettings"\)===true/);
+ assert.match(code,/controlContainer\.className="sk-paired-grid"/);
+ assert.match(code,/controlContainer\.append\(box\)/);
+ assert.match(code,/grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+ assert.match(code,/sk-paired-grid \.sk-gesture-popup\{grid-column:1\/-1/);
+ assert.match(code,/end\.after\(popup\)/);
+ assert.match(code,/line\.append\(input,gestureButton\);box\.append\(title,line\)/);
+});
