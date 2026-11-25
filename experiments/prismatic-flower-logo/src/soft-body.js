@@ -31,10 +31,12 @@ export function makeSoftBody(segments=104,rings=64){
   for(let i=0;i<idx.length;i+=3){const [a,b,c]=idx.slice(i,i+3);graph[a].add(b).add(c);graph[b].add(a).add(c);graph[c].add(a).add(b)}
   const neighbors=graph.map(s=>Array.from(s));
   const geometry=new BufferGeometry();geometry.setAttribute('position',new Float32BufferAttribute(rest.slice(),3));geometry.setIndex(idx);geometry.computeVertexNormals();geometry.computeBoundingSphere();
-  const weights=new Float32Array(n);let contact=null,impulses=[],energy=0;
+  const weights=new Float32Array(n);let contact=null,impulses=[],energy=0,interiorAnchor=-1,interiorWeight=0;
   function press(point,direction){
     contact={point:point.slice(),direction:direction.slice(),drag:[0,0,0]};
-    for(let i=0;i<n;i++){const k=i*3;weights[i]=Math.exp(-((rest[k]-point[0])**2+(rest[k+1]-point[1])**2+(rest[k+2]-point[2])**2)/.24)}
+    let best=-1;
+    for(let i=0;i<n;i++){const k=i*3;weights[i]=Math.exp(-((rest[k]-point[0])**2+(rest[k+1]-point[1])**2+(rest[k+2]-point[2])**2)/.24);if(weights[i]>best){best=weights[i];interiorAnchor=i}}
+    interiorWeight=Math.exp(-(point[0]*point[0]+point[1]*point[1])/1.8);
     impulses.push({point:point.slice(),age:0});
   }
   function drag(delta){if(contact)contact.drag=delta.map(x=>Math.max(-.65,Math.min(.65,x)))}
@@ -62,5 +64,5 @@ export function makeSoftBody(segments=104,rings=64){
     geometry.attributes.position.needsUpdate=true;geometry.computeVertexNormals();
     return Math.sqrt(energy/n);
   }
-  return {geometry,rest,press,drag,release,update,get energy(){return Math.sqrt(energy/n)},get pressed(){return !!contact},get vertexCount(){return n},neighbors};
+  return {geometry,rest,press,drag,release,update,get energy(){return Math.sqrt(energy/n)},get pressed(){return !!contact},get vertexCount(){return n},get interiorOffset(){return interiorAnchor<0?[0,0,0]:[0,1,2].map(a=>d[interiorAnchor*3+a]*interiorWeight)},neighbors};
 }

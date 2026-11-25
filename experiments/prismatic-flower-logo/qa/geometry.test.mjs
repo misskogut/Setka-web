@@ -11,6 +11,7 @@ test('closed shell has outward normals and exactly two faces per edge',()=>{
 });
 test('hold, pull, release and repeated impulses deform and recover a continuous finite mesh',()=>{
  const b=makeSoftBody(80,50);b.press([1,0,.5],[0,0,-1]);for(let i=0;i<60;i++)b.update(1/60,i/60);assert.ok(b.energy>.025);
+ assert.ok(b.interiorOffset[2]<-.02,'embedded core follows the compressed material');
  b.drag([.4,.2,0]);for(let i=0;i<30;i++)b.update(1/60,1+i/60);const energy=b.energy;assert.ok(energy>.03);b.release();
  for(let i=0;i<360;i++)b.update(1/60,2+i/60);assert.ok(b.energy<energy/1000);
  for(let k=0;k<8;k++){b.press([Math.cos(k),Math.sin(k),.5],[.1,0,-1]);for(let i=0;i<6;i++)b.update(1/60,i/60);b.release()}

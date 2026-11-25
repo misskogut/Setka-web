@@ -14,7 +14,7 @@ const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let paused=capture||reduce,clockTime=0,angle=Number(params.get('angle')||0),targetAngle=angle,axis=params.get('axis')==='y'?'y':'x';
 let quality='auto',elasticity=65,excitation=0,lost=false,disposed=false,frameCount=0,dirty=true,warmFrames=3;
 let renderer,composer,bloom,scene,camera,card,body,shell,inner,letterMaterial,environment,backGroup;
-const state={ready:false,version:'prismatic-flower-2',angle,axis,frames:0,meanFrameMs:null,pressed:false,energy:0,vertices:0,triangles:0,deviceTest:'browser-only'};
+const state={ready:false,version:'prismatic-flower-3',angle,axis,frames:0,meanFrameMs:null,pressed:false,energy:0,vertices:0,triangles:0,deviceTest:'browser-only'};
 
 function envMap(){
  const w=768,h=384,data=new Float32Array(w*h*4);
@@ -58,6 +58,13 @@ function init(){
  const panel=new T.Mesh(new T.PlaneGeometry(6.19,6.92),bgmat);panel.position.z=.036;card.add(panel);
  const outline=new T.EdgesGeometry(plate.geometry,28);const outlineMesh=new T.LineSegments(outline,new T.LineBasicMaterial({color:0x6a5078,transparent:true,opacity:.025}));card.add(outlineMesh);
  body=makeSoftBody();shell=new T.Mesh(body.geometry,physical());shell.name='sculpted-soft-glass';shell.position.set(0,-.02,1.03);card.add(shell);
+ // A shallow core requires a shorter optical ray than the folded outer body.
+ // The radial thickness field approximates that internal depth explicitly.
+ shell.material.onBeforeCompile=shader=>{
+  shader.vertexShader=shader.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vShellLocal;').replace('#include <begin_vertex>','#include <begin_vertex>\nvShellLocal = transformed;');
+  shader.fragmentShader=shader.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vShellLocal;').replace('#include <transmission_fragment>',T.ShaderChunk.transmission_fragment.replace('material.thickness = thickness;','material.thickness = thickness * mix(0.22, 1.0, smoothstep(0.25, 1.25, length(vShellLocal.xy)));'));
+ };
+ shell.material.customProgramCacheKey=()=> 'setka-core-optical-depth-v1';
  state.vertices=body.vertexCount;
  state.shellTriangles=body.geometry.index.count/3;
  addInterior();addTypography();addOrbit();addWave();addBack();
@@ -74,7 +81,7 @@ function init(){
  canvas.addEventListener('webglcontextrestored',()=>location.reload());
  document.addEventListener('visibilitychange',()=>{lastTime=performance.now()});
  state.ready=true;state.renderer=renderer.getContext().getParameter(renderer.getContext().RENDERER);$('loading').hidden=true;
- canvas.dataset.ready='true';state.material={transmission:shell.material.transmission,ior:shell.material.ior,dispersion:shell.material.dispersion,screenSpaceRefraction:true,pathTracing:false};
+ canvas.dataset.ready='true';state.material={transmission:shell.material.transmission,ior:shell.material.ior,dispersion:shell.material.dispersion,screenSpaceRefraction:true,opticalDepth:'radial-near-core-approximation',pathTracing:false};
  window.SETKA_FLOWER_DIAGNOSTICS=state;
  requestAnimationFrame(frame);
 }
@@ -97,9 +104,9 @@ function addInterior(){
  inner=new T.Group();inner.position.copy(shell.position);card.add(inner);
  const amber=new T.MeshPhysicalMaterial({color:0xff9a04,metalness:.65,roughness:.13,clearcoat:1,iridescence:.3,emissive:0xff6500,emissiveIntensity:.12,envMapIntensity:.8,side:T.DoubleSide});
  const lilac=amber.clone();lilac.color.set('#8a20cf');lilac.emissive.set('#5026a7');lilac.emissiveIntensity=.10;lilac.metalness=.7;
- const flower=new T.Group();flower.position.z=.48;inner.add(flower);flower.name='volumetric-flower-core';
+ const flower=new T.Group();flower.position.z=.40;inner.add(flower);flower.name='volumetric-flower-core';
  for(let i=0;i<5;i++){
-  const leaf=new T.Mesh(leafGeometry(i===0?.78:.91,.22,i%2?.05:-.12),i===3?lilac:amber);
+  const leaf=new T.Mesh(leafGeometry(i===0?.89:1.0,.29,i%2?.05:-.12),i===3?lilac:amber);
   leaf.rotation.z=i*Math.PI*2/5+.02;leaf.rotation.y=(i%2?1:-1)*.1;flower.add(leaf);
   // Thin real luminous vein, embedded in each petal.
   const vein=[];for(let j=0;j<=32;j++){const u=j/32;vein.push(new T.Vector3(0,u*.79,.015+.10*Math.sin(Math.PI*u)))}
@@ -108,7 +115,7 @@ function addInterior(){
  const seed=new T.Mesh(new T.IcosahedronGeometry(.045,3),new T.MeshBasicMaterial({color:new T.Color(3,2.1,2.6)}));seed.position.z=.025;flower.add(seed);
  // Folded, three-dimensional laminae inside the glass, not a surface color ramp.
  for(let i=0;i<4;i++){
-  const theta=i*Math.PI/2+.65;const g=leafGeometry(1.35,.11,.20);
+  const theta=i*Math.PI/2+.65;const g=leafGeometry(1.45,.31,.20);
   const m=new T.Mesh(g,i%2?lilac:amber);m.rotation.z=theta;m.rotation.y=.52*Math.sin(theta);m.position.set(.10*Math.cos(theta),.10*Math.sin(theta),-.15);inner.add(m);flowObjects.push(m);
  }
  for(let i=0;i<7;i++){
@@ -218,7 +225,7 @@ function frame(now){
  if(!gesture&&Math.abs(targetAngle-angle)>.001){angle+=(targetAngle-angle)*(1-Math.exp(-Math.min(rawDt,.1)*8));if(Math.abs(targetAngle-angle)<.025)angle=targetAngle;syncAngle()}
  card.rotation.set(axis==='x'?-T.MathUtils.degToRad(angle):0,axis==='y'?T.MathUtils.degToRad(angle):0,0);
  backGroup.rotation.set(axis==='x'?Math.PI:0,axis==='y'?Math.PI:0,0);
- excitation*=Math.exp(-dt*1.8);inner.rotation.z=.012*Math.sin(clockTime*.4);inner.scale.setScalar(1+.006*Math.sin(clockTime*1.1));
+ excitation*=Math.exp(-dt*1.8);const innerOffset=body.interiorOffset;inner.position.set(shell.position.x+innerOffset[0],shell.position.y+innerOffset[1],shell.position.z+innerOffset[2]);inner.rotation.z=.012*Math.sin(clockTime*.4);inner.scale.setScalar(1+.006*Math.sin(clockTime*1.1));
  if(waveGeom&&!paused){const p=waveGeom.attributes.position.array;for(let i=0;i<p.length;i+=3){const x=waveBase[i],v=((i/3)%32)/31*2-1;p[i+1]=.16+Math.sin(x*3-clockTime*.55)*(.19+v*.14)+v*.24;p[i+2]=.15+Math.cos(x*2.3+clockTime*.35)*.05*(1-v*v)}waveGeom.attributes.position.needsUpdate=true}
  renderer.info.reset();composer.render();dirty=false;warmFrames=Math.max(0,warmFrames-1);state.frames=++frameCount;state.angle=angle;state.energy=body.energy;state.triangles=renderer.info.render.triangles;state.drawCalls=renderer.info.render.calls;
  if(frameCount%15===0)canvas.dataset.diagnostics=JSON.stringify(state);
