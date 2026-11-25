@@ -474,7 +474,7 @@
      const twoCenter=pointerType==="touch"&&fingers===2&&Number.isFinite(currentStereoX)&&Number.isFinite(touch.lastStereoX)&&Number.isFinite(touch.lastStereoY);
      runtimeConfig=gestureBindings.apply(runtimePatternId,runtimeConfig,gestureSnapshot,{
        x,y,dx:twoCenter?currentStereoX-touch.lastStereoX:dx,dy:twoCenter&&Number.isFinite(currentStereoY)?currentStereoY-touch.lastStereoY:dy,
-       sx:gestureStartX,sy:gestureStartY,width:gestureRect.width,height:gestureRect.height,fingers:fingers===1&&gestureState.multiSession?0:fingers,pinch
+       sx:twoCenter?touch.lastStereoX:gestureStartX,sy:twoCenter?touch.lastStereoY:gestureStartY,width:gestureRect.width,height:gestureRect.height,fingers:fingers===1&&gestureState.multiSession?0:fingers,pinch
      });
    }
    const durableChanged=before!==configKey(runtimeConfig,runtimePatternId);

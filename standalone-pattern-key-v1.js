@@ -17,14 +17,15 @@ function native(row){
  return axis&&(n===1||n===2)?n+":"+z+":"+axis:"none";
 }
 const cache=new Map();
+window.addEventListener("setka:registry-changed",()=>cache.clear());
 function plan(id){
- const rows=registry?.controls?.(id)||[],signature=JSON.stringify(rows);
- const old=cache.get(id);if(old&&old.signature===signature)return old;
+ const old=cache.get(id);if(old)return old;
+ const rows=registry?.controls?.(id)||[];
  const defaults=Object.create(null),mapping=Object.create(null),over=saved[id]&&typeof saved[id]==="object"?saved[id]:{};
  const allowed=new Set([...canonical,...rows.map(native)]);
  for(const row of rows){const k=row[1];defaults[k]=native(row);mapping[k]=allowed.has(over[k])?over[k]:defaults[k]}
  const custom=rows.some(row=>mapping[row[1]]!==defaults[row[1]]);
- const p={rows,signature,defaults,mapping,custom,options:[...canonical.slice(0,-1),...Array.from(allowed).filter(g=>!canonical.includes(g)),"none"]};
+ const p={rows,defaults,mapping,custom,options:[...canonical.slice(0,-1),...Array.from(allowed).filter(g=>!canonical.includes(g)),"none"]};
  cache.set(id,p);return p;
 }
 function persist(){try{storage.setItem(storageKey,JSON.stringify(saved))}catch(_){}}
@@ -38,7 +39,7 @@ function assign(id,k,g){
  cache.delete(id);persist();return true;
 }
 function reset(id){delete saved[id];cache.delete(id);persist()}
-function snapshot(id,config){const p=plan(id);if(!p.custom)return null;const values=Object.create(null);for(const row of p.rows)values[row[1]]=config[row[1]];return {p,values}}
+function snapshot(id,config){if(!saved[id])return null;const p=plan(id);if(!p.custom)return null;const values=Object.create(null);for(const row of p.rows)values[row[1]]=config[row[1]];return {p,values}}
 function zoneAt(x,y,w,h,axis){
  // Corners are resolved by the movement axis, not by arbitrary edge priority.
  if(axis==="v")return x<=w*.25?"left":x>=w*.75?"right":"center";
@@ -55,7 +56,7 @@ function apply(id,config,snap,input){
  const result={...config};
  for(const row of p.rows){const k=row[1];if(p.defaults[k]!=="none"||p.mapping[k]!==p.defaults[k])result[k]=values[k]}
  if(!(w>0&&h>0)||!(fingers===1||fingers===2))return result;
- if(!motion||motion.id!==id||motion.fingers!==fingers||motion.sx!==sx||motion.sy!==sy){
+ if(!motion||motion.id!==id||motion.fingers!==fingers){
    motion={id,fingers,sx,sy,dx:0,dy:0,pinch:0,mode:null,key:null,amount:0,base:0};
  }
  const m=motion;
@@ -69,10 +70,10 @@ function apply(id,config,snap,input){
    if(fingers===2&&p.rows.some(r=>p.mapping[r[1]]==="pinch")&&spread>=5&&spread>travel*.8)m.mode="pinch";
    else if(travel>=5)m.mode=axis;
    else return result;
-   const zone=zoneAt(sx,sy,w,h,m.mode);
+   const zone=zoneAt(m.sx,m.sy,w,h,m.mode);
    const exact=fingers+":"+zone+":"+m.mode;
    const global=fingers+":any:"+m.mode;
-   const legacy=fingers+":"+((sy<=h*.25)?"top":(sy>=h*.75)?"bottom":zone)+":"+m.mode;
+   const legacy=fingers+":"+((m.sy<=h*.25)?"top":(m.sy>=h*.75)?"bottom":zone)+":"+m.mode;
    const target=m.mode==="pinch"?"pinch":p.rows.some(r=>p.mapping[r[1]]===exact)?exact:p.rows.some(r=>p.mapping[r[1]]===legacy)?legacy:global;
    const row=p.rows.find(r=>p.mapping[r[1]]===target);
    if(row){m.key=row[1];m.base=Number(values[m.key]);m.amount=m.mode==="pinch"?m.pinch:m.mode==="v"?-m.dy:m.dx}
@@ -181,7 +182,7 @@ function showGestureHelp(popup,showMenu){
    popup.append(grid);
  }
  const pinch=document.createElement("div");pinch.className="sk-pinch-help";pinch.innerHTML=gestureDiagram("pinch")+'<div><strong>Щипок</strong><p>Сведите или разведите два пальца.</p></div>';popup.append(pinch);
- const note=document.createElement("p");note.className="sk-gesture-note";note.textContent="Точки — положение пальцев, стрелки — направление. Начинайте движение у нужного края экрана. Один жест — один параметр.";popup.append(note);
+ const note=document.createElement("p");note.className="sk-gesture-note";note.textContent="Точки — положение пальцев, стрелки — направление. Начинайте движение у нужного края экрана. Если выбран «Весь экран», двигайтесь в любом месте. Один жест — один параметр.";popup.append(note);
  const hints=registry?.get(currentPattern)?.gestureHints||[];
  if(hints.length){const h=document.createElement("div");h.className="sk-gesture-sub";h.textContent="Встроенные реакции сквиша";popup.append(h);for(const [name,detail] of hints){const n=document.createElement("p");n.className="sk-gesture-note";n.textContent=name+": "+detail;popup.append(n)}}
 }
