@@ -15,7 +15,7 @@ test('deleted IDs survive stale cloud snapshots and old backups',()=>{
 test('note edit changes text and revision only, removal requires confirmation',()=>{
  const ui=read('standalone-user-ui-v34.js');
  assert.match(ui,/Редактировать заметку/);assert.match(ui,/Удалить заметку/);
- assert.match(ui,/x\.text=text;x\.updatedAt=/);assert.match(ui,/await C\.inlineConfirm\(card/);
+ assert.match(ui,/x\.text=text;x\.updatedAt=/);assert.match(ui,/await C\.noteDeleteConfirm\(card/);
  assert.match(ui,/noteActions\(card,head,n\)/);
  assert.match(ui,/notify\("note_delete"\)/);
 });
@@ -34,4 +34,24 @@ test('note creation date shares the top row with edit and delete actions',()=>{
  assert.match(ui,/\.st34-note-header\{display:flex;align-items:center;justify-content:space-between/);
  assert.match(ui,/\.st34-note-actions\[hidden\]\{display:none\}/);
  assert.doesNotMatch(render,/dt\(n\.observedAt\)/);
+});
+
+test('note delete confirmation is a separate fixed modal with explicit consent',async()=>{
+ const src=read('standalone-inline-actions-v1.js');
+ const code=src.slice(src.indexOf('  C.noteDeleteConfirm='),src.lastIndexOf('})();'));
+ function el(){return {children:[],isConnected:true,attrs:{},append(...nodes){this.children.push(...nodes)},appendChild(n){this.append(n);return n},setAttribute(k,v){this.attrs[k]=v},focus(){document.activeElement=this},remove(){this.isConnected=false},contains(n){return this===n||this.children.some(c=>c.contains(n))}}}
+ const document={body:el(),createElement:el,getElementById(id){return this.body.children.find(n=>n.id===id&&n.isConnected)},addEventListener(){},removeEventListener(){}};
+ const listeners={},window={addEventListener(k,v){listeners[k]=v},removeEventListener(k){delete listeners[k]}};
+ const C={},root=el();root.closest=()=>null;
+ const MutationObserver=class{observe(){}disconnect(){}};
+ new Function('C','document','window','MutationObserver',code)(C,document,window,MutationObserver);
+ const options={title:'Удалить?',body:'Текст'};
+ let p=C.noteDeleteConfirm(root,options),overlay=document.getElementById('st34NoteDeleteConfirm'),panel=overlay.children[0];
+ assert.equal(root.children.length,0);assert.equal(panel.attrs.role,'alertdialog');assert.equal(panel.attrs['aria-modal'],'true');
+ assert.equal(await C.noteDeleteConfirm(root,options),false);
+ panel.children[2].children[0].onclick();assert.equal(await p,false);assert.equal(overlay.isConnected,false);
+ p=C.noteDeleteConfirm(root,options);overlay=document.getElementById('st34NoteDeleteConfirm');overlay.children[0].children[2].children[1].onclick();assert.equal(await p,true);
+ p=C.noteDeleteConfirm(root,options);listeners.keydown({key:'Escape',preventDefault(){},stopImmediatePropagation(){}});assert.equal(await p,false);
+ assert.match(src,/#st34NoteDeleteConfirm\{position:fixed;inset:0/);
+ assert.doesNotMatch(code,/scrollIntoView|root\.appendChild/);
 });

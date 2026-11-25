@@ -116,8 +116,8 @@
     };
     trash.onclick=async()=>{
       if(!allowed()||trash.disabled)return;trash.disabled=pencil.disabled=true;
-      const confirmed=await C.inlineConfirm(card,{title:"Удалить заметку?",body:"Запись исчезнет из личной истории. Это действие нельзя отменить.",accept:"Удалить"});
-      if(!confirmed||!card.isConnected||!allowed()){trash.disabled=pencil.disabled=false;return}
+      const confirmed=await C.noteDeleteConfirm(card,{title:"Удалить заметку?",body:"Запись исчезнет из личной истории. Это действие нельзя отменить.",accept:"Удалить"});
+      if(!confirmed||!card.isConnected||!allowed()){trash.disabled=pencil.disabled=false;if(trash.isConnected)trash.focus({preventScroll:true});return}
       const d=C.getData(),deleted=C.mergeNoteDeletions(d.settings,{noteDeletionsV1:{[String(n.id)]:new Date().toISOString()}});
       d.settings={...(d.settings||{}),noteDeletionsV1:deleted};d.notes=C.filterDeletedNotes(d.notes,deleted);
       if(!await persist()){C.inlineStatus(card,"Удаление ещё не удалось сохранить на устройстве. Повтори попытку после восстановления хранилища.","error");const retry=document.createElement("button");retry.type="button";retry.className="st-secondary";retry.textContent="Повторить удаление";retry.onclick=async()=>{if(await persist()){notify("note_delete");refresh()}};card.appendChild(retry);return}
@@ -191,7 +191,7 @@
 
   // Refresh just the timeline, never the editor or its in-flight save.
   function refreshNotesFeed(){
-    const list=document.querySelector("#st34Layer #stNotesFeed");if(!list||list.querySelector(".st34-note-edit"))return;
+    const list=document.querySelector("#st34Layer #stNotesFeed");if(!list||list.querySelector(".st34-note-edit")||document.getElementById("st34NoteDeleteConfirm"))return;
     const phase=window.__SETKA_PRIVATE_CORPUS_V40__?.status?.()?.loadState;
     const pending=list.closest("#stBody")?.querySelector(".st-note-editor")?.dataset.pendingNoteId;
     const notes=chronologicalNotes(C.getData().notes).filter(n=>String(n.id)!==pending);
