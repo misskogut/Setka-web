@@ -109,24 +109,37 @@
   layer.addEventListener('transitionend',e=>{
     if(e.target===layer&&e.propertyName==='transform')window.dispatchEvent(new CustomEvent('setka:sheet-settled',{detail:{open:visible(),page}}));
   });
+  // Keep the last focused note form during keyboard button taps. Never
+  // substitute the new-note composer for an existing note being edited.
+  let keyboardForm=null;
   function viewport(){
     const v=window.visualViewport,height=v?.height||innerHeight,offset=v?.offsetTop||0;
     const inset=Math.max(0,innerHeight-height-offset);
     document.body.style.setProperty('--setka-visible-height',`${height}px`);
     document.body.style.setProperty('--setka-keyboard-inset',`${inset}px`);
-    const composer=visible()&&wrap.querySelector('.st-note-editor-inline');
-    const editing=composer&&innerHeight-height>100&&
-      (composer.contains(document.activeElement)||layer.classList.contains('st-note-keyboard'));
+    const focused=document.activeElement?.closest?.('.st34-note-edit,.st-note-editor-inline');
+    if(focused&&wrap.contains(focused))keyboardForm=focused;
+    const keyboardOpen=visible()&&innerHeight-height>100;
+    if(!keyboardOpen||!keyboardForm||!wrap.contains(keyboardForm)){
+      if(!keyboardOpen||!keyboardForm||!wrap.contains(keyboardForm))keyboardForm=null;
+      // Before the keyboard opens, retain the currently focused form for resize.
+      if(visible()&&focused&&wrap.contains(focused))keyboardForm=focused;
+    }
+    const editing=Boolean(keyboardOpen&&keyboardForm);
     const wasEditing=layer.classList.contains('st-note-keyboard');
-    layer.classList.toggle('st-note-keyboard',Boolean(editing));
+    layer.classList.toggle('st-note-keyboard',editing);
     if(!editing)return;
     layer.style.setProperty('--st-note-viewport-top',`${offset}px`);
-    const form=composer.getBoundingClientRect(),view=wrap.getBoundingClientRect();
-    if(!wasEditing||form.top<view.top||form.bottom>view.bottom){
-      wrap.scrollTop+=form.top-view.top-6;
+    const form=keyboardForm.getBoundingClientRect(),view=wrap.getBoundingClientRect();
+    const header=keyboardForm.closest('.st34-note-card')?.querySelector('.st34-note-header')?.getBoundingClientRect();
+    // Include the original date when space permits; always prioritize the
+    // editable text and its Save/Cancel row, not the replay preview.
+    const top=header&&form.bottom-header.top<=view.height-12?header.top:form.top;
+    if(!wasEditing||top<view.top+6||form.bottom>view.bottom-6){
+      wrap.scrollTop+=top-view.top-6;
     }
   }
-  wrap.addEventListener('focusin',viewport);
+  wrap.addEventListener('focusin',()=>{viewport();requestAnimationFrame(viewport)});
   window.visualViewport?.addEventListener('resize',viewport);window.visualViewport?.addEventListener('scroll',viewport);window.addEventListener('resize',viewport);
   window.__SETKA_SHEET_LAYOUT_V1__={version:'1.3.0',close,activate};sync();
 })();

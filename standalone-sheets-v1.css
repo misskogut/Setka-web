@@ -176,7 +176,8 @@ body.setka-sheet-layout #st34Layer.st-note-keyboard {
   height: var(--setka-sheet-max) !important;
   box-sizing: border-box;
 }
-body.setka-sheet-layout #st34Layer.st-note-keyboard .st-note-editor-inline textarea {
+body.setka-sheet-layout #st34Layer.st-note-keyboard .st-note-editor-inline textarea,
+body.setka-sheet-layout #st34Layer.st-note-keyboard .st34-note-edit textarea {
   height: clamp(48px, calc(var(--setka-visible-height) - 155px), 106px);
   min-height: 0;
   resize: none;

@@ -104,7 +104,7 @@
       const ta=document.createElement("textarea");ta.className="st-textarea st34-note-edit-field";ta.setAttribute("aria-label","Текст заметки");ta.maxLength=5000;ta.required=true;ta.value=original.text||"";
       const row=document.createElement("div");row.className="st-row";
       const cancel=document.createElement("button"),save=document.createElement("button");cancel.type="button";cancel.className="st-secondary";cancel.textContent="Отмена";save.type="submit";save.className="st-primary";save.textContent="Сохранить";
-      row.append(cancel,save);form.append(ta,row);head.hidden=true;controls.hidden=true;head.after(form);ta.focus();
+      row.append(cancel,save);form.append(ta,row);head.hidden=true;controls.hidden=true;head.after(form);ta.focus({preventScroll:true});
       cancel.onclick=()=>{form.remove();head.hidden=false;controls.hidden=false;refresh()};
       form.onsubmit=async e=>{e.preventDefault();if(save.disabled||!allowed())return;const text=ta.value.trim();if(!text){C.inlineStatus(form,"Напиши текст заметки.");return}
         save.disabled=cancel.disabled=true;const x=current();if(!x)return;

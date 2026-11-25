@@ -61,6 +61,21 @@ try{
   const feed=card.locator('#stNotesFeed');
   assert.deepEqual(await feed.locator('[data-note-id]').evaluateAll(els=>els.map(el=>el.dataset.noteId)),['feed-new','feed-middle','feed-old']);
   assert.ok(await plain.evaluate(el=>!!(el.compareDocumentPosition(document.getElementById('stNotesFeed'))&Node.DOCUMENT_POSITION_FOLLOWING)));
+  const oldNote=feed.locator('[data-note-id="feed-old"]');
+  await oldNote.getByRole('button',{name:'Редактировать заметку'}).click();
+  const edit=oldNote.locator('.st34-note-edit textarea');
+  assert.equal(await edit.inputValue(),'Старая запись');
+  await page.evaluate(()=>{
+    Object.defineProperties(visualViewport,{height:{configurable:true,value:340},offsetTop:{configurable:true,value:64}});
+    visualViewport.dispatchEvent(new Event('resize'));
+  });
+  await page.waitForFunction(()=>{
+    const layer=document.querySelector('#st34Layer'),form=layer.querySelector('[data-note-id="feed-old"] .st34-note-edit')?.getBoundingClientRect(),view=layer.querySelector('.st-wrap').getBoundingClientRect();
+    return layer.classList.contains('st-note-keyboard')&&form&&form.top>=view.top&&form.bottom<=Math.min(view.bottom,404)&&document.activeElement?.closest('[data-note-id]')?.dataset.noteId==='feed-old';
+  });
+  await page.evaluate(()=>{delete visualViewport.height;delete visualViewport.offsetTop;visualViewport.dispatchEvent(new Event('resize'));});
+  await oldNote.getByRole('button',{name:'Отмена',exact:true}).click();
+  assert.equal(await plain.inputValue(),'');
   await plain.fill('Черновик простой заметки');
   await page.evaluate(()=>window.dispatchEvent(new Event('setka:v40-private-corpus-restored')));
   assert.equal(await plain.inputValue(),'Черновик простой заметки');
