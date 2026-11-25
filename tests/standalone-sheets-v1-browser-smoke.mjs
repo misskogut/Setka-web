@@ -37,6 +37,19 @@ try{
   assert.equal(await tab('today').getAttribute('aria-expanded'),'false');
   await tab('today').click();await card.waitFor({state:'visible'});
   await tab('notes').click();assert.match(await card.innerText(),/Заметки/);
+  const plain=card.locator('#stPlainNoteText');await plain.waitFor();assert.equal(await plain.evaluate(el=>document.activeElement===el),false);
+  const fixtures=[{id:'feed-new',text:'Новая запись',observedAt:'2026-01-03T12:00:00Z',noteType:'text'},{id:'feed-old',text:'Старая запись',observedAt:'2026-01-01T12:00:00Z',noteType:'text'},{id:'feed-middle',text:'Средняя запись',observedAt:'2026-01-02T12:00:00Z',noteType:'text'}];
+  await page.evaluate(rows=>{const C=window.SetkaStandaloneV34;C.getData().notes.push(...rows);C.refreshNotesFeed()},fixtures);
+  const feed=card.locator('#stNotesFeed');
+  assert.deepEqual(await feed.locator('[data-note-id]').evaluateAll(els=>els.map(el=>el.dataset.noteId)),['feed-new','feed-middle','feed-old']);
+  assert.ok(await plain.evaluate(el=>!!(el.compareDocumentPosition(document.getElementById('stNotesFeed'))&Node.DOCUMENT_POSITION_FOLLOWING)));
+  await plain.fill('Черновик простой заметки');
+  await page.evaluate(()=>window.dispatchEvent(new Event('setka:v40-private-corpus-restored')));
+  assert.equal(await plain.inputValue(),'Черновик простой заметки');
+  await tab('today').click();await tab('notes').click();assert.equal(await plain.inputValue(),'Черновик простой заметки');
+  await card.getByRole('button',{name:'Сохранить заметку',exact:true}).click();
+  await page.waitForFunction(()=>document.getElementById('stPlainNoteText').value===''&&document.querySelector('#stNotesFeed .st34-note-text')?.textContent==='Черновик простой заметки');
+  assert.equal(await feed.locator('[data-note-id]').count(),4);
   await tab('pulse').click();assert.match(await card.innerText(),/Пульс/);
   const bluetooth=await page.evaluate(()=>!!navigator.bluetooth);
   assert.equal(await page.getByRole('button',{name:/Подключить пульсометр/}).count(),bluetooth?1:0);
@@ -102,7 +115,7 @@ try{
   await page.evaluate(()=>window.SetkaStandaloneV34.showNotes());
   await card.waitFor({state:'visible'});
   assert.equal(await dock.isVisible(),true);
-  assert.equal(await card.locator('textarea').count(),0,'saved draft reopened as a new note');
+  assert.equal(await card.locator('#stPlainNoteText').inputValue(),'','saved gameplay draft reopened as a new note');
   assert.match(await card.innerText(),new RegExp(draft));
   await tab('notes').click();await card.waitFor({state:'hidden'});
   assert.equal(await dock.isVisible(),false);

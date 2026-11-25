@@ -38,7 +38,9 @@
   function queueSync(){if(frame)return;frame=requestAnimationFrame(()=>{frame=0;sync()})}
   function saveDraft(){
     if((title()!=='Записать мысль'&&!wrap.querySelector('.st-note-editor'))||!wrap.querySelector('textarea')||wrap.querySelector('.st40-form'))return;
-    if(savedComposers.has(wrap.querySelector('textarea')))return;
+    const editor=wrap.querySelector('textarea');
+    if(savedComposers.has(editor))return;
+    if(wrap.querySelector('.st-note-editor-inline')&&!editor.value.trim()&&!wrap.querySelector('.st-note-editor-inline').dataset.pendingNoteId){drafts.delete('notes');return;}
     // Retain only live DOM nodes for an unsaved note. No text or credentials
     // are copied into browser storage or analytics by the sheet controller.
     drafts.set('notes',{nodes:[...wrap.childNodes],scrollTop:wrap.scrollTop,route:window.SetkaStandaloneNavigationV34?.getCurrentPanel?.()});
@@ -76,6 +78,7 @@
       layer.classList.remove('hidden');window.SetkaStandaloneNavigationV34?.markPanel?.(savedRoute);
       window.dispatchEvent(new CustomEvent('setka:overlay-visibility',{detail:{visible:true,title:title()}}));
     }else{fromDock=true;try{tab.open();contentPage=key}finally{fromDock=false}}
+    if(key==='notes')C.refreshNotesFeed?.();
     sync();window.dispatchEvent(new CustomEvent('setka:sheet-presentation',{detail:{open:true,page}}));
   }
   // When the dock is hidden during full-screen gameplay, the in-pattern "+"
@@ -99,7 +102,7 @@
   new MutationObserver(queueSync).observe(game,{attributes:true,attributeFilter:['class']});
   window.addEventListener('setka:standalone-event',e=>{
     if(e.detail?.type==='note_create'){
-      const editor=wrap.querySelector('textarea');if(editor)savedComposers.add(editor);
+      const editor=wrap.querySelector('textarea');if(editor&&!wrap.querySelector('.st-note-editor-inline'))savedComposers.add(editor);
       drafts.delete('notes');contentPage=null;
     }
   });

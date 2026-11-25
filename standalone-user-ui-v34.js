@@ -26,7 +26,13 @@
     .st34-user-pattern{display:flex;align-items:center;gap:12px}.st34-user-preview{width:72px;height:72px;border-radius:18px;border:1px solid rgba(255,255,255,.14);background:#000;flex:none}
     .st34-user-metric{font-size:11px;color:rgba(255,255,255,.52);line-height:1.5;margin-top:6px}
     .st34-note-card{border:1px solid rgba(255,255,255,.16);border-radius:24px;background:#090909;padding:17px;margin:12px 0;overflow:hidden}
-    .st34-note-text{font-size:20px;line-height:1.28;color:#fff;margin:0 0 8px}
+    .st34-note-text{font-size:20px;line-height:1.28;color:#fff;margin:0 0 8px;white-space:pre-wrap;overflow-wrap:anywhere}
+    .st-note-editor-inline{display:grid;gap:10px;margin:0 0 24px}
+    .st-note-editor-inline label{font-size:12px;color:rgba(255,255,255,.64)}
+    .st-note-editor-inline textarea{min-height:106px;width:100%;box-sizing:border-box;resize:vertical}
+    .st-note-editor-inline .st-row>.st-primary{width:100%;min-height:44px}
+    .st-notes-feed-heading{font-size:15px;font-weight:550;margin:4px 0 8px;color:rgba(255,255,255,.78)}
+    .st-notes-list{min-width:0}
     .st34-note-meta{font-size:11px;line-height:1.45;color:rgba(255,255,255,.42);margin-bottom:14px}
     .st34-note-preview-button{display:block;width:100%;border:0;background:#000;padding:0;border-radius:18px;overflow:hidden;position:relative;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
     .st34-note-preview-button:active{transform:scale(.992)}
@@ -120,31 +126,56 @@
     }
   }
 
-  function showNotes(){
-    C.setNav("notes");const d=C.getData();
-    const b=C.screen("Заметки","Мысли и визуальные моменты, которые ты захотела сохранить.","МОЯ ПАМЯТЬ",showMe);
-    const add=document.createElement("button");add.type="button";add.className="st-secondary st-note-add";add.setAttribute("aria-label","Добавить заметку без паттерна");add.innerHTML='<span aria-hidden="true">+</span> Написать заметку';b.appendChild(add);
-    add.onclick=()=>{
-      if(b.querySelector(".st-note-editor"))return;
-      const form=document.createElement("form");form.className="st-note-editor";form.innerHTML='<label for="stPlainNoteText">Новая заметка без паттерна</label><textarea id="stPlainNoteText" class="st-textarea" placeholder="Что хочется записать?" required maxlength="5000"></textarea><div class="st-row"><button type="button" class="st-secondary">Отмена</button><button type="submit" class="st-primary">Сохранить заметку</button></div>';add.after(form);let note=null;
-      const field=form.querySelector("textarea"),cancel=form.querySelector('[type="button"]'),submit=form.querySelector('[type="submit"]');cancel.onclick=()=>form.remove();field.focus();
-      form.onsubmit=async e=>{e.preventDefault();const text=field.value.trim();if(!text){C.inlineStatus(form,"Напиши текст заметки.");return}submit.disabled=true;cancel.disabled=true;
-        if(!note){const now=new Date().toISOString();note={id:C.id("note"),noteType:"text",text,observedAt:now,updatedAt:now,localOffsetMinutes:C.localOffset(),phase:"standalone",sessionId:null,sessionElapsedMs:null,requestKey:null,patternId:null,patternVersion:null,sourceType:"personal_note",sourceId:null,communityId:null,configHash:null,config:null,frame:null,state:null};d.notes.push(note)}else{note.text=text;note.updatedAt=new Date().toISOString()}
-        C.save();C.inlineStatus(form,"Сохраняем заметку…");
-        const saved=C.whenSaved?await C.whenSaved():true;window.dispatchEvent(new CustomEvent("setka:v34-sync-request"));
-        if(saved){C.recordEvent("note_create",{noteId:note.id,noteType:"text",patternId:null,state:null},false);showNotes()}else{C.inlineStatus(form,"Пока не удалось сохранить заметку на устройстве. Текст остаётся здесь; попробуй сохранить ещё раз.","error");submit.disabled=false;cancel.disabled=false}
-      };
-    };
-    const list=document.createElement("div");list.className="st-notes-list";b.appendChild(list);
+  function chronologicalNotes(rows){
+    const time=n=>{const value=Date.parse(n.observedAt||n.createdAt||"");return Number.isFinite(value)?value:-Infinity};
+    return (Array.isArray(rows)?rows:[]).filter(n=>n&&typeof n==="object").map((n,i)=>({n,i})).sort((a,b)=>time(b.n)-time(a.n)||b.i-a.i).map(x=>x.n);
+  }
+
+  // Refresh just the timeline, never the editor or its in-flight save.
+  function refreshNotesFeed(){
+    const list=document.querySelector("#st34Layer #stNotesFeed");if(!list)return;
     const phase=window.__SETKA_PRIVATE_CORPUS_V40__?.status?.()?.loadState;
+    const pending=list.closest("#stBody")?.querySelector(".st-note-editor")?.dataset.pendingNoteId;
+    const notes=chronologicalNotes(C.getData().notes).filter(n=>String(n.id)!==pending);
+    list.replaceChildren();
     if(phase==="loading"||phase==="error"){
       const message=document.createElement("div");message.className="st-empty st-account-archive-message";
-      message.textContent=phase==="loading"?"Загружаем твои заметки из аккаунта SETKA…": "Не удалось загрузить архив аккаунта. Сохранённые данные не удалены.";
+      message.textContent=phase==="loading"?"Загружаем твои заметки из аккаунта SETKA…":"Не удалось загрузить архив аккаунта. Сохранённые данные не удалены.";
       list.appendChild(message);
       if(phase==="error"){const retry=document.createElement("button");retry.type="button";retry.className="st-secondary";retry.textContent="Повторить загрузку";retry.onclick=()=>window.__SETKA_PRIVATE_CORPUS_V40__?.ensureHydrated?.();list.appendChild(retry)}
     }
-    if(!d.notes.length){if(phase!=="loading"&&phase!=="error")list.innerHTML='<div class="st-empty">Пока заметок нет. Нажми «+», чтобы записать мысль.</div>';return}
-    for(const n of d.notes.slice().reverse())renderNoteCard(list,n);
+    if(!notes.length){if(phase!=="loading"&&phase!=="error")list.innerHTML='<div class="st-empty">Здесь появятся твои сохранённые заметки.</div>';return}
+    for(const n of notes)renderNoteCard(list,n);
+  }
+
+  function showNotes(){
+    C.setNav("notes");
+    const b=C.screen("Заметки","","МОЯ ПАМЯТЬ",showMe);
+    const form=document.createElement("form");form.className="st-note-editor st-note-editor-inline";
+    form.innerHTML='<label for="stPlainNoteText">Новая заметка</label><textarea id="stPlainNoteText" class="st-textarea" placeholder="Что хочется записать?" required maxlength="5000"></textarea><div class="st-row"><button type="submit" class="st-primary">Сохранить заметку</button></div>';
+    b.appendChild(form);let note=null;
+    const field=form.querySelector("textarea"),submit=form.querySelector('[type="submit"]');
+    // No autofocus on opening: the full feed remains visible, keyboard only on tap.
+    form.onsubmit=async e=>{
+      e.preventDefault();const text=field.value.trim();if(!text){C.inlineStatus(form,"Напиши текст заметки.");return}
+      submit.disabled=true;
+      const d=C.getData();
+      if(!note){const now=new Date().toISOString();note={id:C.id("note"),noteType:"text",text,observedAt:now,updatedAt:now,localOffsetMinutes:C.localOffset(),phase:"standalone",sessionId:null,sessionElapsedMs:null,requestKey:null,patternId:null,patternVersion:null,sourceType:"personal_note",sourceId:null,communityId:null,configHash:null,config:null,frame:null,state:null};d.notes.push(note)}
+      else{note.text=text;note.updatedAt=new Date().toISOString();const row=d.notes.find(n=>n.id===note.id);if(row)Object.assign(row,note);else d.notes.push(note)}
+      form.dataset.pendingNoteId=String(note.id);
+      C.save();C.inlineStatus(form,"Сохраняем заметку…");
+      const saved=C.whenSaved?await C.whenSaved():true;window.dispatchEvent(new CustomEvent("setka:v34-sync-request"));
+      if(saved){
+        const id=note.id;note=null;delete form.dataset.pendingNoteId;field.value="";field.blur();
+        C.recordEvent("note_create",{noteId:id,noteType:"text",patternId:null,state:null},false);
+        C.inlineStatus(form,"Заметка сохранена.");
+        refreshNotesFeed();
+      }else C.inlineStatus(form,"Пока не удалось сохранить заметку на устройстве. Текст остаётся здесь; попробуй сохранить ещё раз.","error");
+      submit.disabled=false;
+    };
+    const heading=document.createElement("h3");heading.className="st-notes-feed-heading";heading.textContent="История заметок";b.appendChild(heading);
+    const list=document.createElement("div");list.id="stNotesFeed";list.className="st-notes-list";list.setAttribute("role","feed");list.setAttribute("aria-label","История заметок от новых к старым");b.appendChild(list);
+    refreshNotesFeed();
   }
 
   function showSessions(){
@@ -271,14 +302,15 @@
   C.showToday=showToday;
   C.showMe=showMe;
   // An archive may finish loading after Notes is already open. Repaint that view without losing data.
-  for(const event of ["setka:v40-private-corpus-load","setka:v40-private-corpus-restored"])window.addEventListener(event,()=>{
+  for(const event of ["setka:v40-private-corpus-load","setka:v40-private-corpus-restored","setka:guest-archive-restored","setka:personal-archive-restored"])window.addEventListener(event,()=>{
     const layer=document.getElementById("st34Layer"),title=layer?.querySelector(".st-title")?.textContent?.trim();
     if(!layer||layer.classList.contains("hidden"))return;
     // Do not discard drafts if an account refresh finishes while the user is typing.
-    if(title==="Заметки"&&!layer.querySelector(".st-note-editor"))showNotes();
+    if(title==="Заметки")refreshNotesFeed();
     else if(title==="Я")showMe();
   });
   C.showNotes=showNotes;
+  C.refreshNotesFeed=refreshNotesFeed;
   C.showSessions=showSessions;
   C.showSessionDetail=showSessionDetail;
   C.showPhysio=showPulse;
