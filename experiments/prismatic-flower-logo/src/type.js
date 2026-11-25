@@ -20,7 +20,7 @@ export function balloonGlyph(ch,material){
  for(let y=0;y<res;y++)for(let x=0;x<res;x++){
   const px=(x/(res-1)*2-1)*.8,py=(y/(res-1)*2-1)*.8;
   let d=Infinity;for(const [a,b] of segs)d=Math.min(d,segmentDistance(px,py,a,b));
-  for(let z=0;z<res;z++){const pz=(z/(res-1)*2-1)*.8;mc.field[x+y*res+z*res*res]=.137-Math.sqrt(d*d+pz*pz*1.65)}
+  for(let z=0;z<res;z++){const pz=(z/(res-1)*2-1)*.8;mc.field[x+y*res+z*res*res]=.137-Math.sqrt(d*d+pz*pz*.55)}
  }
  mc.update();let geo=mc.geometry.clone();geo.setDrawRange(0,mc.count);
  // Remove MarchingCubes' spare capacity before welding/smoothing normals.

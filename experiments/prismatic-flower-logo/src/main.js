@@ -12,17 +12,17 @@ const params=new URLSearchParams(location.search),capture=params.has('capture');
 const mobile=matchMedia('(max-width: 650px)').matches;
 const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let paused=capture||reduce,clockTime=0,angle=Number(params.get('angle')||0),targetAngle=angle,axis=params.get('axis')==='y'?'y':'x';
-let quality='auto',elasticity=65,excitation=0,lost=false,disposed=false,frameCount=0,dirty=true;
+let quality='auto',elasticity=65,excitation=0,lost=false,disposed=false,frameCount=0,dirty=true,warmFrames=3;
 let renderer,composer,bloom,scene,camera,card,body,shell,inner,letterMaterial,environment,backGroup;
 const state={ready:false,version:'prismatic-flower-2',angle,axis,frames:0,meanFrameMs:null,pressed:false,energy:0,vertices:0,triangles:0,deviceTest:'browser-only'};
 
 function envMap(){
  const w=768,h=384,data=new Float32Array(w*h*4);
  const boxes=[
-  [-1.0,.65,.09,.48,[4.8,6.7,9.5]],
-  [1.05,.6,.065,.72,[6.5,1.0,8.0]],
-  [-.35,-.5,.18,.25,[10.0,3.2,.12]],
-  [2.6,-.25,.12,.65,[3.0,.18,7.0]],
+  [-1.0,.65,.15,.54,[5.8,8.7,14.0]],
+  [1.05,.6,.14,.72,[6.5,1.0,8.0]],
+  [-.35,-.5,.26,.32,[10.0,3.2,.12]],
+  [2.6,-.25,.25,.65,[3.0,.18,7.0]],
   [-2.1,.25,.16,.40,[.15,1.4,5.0]],
   [.1,1.22,.52,.055,[6.3,7.0,8.3]],
   [.2,-1.22,.7,.085,[7.0,2.8,.12]],
@@ -37,7 +37,7 @@ function envMap(){
  const pmrem=new T.PMREMGenerator(renderer);const result=pmrem.fromEquirectangular(tex);tex.dispose();pmrem.dispose();return result;
 }
 function physical(options={}){
- return new T.MeshPhysicalMaterial({color:0xffffff,metalness:0,roughness:.055,ior:1.47,transmission:.985,thickness:1.25,attenuationColor:new T.Color('#ffd47c'),attenuationDistance:1.4,dispersion:.62,iridescence:.72,iridescenceIOR:1.32,iridescenceThicknessRange:[210,520],clearcoat:.8,clearcoatRoughness:.045,envMapIntensity:.78,...options});
+ return new T.MeshPhysicalMaterial({color:0xffffff,metalness:0,roughness:.055,ior:1.47,transmission:.985,thickness:1.25,attenuationColor:new T.Color('#ffd47c'),attenuationDistance:1.4,dispersion:.62,iridescence:.72,iridescenceIOR:1.32,iridescenceThicknessRange:[210,520],clearcoat:.8,clearcoatRoughness:.045,envMapIntensity:1.02,...options});
 }
 function init(){
  renderer=new T.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:'high-performance'});
@@ -125,15 +125,15 @@ function addInterior(){
 }
 
 function addTypography(){
- letterMaterial=physical({color:new T.Color('#e2d3ff'),transmission:.72,roughness:.085,thickness:.35,attenuationColor:new T.Color('#ad4ded'),attenuationDistance:.65,iridescence:.70,envMapIntensity:1.15,dispersion:.6});
+ letterMaterial=physical({color:new T.Color('#f5edff'),transmission:.84,roughness:.065,thickness:.35,attenuationColor:new T.Color('#b95fff'),attenuationDistance:.90,iridescence:.70,envMapIntensity:1.65,dispersion:.6});
  const title=new T.Group();title.name='solid-inflated-title';card.add(title);
  const xs=[-1.83,-1.01,-.12,.88,1.91],ys=[1.89,2.31,2.48,2.29,1.94],rot=[-.48,-.22,.06,.25,.47];
  [...'СКВИШ'].forEach((ch,i)=>{const m=balloonGlyph(ch,letterMaterial);m.position.set(xs[i],ys[i],.40);m.rotation.z=rot[i];m.scale.setScalar(1.06);m.name='balloon-'+ch;title.add(m)});
- const typeMat=new T.MeshStandardMaterial({color:0xffecd9,emissive:0xe9b5c4,emissiveIntensity:.18,metalness:.45,roughness:.32});
+ const typeMat=new T.MeshStandardMaterial({color:0xfff3e3,emissive:0xffd7e4,emissiveIntensity:.55,metalness:.15,roughness:.30});
  const subtitle=new T.Group();subtitle.name='solid-curved-subtitle';card.add(subtitle);
  const text='ДЛЯМОЗГА',positions=[-1.65,-1.18,-.72,-.18,.34,.84,1.31,1.77];
- [...text].forEach((ch,i)=>{const x=positions[i],m=vectorGlyph(ch,.30,.033,typeMat);m.position.set(x,-2.01+.12*x*x,.105);m.rotation.z=x*.15;subtitle.add(m)});
- const caption=placeText('АНТИСТРЕСС ТРЕКЕР',{height:.105,spacing:.063,depth:.016,material:typeMat});caption.position.set(0,-2.70,.09);caption.name='solid-tracker-caption';card.add(caption);
+ [...text].forEach((ch,i)=>{const x=positions[i],m=vectorGlyph(ch,.30,.033,typeMat);m.position.set(x,-2.23+.12*x*x,.105);m.rotation.z=x*.15;subtitle.add(m)});
+ const caption=placeText('АНТИСТРЕСС ТРЕКЕР',{height:.12,spacing:.052,depth:.016,material:typeMat});caption.position.set(0,-2.70,.09);caption.name='solid-tracker-caption';card.add(caption);
  for(const sign of [-1,1]){const bar=new T.Mesh(new T.CylinderGeometry(.002,.002,.62,8),typeMat);bar.rotation.z=Math.PI/2;bar.position.set(sign*2.05,-2.70,.10);card.add(bar)}
  state.typography={title:'closed-isosurfaces',subtitle:'beveled-font-outlines',caption:'beveled-font-outlines',cssTextShadows:false};
 }
@@ -212,14 +212,15 @@ function syncAngle(){dirty=true;state.angle=angle;$('angle').value=String(((angl
 function frame(now){
  if(disposed)return;requestAnimationFrame(frame);if(lost||document.hidden){lastTime=now;return}
  const rawDt=(now-lastTime)/1000,dt=Math.min(rawDt,.035);lastTime=now;
- if(paused&&!gesture&&body.energy<.00001&&Math.abs(targetAngle-angle)<.001&&frameCount>8&&!dirty)return;
+ if(dirty)warmFrames=3;
+ if(paused&&!gesture&&body.energy<.00001&&Math.abs(targetAngle-angle)<.001&&frameCount>8&&!dirty&&warmFrames===0)return;
  if(!paused||gesture?.kind==='squish'||body.energy>.00001){if(!paused)clockTime+=dt;let remaining=Math.min(rawDt,.10);while(remaining>.00001){const step=Math.min(remaining,1/60);body.update(step,clockTime,elasticity);remaining-=step}}
  if(!gesture&&Math.abs(targetAngle-angle)>.001){angle+=(targetAngle-angle)*(1-Math.exp(-Math.min(rawDt,.1)*8));if(Math.abs(targetAngle-angle)<.025)angle=targetAngle;syncAngle()}
  card.rotation.set(axis==='x'?-T.MathUtils.degToRad(angle):0,axis==='y'?T.MathUtils.degToRad(angle):0,0);
  backGroup.rotation.set(axis==='x'?Math.PI:0,axis==='y'?Math.PI:0,0);
  excitation*=Math.exp(-dt*1.8);inner.rotation.z=.012*Math.sin(clockTime*.4);inner.scale.setScalar(1+.006*Math.sin(clockTime*1.1));
  if(waveGeom&&!paused){const p=waveGeom.attributes.position.array;for(let i=0;i<p.length;i+=3){const x=waveBase[i],v=((i/3)%32)/31*2-1;p[i+1]=.16+Math.sin(x*3-clockTime*.55)*(.19+v*.14)+v*.24;p[i+2]=.15+Math.cos(x*2.3+clockTime*.35)*.05*(1-v*v)}waveGeom.attributes.position.needsUpdate=true}
- renderer.info.reset();composer.render();dirty=false;state.frames=++frameCount;state.angle=angle;state.energy=body.energy;state.triangles=renderer.info.render.triangles;state.drawCalls=renderer.info.render.calls;
+ renderer.info.reset();composer.render();dirty=false;warmFrames=Math.max(0,warmFrames-1);state.frames=++frameCount;state.angle=angle;state.energy=body.energy;state.triangles=renderer.info.render.triangles;state.drawCalls=renderer.info.render.calls;
  if(frameCount%15===0)canvas.dataset.diagnostics=JSON.stringify(state);
  if(frameCount>15){frameSum+=rawDt*1000;measurementFrames++;if(measurementFrames===90){state.meanFrameMs=Math.round(frameSum/measurementFrames*10)/10;if(quality==='auto'&&state.meanFrameMs>29&&pixelRatio>1.1){renderer.setPixelRatio(1.1);composer.setPixelRatio(1.1);state.pixelRatio=1.1}frameSum=0;measurementFrames=0}}
 }

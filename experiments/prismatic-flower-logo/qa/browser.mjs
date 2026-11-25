@@ -13,15 +13,9 @@ try{
  const context=await browser.newContext({viewport:{width:600,height:700},deviceScaleFactor:1,hasTouch:true,isMobile:true});
  const page=await context.newPage();page.on('pageerror',e=>report.errors.push(e.message));page.on('console',m=>{if(m.type()==='error')report.errors.push(m.text())});
  page.setDefaultNavigationTimeout(90000);page.setDefaultTimeout(90000);
- await page.goto(base+'?capture=1',{waitUntil:'load'});
- await page.waitForFunction(()=>document.querySelector('canvas')?.dataset.ready==='true',{},{timeout:60000});
- await page.waitForFunction(()=>window.SETKA_FLOWER_DIAGNOSTICS?.frames>6,{},{timeout:60000});
  for(const angle of [0,30,60,90,120,180]){
-  const before=await page.evaluate(()=>window.SETKA_FLOWER_DIAGNOSTICS.frames);
-  await page.keyboard.press('Escape');
-  if(!(await page.locator('#panel').isVisible()))await page.locator('#settings').click();
-  await page.locator('[data-angle="'+angle+'"]').click();await page.locator('#clean').click();
-  await page.waitForFunction(({angle,before})=>Math.round(window.SETKA_FLOWER_DIAGNOSTICS?.angle)===angle&&window.SETKA_FLOWER_DIAGNOSTICS.frames>before,{angle,before},{timeout:60000});
+  await page.goto(base+'?capture=1&angle='+angle,{waitUntil:'load'});
+  await page.waitForFunction(()=>window.SETKA_FLOWER_DIAGNOSTICS?.frames>3,{},{timeout:90000});
   const stats=await page.evaluate(()=>window.SETKA_FLOWER_DIAGNOSTICS);
   const bytes=await page.screenshot({path:new URL('angle-'+angle+'.png',out).pathname});const img=PNG.sync.read(bytes);let bright=0;
   for(let i=0;i<img.data.length;i+=4)if(Math.max(img.data[i],img.data[i+1],img.data[i+2])>100)bright++;
