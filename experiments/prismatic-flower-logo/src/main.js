@@ -75,9 +75,9 @@ function init(){
  bindInteractions();
  $('pause').setAttribute('aria-pressed',String(paused));$('pause').textContent=paused?'Продолжить':'Пауза';
  if(params.has('clean')||capture)setClean(true);
- window.addEventListener('pagehide',()=>{disposed=true;renderer.dispose();composer.dispose();environment.dispose()},{once:true});
+ window.addEventListener('pagehide',disposeScene,{once:true});
  window.addEventListener('pageshow',e=>{if(e.persisted)location.reload()});
- canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();lost=true;showError(new Error('Графический контекст прерван. Перезагрузите страницу, чтобы продолжить.'))});
+ canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();if(disposed)return;lost=true;showError(new Error('Графический контекст прерван. Перезагрузите страницу, чтобы продолжить.'))});
  canvas.addEventListener('webglcontextrestored',()=>location.reload());
  document.addEventListener('visibilitychange',()=>{lastTime=performance.now()});
  state.ready=true;state.renderer=renderer.getContext().getParameter(renderer.getContext().RENDERER);$('loading').hidden=true;
@@ -233,4 +233,10 @@ function frame(now){
  if(frameCount>15){frameSum+=rawDt*1000;measurementFrames++;if(measurementFrames===90){state.meanFrameMs=Math.round(frameSum/measurementFrames*10)/10;if(quality==='auto'&&state.meanFrameMs>29&&pixelRatio>1.1){renderer.setPixelRatio(1.1);composer.setPixelRatio(1.1);state.pixelRatio=1.1}frameSum=0;measurementFrames=0}}
 }
 function showError(e){console.error(e);$('loading').hidden=true;$('error').hidden=false;$('error').textContent='Не удалось запустить 3D-сцену: '+e.message}
+function disposeScene(){
+ if(disposed)return;disposed=true;
+ const geometries=new Set(),materials=new Set();scene.traverse(o=>{if(o.geometry)geometries.add(o.geometry);for(const m of Array.isArray(o.material)?o.material:[o.material])if(m)materials.add(m)});
+ for(const g of geometries)g.dispose();for(const m of materials)m.dispose();
+ for(const pass of composer.passes)pass.dispose?.();composer.dispose();environment.dispose();renderer.dispose();renderer.forceContextLoss();
+}
 try{init()}catch(e){showError(e)}
