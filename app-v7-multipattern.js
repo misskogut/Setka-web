@@ -445,12 +445,17 @@
       break;
     }
   }
-  function applyPatternGesture(x,y,dx,dy,fingers,pinch=null,pointerType="touch",currentDist=null,currentStereoX=null){
+  function applyPatternGesture(x,y,dx,dy,fingers,pinch=null,pointerType="touch",currentDist=null,currentStereoX=null,currentStereoY=null){
   // Once a multi-touch maneuver begins, a remaining finger cannot suddenly
   // become a steering/setting swipe until ALL fingers are lifted. Only
   // modules opting into the generic interaction hook use this isolation.
   if(fingers===1&&registry.hasInteraction?.(runtimePatternId)&&
     (pointerType==="touch"?touch.multiSession:mouse.multiSession))return false;
+  const gestureBindings=window.SetkaGestureBindingsV1;
+  const gestureSnapshot=gestureBindings?.snapshot(runtimePatternId,runtimeConfig);
+  const gestureState=pointerType==="touch"?touch:mouse;
+  const gestureRect=gestureSnapshot?canvas.getBoundingClientRect():null;
+  const gestureStartX=gestureState.startX,gestureStartY=gestureState.startY;
   const before=configKey(runtimeConfig,runtimePatternId);const fields=registry.get(runtimePatternId)?.transientFields||[];
   const temporaryBefore=fields.map(key=>runtimeConfig[key]);if(runtimePatternId===DANDELION_ID)applyDandelion(dx,dy,fingers,pinch);else if(runtimePatternId===FISH_ID)applyFish(x,y,dx,dy);else if(runtimePatternId===BREATH_ID)applyBreath(x,y,dx,dy,fingers);else if(runtimePatternId===GROWTH_ID)applyGrowth(x,y,dx,dy,fingers,pinch);else if(runtimePatternId===RGB_ID)applyRgb(x,y,pointerType);else if(runtimePatternId===DNA_ID)applyDna(dx,dy,fingers,currentDist,currentStereoX);else if(runtimePatternId===GRID_ID)applyGridGesture(x,y,dx,dy,fingers);else if(customRenderers.has(runtimePatternId)){
     const r=canvas.getBoundingClientRect();
@@ -464,7 +469,15 @@
     });
     if(result)runtimeConfig=result;
     else applyCustomGesture(x,y,dx,dy,fingers,pinch);
-  }else applyTentacle(x,y,dx,dy,fingers);const durableChanged=before!==configKey(runtimeConfig,runtimePatternId);
+  }else applyTentacle(x,y,dx,dy,fingers);
+   if(gestureSnapshot){
+     const twoCenter=pointerType==="touch"&&fingers===2&&Number.isFinite(currentStereoX)&&Number.isFinite(touch.lastStereoX)&&Number.isFinite(touch.lastStereoY);
+     runtimeConfig=gestureBindings.apply(runtimePatternId,runtimeConfig,gestureSnapshot,{
+       x,y,dx:twoCenter?currentStereoX-touch.lastStereoX:dx,dy:twoCenter&&Number.isFinite(currentStereoY)?currentStereoY-touch.lastStereoY:dy,
+       sx:gestureStartX,sy:gestureStartY,width:gestureRect.width,height:gestureRect.height,fingers:fingers===1&&gestureState.multiSession?0:fingers,pinch
+     });
+   }
+   const durableChanged=before!==configKey(runtimeConfig,runtimePatternId);
    const transientChanged=fields.some((key,i)=>temporaryBefore[i]!==runtimeConfig[key]);
    const changed=durableChanged||transientChanged;
    runtimeConfig=cloneConfig(runtimeConfig,runtimePatternId);
@@ -511,7 +524,7 @@
 
   canvas.addEventListener("touchstart",e=>{e.preventDefault();const p0=primary(e.touches);if(!p0)return;if(e.touches.length>1&&touch.fingers===1)pluginPointerPhase("end",touch.x,touch.y,1,"touch",true);if(touch.primaryId===null)touch.primaryId=p0.identifier;const p=localTouch(p0);touch.fingers=e.touches.length;if(touch.fingers===1)touch.multiSession=false;else touch.multiSession=true;touch.x=touch.startX=p.x;touch.y=touch.startY=p.y;touch.tapEligible=e.touches.length===1;touch.tapStartedAt=performance.now();if(e.touches.length>1){const p2=localTouch(e.touches[1]);touch.secondX=p2.x;touch.secondY=p2.y;touch.lastStereoX=(p.x+p2.x)/2;touch.lastStereoY=(p.y+p2.y)/2}else{touch.secondX=touch.secondY=0;touch.lastStereoX=touch.lastStereoY=null}// A swipe is not a tap: recognize short stationary taps only after release.
   touch.lastDist=distance(e.touches);if(touch.fingers>=1)pluginPointerPhase("start",p.x,p.y,touch.fingers);emit("gesture-start",{fingers:touch.fingers,...norm(p.x,p.y)})},{passive:false});
-  canvas.addEventListener("touchmove",e=>{e.preventDefault();const p0=primary(e.touches);if(!p0)return;const p=localTouch(p0),dx=p.x-touch.x,dy=p.y-touch.y,nd=distance(e.touches),ratio=nd&&touch.lastDist?nd/touch.lastDist:null;let stereoX=null,stereoY=null;if(e.touches.length>1){const p2=localTouch(e.touches[1]);touch.secondX=p2.x;touch.secondY=p2.y;stereoX=(p.x+p2.x)/2;stereoY=(p.y+p2.y)/2}touch.fingers=e.touches.length;if(touch.fingers>=2)touch.multiSession=true;if(e.touches.length!==1||Math.hypot(p.x-touch.startX,p.y-touch.startY)>12)touch.tapEligible=false;const centerMotion=touch.fingers>1&&customRenderers.has(runtimePatternId)&&Number.isFinite(touch.lastStereoX)&&Number.isFinite(touch.lastStereoY);const moveX=centerMotion?stereoX-touch.lastStereoX:dx,moveY=centerMotion?stereoY-touch.lastStereoY:dy;const changed=applyPatternGesture(p.x,p.y,moveX,moveY,touch.fingers,ratio,"touch",nd,stereoX);touch.x=p.x;touch.y=p.y;if(Number.isFinite(nd))touch.lastDist=nd;if(Number.isFinite(stereoX))touch.lastStereoX=stereoX;if(Number.isFinite(stereoY))touch.lastStereoY=stereoY;if(changed)emit("gesture-move",{fingers:touch.fingers,...norm(p.x,p.y),dx,dy})},{passive:false});
+  canvas.addEventListener("touchmove",e=>{e.preventDefault();const p0=primary(e.touches);if(!p0)return;const p=localTouch(p0),dx=p.x-touch.x,dy=p.y-touch.y,nd=distance(e.touches),ratio=nd&&touch.lastDist?nd/touch.lastDist:null;let stereoX=null,stereoY=null;if(e.touches.length>1){const p2=localTouch(e.touches[1]);touch.secondX=p2.x;touch.secondY=p2.y;stereoX=(p.x+p2.x)/2;stereoY=(p.y+p2.y)/2}touch.fingers=e.touches.length;if(touch.fingers>=2)touch.multiSession=true;if(e.touches.length!==1||Math.hypot(p.x-touch.startX,p.y-touch.startY)>12)touch.tapEligible=false;const centerMotion=touch.fingers>1&&customRenderers.has(runtimePatternId)&&Number.isFinite(touch.lastStereoX)&&Number.isFinite(touch.lastStereoY);const moveX=centerMotion?stereoX-touch.lastStereoX:dx,moveY=centerMotion?stereoY-touch.lastStereoY:dy;const changed=applyPatternGesture(p.x,p.y,moveX,moveY,touch.fingers,ratio,"touch",nd,stereoX,stereoY);touch.x=p.x;touch.y=p.y;if(Number.isFinite(nd))touch.lastDist=nd;if(Number.isFinite(stereoX))touch.lastStereoX=stereoX;if(Number.isFinite(stereoY))touch.lastStereoY=stereoY;if(changed)emit("gesture-move",{fingers:touch.fingers,...norm(p.x,p.y),dx,dy})},{passive:false});
   function endTouch(e){e.preventDefault();if(!e.touches.length){if((touch.fingers===1&&!touch.multiSession)||touch.fingers>=2)pluginPointerPhase("end",touch.x,touch.y,touch.fingers,"touch",e.type==="touchcancel");if(e.type==="touchend"&&touch.tapEligible&&performance.now()-touch.tapStartedAt<550){patternTap(touch.x,touch.y);applyPluginTap()}emit("gesture-end",{fingers:touch.fingers});touch.tapEligible=false;touch.fingers=0;touch.multiSession=false;touch.primaryId=null;touch.lastDist=null;touch.lastStereoX=touch.lastStereoY=null;touch.startX=touch.startY=0}else{const p0=primary(e.touches);if(p0){if(touch.fingers>1&&e.touches.length<2)pluginPointerPhase("end",touch.x,touch.y,touch.fingers,"touch",e.type==="touchcancel");const p=localTouch(p0);touch.fingers=e.touches.length;touch.x=touch.startX=p.x;touch.y=touch.startY=p.y;touch.lastDist=distance(e.touches);if(e.touches.length>1){const p2=localTouch(e.touches[1]);touch.lastStereoX=(p.x+p2.x)/2;touch.lastStereoY=(p.y+p2.y)/2}else touch.lastStereoX=touch.lastStereoY=null}}}
   canvas.addEventListener("touchend",endTouch,{passive:false});canvas.addEventListener("touchcancel",endTouch,{passive:false});
   canvas.addEventListener("mousedown",e=>{e.preventDefault();const r=canvas.getBoundingClientRect();mouse.down=true;mouse.fingers=e.shiftKey?2:1;mouse.multiSession=mouse.fingers===2;mouse.x=mouse.startX=e.clientX-r.left;mouse.y=mouse.startY=e.clientY-r.top;mouse.tapStartedAt=performance.now();pluginPointerPhase("start",mouse.x,mouse.y,mouse.fingers,"mouse");emit("gesture-start",{fingers:mouse.fingers,desktop:true,...norm(mouse.x,mouse.y)})});
