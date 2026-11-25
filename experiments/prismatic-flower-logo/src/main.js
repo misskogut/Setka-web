@@ -14,7 +14,7 @@ const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let paused=capture||reduce,clockTime=0,angle=Number(params.get('angle')||0),targetAngle=angle,axis=params.get('axis')==='y'?'y':'x';
 let quality='auto',elasticity=65,excitation=0,lost=false,disposed=false,frameCount=0,dirty=true,warmFrames=3;
 let renderer,composer,bloom,scene,camera,card,body,shell,inner,letterMaterial,environment,backGroup;
-const state={ready:false,version:'prismatic-flower-3',angle,axis,frames:0,meanFrameMs:null,pressed:false,energy:0,vertices:0,triangles:0,deviceTest:'browser-only'};
+const state={ready:false,version:'prismatic-flower-4',angle,axis,frames:0,meanFrameMs:null,pressed:false,energy:0,vertices:0,triangles:0,deviceTest:'browser-only'};
 
 function envMap(){
  const w=768,h=384,data=new Float32Array(w*h*4);
@@ -57,14 +57,28 @@ function init(){
   void main(){vec2 p=(vUv-.5)*vec2(6.2,7.);float a=exp(-dot(p*vec2(.7,.65),p*vec2(.7,.65)));float b=exp(-dot((p-vec2(0.,-2.9))*vec2(1.5,8.),(p-vec2(0.,-2.9))*vec2(1.5,8.)));gl_FragColor=vec4(vec3(.006,.0015,.012)+a*vec3(.022,.003,.032)+b*vec3(.15,.032,.065),1.);}`});
  const panel=new T.Mesh(new T.PlaneGeometry(6.19,6.92),bgmat);panel.position.z=.036;card.add(panel);
  const outline=new T.EdgesGeometry(plate.geometry,28);const outlineMesh=new T.LineSegments(outline,new T.LineBasicMaterial({color:0x6a5078,transparent:true,opacity:.025}));card.add(outlineMesh);
- body=makeSoftBody();shell=new T.Mesh(body.geometry,physical());shell.name='sculpted-soft-glass';shell.position.set(0,-.02,1.03);card.add(shell);
+ body=makeSoftBody();shell=new T.Mesh(body.geometry,physical({attenuationColor:new T.Color("#ffe1b0"),attenuationDistance:2.1,iridescence:.53}));shell.name='sculpted-soft-glass';shell.position.set(0,-.02,1.03);card.add(shell);
  // A shallow core requires a shorter optical ray than the folded outer body.
  // The radial thickness field approximates that internal depth explicitly.
  shell.material.onBeforeCompile=shader=>{
   shader.vertexShader=shader.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vShellLocal;').replace('#include <begin_vertex>','#include <begin_vertex>\nvShellLocal = transformed;');
   shader.fragmentShader=shader.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vShellLocal;').replace('#include <transmission_fragment>',T.ShaderChunk.transmission_fragment.replace('material.thickness = thickness;','material.thickness = thickness * mix(0.22, 1.0, smoothstep(0.25, 1.25, length(vShellLocal.xy)));'));
  };
- shell.material.customProgramCacheKey=()=> 'setka-core-optical-depth-v1';
+ const compileGlass = shell.material.onBeforeCompile;
+ shell.material.onBeforeCompile = shader => {
+  compileGlass(shader);
+  // Artistic approximation of light returning from the curved glass wall.
+  shader.fragmentShader = shader.fragmentShader.replace('#include <opaque_fragment>', `
+   float facing = abs(dot(normal, normalize(vViewPosition)));
+   float rimBand = pow(1.0 - clamp(facing, 0.0, 1.0), 2.4);
+   vec2 local = vShellLocal.xy;
+   float warm = smoothstep(-0.45, 0.55, -local.y + 0.42 * sin(local.x * 2.2));
+   vec3 rimLight = mix(vec3(0.55, 0.24, 1.05), vec3(1.65, 0.66, 0.17), warm);
+   outgoingLight += rimLight * rimBand * 0.72;
+   #include <opaque_fragment>
+  `);
+ };
+ shell.material.customProgramCacheKey=()=> 'setka-core-optical-depth-v2';
  state.vertices=body.vertexCount;
  state.shellTriangles=body.geometry.index.count/3;
  addInterior();addTypography();addOrbit();addWave();addBack();
@@ -104,25 +118,30 @@ function addInterior(){
  inner=new T.Group();inner.position.copy(shell.position);card.add(inner);
  const amber=new T.MeshPhysicalMaterial({color:0xff9a04,metalness:.65,roughness:.13,clearcoat:1,iridescence:.3,emissive:0xff6500,emissiveIntensity:.12,envMapIntensity:.8,side:T.DoubleSide});
  const lilac=amber.clone();lilac.color.set('#8a20cf');lilac.emissive.set('#5026a7');lilac.emissiveIntensity=.10;lilac.metalness=.7;
+ const petal = new T.MeshPhysicalMaterial({color:0xffbc51, roughness:.22, metalness:.14,
+  clearcoat:.8, emissive:0xff7a10, emissiveIntensity:.23, envMapIntensity:.48, side:T.DoubleSide});
+ const violetPetal = petal.clone();
+ violetPetal.color.setHex(0xffb5b5);
+ violetPetal.emissive.setHex(0xbc524f);
  const flower=new T.Group();flower.position.z=.40;inner.add(flower);flower.name='volumetric-flower-core';
  for(let i=0;i<5;i++){
-  const leaf=new T.Mesh(leafGeometry(i===0?.89:1.0,.29,i%2?.05:-.12),i===3?lilac:amber);
-  leaf.rotation.z=i*Math.PI*2/5+.02;leaf.rotation.y=(i%2?1:-1)*.1;flower.add(leaf);
+  const leaf=new T.Mesh(leafGeometry(i===0?.89:.97,.23,i%2?.045:-.08),i===3?violetPetal:petal);
+  leaf.rotation.z=[.02,1.36,2.63,3.79,4.98][i];leaf.rotation.y=(i%2?1:-1)*.1;flower.add(leaf);
   // Thin real luminous vein, embedded in each petal.
   const vein=[];for(let j=0;j<=32;j++){const u=j/32;vein.push(new T.Vector3(0,u*.79,.015+.10*Math.sin(Math.PI*u)))}
   const m=new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(vein),32,.006,5,false),new T.MeshBasicMaterial({color:new T.Color(2.2,.9,.20)}));m.rotation.copy(leaf.rotation);flower.add(m);
  }
- const seed=new T.Mesh(new T.IcosahedronGeometry(.045,3),new T.MeshBasicMaterial({color:new T.Color(3,2.1,2.6)}));seed.position.z=.025;flower.add(seed);
+ const seed=new T.Mesh(new T.IcosahedronGeometry(.030,3),new T.MeshBasicMaterial({color:new T.Color(3,2.1,2.6)}));seed.position.z=.025;flower.add(seed);
  // Folded, three-dimensional laminae inside the glass, not a surface color ramp.
  for(let i=0;i<4;i++){
-  const theta=i*Math.PI/2+.65;const g=leafGeometry(1.45,.31,.20);
+  const theta=i*Math.PI/2+.65;const g=leafGeometry(1.45,.21,.15);
   const m=new T.Mesh(g,i%2?lilac:amber);m.rotation.z=theta;m.rotation.y=.52*Math.sin(theta);m.position.set(.10*Math.cos(theta),.10*Math.sin(theta),-.15);inner.add(m);flowObjects.push(m);
  }
  for(let i=0;i<7;i++){
   const points=[];for(let j=0;j<=90;j++){
    const u=j/90,a=i*Math.PI*2/7+.6*u,r=.24+u*1.15;points.push(new T.Vector3(r*Math.cos(a),r*Math.sin(a),-.15+.32*Math.sin(u*5+i)*Math.sin(Math.PI*u)));
   }
-  const m=new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(points),90,.006+(i%3)*.002,5,false),new T.MeshBasicMaterial({color:new T.Color(i%2?2:1.7,i%2?.5:1.0,i%2?2.3:.18)}));inner.add(m);
+  const m=new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(points),90,.006+(i%3)*.002,5,false),new T.MeshBasicMaterial({color:new T.Color(i%2?.90:1.04,i%2?.25:.56,i%2?1.15:.12)}));inner.add(m);
  }
  let seedNum=8123;const random=()=>{seedNum=(1664525*seedNum+1013904223)>>>0;return seedNum/4294967296};
  const bubbles=new T.InstancedMesh(new T.SphereGeometry(1,18,12),physical({transmission:.48,ior:1.08,thickness:.05,roughness:.045,envMapIntensity:1.8,attenuationColor:new T.Color('white'),dispersion:.35}),27);
@@ -132,9 +151,9 @@ function addInterior(){
 }
 
 function addTypography(){
- letterMaterial=physical({color:new T.Color('#f5edff'),transmission:.84,roughness:.065,thickness:.35,attenuationColor:new T.Color('#b95fff'),attenuationDistance:.90,iridescence:.70,envMapIntensity:1.65,dispersion:.6});
+ letterMaterial=physical({color:new T.Color('#f5edff'),transmission:.84,roughness:.065,thickness:.35,attenuationColor:new T.Color('#ffc4ed'),attenuationDistance:1.2,iridescence:.70,envMapIntensity:1.65,dispersion:.6});
  const title=new T.Group();title.name='solid-inflated-title';card.add(title);
- const xs=[-1.83,-1.01,-.12,.88,1.91],ys=[1.89,2.31,2.48,2.29,1.94],rot=[-.48,-.22,.06,.25,.47];
+ const xs=[-1.98,-1.09,-.12,.90,2.00],ys=[1.98,2.36,2.57,2.36,2.00],rot=[-.48,-.22,.06,.25,.47];
  [...'СКВИШ'].forEach((ch,i)=>{const m=balloonGlyph(ch,letterMaterial);m.position.set(xs[i],ys[i],.40);m.rotation.z=rot[i];m.scale.setScalar(1.06);m.name='balloon-'+ch;title.add(m)});
  const typeMat=new T.MeshStandardMaterial({color:0xfff3e3,emissive:0xffd7e4,emissiveIntensity:.55,metalness:.15,roughness:.30});
  const subtitle=new T.Group();subtitle.name='solid-curved-subtitle';card.add(subtitle);
@@ -148,16 +167,16 @@ function addTypography(){
 function addOrbit(){
  const orbit=new T.Group();orbit.position.set(0,-.04,1.02);orbit.rotation.z=.36;card.add(orbit);orbit.name='spatial-light-orbit';
  for(let k=0;k<3;k++){
-  const pts=[];for(let i=0;i<=256;i++){const a=i/256*Math.PI*2;pts.push(new T.Vector3(2.53*Math.cos(a),.45*Math.sin(a)+(k-1)*.018,.67*Math.sin(a)))}
+  const pts=[];for(let i=0;i<=256;i++){const a=i/256*Math.PI*2;pts.push(new T.Vector3(2.53*Math.cos(a),.57*Math.sin(a)+(k-1)*.016,-.79*Math.sin(a)))}
   const mat=new T.MeshBasicMaterial({color:new T.Color(k===1?2.0:1.5,k===1?1.0:.35,k===1?.6:1.4)});
-  orbit.add(new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts),256,k===1?.012:.0045,6,true),mat));
+  orbit.add(new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts),256,k===1?.009:.0035,6,true),mat));
  }
 }
 let waveGeom=null,waveBase=null;
 function addWave(){
  const pos=[],colors=[];const c=new T.Color();
  for(let i=0;i<212;i++)for(let j=0;j<32;j++){
-  const x=-3.08+i/211*6.16,v=j/31*2-1;pos.push(x,.16+Math.sin(x*3.0)*.17+v*.20,.12);
+  const x=-3.08+i/211*6.16,v=j/31*2-1;pos.push(x,.19+Math.sin(x*2.75+v*1.22)*.33+v*.27,.22+v*.14);
   c.setRGB(.35+.28*Math.sin(x*1.1)**2,.11+.17*Math.cos(x)**2,.65);colors.push(c.r,c.g,c.b);
  }
  waveGeom=new T.BufferGeometry();waveGeom.setAttribute('position',new T.Float32BufferAttribute(pos,3));waveGeom.setAttribute('color',new T.Float32BufferAttribute(colors,3));waveBase=new Float32Array(pos);
@@ -227,7 +246,7 @@ function frame(now){
  card.rotation.set(axis==='x'?-T.MathUtils.degToRad(angle):0,axis==='y'?T.MathUtils.degToRad(angle):0,0);
  backGroup.rotation.set(axis==='x'?Math.PI:0,axis==='y'?Math.PI:0,0);
  excitation*=Math.exp(-dt*1.8);const innerOffset=body.interiorOffset;inner.position.set(shell.position.x+innerOffset[0],shell.position.y+innerOffset[1],shell.position.z+innerOffset[2]);inner.rotation.z=.012*Math.sin(clockTime*.4);inner.scale.setScalar(1+.006*Math.sin(clockTime*1.1));
- if(waveGeom&&!paused){const p=waveGeom.attributes.position.array;for(let i=0;i<p.length;i+=3){const x=waveBase[i],v=((i/3)%32)/31*2-1;p[i+1]=.16+Math.sin(x*3-clockTime*.55)*(.19+v*.14)+v*.24;p[i+2]=.15+Math.cos(x*2.3+clockTime*.35)*.05*(1-v*v)}waveGeom.attributes.position.needsUpdate=true}
+ if(waveGeom&&!paused){const p=waveGeom.attributes.position.array;for(let i=0;i<p.length;i+=3){const x=waveBase[i],v=((i/3)%32)/31*2-1;p[i+1]=.19+Math.sin(x*2.75-clockTime*.55+v*1.22)*.33+v*.27;p[i+2]=.22+v*.14+Math.cos(x*2.3+clockTime*.35)*.05}waveGeom.attributes.position.needsUpdate=true}
  renderer.info.reset();composer.render();dirty=false;warmFrames=Math.max(0,warmFrames-1);state.frames=++frameCount;state.angle=angle;state.energy=body.energy;state.triangles=renderer.info.render.triangles;state.drawCalls=renderer.info.render.calls;
  if(frameCount%15===0)canvas.dataset.diagnostics=JSON.stringify(state);
  if(frameCount>15){frameSum+=rawDt*1000;measurementFrames++;if(measurementFrames===90){state.meanFrameMs=Math.round(frameSum/measurementFrames*10)/10;if(quality==='auto'&&state.meanFrameMs>29&&pixelRatio>1.1){renderer.setPixelRatio(1.1);composer.setPixelRatio(1.1);state.pixelRatio=1.1}frameSum=0;measurementFrames=0}}

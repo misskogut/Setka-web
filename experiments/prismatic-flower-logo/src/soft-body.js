@@ -2,7 +2,7 @@
 // Shared pole/seam vertices keep the shell watertight under all deformations.
 import {BufferGeometry,Float32BufferAttribute} from 'three';
 // Landmark silhouette traced as geometric measurements, never sampled as image pixels.
-const outline=[[1.59,0],[1.58,.87],[1.07,1.62],[.56,1.60],[0,1.34],[-.65,1.65],[-1.31,1.35],[-1.74,.66],[-1.61,0],[-1.78,-.8],[-1.25,-1.58],[-.60,-1.65],[0,-1.25],[.65,-1.62],[1.34,-1.51],[1.76,-.82]];
+const outline=[[1.32,.06],[1.63,.83],[1.22,1.54],[.58,1.69],[-.03,1.36],[-.64,1.71],[-1.35,1.50],[-1.70,.82],[-1.41,-.06],[-1.80,-.89],[-1.47,-1.62],[-.72,-1.77],[.02,-1.45],[.70,-1.73],[1.48,-1.57],[1.83,-.86]];
 function contourPoint(theta){
  const t=((theta/(Math.PI*2))%1+1)%1*outline.length,i=Math.floor(t),u=t-i;
  const p=n=>outline[(n+outline.length)%outline.length];
@@ -11,7 +11,7 @@ function contourPoint(theta){
 export function sculptedPoint(phi,theta){
   const r=Math.sin(phi),c=Math.cos(phi),front=Math.max(0,c);
   const a=theta+.22*(1-r),xy=contourPoint(a);
-  const fold=.44*Math.sin(4*a+5.3*r-.7)*Math.pow(r,1.2)*Math.pow(front,1.1);
+  const fold=.35*Math.sin(4*a+5.3*r-.7)*Math.pow(r,1.2)*Math.pow(front,1.1);
   return [r*xy[0],r*xy[1],
     .84*c+fold-.39*Math.exp(-r*r/.13)*front+.035*Math.sin(3*a)*r*r];
 }
