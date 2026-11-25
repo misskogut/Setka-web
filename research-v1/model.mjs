@@ -1,3 +1,5 @@
+import './setka-cycle-contract-v1.js';
+const cycleContract=globalThis.SETKA_ALMA_CYCLE_CONTRACT_V1;
 import {isRealPhysio,physioKind} from './physiology.mjs';
 // Shared, pure data contract. The server supplies rows; this module never makes up rows.
 export const VERSION = 'SETKA-RESEARCH-1.4.0';
@@ -60,6 +62,37 @@ export function buildData(raw, sources=[], now=new Date().toISOString()) {
     if(old){old.devices.push(d.device_id);old.firstAt=dateMin([old.firstAt,d.first_seen_at]);old.lastAt=dateMax([old.lastAt,d.last_seen_at]);}
     else participants.set(id,{id,label:aliases.get(d.device_id)||`Гостевое устройство ${i+1}`,status:'guest',current:false,firstAt:d.first_seen_at,lastAt:d.last_seen_at,devices:[d.device_id],source:'legacy-device',active:d.active!==false,identityNote:'Устройство не подтверждает личность человека.'});
   });
+  // Guest archive content remains private except the specifically consented cycle envelope.
+  for(const x of ARRAY(raw.guestArchives)){
+    const id=participantForDevice(x.device_id),p=participants.get(id);
+    if(p){p.guestBackup={revision:x.revision,updatedAt:x.updated_at};p.lastAt=dateMax([p.lastAt,x.updated_at]);}
+    else participants.set(id,{id,label:'Гостевой архив без записи подключения',status:'guest',current:false,
+      firstAt:null,lastAt:x.updated_at,devices:[x.device_id],source:'guest-archive',
+      active:false,includedInMetrics:false,guestBackup:{revision:x.revision,updatedAt:x.updated_at},
+      identityNote:'Облачный архив существует, но регистрация подключения отсутствует. Не считать подтверждённым посетителем.'});
+  }
+  // Keep a guest cycle under the device identity even if that device was later
+  // bound to a tester account. It does not establish ownership by that person.
+  for(const x of ARRAY(raw.guestArchives)){
+    const id='device:'+x.device_id,cycle=cycleContract.summary(x.cycle,id);
+    if(!cycle||participants.has(id))continue;
+    participants.set(id,{id,label:'Календарь гостевого устройства',status:'guest',current:false,
+      firstAt:null,lastAt:x.updated_at,devices:[x.device_id],source:'guest-cycle',
+      active:false,includedInMetrics:false,guestBackup:{revision:x.revision,updatedAt:x.updated_at},
+      identityNote:'Цикл привязан к устройству. Не объединён с аккаунтом без подтверждения владельца.'});
+  }
+  // Preserve legacy favorites even if the historical device registry row was
+  // never recorded. This is a data-source placeholder, NOT a fabricated person.
+  // Exclude it from person-level metrics until identity/provenance is verified.
+  for(const x of ARRAY(raw.deviceFavorites)){
+    if(!x?.device_id)continue;
+    const id=participantForDevice(x.device_id);
+    if(participants.has(id))continue;
+    participants.set(id,{id,label:'Историческое устройство без метаданных',status:'guest',
+      current:false,firstAt:x.saved_at||null,lastAt:x.updated_at||x.saved_at||null,
+      devices:[x.device_id],source:'legacy-device',active:false,includedInMetrics:false,
+      identityNote:'Сохранение существует, но запись устройства отсутствует. Личность не установлена.'});
+  }
   for(const p of ARRAY(raw.legacyParticipants))participants.set(`legacy:${p.id}`,{id:`legacy:${p.id}`,label:p.label||p.access_code||'Участник ранней версии',status:'tester',current:false,firstAt:p.created_at,lastAt:p.last_seen_at,devices:[],source:'legacy-research',active:p.active!==false});
   const sessions=[],exposures=[],favorites=[],notes=[],symptoms=[],checkins=[],physio=[],invites=[],archiveEvents=[],activityIntervals=[];
   const metadataSessions=new Map();
@@ -101,6 +134,11 @@ export function buildData(raw, sources=[], now=new Date().toISOString()) {
     p.firstAt=dateMin([p.firstAt,...ss.map(x=>x.startedAt),...ee.map(x=>x.startedAt)]);
     p.lastAt=dateMax([p.lastAt,...ss.map(x=>x.endedAt||x.startedAt),...ee.map(x=>x.endedAt||x.startedAt)]);
     const ar=archives.filter(x=>x.tester_id&&p.id===`account:${x.tester_id}`);
+    const owner=p.id.startsWith('account:')?'tester:'+p.id.slice(8):p.id.startsWith('device:')?p.id:null;
+    let cycle=null;
+    if(owner?.startsWith('tester:'))for(const row of ar)cycle=cycleContract.merge(cycle,row.payload?.settings?.almaCycleV1,owner);
+    if(owner?.startsWith('device:'))for(const row of ARRAY(raw.guestArchives))if(owner==='device:'+row.device_id)cycle=cycleContract.merge(cycle,row.cycle,owner);
+    p.cycle=owner?cycleContract.summary(cycle,owner):null;
     p.archiveAt=dateMax(ar.map(x=>x.updated_at));p.syncState=ar.length?'cloud-archive':p.current?'no-cloud-archive':'historical';
   }
   return {version:VERSION,projectId:'gfchgaphzhxufwdhrcis',updatedAt:now,sources,
@@ -109,7 +147,7 @@ export function buildData(raw, sources=[], now=new Date().toISOString()) {
     symptoms:unique(symptoms,x=>`${x.participantId}:${x.id}`),checkins:unique(checkins,x=>`${x.participantId}:${x.id}`),physio:unique(physio.filter(isRealPhysio),x=>`${x.participantId}:${x.id||x.observedAt}`),excludedSimulatedPhysio:physio.filter(x=>physioKind(x)==='simulated').length,excludedUnverifiedPhysio:physio.filter(x=>['unverified','invalid'].includes(physioKind(x))).length,invites:unique(invites,x=>`${x.participantId}:${x.id}`),archiveEvents,
     communityMetrics:raw.serviceMetrics?.[0]||null,patternMetrics:ARRAY(raw.patternMetrics),configMetrics:ARRAY(raw.configMetrics),
     experiments:ARRAY(raw.experiments),experimentRevisions:ARRAY(raw.experimentRevisions),contributions:ARRAY(raw.contributions),consents:ARRAY(raw.consents),diagnostics:ARRAY(raw.diagnostics),publicNotes:ARRAY(raw.publicNotes),
-    warnings:[{code:'guest-local-only',message:'Текущие гости хранят историю на своём устройстве. В этих показателях их использование не учтено.'},{code:'identity',message:'Исторические гостевые устройства не объединены в людей. Число устройств не равно числу людей.'},...sources.filter(s=>!s.ok||s.truncated).map(s=>({code:'source-incomplete',message:`Источник «${s.label}» ${s.truncated?'загружен не полностью':'недоступен'}.`}))]};
+    warnings:[{code:'guest-local-only',message:'Гостевые личные архивы могут сохраняться в облаке, но их содержимое не является исследовательской телеметрией и не включено в показатели использования без отдельного основания.'},{code:'identity',message:'Исторические гостевые устройства не объединены в людей. Число устройств не равно числу людей.'},...sources.filter(s=>!s.ok||s.truncated).map(s=>({code:'source-incomplete',message:`Источник «${s.label}» ${s.truncated?'загружен не полностью':'недоступен'}.`}))]};
 }
 export function sliceData(data,{scope='current',from=null,to=null}={}) {
   const excluded=new Set(data.participants.filter(p=>p.includedInMetrics===false).map(p=>p.id));

@@ -36,6 +36,7 @@ const SOURCES = [
   ['issuedInvites','setka_research_v1_invites','*','Выданные пригласительные ID','created_at,tester_id'],
   ['inviteBatches','setka_research_v1_invite_batches','id,label,issued_by_tester_id,requested_count,created_at','Пакеты приглашений','created_at,id'],
   ['devices','prototype_v34_devices','device_id,label,subject_key,channel,first_seen_at,last_seen_at,viewport,app_version,active,updated_at','Устройства','device_id'],
+  ['guestArchives','setka_guest_archives_v1','device_id,revision,updated_at,cycle:payload->settings->almaCycleV1','Гостевые архивы: метаданные и разрешённые записи цикла','updated_at'],
   ['aliases','prototype_v34_participant_aliases','device_id,label,updated_at','Названия участников','device_id'],
   ['accounts','prototype_v40_tester_accounts','tester_id,research_subject_id,password_set_at,consent_version,consent_at,active,last_login_at,created_at,updated_at','Аккаунты тестировщиков','tester_id'],
   ['consents','prototype_v40_tester_consents','tester_id,consent_version,accepted,accepted_at,created_at','Согласия','id'],

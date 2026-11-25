@@ -41,6 +41,11 @@
     window.dispatchEvent(new CustomEvent("setka:v40-private-corpus-load",{detail:{loadState}}));
   }
   function saveStatus(v){lastStatus=v;try{localStorage.setItem(STATUS_KEY,JSON.stringify(v))}catch(_){}window.dispatchEvent(new CustomEvent("setka:v40-private-corpus",{detail:v}))}
+  function cycleOwner(){const s=window.SetkaDataScopeV1?.id;return s==='guest'?(did()?'device:'+did():null):s}
+  function cycleSettings(value){const settings={...(value||{})},K=window.SETKA_ALMA_CYCLE_CONTRACT_V1;
+    const safe=K?.cloud(settings.almaCycleV1,cycleOwner());delete settings.almaCycleV1;delete settings.almaCycleLocalBackupV1;
+    if(safe)settings.almaCycleV1=safe;return settings;
+  }
   function archive(){
     const d=clone(C.getData?.()||{});
     return {
@@ -55,7 +60,7 @@
       openedPatterns:Array.isArray(d.openedPatterns)?d.openedPatterns:[],
       physio:d.physio||{samples:[],sources:[]},
       invites:Array.isArray(d.invites)?d.invites:[],
-      settings:d.settings||{}
+      settings:cycleSettings(d.settings)
     };
   }
   function favorites(){try{return clone(Setka.getFavorites?.()||[])}catch(_){return[]}}
@@ -92,7 +97,12 @@
     d.invites=mergeRecords(d.invites,payload.invites,"invites",5000);
     const lp=d.physio||{samples:[],sources:[]},rp=payload.physio||{};
     d.physio={...rp,...lp,samples:mergeRecords(lp.samples,rp.samples,"physioSamples",10000),sources:mergeRecords(lp.sources,rp.sources,"physioSources",2000)};
-    d.settings={...(payload.settings||{}),...(d.settings||{})};
+    const cycleContract=window.SETKA_ALMA_CYCLE_CONTRACT_V1,owner=cycleOwner();
+    const cycle=cycleContract?.merge(d.settings?.almaCycleV1,payload.settings?.almaCycleV1,owner);
+    d.settings={...cycleSettings(payload.settings),...cycleSettings(d.settings)};
+    const sharedCycle=cycleContract?.cloud(cycle,owner);
+    if(sharedCycle){d.settings.almaCycleV1=sharedCycle;window.SETKA_ALMA_CYCLE_LINK_V1?.receive(sharedCycle);}
+    else delete d.settings.almaCycleV1;
     if(Setka.restorePersonalConfigs)d.settings.patternConfigs=Setka.restorePersonalConfigs(payload.settings?.patternConfigs||{});
     C.save?.();
     const favoriteCount=await mergeFavorites(remoteFavorites);

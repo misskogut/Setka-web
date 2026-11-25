@@ -8,6 +8,7 @@ import { CycleSettingsSheet } from "../../../.alma-upstream/components/sheets";
 import { addDays, buildDayModels, defaultProfile, TIMELINE_RADIUS, todayIso } from "../../../.alma-upstream/lib/alma";
 import type { AlmaProfile } from "../../../.alma-upstream/lib/alma";
 
+const storage = (window as Window & {SETKA_ALMA_STORAGE?: Pick<Storage, "getItem" | "setItem">}).SETKA_ALMA_STORAGE ?? window.localStorage;
 const KEY = "setka-alma-source-cycle-v1";
 const LEGACY_KEY = "setka-cycle-lotus-lab-v1";
 
@@ -19,7 +20,7 @@ type Snapshot = {
 
 function safeRead(): Snapshot | null {
   try {
-    const raw = window.localStorage.getItem(KEY);
+    const raw = storage.getItem(KEY);
     if (raw) {
       const value = JSON.parse(raw) as Partial<Snapshot>;
       if (value.profile && typeof value.profile.lastPeriodStart === "string") {
@@ -31,7 +32,7 @@ function safeRead(): Snapshot | null {
       }
     }
     // Import old TEST-PAGE input (latest recorded period); no data sent anywhere.
-    const previous = JSON.parse(window.localStorage.getItem(LEGACY_KEY) || "null");
+    const previous = JSON.parse(storage.getItem(LEGACY_KEY) || "null");
     const records = previous?.periods ?? previous?.records;
     if (Array.isArray(records) && records.length) {
       const last = records.filter((r: {start?: string}) => !!r?.start)
@@ -76,7 +77,7 @@ function CycleOnly() {
     .filter((label) => actions.includes(label));
 
   useEffect(() => {
-    try { localStorage.setItem(KEY, JSON.stringify({ profile, events, configured } satisfies Snapshot)); }
+    try { storage.setItem(KEY, JSON.stringify({ profile, events, configured } satisfies Snapshot)); }
     catch (_) { /* Browsers with storage disabled can still inspect the component. */ }
   }, [profile, events, configured]);
 

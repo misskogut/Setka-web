@@ -15,7 +15,8 @@ const day=iso=>new Date(iso+"T12:00:00Z");
 const add=(iso,n)=>{const d=day(iso);d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)};
 const diff=(a,b)=>Math.round((day(b).getTime()-day(a).getTime())/MS);
 const integer=(n,a,b)=>Number.isInteger(Number(n))&&Number(n)>=a&&Number(n)<=b?Number(n):null;
-const read=k=>{try{return JSON.parse(localStorage.getItem(k)||"null")}catch(_){return null}};
+const storage=window.SETKA_ALMA_STORAGE||window.localStorage;
+const read=k=>{try{return JSON.parse(storage.getItem(k)||"null")}catch(_){return null}};
 const fmt=(iso,year=false)=>isISO(iso)?new Intl.DateTimeFormat("ru-RU",{day:"numeric",month:"short",...(year?{year:"numeric"}:{}),timeZone:"UTC"}).format(day(iso)).replaceAll(".",""):"—";
 const grammar=(number,one,few,many)=>{const n=Math.abs(number)%100,r=n%10;return r===1&&n!==11?one:r>=2&&r<=4&&(n<12||n>14)?few:many};
 const daysLabel=n=>n+" "+grammar(n,"день","дня","дней");
@@ -36,7 +37,7 @@ function historyStore(){
  return {records,lastSeen:seen};
 }
 function saveStore(store){
- try{localStorage.setItem(HISTORY,JSON.stringify({version:1,records:store.records,lastSeen:store.lastSeen}))}catch(_){}
+ try{storage.setItem(HISTORY,JSON.stringify({version:1,records:store.records,lastSeen:store.lastSeen}))}catch(_){}
 }
 function original(){
  const s=read(KEY),p=s?.profile||{};

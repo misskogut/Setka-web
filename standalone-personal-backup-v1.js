@@ -41,6 +41,8 @@
     for(const name of KINDS)p[name]=Array.isArray(d[name])?clone(d[name]):[];
     p.physio=d.physio&&typeof d.physio==="object"?clone(d.physio):{samples:[],sources:[]};
     p.settings=d.settings&&typeof d.settings==="object"&&!Array.isArray(d.settings)?clone(d.settings):{};
+    const cycle=window.SETKA_ALMA_CYCLE_LINK_V1?.backup();
+    if(cycle){delete p.settings.almaCycleV1;p.settings.almaCycleLocalBackupV1=cycle;}
     const fav=Setka.getFavorites?.();
     return {kind:CONTENT,scope:currentScope(),createdAt:new Date().toISOString(),
       personal:p,favorites:Array.isArray(fav)?clone(fav):[]};
@@ -85,7 +87,11 @@
     const corpus=window.__SETKA_PRIVATE_CORPUS_V40__;
     if(typeof corpus?.mergeGuest!=="function")throw Error("archive_merge_unavailable");
     if(C.ready)await C.ready;
+    const cycle=payload.personal.settings.almaCycleLocalBackupV1;
+    if(cycle&&!window.SETKA_ALMA_CYCLE_LINK_V1)throw Error("cycle_backup_requires_linked_front");
+    delete payload.personal.settings.almaCycleLocalBackupV1;
     const merged=await corpus.mergeGuest(payload.personal,payload.favorites);
+    if(merged&&cycle)window.SETKA_ALMA_CYCLE_LINK_V1.importBackup(cycle,payload.scope);
     if(!merged)throw Error("archive_merge_failed");
     if(C.whenSaved&&await C.whenSaved()===false)throw Error("local_storage_unavailable");
     window.dispatchEvent(new CustomEvent("setka:states-restored"));
