@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#08050e">
+  <meta name="description" content="Экспериментальный живой 3D-логотип «Сквиш для мозга». SETKA.">
+  <title>Сквиш для мозга · 3D-этюд SETKA</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <header><a href="../../standalone-v34-cycle-logo3d.html">SETKA</a><span>Лаборатория формы</span><button id="clean" aria-label="Скрыть управление">Чистый вид</button></header>
+  <main id="stage" aria-label="Интерактивная трёхмерная карточка. Нажмите и потяните сквиш; проведите по свободному месту для поворота." tabindex="0">
+    <canvas id="scene" aria-label="Живой стеклянный сквиш с цветочным ядром"></canvas>
+    <div id="loading" role="status">Собираю свет и форму<span></span></div>
+    <div id="error" role="alert" hidden></div>
+  </main>
+  <aside id="controls" aria-label="Управление прототипом">
+    <p class="hint">Нажми и потяни сквиш. Проведи рядом — поверни карточку.</p>
+    <div class="toolbar"><button id="flip">Перевернуть</button><button id="reset">На место</button><button id="pause" aria-pressed="false">Пауза</button><button id="settings" aria-expanded="false" aria-controls="panel">Настроить</button></div>
+    <section id="panel" hidden>
+      <div class="angles" aria-label="Угол карточки"><button data-angle="0">0°</button><button data-angle="30">30°</button><button data-angle="60">60°</button><button data-angle="90">90°</button><button data-angle="120">120°</button><button data-angle="180">180°</button></div>
+      <label>Поворот <output id="angleValue">0°</output><input id="angle" type="range" min="-180" max="180" value="0" step="1"></label>
+      <div class="toolbar small"><button id="axis" aria-label="Сменить ось переворота">Ось: вертикальный оборот</button><button id="quality">Качество: авто</button></div>
+      <label>Упругость<input id="elasticity" type="range" min="25" max="100" value="65"></label>
+      <label>Преломление<input id="optics" type="range" min="133" max="168" value="147"></label>
+      <label>Свет<input id="light" type="range" min="50" max="150" value="100"></label>
+      <p class="note">Экспериментальная страница · исходная SETKA не изменена.</p>
+    </section>
+  </aside>
+  <button id="restore" hidden>Показать управление</button>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
