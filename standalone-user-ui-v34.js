@@ -34,7 +34,10 @@
     .st-notes-feed-heading{font-size:15px;font-weight:550;margin:4px 0 8px;color:rgba(255,255,255,.78)}
     .st-notes-list{min-width:0}
     .st34-note-meta{font-size:11px;line-height:1.45;color:rgba(255,255,255,.42);margin-bottom:14px}
-    .st34-note-actions{display:flex;justify-content:flex-end;gap:6px;margin:0 0 8px}
+    .st34-note-header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 12px}
+    .st34-note-date{font-size:11px;line-height:1.45;color:rgba(255,255,255,.52);min-width:0;overflow-wrap:anywhere}
+    .st34-note-actions{display:flex;flex:none;justify-content:flex-end;gap:6px;margin:0}
+    .st34-note-actions[hidden]{display:none}
     .st34-note-actions button{width:36px;height:36px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.14);background:#141414;color:#bdbdbd;border-radius:12px;padding:0;touch-action:manipulation}
     .st34-note-actions svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
     .st34-note-actions button:active{color:#fff;background:#252525}
@@ -85,7 +88,7 @@
     const btn=(label,path)=>{const b=document.createElement("button");b.type="button";b.setAttribute("aria-label",label);b.title=label;b.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+path+'</svg>';controls.appendChild(b);return b};
     const pencil=btn("Редактировать заметку",'<path d="m15 5 4 4M4 20l4-.8L20 7a2.8 2.8 0 0 0-4-4L4.8 15.8 4 20Z"/>');
     const trash=btn("Удалить заметку",'<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 10v7m4-7v7"/>');
-    card.appendChild(controls);
+    card.querySelector(".st34-note-header").appendChild(controls);
     const current=()=>C.getData().notes.find(x=>String(x.id)===String(n.id));
     const isPublished=x=>x&&(x.publicPublished||["pending","published"].includes(x.publicModerationStatus));
     function allowed(){const x=current();if(!x)return false;if(isPublished(x)){C.inlineStatus(card,"Сначала сними заметку с публикации в сообществе.","error");return false}return true}
@@ -128,8 +131,13 @@
     const context=[];
     if(n.requestKey)context.push(intentLabel(n.requestKey));
     if(n.sessionElapsedMs!=null&&n.sessionId)context.push(`${fmt(n.sessionElapsedMs)} от начала`);
+    const header=document.createElement("div");header.className="st34-note-header";
+    const date=document.createElement("time");date.className="st34-note-date";
+    const observed=n.observedAt||n.createdAt;date.textContent=observed?dt(observed):"";
+    if(observed&&Number.isFinite(Date.parse(observed)))date.dateTime=new Date(observed).toISOString();
+    header.appendChild(date);card.appendChild(header);
     const head=document.createElement("div");
-    head.innerHTML=`<div class="st34-note-text">${esc(n.text)}</div><div class="st34-note-meta">${dt(n.observedAt)}${context.length?` · ${esc(context.join(" · "))}`:""}</div>`;
+    head.innerHTML=`<div class="st34-note-text">${esc(n.text)}</div>${context.length?`<div class="st34-note-meta">${esc(context.join(" · "))}</div>`:""}`;
     noteActions(card,head,n);
     card.appendChild(head);
     if(replay?.config&&!replay.unavailable){

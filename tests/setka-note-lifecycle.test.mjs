@@ -23,3 +23,15 @@ test('archive functions and research model respect note deletions',()=>{
  for(const p of ['supabase/functions/setka-tester-archive-v37/index.ts','supabase/functions/setka-guest-archive-v1/index.ts'])assert.match(read(p),/filterDeletedNotes/);
  for(const p of ['research-v1/model.mjs','supabase/functions/setka-research-admin-v1/model.mjs'])assert.match(read(p),/!deletedNoteKeys\.has\(n\.id\)/);
 });
+
+test('note creation date shares the top row with edit and delete actions',()=>{
+ const ui=read('standalone-user-ui-v34.js');
+ const render=ui.slice(ui.indexOf('  function renderNoteCard('),ui.indexOf('  function showToday('));
+ assert.match(render,/const observed=n\.observedAt\|\|n\.createdAt/);
+ assert.match(render,/header\.appendChild\(date\);card\.appendChild\(header\)/);
+ assert.ok(render.indexOf('card.appendChild(header)')<render.indexOf('card.appendChild(head)'));
+ assert.match(ui,/card\.querySelector\("\.st34-note-header"\)\.appendChild\(controls\)/);
+ assert.match(ui,/\.st34-note-header\{display:flex;align-items:center;justify-content:space-between/);
+ assert.match(ui,/\.st34-note-actions\[hidden\]\{display:none\}/);
+ assert.doesNotMatch(render,/dt\(n\.observedAt\)/);
+});
