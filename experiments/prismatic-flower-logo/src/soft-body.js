@@ -1,13 +1,19 @@
 // A closed, sculpted four-chamber body. No noise-displaced sphere and no image assets.
 // Shared pole/seam vertices keep the shell watertight under all deformations.
 import {BufferGeometry,Float32BufferAttribute} from 'three';
+// Landmark silhouette traced as geometric measurements, never sampled as image pixels.
+const outline=[[1.59,0],[1.58,.87],[1.07,1.62],[.56,1.60],[0,1.34],[-.65,1.65],[-1.31,1.35],[-1.74,.66],[-1.61,0],[-1.78,-.8],[-1.25,-1.58],[-.60,-1.65],[0,-1.25],[.65,-1.62],[1.34,-1.51],[1.76,-.82]];
+function contourPoint(theta){
+ const t=((theta/(Math.PI*2))%1+1)%1*outline.length,i=Math.floor(t),u=t-i;
+ const p=n=>outline[(n+outline.length)%outline.length];
+ return [0,1].map(k=>.5*((2*p(i)[k])+(-p(i-1)[k]+p(i+1)[k])*u+(2*p(i-1)[k]-5*p(i)[k]+4*p(i+1)[k]-p(i+2)[k])*u*u+(-p(i-1)[k]+3*p(i)[k]-3*p(i+1)[k]+p(i+2)[k])*u*u*u));
+}
 export function sculptedPoint(phi,theta){
   const r=Math.sin(phi),c=Math.cos(phi),front=Math.max(0,c);
-  const a=theta+.15*r*r*Math.sin(3*theta+.8)+.16*(1-r);
-  const contour=1.62*(1-.175*Math.cos(4*a+.15)+.045*Math.sin(3*a-.6)+.018*Math.cos(7*a));
-  const fold=.22*Math.sin(4*a+5.7*r-.6)*Math.pow(r,1.45)*Math.pow(front,.55);
-  return [r*contour*Math.cos(a),r*contour*Math.sin(a)*.99,
-    .77*c+fold-.29*Math.exp(-r*r/.11)*front+.035*Math.sin(3*a)*r*r];
+  const a=theta+.22*(1-r),xy=contourPoint(a);
+  const fold=.44*Math.sin(4*a+5.3*r-.7)*Math.pow(r,1.2)*Math.pow(front,1.1);
+  return [r*xy[0],r*xy[1],
+    .84*c+fold-.39*Math.exp(-r*r/.13)*front+.035*Math.sin(3*a)*r*r];
 }
 export function makeSoftBody(segments=104,rings=64){
   const points=[sculptedPoint(0,0)],idx=[];

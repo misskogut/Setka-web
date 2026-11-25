@@ -12,20 +12,21 @@ const params=new URLSearchParams(location.search),capture=params.has('capture');
 const mobile=matchMedia('(max-width: 650px)').matches;
 const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let paused=capture||reduce,clockTime=0,angle=Number(params.get('angle')||0),targetAngle=angle,axis=params.get('axis')==='y'?'y':'x';
-let quality='auto',elasticity=65,excitation=0,lost=false,disposed=false,frameCount=0;
+let quality='auto',elasticity=65,excitation=0,lost=false,disposed=false,frameCount=0,dirty=true;
 let renderer,composer,bloom,scene,camera,card,body,shell,inner,letterMaterial,environment;
-const state={ready:false,version:'prismatic-flower-1',angle,axis,frames:0,meanFrameMs:null,pressed:false,energy:0,vertices:0,triangles:0,deviceTest:'browser-only'};
+const state={ready:false,version:'prismatic-flower-2',angle,axis,frames:0,meanFrameMs:null,pressed:false,energy:0,vertices:0,triangles:0,deviceTest:'browser-only'};
 
 function envMap(){
  const w=768,h=384,data=new Float32Array(w*h*4);
  const boxes=[
-  [-1.0,.65,.25,.65,[3.9,5.0,6.9]],
-  [1.05,.6,.19,.9,[5.3,2.2,6.0]],
-  [-.35,-.5,.38,.32,[7.8,3.2,.55]],
-  [2.6,-.25,.26,.9,[4.2,1.0,6.7]],
-  [-2.1,.25,.38,.65,[.5,2.0,4.0]],
-  [.1,1.22,.75,.13,[5.3,5.6,6.3]],
-  [.2,-1.22,.8,.14,[6.0,3.3,.8]]
+  [-1.0,.65,.09,.48,[4.8,6.7,9.5]],
+  [1.05,.6,.065,.72,[6.5,1.0,8.0]],
+  [-.35,-.5,.18,.25,[10.0,3.2,.12]],
+  [2.6,-.25,.12,.65,[3.0,.18,7.0]],
+  [-2.1,.25,.16,.40,[.15,1.4,5.0]],
+  [.1,1.22,.52,.055,[6.3,7.0,8.3]],
+  [.2,-1.22,.7,.085,[7.0,2.8,.12]],
+  [0,.2,.55,.55,[.06,.012,.17]]
  ];
  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
   const az=(x/w-.5)*Math.PI*2,el=(y/h-.5)*Math.PI;const c=[.009,.003,.022];
@@ -36,33 +37,33 @@ function envMap(){
  const pmrem=new T.PMREMGenerator(renderer);const result=pmrem.fromEquirectangular(tex);tex.dispose();pmrem.dispose();return result;
 }
 function physical(options={}){
- return new T.MeshPhysicalMaterial({color:0xffffff,metalness:0,roughness:.09,ior:1.47,transmission:.96,thickness:1.1,attenuationColor:new T.Color('#ffe2a8'),attenuationDistance:3.4,dispersion:.72,iridescence:.48,iridescenceIOR:1.32,iridescenceThicknessRange:[210,520],clearcoat:1,clearcoatRoughness:.065,envMapIntensity:1.38,...options});
+ return new T.MeshPhysicalMaterial({color:0xffffff,metalness:0,roughness:.055,ior:1.47,transmission:.985,thickness:1.25,attenuationColor:new T.Color('#ffd47c'),attenuationDistance:1.4,dispersion:.62,iridescence:.72,iridescenceIOR:1.32,iridescenceThicknessRange:[210,520],clearcoat:.8,clearcoatRoughness:.045,envMapIntensity:.78,...options});
 }
 function init(){
  renderer=new T.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:'high-performance'});
  renderer.info.autoReset=false;
- renderer.setClearColor(0x08050e);renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.02;
+ renderer.setClearColor(0x08050e);renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=.95;
  renderer.transmissionResolutionScale=mobile?.65:.85;
  scene=new T.Scene();scene.background=new T.Color(0x08050e);
  camera=new T.PerspectiveCamera(34,1,.05,60);camera.position.set(0,0,13.4);camera.lookAt(0,0,0);
  environment=envMap();scene.environment=environment.texture;
- scene.add(new T.AmbientLight(0x9786c5,.34));
- const key=new T.DirectionalLight(0xfff5de,3.0);key.position.set(-3,5,5);scene.add(key);
- const fill=new T.DirectionalLight(0x9dbbff,2);fill.position.set(3,2,4);scene.add(fill);
- const rim=new T.DirectionalLight(0xffad50,2.1);rim.position.set(-2,-3,2);scene.add(rim);
+ scene.add(new T.AmbientLight(0x9786c5,.12));
+ const key=new T.DirectionalLight(0xfff5de,1.3);key.position.set(-3,5,5);scene.add(key);
+ const fill=new T.DirectionalLight(0x9dbbff,.7);fill.position.set(3,2,4);scene.add(fill);
+ const rim=new T.DirectionalLight(0xffad50,1.6);rim.position.set(-2,-3,2);scene.add(rim);
  card=new T.Group();scene.add(card);
  const plate=new T.Mesh(new RoundedBoxGeometry(6.25,7.0,.07,4,.17),new T.MeshStandardMaterial({color:0x08050e,metalness:.15,roughness:.6}));plate.name='opaque-card';card.add(plate);
  const bgmat=new T.ShaderMaterial({depthWrite:true,vertexShader:'varying vec2 vUv; void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',fragmentShader:`varying vec2 vUv;
   void main(){vec2 p=(vUv-.5)*vec2(6.2,7.);float a=exp(-dot(p*vec2(.7,.65),p*vec2(.7,.65)));float b=exp(-dot((p-vec2(0.,-2.9))*vec2(1.5,8.),(p-vec2(0.,-2.9))*vec2(1.5,8.)));gl_FragColor=vec4(vec3(.006,.0015,.012)+a*vec3(.022,.003,.032)+b*vec3(.15,.032,.065),1.);}`});
  const panel=new T.Mesh(new T.PlaneGeometry(6.19,6.92),bgmat);panel.position.z=.036;card.add(panel);
- const outline=new T.EdgesGeometry(plate.geometry,28);const outlineMesh=new T.LineSegments(outline,new T.LineBasicMaterial({color:0x6a5078,transparent:true,opacity:.11}));card.add(outlineMesh);
+ const outline=new T.EdgesGeometry(plate.geometry,28);const outlineMesh=new T.LineSegments(outline,new T.LineBasicMaterial({color:0x6a5078,transparent:true,opacity:.025}));card.add(outlineMesh);
  body=makeSoftBody();shell=new T.Mesh(body.geometry,physical());shell.name='sculpted-soft-glass';shell.position.set(0,-.02,1.03);card.add(shell);
  state.vertices=body.vertexCount;
  state.shellTriangles=body.geometry.index.count/3;
  addInterior();addTypography();addOrbit();addWave();addBack();
  const rt=new T.WebGLRenderTarget(1,1,{type:T.HalfFloatType,samples:mobile?2:4});
  composer=new EffectComposer(renderer,rt);composer.addPass(new RenderPass(scene,camera));
- bloom=new UnrealBloomPass(new T.Vector2(1,1),.4,.6,.9);composer.addPass(bloom);composer.addPass(new OutputPass());
+ bloom=new UnrealBloomPass(new T.Vector2(1,1),.24,.45,1.5);composer.addPass(bloom);composer.addPass(new OutputPass());
  resize();new ResizeObserver(resize).observe(stage);
  bindInteractions();
  $('pause').setAttribute('aria-pressed',String(paused));$('pause').textContent=paused?'Продолжить':'Пауза';
@@ -94,20 +95,20 @@ function leafGeometry(length,width,bend=.1){
 const flowObjects=[];
 function addInterior(){
  inner=new T.Group();inner.position.copy(shell.position);card.add(inner);
- const amber=new T.MeshPhysicalMaterial({color:0xffb624,metalness:.25,roughness:.18,clearcoat:1,iridescence:.3,emissive:0xff5c00,emissiveIntensity:.18,envMapIntensity:1.5,side:T.DoubleSide});
- const lilac=amber.clone();lilac.color.set('#bca0ff');lilac.emissive.set('#5026a7');lilac.emissiveIntensity=.15;lilac.metalness=.45;
+ const amber=new T.MeshPhysicalMaterial({color:0xff9a04,metalness:.65,roughness:.13,clearcoat:1,iridescence:.3,emissive:0xff6500,emissiveIntensity:.12,envMapIntensity:.8,side:T.DoubleSide});
+ const lilac=amber.clone();lilac.color.set('#8a20cf');lilac.emissive.set('#5026a7');lilac.emissiveIntensity=.10;lilac.metalness=.7;
  const flower=new T.Group();flower.position.z=.48;inner.add(flower);flower.name='volumetric-flower-core';
  for(let i=0;i<5;i++){
   const leaf=new T.Mesh(leafGeometry(i===0?.78:.91,.22,i%2?.05:-.12),i===3?lilac:amber);
   leaf.rotation.z=i*Math.PI*2/5+.02;leaf.rotation.y=(i%2?1:-1)*.1;flower.add(leaf);
   // Thin real luminous vein, embedded in each petal.
   const vein=[];for(let j=0;j<=32;j++){const u=j/32;vein.push(new T.Vector3(0,u*.79,.015+.10*Math.sin(Math.PI*u)))}
-  const m=new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(vein),32,.006,5,false),new T.MeshBasicMaterial({color:new T.Color(3.4,1.4,.45)}));m.rotation.copy(leaf.rotation);flower.add(m);
+  const m=new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(vein),32,.006,5,false),new T.MeshBasicMaterial({color:new T.Color(2.2,.9,.20)}));m.rotation.copy(leaf.rotation);flower.add(m);
  }
- const seed=new T.Mesh(new T.IcosahedronGeometry(.075,3),new T.MeshBasicMaterial({color:new T.Color(5,3.7,4.6)}));seed.position.z=.05;flower.add(seed);
+ const seed=new T.Mesh(new T.IcosahedronGeometry(.045,3),new T.MeshBasicMaterial({color:new T.Color(3,2.1,2.6)}));seed.position.z=.025;flower.add(seed);
  // Folded, three-dimensional laminae inside the glass, not a surface color ramp.
  for(let i=0;i<4;i++){
-  const theta=i*Math.PI/2+.65;const g=leafGeometry(1.42,.32,.15);
+  const theta=i*Math.PI/2+.65;const g=leafGeometry(1.35,.11,.20);
   const m=new T.Mesh(g,i%2?lilac:amber);m.rotation.z=theta;m.rotation.y=.52*Math.sin(theta);m.position.set(.10*Math.cos(theta),.10*Math.sin(theta),-.15);inner.add(m);flowObjects.push(m);
  }
  for(let i=0;i<7;i++){
@@ -124,11 +125,11 @@ function addInterior(){
 }
 
 function addTypography(){
- letterMaterial=physical({transmission:.67,roughness:.14,thickness:.35,attenuationColor:new T.Color('#e9acff'),attenuationDistance:1.25,iridescence:.66,envMapIntensity:1.6,dispersion:.6});
+ letterMaterial=physical({color:new T.Color('#e2d3ff'),transmission:.72,roughness:.085,thickness:.35,attenuationColor:new T.Color('#ad4ded'),attenuationDistance:.65,iridescence:.70,envMapIntensity:1.15,dispersion:.6});
  const title=new T.Group();title.name='solid-inflated-title';card.add(title);
  const xs=[-1.83,-1.01,-.12,.88,1.91],ys=[1.89,2.31,2.48,2.29,1.94],rot=[-.48,-.22,.06,.25,.47];
  [...'СКВИШ'].forEach((ch,i)=>{const m=balloonGlyph(ch,letterMaterial);m.position.set(xs[i],ys[i],.40);m.rotation.z=rot[i];m.scale.setScalar(1.06);m.name='balloon-'+ch;title.add(m)});
- const typeMat=new T.MeshStandardMaterial({color:0xffecd9,emissive:0xe9b5c4,emissiveIntensity:.38,metalness:.4,roughness:.27});
+ const typeMat=new T.MeshStandardMaterial({color:0xffecd9,emissive:0xe9b5c4,emissiveIntensity:.18,metalness:.45,roughness:.32});
  const subtitle=new T.Group();subtitle.name='solid-curved-subtitle';card.add(subtitle);
  const text='ДЛЯМОЗГА',positions=[-1.65,-1.18,-.72,-.18,.34,.84,1.31,1.77];
  [...text].forEach((ch,i)=>{const x=positions[i],m=vectorGlyph(ch,.30,.033,typeMat);m.position.set(x,-2.01+.12*x*x,.105);m.rotation.z=x*.15;subtitle.add(m)});
@@ -140,7 +141,7 @@ function addOrbit(){
  const orbit=new T.Group();orbit.position.set(0,-.04,1.02);orbit.rotation.z=.36;card.add(orbit);orbit.name='spatial-light-orbit';
  for(let k=0;k<3;k++){
   const pts=[];for(let i=0;i<=256;i++){const a=i/256*Math.PI*2;pts.push(new T.Vector3(2.53*Math.cos(a),.45*Math.sin(a)+(k-1)*.018,.67*Math.sin(a)))}
-  const mat=new T.MeshBasicMaterial({color:new T.Color(k===1?3.4:2.4,k===1?1.65:.65,k===1?.9:2.2)});
+  const mat=new T.MeshBasicMaterial({color:new T.Color(k===1?2.0:1.5,k===1?1.0:.35,k===1?.6:1.4)});
   orbit.add(new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts),256,k===1?.012:.0045,6,true),mat));
  }
 }
@@ -192,8 +193,8 @@ function bindInteractions(){
  for(const b of document.querySelectorAll('[data-angle]'))b.onclick=()=>{angle=targetAngle=Number(b.dataset.angle);syncAngle()};
  $('axis').onclick=()=>{axis=axis==='x'?'y':'x';$('axis').textContent=axis==='x'?'Ось: вертикальный оборот':'Ось: горизонтальный оборот';state.axis=axis};
  $('elasticity').oninput=e=>elasticity=Number(e.target.value);
- $('optics').oninput=e=>{shell.material.ior=Number(e.target.value)/100};
- $('light').oninput=e=>renderer.toneMappingExposure=Number(e.target.value)/100;
+ $('optics').oninput=e=>{shell.material.ior=Number(e.target.value)/100;dirty=true};
+ $('light').oninput=e=>{renderer.toneMappingExposure=Number(e.target.value)/100;dirty=true};
  $('quality').onclick=()=>{quality=quality==='auto'?'high':quality==='high'?'eco':'auto';$('quality').textContent='Качество: '+({auto:'авто',high:'высокое',eco:'экономное'}[quality]);resize()};
  $('clean').onclick=()=>setClean(true);$('restore').onclick=()=>setClean(false);
  window.addEventListener('keydown',e=>{if(e.key==='Escape')setClean(false);if(e.target.tagName==='INPUT')return;if(e.key==='ArrowUp')targetAngle-=30;if(e.key==='ArrowDown')targetAngle+=30;if(e.key==='Home')targetAngle=0});
@@ -201,22 +202,23 @@ function bindInteractions(){
 function setClean(on){document.body.classList.toggle('clean',on);$('restore').hidden=!on||capture;if(renderer)resize()}
 let pixelRatio=1,lastTime=performance.now(),frameSum=0,measurementFrames=0;
 function resize(){
- if(!composer)return;const w=stage.clientWidth,h=stage.clientHeight;
+ if(!composer)return;dirty=true;const w=stage.clientWidth,h=stage.clientHeight;
  pixelRatio=quality==='eco'?1:quality==='high'?Math.min(devicePixelRatio,2):Math.min(devicePixelRatio,mobile?1.55:1.75);
  renderer.setPixelRatio(pixelRatio);renderer.setSize(w,h,false);composer.setPixelRatio(pixelRatio);composer.setSize(w,h);
  camera.aspect=w/h;const targetH=7.9,targetW=6.75;const fov=T.MathUtils.degToRad(camera.fov);camera.position.z=Math.max(targetH/2/Math.tan(fov/2),targetW/2/Math.tan(fov/2)/camera.aspect);camera.updateProjectionMatrix();
  state.resolution=[Math.round(w*pixelRatio),Math.round(h*pixelRatio)];state.pixelRatio=pixelRatio;
 }
-function syncAngle(){state.angle=angle;$('angle').value=String(((angle+180)%360+360)%360-180);$('angleValue').value=Math.round(angle)+'°'}
+function syncAngle(){dirty=true;state.angle=angle;$('angle').value=String(((angle+180)%360+360)%360-180);$('angleValue').value=Math.round(angle)+'°'}
 function frame(now){
  if(disposed)return;requestAnimationFrame(frame);if(lost||document.hidden){lastTime=now;return}
  const rawDt=(now-lastTime)/1000,dt=Math.min(rawDt,.035);lastTime=now;
- if(!paused||gesture?.kind==='squish'||body.energy>.00001){if(!paused)clockTime+=dt;body.update(Math.min(dt,1/60),clockTime,elasticity)}
+ if(paused&&!gesture&&body.energy<.00001&&Math.abs(targetAngle-angle)<.001&&frameCount>8&&!dirty)return;
+ if(!paused||gesture?.kind==='squish'||body.energy>.00001){if(!paused)clockTime+=dt;let remaining=Math.min(rawDt,.10);while(remaining>.00001){const step=Math.min(remaining,1/60);body.update(step,clockTime,elasticity);remaining-=step}}
  if(!gesture&&Math.abs(targetAngle-angle)>.001){angle+=(targetAngle-angle)*(1-Math.exp(-dt*8));if(Math.abs(targetAngle-angle)<.025)angle=targetAngle;syncAngle()}
  card.rotation.set(axis==='x'?-T.MathUtils.degToRad(angle):0,axis==='y'?T.MathUtils.degToRad(angle):0,0);
  excitation*=Math.exp(-dt*1.8);inner.rotation.z=.012*Math.sin(clockTime*.4);inner.scale.setScalar(1+.006*Math.sin(clockTime*1.1));
  if(waveGeom&&!paused){const p=waveGeom.attributes.position.array;for(let i=0;i<p.length;i+=3){const x=waveBase[i],v=((i/3)%32)/31*2-1;p[i+1]=.16+Math.sin(x*3-clockTime*.55)*(.19+v*.14)+v*.24;p[i+2]=.15+Math.cos(x*2.3+clockTime*.35)*.05*(1-v*v)}waveGeom.attributes.position.needsUpdate=true}
- renderer.info.reset();composer.render();state.frames=++frameCount;state.angle=angle;state.energy=body.energy;state.triangles=renderer.info.render.triangles;state.drawCalls=renderer.info.render.calls;
+ renderer.info.reset();composer.render();dirty=false;state.frames=++frameCount;state.angle=angle;state.energy=body.energy;state.triangles=renderer.info.render.triangles;state.drawCalls=renderer.info.render.calls;
  if(frameCount%15===0)canvas.dataset.diagnostics=JSON.stringify(state);
  if(frameCount>15){frameSum+=rawDt*1000;measurementFrames++;if(measurementFrames===90){state.meanFrameMs=Math.round(frameSum/measurementFrames*10)/10;if(quality==='auto'&&state.meanFrameMs>29&&pixelRatio>1.1){renderer.setPixelRatio(1.1);composer.setPixelRatio(1.1);state.pixelRatio=1.1}frameSum=0;measurementFrames=0}}
 }
