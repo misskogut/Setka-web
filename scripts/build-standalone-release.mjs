@@ -39,6 +39,7 @@ function contentVersion(asset,visited=new Set()){
  return hash.digest("hex").slice(0,20);
 }
 const documentPath="standalone-v34.html";
+const logoDocumentPath="standalone-v34-cycle-logo3d.html";
 const html=readFileSync(documentPath,"utf8");
 const marker=/<meta name="setka-release-build" content="[^"]*"\s*\/>/;
 if(!marker.test(html))throw new Error("Canonical SETKA page is missing the release-build meta");
@@ -46,12 +47,15 @@ const patched=html.replace(marker,`<meta name="setka-release-build" content="${b
 writeFileSync(documentPath,patched);
 // Every current surface loads the same immutable deployment revision. Historical
 // checkpoint pages keep their pinned sources and are deliberately excluded.
-for(const path of [documentPath,"standalone-admin-v34.html","standalone-renderer-v40.html","standalone-research-admin-v1.html","standalone-research-admin-copy-v6.html"]){
+for(const path of [documentPath,logoDocumentPath,"standalone-admin-v34.html","standalone-renderer-v40.html","standalone-research-admin-v1.html","standalone-research-admin-copy-v6.html"]){
   if(!existsSync(path))continue;
   let source=readFileSync(path,"utf8");
   if(marker.test(source))source=source.replace(marker,`<meta name="setka-release-build" content="${build}" />`);
   source=source.replace(/\b(src|href)="((?!https?:|\/\/)[^"?]+\.(?:js|mjs|css))(?:\?[^" ]*)?"/g,
-    (_match,attribute,asset)=>`${attribute}="${asset}?${path===documentPath?"content="+contentVersion(asset):"build="+build}"`);
+    (match,attribute,asset)=>{
+      if(path===logoDocumentPath&&/^(?:\.\/)?experiments\//.test(asset))return match;
+      return attribute+'="'+asset+'?'+((path===documentPath||path===logoDocumentPath)?"content="+contentVersion(asset):"build="+build)+'"';
+    });
   writeFileSync(path,source);
 }
 if(existsSync("research-v1"))for(const name of readdirSync("research-v1")){

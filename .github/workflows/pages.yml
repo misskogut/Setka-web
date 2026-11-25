@@ -96,7 +96,7 @@ jobs:
       - name: Verify frontend, admin and server catalog parity
         run: node --test tests/setka-front-admin-parity.test.mjs
       - name: Verify warm-start caching and per-renderer asset invalidation
-        run: node --test tests/setka-startup-cache-v1.test.mjs
+        run: node --test tests/setka-startup-cache-v1.test.mjs tests/setka-first-paint.test.mjs
       - name: Reject Safari gesture crashes and synchronous archive rewrite storms
         run: node --test tests/setka-gameplay-touch-write-gate.test.mjs
       - name: Verify 3D/8D orbit acoustics and reflection geometry before publishing

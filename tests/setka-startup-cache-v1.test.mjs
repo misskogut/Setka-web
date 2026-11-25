@@ -20,10 +20,12 @@ test("SETKA startup caches unchanged frontend assets across unrelated GitHub dep
   fs.writeFileSync(path.join(dir,"engine.mjs"),'export const engine=1;');
   const run=sha=>{
    fs.writeFileSync(path.join(dir,"standalone-v34.html"),html);
+   fs.writeFileSync(path.join(dir,"standalone-v34-cycle-logo3d.html"),html);
    execFileSync(process.execPath,["scripts/build-standalone-release.mjs"],{
     cwd:dir,env:{...process.env,GITHUB_SHA:sha},stdio:"pipe"
    });
    const deployed=fs.readFileSync(path.join(dir,"standalone-v34.html"),"utf8");
+   assert.equal(fs.readFileSync(path.join(dir,"standalone-v34-cycle-logo3d.html"),"utf8"),deployed);
    const links=Object.fromEntries([...deployed.matchAll(/(?:src|href)="([^"?]+)\?content=([a-f0-9]{20})"/g)]
     .map(([,name,version])=>[name,version]));
    assert.equal(Object.keys(links).length,3,"all three frontend assets have source digests");
