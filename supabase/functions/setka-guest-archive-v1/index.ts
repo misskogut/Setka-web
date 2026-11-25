@@ -1,3 +1,15 @@
+function mergeNoteDeletions(...settings:any[]){
+  const ids=new Map<string,string>();
+  for(const s of settings)for(const [id,at] of Object.entries(s?.noteDeletionsV1||{})){
+    if(!id||id.length>250||typeof at!=="string"||!Number.isFinite(Date.parse(at)))continue;
+    if(!ids.has(id)||Date.parse(at)>Date.parse(ids.get(id)))ids.set(id,at);
+  }
+  return Object.fromEntries(ids);
+}
+function filterDeletedNotes(notes:any,deleted:any){
+  return (Array.isArray(notes)?notes:[]).filter((n:any)=>!n?.id||!Object.prototype.hasOwnProperty.call(deleted,String(n.id)));
+}
+
 // Guest archive: secret-bound, never accessible by deviceId alone.
 // @ts-nocheck
 import "../setka-tester-archive-v37/setka-cycle-contract-v1.js";
@@ -34,6 +46,7 @@ Deno.serve(async req=>{
   const cycle=cycleContract.merge(q.data?.payload?.settings?.almaCycleV1,settings.almaCycleV1,owner);
   delete settings.almaCycleV1;delete settings.almaCycleLocalBackupV1;
   const safeCycle=cycleContract.cloud(cycle,owner);if(safeCycle)settings.almaCycleV1=safeCycle;
+  const deleted=mergeNoteDeletions(q.data?.payload?.settings,settings);settings.noteDeletionsV1=deleted;b.archive.notes=filterDeletedNotes(b.archive.notes,deleted);
   b.archive.settings=settings;
   const now=new Date().toISOString();
   if(!q.data){

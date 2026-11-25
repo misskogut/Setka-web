@@ -96,9 +96,11 @@ export function buildData(raw, sources=[], now=new Date().toISOString()) {
   for(const p of ARRAY(raw.legacyParticipants))participants.set(`legacy:${p.id}`,{id:`legacy:${p.id}`,label:p.label||p.access_code||'Участник ранней версии',status:'tester',current:false,firstAt:p.created_at,lastAt:p.last_seen_at,devices:[],source:'legacy-research',active:p.active!==false});
   const sessions=[],exposures=[],favorites=[],notes=[],symptoms=[],checkins=[],physio=[],invites=[],archiveEvents=[],activityIntervals=[];
   const metadataSessions=new Map();
+  const deletedNoteKeys=new Set();
   for(const row of [...snapshots.map(x=>({...x,tester_id:archivedDevice.get(x.device_id),source:'legacy-snapshot'})),...archives.map(x=>({...x,source:'private-archive'}))]){
     const participantId=row.tester_id&&accountIds.has(row.tester_id)?`account:${row.tester_id}`:participantForDevice(row.device_id);
     const payload=row.payload||{},isCurrent=participantId.startsWith('account:');
+    for(const [id,at] of Object.entries(payload.settings?.noteDeletionsV1||{}))if(typeof at==='string'&&Number.isFinite(Date.parse(at)))deletedNoteKeys.add(`${participantId}::${id}`);
     for(const x of ARRAY(payload.sessions)){const s=sessionRow(x,participantId,isCurrent?'account':'legacy-snapshot',row.device_id);if(s){s.metadataSource=row.source;sessions.push(s);metadataSessions.set(s.id,s);}}
     for(const x of ARRAY(payload.patternExposures)){const e=exposureRow(x,participantId,isCurrent?'account-archive':'legacy-snapshot',row.device_id);if(e)exposures.push(e);}
     for(const x of ARRAY(payload.notes)){if(!x.id)continue;notes.push({...x,id:`${participantId}::${x.id}`,originalId:x.id,participantId,deviceId:row.device_id,sessionId:x.sessionId?`${participantId}::${x.sessionId}`:null,source:row.source,current:isCurrent,observedAt:x.observedAt||null,snapshot:exactSnapshot(x)});}
@@ -124,7 +126,7 @@ export function buildData(raw, sources=[], now=new Date().toISOString()) {
   for(const x of ARRAY(raw.accountFavorites))favorites.push({id:`account:${x.tester_id}::${x.config_key}`,participantId:`account:${x.tester_id}`,source:'account',current:true,patternId:x.pattern_id,configKey:x.config_key,config:x.config,savedAt:x.saved_at});
   for(const x of ARRAY(raw.deviceFavorites)){const id=participantForDevice(x.device_id);if(canonicalFavoriteAccounts.has(id))continue;favorites.push({id:`${id}::${x.config_key}`,participantId:id,current:false,source:'legacy-device',patternId:x.pattern_id,configKey:x.config_key,config:x.config,savedAt:x.saved_at});}
   for(const x of ARRAY(raw.legacyNotes))notes.push({...x,id:`legacy:${x.participant_id}::${x.id}`,originalId:x.id,participantId:`legacy:${x.participant_id}`,sessionId:x.session_id?`legacy:${x.participant_id}::${x.session_id}`:null,current:false,source:'legacy-research',text:x.note_text,observedAt:x.observed_at,snapshot:exactSnapshot({...x,patternId:x.pattern_id,patternVersion:x.pattern_version,frame:x.preview_frame})});
-  const ds=unique(sessions,x=>x.id),es=unique(exposures,x=>x.id),fs=unique(favorites,x=>`${x.participantId}|${x.configKey||x.id}`),ns=unique(notes,x=>x.id);
+  const ds=unique(sessions,x=>x.id),es=unique(exposures,x=>x.id),fs=unique(favorites,x=>`${x.participantId}|${x.configKey||x.id}`),ns=unique(notes,x=>x.id).filter(n=>!deletedNoteKeys.has(n.id));
   const visits=ARRAY(raw.visits).map(x=>({...x,id:`visit:${x.device_id}:${x.visit_id}`,participantId:participantForDevice(x.device_id),startedAt:x.started_at,endedAt:x.ended_at,lastAt:x.last_seen_at,current:false,source:'legacy-visit'}));
   const digests=ARRAY(raw.digests).map(x=>({...x,id:`replay:${x.device_id}:${x.replay_key}`,participantId:participantForDevice(x.device_id),source:'legacy-digest',current:false}));
   for(const p of participants.values()){

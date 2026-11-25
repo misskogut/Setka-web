@@ -99,7 +99,9 @@
     d.physio={...rp,...lp,samples:mergeRecords(lp.samples,rp.samples,"physioSamples",10000),sources:mergeRecords(lp.sources,rp.sources,"physioSources",2000)};
     const cycleContract=window.SETKA_ALMA_CYCLE_CONTRACT_V1,owner=cycleOwner();
     const cycle=cycleContract?.merge(d.settings?.almaCycleV1,payload.settings?.almaCycleV1,owner);
-    d.settings={...cycleSettings(payload.settings),...cycleSettings(d.settings)};
+    const deleted=C.mergeNoteDeletions?.(d.settings,payload.settings)||{...(payload.settings?.noteDeletionsV1||{}),...(d.settings?.noteDeletionsV1||{})};
+    d.settings={...cycleSettings(payload.settings),...cycleSettings(d.settings),noteDeletionsV1:deleted};
+    d.notes=C.filterDeletedNotes?C.filterDeletedNotes(d.notes,deleted):d.notes.filter(n=>!Object.prototype.hasOwnProperty.call(deleted,String(n.id)));
     const sharedCycle=cycleContract?.cloud(cycle,owner);
     if(sharedCycle){d.settings.almaCycleV1=sharedCycle;window.SETKA_ALMA_CYCLE_LINK_V1?.receive(sharedCycle);}
     else delete d.settings.almaCycleV1;

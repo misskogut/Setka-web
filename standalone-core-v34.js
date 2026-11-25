@@ -41,11 +41,26 @@
     gestureSaveTimer=setTimeout(()=>{gestureSaveTimer=0;save()},420);
   }
   const archiveFields=["sessions","notes","symptoms","checkins","events","patternExposures","activityIntervals","openedPatterns","invites"];
+function mergeNoteDeletions(...settings){
+  const ids=new Map();
+  for(const s of settings)for(const [id,at] of Object.entries(s?.noteDeletionsV1||{})){
+    if(!id||id.length>250||typeof at!=="string"||!Number.isFinite(Date.parse(at)))continue;
+    if(!ids.has(id)||Date.parse(at)>Date.parse(ids.get(id)))ids.set(id,at);
+  }
+  return Object.fromEntries(ids);
+}
+function filterDeletedNotes(notes,deleted){
+  return (Array.isArray(notes)?notes:[]).filter(n=>!n?.id||!Object.prototype.hasOwnProperty.call(deleted,String(n.id)));
+}
+
   function mergePersonalRows(old,row){
     if(!old||!(old.baseRoot===row.baseRoot||old.payload?.createdAt===row.payload?.createdAt))return row;
     const a=old.payload||{},b=row.payload||{},merged={...a,...b};
     for(const k of archiveFields)merged[k]=mergeStateRecords(b[k],a[k]);
     merged.physio={...(a.physio||{}),...(b.physio||{}),samples:mergeStateRecords(b.physio?.samples,a.physio?.samples),sources:mergeStateRecords(b.physio?.sources,a.physio?.sources)};
+    const deleted=mergeNoteDeletions(a.settings,b.settings);
+    merged.settings={...(a.settings||{}),...(b.settings||{}),noteDeletionsV1:deleted};
+    merged.notes=filterDeletedNotes(merged.notes,deleted);
     return {...row,payload:merged};
   }
   function notifyStorage(value){storageState=value;window.dispatchEvent(new CustomEvent("setka:local-storage",{detail:value}))}
@@ -56,7 +71,7 @@
     usingPersonalStore=true;
     const merged=mergePersonalRows(row,{baseRoot:row.baseRoot,payload:data}).payload;
     for(const k of archiveFields)if(merged[k])data[k]=merged[k];
-    data.physio=merged.physio;data.settings={...(row.payload.settings||{}),...(data.settings||{})};
+    data.physio=merged.physio;data.settings=merged.settings||data.settings;
     if(!primary)data.createdAt=row.payload.createdAt||data.createdAt;
     save();window.dispatchEvent(new CustomEvent("setka:states-restored"));window.dispatchEvent(new CustomEvent("setka:personal-archive-restored"));Setka.renderLibrary?.();
   }).catch(()=>{}):Promise.resolve();
@@ -72,7 +87,11 @@
   }
   function mergeStoredStates(stored){
     if(!stored||stored.createdAt!==data.createdAt)return;
-    const before=JSON.stringify([data.symptoms,data.checkins]);data.symptoms=mergeStateRecords(data.symptoms,stored.symptoms);data.checkins=mergeStateRecords(data.checkins,stored.checkins);return before!==JSON.stringify([data.symptoms,data.checkins]);
+    const before=JSON.stringify([data.symptoms,data.checkins,data.notes,data.settings?.noteDeletionsV1]);data.symptoms=mergeStateRecords(data.symptoms,stored.symptoms);data.checkins=mergeStateRecords(data.checkins,stored.checkins);
+    const deleted=mergeNoteDeletions(data.settings,stored.settings);
+    data.settings={...(data.settings||{}),noteDeletionsV1:deleted};
+    data.notes=filterDeletedNotes(mergeStateRecords(data.notes,stored.notes),deleted);
+    return before!==JSON.stringify([data.symptoms,data.checkins,data.notes,data.settings?.noteDeletionsV1]);
   }
   function save(){
     if(typeof gestureSaveTimer!=="undefined"&&gestureSaveTimer){clearTimeout(gestureSaveTimer);gestureSaveTimer=0}
@@ -87,7 +106,7 @@
       let row;try{row={baseRoot:localRoot,payload:clone(data)}}catch(error){persisting=Promise.resolve(false);notifyStorage({ok:false,pending:false,kind:"memory",error:String(error?.name||error)});return false}
       persisting=personalStore.write(row,mergePersonalRows).then(saved=>{
         const d=mergePersonalRows(saved,{baseRoot:localRoot,payload:data}).payload;
-        for(const k of archiveFields)data[k]=d[k];data.physio=d.physio;
+        for(const k of archiveFields)data[k]=d[k];data.physio=d.physio;data.settings={...(data.settings||{}),noteDeletionsV1:mergeNoteDeletions(data.settings,d.settings)};data.notes=filterDeletedNotes(data.notes,data.settings.noteDeletionsV1);
         if(generation===saveGeneration)notifyStorage({ok:true,pending:false,kind:"indexedDB"});return true;
       }).catch(error=>{if(generation===saveGeneration)notifyStorage({ok:false,pending:false,kind:"memory",error:String(error?.name||error)});return false});
       return false;
@@ -239,7 +258,7 @@
   function restore(){if(!activeSession)return;const r=data.sessions.find(x=>x.id===activeSession.id);if(!r){activeSession=null;saveActive();return}Object.assign(r,activeSession);if(activeSession.phase==="measured"&&Date.now()>=Date.parse(activeSession.deadlineAt)){postSurvey("timer");return}if(activeSession.phase==="feedback"){postSurvey(activeSession.completionReason||"timer");return}if(activeSession.phase==="done_feedback"){showFeedbackResult();return}if(["measured","after_feedback"].includes(activeSession.phase)){lastTick=Date.now();lastInteraction=Date.now();startTicker();updateGameControls()}}
 
   window.SetkaStandaloneV34={
-    getData:()=>data,mergeStateRecords,getActiveSession:()=>activeSession,persistActiveSession:saveActive,save,clearLocalHistory,ready:localReady,whenSaved:()=>persisting,storageStatus:()=>({...storageState}),recordEvent,stateSnapshot,showToday,showPatterns,showSymptoms,showMe,showNotes,showSessions,screen,hideLayer,setNav,preSurvey,startSession,finishSession,showFeedbackResult,updateGameControls,INTENTS,FACES,DURATIONS,fmt,dt,esc,id,localOffset,
+    getData:()=>data,mergeStateRecords,mergeNoteDeletions,filterDeletedNotes,getActiveSession:()=>activeSession,persistActiveSession:saveActive,save,clearLocalHistory,ready:localReady,whenSaved:()=>persisting,storageStatus:()=>({...storageState}),recordEvent,stateSnapshot,showToday,showPatterns,showSymptoms,showMe,showNotes,showSessions,screen,hideLayer,setNav,preSurvey,startSession,finishSession,showFeedbackResult,updateGameControls,INTENTS,FACES,DURATIONS,fmt,dt,esc,id,localOffset,
     addPhysioSample(sample){data.physio=data.physio||{samples:[],sources:[]};data.physio.samples.push(sample);if(data.physio.samples.length>10000)data.physio.samples.splice(0,data.physio.samples.length-10000);save()},
     setPublicCommunity(items){window.SetkaStandaloneV34.publicCommunity=Array.isArray(items)?items:[]},publicCommunity:[]
   };

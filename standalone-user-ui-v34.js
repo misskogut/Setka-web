@@ -25,7 +25,7 @@
     .st34-user-insight h3{font-size:15px;margin:0 0 8px}.st34-user-insight p{font-size:12px;line-height:1.5;color:rgba(255,255,255,.58);margin:0}
     .st34-user-pattern{display:flex;align-items:center;gap:12px}.st34-user-preview{width:72px;height:72px;border-radius:18px;border:1px solid rgba(255,255,255,.14);background:#000;flex:none}
     .st34-user-metric{font-size:11px;color:rgba(255,255,255,.52);line-height:1.5;margin-top:6px}
-    .st34-note-card{border:1px solid rgba(255,255,255,.16);border-radius:24px;background:#090909;padding:17px;margin:12px 0;overflow:hidden}
+    .st34-note-card{position:relative;border:1px solid rgba(255,255,255,.16);border-radius:24px;background:#090909;padding:17px;margin:12px 0;overflow:hidden}
     .st34-note-text{font-size:20px;line-height:1.28;color:#fff;margin:0 0 8px;white-space:pre-wrap;overflow-wrap:anywhere}
     .st-note-editor-inline{display:grid;gap:10px;margin:0 0 24px}
     .st-note-editor-inline label{font-size:12px;color:rgba(255,255,255,.64)}
@@ -34,6 +34,12 @@
     .st-notes-feed-heading{font-size:15px;font-weight:550;margin:4px 0 8px;color:rgba(255,255,255,.78)}
     .st-notes-list{min-width:0}
     .st34-note-meta{font-size:11px;line-height:1.45;color:rgba(255,255,255,.42);margin-bottom:14px}
+    .st34-note-actions{display:flex;justify-content:flex-end;gap:6px;margin:0 0 8px}
+    .st34-note-actions button{width:36px;height:36px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.14);background:#141414;color:#bdbdbd;border-radius:12px;padding:0;touch-action:manipulation}
+    .st34-note-actions svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+    .st34-note-actions button:active{color:#fff;background:#252525}
+    .st34-note-edit-field{width:100%;box-sizing:border-box;min-height:100px}
+    .st34-note-edit{display:grid;gap:8px;margin-bottom:12px}
     .st34-note-preview-button{display:block;width:100%;border:0;background:#000;padding:0;border-radius:18px;overflow:hidden;position:relative;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
     .st34-note-preview-button:active{transform:scale(.992)}
     .st34-note-preview{display:block;width:100%;aspect-ratio:1.42/1;background:#000}
@@ -73,6 +79,49 @@
     Setka.openConfig?.(clone(replay.config),{type:"memory",id:n.id,patternId:replay.pid,patternVersion:n.replaySnapshot?.patternVersion||n.patternVersion,schemaVersion:n.replaySnapshot?.schemaVersion,communityId:n.communityId||null,noteId:n.id,frame:replay.frame});
   }
 
+  function noteActions(card,head,n){
+    if(!n?.id)return;
+    const controls=document.createElement("div");controls.className="st34-note-actions";
+    const btn=(label,path)=>{const b=document.createElement("button");b.type="button";b.setAttribute("aria-label",label);b.title=label;b.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+path+'</svg>';controls.appendChild(b);return b};
+    const pencil=btn("Редактировать заметку",'<path d="m15 5 4 4M4 20l4-.8L20 7a2.8 2.8 0 0 0-4-4L4.8 15.8 4 20Z"/>');
+    const trash=btn("Удалить заметку",'<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 10v7m4-7v7"/>');
+    card.appendChild(controls);
+    const current=()=>C.getData().notes.find(x=>String(x.id)===String(n.id));
+    const isPublished=x=>x&&(x.publicPublished||["pending","published"].includes(x.publicModerationStatus));
+    function allowed(){const x=current();if(!x)return false;if(isPublished(x)){C.inlineStatus(card,"Сначала сними заметку с публикации в сообществе.","error");return false}return true}
+    const persist=async()=>{const immediate=C.save();return immediate||(C.whenSaved?await C.whenSaved():true)};
+    function notify(type){C.recordEvent(type,{noteId:n.id},false);window.dispatchEvent(new CustomEvent("setka:v34-sync-request"));}
+    function refresh(){
+      if(card.closest("#stNotesFeed"))refreshNotesFeed();
+      else if(card.isConnected){const row=current();if(row){const replacement=renderNoteCard(card.parentElement,row,{compact:true});card.replaceWith(replacement)}else card.remove()}
+    }
+    pencil.onclick=()=>{
+      if(!allowed()||card.querySelector(".st34-note-edit"))return;
+      const original=current(),form=document.createElement("form");form.className="st34-note-edit";
+      const ta=document.createElement("textarea");ta.className="st-textarea st34-note-edit-field";ta.setAttribute("aria-label","Текст заметки");ta.maxLength=5000;ta.required=true;ta.value=original.text||"";
+      const row=document.createElement("div");row.className="st-row";
+      const cancel=document.createElement("button"),save=document.createElement("button");cancel.type="button";cancel.className="st-secondary";cancel.textContent="Отмена";save.type="submit";save.className="st-primary";save.textContent="Сохранить";
+      row.append(cancel,save);form.append(ta,row);head.hidden=true;controls.hidden=true;head.after(form);ta.focus();
+      cancel.onclick=()=>{form.remove();head.hidden=false;controls.hidden=false;refresh()};
+      form.onsubmit=async e=>{e.preventDefault();if(save.disabled||!allowed())return;const text=ta.value.trim();if(!text){C.inlineStatus(form,"Напиши текст заметки.");return}
+        save.disabled=cancel.disabled=true;const x=current();if(!x)return;
+        // Preserve original date, session, pattern and exact replay snapshot.
+        x.text=text;x.updatedAt=new Date(Math.max(Date.now(),(Date.parse(x.updatedAt)||0)+1)).toISOString();
+        if(!await persist()){C.inlineStatus(form,"Не удалось сохранить изменения. Попробуй ещё раз.","error");save.disabled=cancel.disabled=false;return}
+        notify("note_edit");form.remove();head.hidden=false;controls.hidden=false;refresh();
+      };
+    };
+    trash.onclick=async()=>{
+      if(!allowed()||trash.disabled)return;trash.disabled=pencil.disabled=true;
+      const confirmed=await C.inlineConfirm(card,{title:"Удалить заметку?",body:"Запись исчезнет из личной истории. Это действие нельзя отменить.",accept:"Удалить"});
+      if(!confirmed||!card.isConnected||!allowed()){trash.disabled=pencil.disabled=false;return}
+      const d=C.getData(),deleted=C.mergeNoteDeletions(d.settings,{noteDeletionsV1:{[String(n.id)]:new Date().toISOString()}});
+      d.settings={...(d.settings||{}),noteDeletionsV1:deleted};d.notes=C.filterDeletedNotes(d.notes,deleted);
+      if(!await persist()){C.inlineStatus(card,"Удаление ещё не удалось сохранить на устройстве. Повтори попытку после восстановления хранилища.","error");const retry=document.createElement("button");retry.type="button";retry.className="st-secondary";retry.textContent="Повторить удаление";retry.onclick=async()=>{if(await persist()){notify("note_delete");refresh()}};card.appendChild(retry);return}
+      notify("note_delete");refresh();
+    };
+  }
+
   function renderNoteCard(parent,n,{compact=false}={}){
     const replay=window.__SETKA_NOTE_REPLAY_V34__?.replayOf(n);
     const card=document.createElement("article");card.className="st34-note-card";card.dataset.noteId=String(n.id);
@@ -81,6 +130,7 @@
     if(n.sessionElapsedMs!=null&&n.sessionId)context.push(`${fmt(n.sessionElapsedMs)} от начала`);
     const head=document.createElement("div");
     head.innerHTML=`<div class="st34-note-text">${esc(n.text)}</div><div class="st34-note-meta">${dt(n.observedAt)}${context.length?` · ${esc(context.join(" · "))}`:""}</div>`;
+    noteActions(card,head,n);
     card.appendChild(head);
     if(replay?.config&&!replay.unavailable){
       const open=document.createElement("button");open.type="button";open.className="st34-note-preview-button";open.setAttribute("aria-label","Открыть паттерн в момент заметки");
@@ -133,7 +183,7 @@
 
   // Refresh just the timeline, never the editor or its in-flight save.
   function refreshNotesFeed(){
-    const list=document.querySelector("#st34Layer #stNotesFeed");if(!list)return;
+    const list=document.querySelector("#st34Layer #stNotesFeed");if(!list||list.querySelector(".st34-note-edit"))return;
     const phase=window.__SETKA_PRIVATE_CORPUS_V40__?.status?.()?.loadState;
     const pending=list.closest("#stBody")?.querySelector(".st-note-editor")?.dataset.pendingNoteId;
     const notes=chronologicalNotes(C.getData().notes).filter(n=>String(n.id)!==pending);
@@ -303,7 +353,7 @@
   C.showToday=showToday;
   C.showMe=showMe;
   // An archive may finish loading after Notes is already open. Repaint that view without losing data.
-  for(const event of ["setka:v40-private-corpus-load","setka:v40-private-corpus-restored","setka:guest-archive-restored","setka:personal-archive-restored"])window.addEventListener(event,()=>{
+  for(const event of ["setka:v40-private-corpus-load","setka:v40-private-corpus-restored","setka:guest-archive-restored","setka:personal-archive-restored","setka:states-restored"])window.addEventListener(event,()=>{
     const layer=document.getElementById("st34Layer"),title=layer?.querySelector(".st-title")?.textContent?.trim();
     if(!layer||layer.classList.contains("hidden"))return;
     // Do not discard drafts if an account refresh finishes while the user is typing.
