@@ -40,6 +40,7 @@ function physical(options={}){
 }
 function init(){
  renderer=new T.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:'high-performance'});
+ renderer.info.autoReset=false;
  renderer.setClearColor(0x08050e);renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.02;
  renderer.transmissionResolutionScale=mobile?.65:.85;
  scene=new T.Scene();scene.background=new T.Color(0x08050e);
@@ -57,6 +58,7 @@ function init(){
  const outline=new T.EdgesGeometry(plate.geometry,28);const outlineMesh=new T.LineSegments(outline,new T.LineBasicMaterial({color:0x6a5078,transparent:true,opacity:.11}));card.add(outlineMesh);
  body=makeSoftBody();shell=new T.Mesh(body.geometry,physical());shell.name='sculpted-soft-glass';shell.position.set(0,-.02,1.03);card.add(shell);
  state.vertices=body.vertexCount;
+ state.shellTriangles=body.geometry.index.count/3;
  addInterior();addTypography();addOrbit();addWave();addBack();
  const rt=new T.WebGLRenderTarget(1,1,{type:T.HalfFloatType,samples:mobile?2:4});
  composer=new EffectComposer(renderer,rt);composer.addPass(new RenderPass(scene,camera));
@@ -214,7 +216,7 @@ function frame(now){
  card.rotation.set(axis==='x'?-T.MathUtils.degToRad(angle):0,axis==='y'?T.MathUtils.degToRad(angle):0,0);
  excitation*=Math.exp(-dt*1.8);inner.rotation.z=.012*Math.sin(clockTime*.4);inner.scale.setScalar(1+.006*Math.sin(clockTime*1.1));
  if(waveGeom&&!paused){const p=waveGeom.attributes.position.array;for(let i=0;i<p.length;i+=3){const x=waveBase[i],v=((i/3)%32)/31*2-1;p[i+1]=.16+Math.sin(x*3-clockTime*.55)*(.19+v*.14)+v*.24;p[i+2]=.15+Math.cos(x*2.3+clockTime*.35)*.05*(1-v*v)}waveGeom.attributes.position.needsUpdate=true}
- composer.render();state.frames=++frameCount;state.angle=angle;state.energy=body.energy;state.triangles=renderer.info.render.triangles;state.drawCalls=renderer.info.render.calls;
+ renderer.info.reset();composer.render();state.frames=++frameCount;state.angle=angle;state.energy=body.energy;state.triangles=renderer.info.render.triangles;state.drawCalls=renderer.info.render.calls;
  if(frameCount%15===0)canvas.dataset.diagnostics=JSON.stringify(state);
  if(frameCount>15){frameSum+=rawDt*1000;measurementFrames++;if(measurementFrames===90){state.meanFrameMs=Math.round(frameSum/measurementFrames*10)/10;if(quality==='auto'&&state.meanFrameMs>29&&pixelRatio>1.1){renderer.setPixelRatio(1.1);composer.setPixelRatio(1.1);state.pixelRatio=1.1}frameSum=0;measurementFrames=0}}
 }

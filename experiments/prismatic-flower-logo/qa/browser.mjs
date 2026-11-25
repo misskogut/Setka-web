@@ -16,10 +16,10 @@ try{
   await page.goto(base+'?capture=1&angle='+angle,{waitUntil:'load'});
   await page.waitForFunction(()=>document.querySelector('canvas')?.dataset.ready==='true',{},{timeout:60000});
   await page.waitForFunction(()=>window.SETKA_FLOWER_DIAGNOSTICS?.frames>6,{},{timeout:60000});
-  const stats=await page.evaluate(()=>window.SETKA_FLOWER_DIAGNOSTICS);assert.equal(Math.round(stats.angle),angle);assert.ok(stats.vertices>6000);assert.ok(stats.triangles>1000);
+  const stats=await page.evaluate(()=>window.SETKA_FLOWER_DIAGNOSTICS);
   const bytes=await page.screenshot({path:new URL('angle-'+angle+'.png',out).pathname});const img=PNG.sync.read(bytes);let bright=0;
   for(let i=0;i<img.data.length;i+=4)if(Math.max(img.data[i],img.data[i+1],img.data[i+2])>100)bright++;
-  report.angles.push({angle,brightPixels:bright,stats});assert.ok(bright>100,'visible 3D content at '+angle);
+  report.angles.push({angle,brightPixels:bright,stats});assert.equal(Math.round(stats.angle),angle);assert.ok(stats.vertices>6000);assert.ok(stats.shellTriangles>1000);assert.ok(bright>100,'visible 3D content at '+angle);
  }
  await page.goto(base+'?capture=1');await page.waitForFunction(()=>window.SETKA_FLOWER_DIAGNOSTICS?.frames>6,{},{timeout:60000});
  // Hold an off-centre surface point; a gesture on the core can reach through the glass.
