@@ -6,9 +6,9 @@ const original=fs.readFileSync("experiments/alma-cycle-source/index.html","utf8"
 const logo=fs.readFileSync("experiments/standalone-vertical-logo-v1.js","utf8");
 const src=fs.readFileSync("experiments/standalone-cycle-lotus-gpu-volume-v20.js","utf8");
 
-test("original ALMA cycle lotus is kept in its own unmodified calendar iframe",()=>{
+test("original ALMA cycle lotus is kept in its identity-linked calendar iframe",()=>{
  assert.match(html,/<aside class="setka-cycle-overlay" id="setkaCycleBack" hidden/);
- assert.match(html,/<iframe title="Оригинальный календарь цикла ALMA" src="\.\/experiments\/alma-cycle-source\/index\.html\?v=20261121-inset-insights-c9d418" loading="eager"><\/iframe>/);
+ assert.match(html,/<iframe title="Оригинальный календарь цикла ALMA" src="\.\/experiments\/alma-cycle-source\/index\.html\?v=20261125-cycle-linked-v1&amp;setka_link=1" loading="eager"><\/iframe>/);
  assert.match(original,/<div id="alma-cycle-root"[^>]*><\/div>/);
  assert.match(original,/dist\/cycle\.js/);
  assert.doesNotMatch(html,/<script[^>]+(?:lotus-gpu-volume|lotus-direct|lotus-axis-v1)\.js/);
